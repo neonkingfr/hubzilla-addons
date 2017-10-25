@@ -286,8 +286,13 @@ function diaspora_unshare($owner,$contact) {
 }
 
 
+function diaspora_send_migration($item,$owner,$contact,$public_batch = false) {
+	// @TODO: send account_migration message
+	// called on keychange with $item set to the keychange packet.
+	// @TODO call on account move operation (as opposed to a clone operation)
 
 
+}
 
 function diaspora_send_status($item,$owner,$contact,$public_batch = false) {
 
@@ -406,17 +411,14 @@ function diaspora_send_upstream($item,$owner,$contact,$public_batch = false,$upl
 		return;
 	}
 
-	if((($item['verb'] === ACTIVITY_LIKE) || ($item['verb'] === ACTIVITY_DISLIKE)) 
-		&& ($item['obj_type'] === ACTIVITY_OBJ_NOTE || $item['obj_type'] === ACTIVITY_OBJ_COMMENT)) {
+	if(activity_match($item['verb'],[ ACTVITY_LIKE, ACTIVITY_DISLIKE ])
+		&& activity_match($item['obj_type'],[ ACTIVITY_OBJ_NOTE, ACTIVITY_OBJ_COMMENT ])) {
 		$conv_like = true;
 		if(($item['thr_parent']) && ($item['thr_parent'] != $item['parent_mid']))
 			$sub_like = true;
 	}
 
 	if($sub_like) {		
-
-		return; // @FIXME not yet supported in Diaspora
-
 		$p = q("select mid, parent_mid from item where mid = '%s' and uid = %d limit 1",
 			dbesc($item['thr_parent']),
 			intval($item['uid'])
@@ -495,17 +497,14 @@ function diaspora_send_downstream($item,$owner,$contact,$public_batch = false) {
 	$conv_like = false;
 	$sub_like  = false;
 
-	if((($item['verb'] === ACTIVITY_LIKE) || ($item['verb'] === ACTIVITY_DISLIKE)) 
-		&& ($item['obj_type'] === ACTIVITY_OBJ_NOTE || $item['obj_type'] === ACTIVITY_OBJ_COMMENT)) {
+	if(activity_match($item['verb'], [ ACTIVITY_LIKE, ACTIVITY_DISLIKE ]) 
+		&& activity_match($item['obj_type'],[ ACTIVITY_OBJ_NOTE, ACTIVITY_OBJ_COMMENT ])) {
 		$conv_like = true;
 		if(($item['thr_parent']) && ($item['thr_parent'] != $item['parent_mid']))
 			$sub_like = true;
 	}
 
 	if($sub_like) {		
-
-		return; // @FIXME not yet supported in Diaspora
-
 		$p = q("select mid, parent_mid from item where mid = '%s' and uid = %d limit 1",
 			dbesc($item['thr_parent']),
 			intval($item['uid'])
@@ -716,7 +715,7 @@ function diaspora_send_mail($item,$owner,$contact) {
 }
 
 
-function diaspora_profile_change($channel,$recip,$public_batch = false) {
+function diaspora_profile_change($channel,$recip,$public_batch = false,$profile_visible = false) {
 
 
 	$channel_id = $channel['channel_id'];
@@ -726,8 +725,6 @@ function diaspora_profile_change($channel,$recip,$public_batch = false) {
 		WHERE channel.channel_id = %d and profile.is_default = 1 ",
 		intval($channel_id)
 	);
-
-	$profile_visible = perm_is_allowed($channel_id,'','view_profile');
 
 	if(! $r)
 		return;
@@ -794,15 +791,20 @@ function diaspora_profile_change($channel,$recip,$public_batch = false) {
 			'image_url'        => $large,
 			'image_url_medium' => $medium,
 			'image_url_small'  => $small,
-			'birthday'         => $dob,
-			'gender'           => $gender,
-			'bio'              => $about,
-			'location'         => $location,
-			'searchable'       => $searchable,
 			'public'           => $searchable,
 			'nsfw'             => $nsfw,
-			'tag_string'       => $tags
+			'tag_string'       => $tags,
 		];
+
+		if($profile_visible) {
+			$msg = array_merge($msg, [
+				'birthday'         => $dob ,
+				'gender'           => $gender,
+				'bio'              => $about,
+				'location'         => $location,
+				'searchable'       => $searchable,
+			]);
+		}
 
 		$outmsg = arrtoxml('profile',$msg);
 		$slap = diaspora_prepare_outbound($outmsg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],$public_batch);
@@ -811,21 +813,22 @@ function diaspora_profile_change($channel,$recip,$public_batch = false) {
 
 	$tpl = get_markup_template('diaspora_profile.tpl','addon/diaspora');
 
-	$msg = replace_macros($tpl,array(
-		'$handle' => $handle,
-		'$first' => $first,
-		'$last' => $last,
-		'$large' => $large,
-		'$medium' => $medium,
-		'$small' => $small,
-		'$dob' => $dob,
-		'$gender' => $gender,
-		'$about' => $about,
-		'$location' => $location,
-		'$searchable' => $searchable,
-		'$nsfw' => $nsfw,
-		'$tags' => $tags
-	));
+	$msg = replace_macros($tpl, [
+		'$handle'          => $handle,
+		'$first'           => $first,
+		'$last'            => $last,
+		'$large'           => $large,
+		'$medium'          => $medium,
+		'$small'           => $small,
+		'$dob'             => $dob,
+		'$gender'          => $gender,
+		'$about'           => $about,
+		'$location'        => $location,
+		'$profile_visible' => $profile_visible,
+		'$searchable'      => $searchable,
+		'$nsfw'            => $nsfw,
+		'$tags'            => $tags
+	]);
 
 	logger('profile_change: ' . $msg, LOGGER_ALL, LOG_DEBUG);
 

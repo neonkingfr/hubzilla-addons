@@ -50,7 +50,7 @@ function gnusoc_load() {
 	register_hook('cron_daily','addon/gnusoc/gnusoc.php','gnusoc_cron_daily');
 	register_hook('can_comment_on_post','addon/gnusoc/gnusoc.php','gnusoc_can_comment_on_post');
 	register_hook('connection_remove','addon/gnusoc/gnusoc.php','gnusoc_connection_remove');
-
+	register_hook('channel_protocols','addon/gnusoc/gnusoc.php','gnusoc_channel_protocols');
 
 //	register_hook('notifier_hub', 'addon/gnusoc/gnusoc.php', 'gnusoc_process_outbound');
 //	register_hook('permissions_update', 'addon/gnusoc/gnusoc.php', 'gnusoc_permissions_update');
@@ -79,6 +79,7 @@ function gnusoc_unload() {
 	unregister_hook('cron_daily','addon/gnusoc/gnusoc.php','gnusoc_cron_daily');
 	unregister_hook('can_comment_on_post','addon/gnusoc/gnusoc.php','gnusoc_can_comment_on_post');
 	unregister_hook('connection_remove','addon/gnusoc/gnusoc.php','gnusoc_connection_remove');
+	unregister_hook('channel_protocols','addon/gnusoc/gnusoc.php','gnusoc_channel_protocols');
 
 }
 
@@ -92,15 +93,31 @@ function gnusoc_load_module(&$a, &$b) {
 	}
 }
 
+function gnusoc_channel_protocols($a,&$b) {
+
+	if(intval(get_pconfig($b['channel_id'],'system','gnusoc_allowed')))
+		$b['protocols'][] = 'ostatus';
+
+}
 
 
 function gnusoc_webfinger(&$a,&$b) {
+	if(! $b['channel'])
+		return;
+	
+	if(! get_pconfig($b['channel']['channel_id'],'system','gnusoc_allowed'))
+		return;
+
 	$b['result']['links'][] = array('rel' => 'salmon', 'href' => z_root() . '/salmon/' . $b['channel']['channel_address']);
 	$b['result']['links'][] = array('rel' => 'http://salmon-protocol.org/ns/salmon-replies', 'href' => z_root() . '/salmon/' . $b['channel']['channel_address']);
 	$b['result']['links'][] = array('rel' => 'http://salmon-protocol.org/ns/salmon-mention', 'href' => z_root() . '/salmon/' . $b['channel']['channel_address']);
 }
 
 function gnusoc_personal_xrd(&$a,&$b) {
+
+	if(! get_pconfig($b['user']['channel_id'],'system','gnusoc_allowed'))
+		return;
+
 	$b['xml'] = str_replace('</XRD>',
 		'<Link rel="salmon" href="' . z_root() . '/salmon/' . $b['user']['channel_address'] . '" />' . "\r\n" .  '<Link rel="http://salmon-protocol.org/ns/salmon-replies" href="' . z_root() . '/salmon/' . $b['user']['channel_address'] . '" />' . "\r\n" .  '<Link rel="http://salmon-protocol.org/ns/salmon-mention" href="' . z_root() . '/salmon/' . $b['user']['channel_address'] . '" />' . "\r\n" . '</XRD>', $b['xml']);
 
@@ -154,6 +171,10 @@ function gnusoc_cron_daily($a,&$b) {
 		foreach($r as $rv) {
 			$channel = channelx_by_n($rv['abook_channel']);
 			if($channel) {
+
+				if(! get_pconfig($channel['channel_id'],'system','gnusoc_allowed'))
+					continue;
+
 				$hubs = get_xconfig($rv['abook_xchan'],'system','push_hubs');
 				if($hubs) {
 					foreach($hubs as $hub) {
@@ -196,7 +217,33 @@ function gnusoc_connection_remove(&$a,&$b) {
 function gnusoc_feature_settings_post(&$a,&$b) {
 
 	if($_POST['gnusoc-submit']) {
+		$was_enabled = get_pconfig(local_channel(),'system','gnusoc_allowed');
+
 		set_pconfig(local_channel(),'system','gnusoc_allowed',intval($_POST['gnusoc_allowed']));
+
+		if($was_enabled && (! intval($_POST['gnusoc_allowed']))) {
+
+			// plugin is now disabled, if it was enabled before, unsubscribe to all followed hubs
+
+			require_once('addon/pubsubhubbub/pubsubhubbub.php');
+
+			$channel = channelx_by_n(local_channel());
+
+			$r = q("select * from abook left join xchan on abook_xchan = xchan_hash where abook_channel = %d and xchan_network = 'gnusoc' ",
+				intval(local_channel())
+			);
+			if($r) {
+				foreach($r as $rv) {
+					$hubs = get_xconfig($rv['xchan_hash'],'system','push_hubs');
+					if($hubs) {
+						foreach($hubs as $hub) {
+							pubsubhubbub_subscribe($hub,$channel,$rv,'','unsubscribe');
+						}
+					}
+				}
+			}
+		}
+
 		info( t('GNU-Social Protocol Settings updated.') . EOL);
 	}
 }
@@ -531,6 +578,7 @@ function gnusoc_notifier_process(&$a,&$b) {
 		return;
 
 	$slap = atom_entry($b['target_item'],'html',null,null,false);
+
 	if($b['upstream']) {
 
 		foreach($recips as $rv) {
@@ -571,6 +619,9 @@ function gnusoc_follow_from_feed(&$a,&$b) {
 	$author   = $b['author'];
 
 	if($b['caught'])
+		return;
+
+	if(! get_pconfig($importer['channel_id'],'system','gnusoc_allowed'))
 		return;
 
 	$b['caught'] = true;
@@ -724,6 +775,8 @@ function gnusoc_atom_entry($a,&$b) {
 		$conv = $item['parent_mid'];
 	}
 
+	// logger('atom_entry_item: ' . print_r($item,true),LOGGER_DATA);
+
 	$conv_link = z_root() . '/display/' . $conv;
 
 	if(! strpos($conv,':'))
@@ -731,6 +784,18 @@ function gnusoc_atom_entry($a,&$b) {
 
 	$o = '<link rel="ostatus:conversation" href="' . xmlify($conv_link) . '"/>' . "\r\n";
 	$o .= '<ostatus:conversation>' . xmlify($conv) . '</ostatus:conversation>' . "\r\n";
+
+	if(is_array($item['term']) && $item['term']) {
+		foreach($item['term'] as $t) {
+			if($t['ttype'] == TERM_MENTION) {
+				$o .=  '<link rel="mentioned" ostatus:object-type="http://activitystrea.ms/schema/1.0/person" href="' . $t['url'] . '"/>' . "\r\n";		
+			}
+		}
+	}
+
+	if(! $item['item_private']) {
+		$o .= '<link rel="mentioned" ostatus:object-type="http://activitystrea.ms/schema/1.0/collection" href="http://activityschema.org/collection/public"/>' . "\r\n" ;
+	}
 
 	$b['entry'] = str_replace('</entry>', $o . '</entry>', $b['entry']);
 
@@ -777,9 +842,13 @@ function gnusoc_parse_atom($a,&$b) {
 function gnusoc_discover_channel_webfinger($a,&$b) {
 
 	// allow more advanced protocols to win, use this as last resort
-	// if there more than one protocol is supported
+	// if more than one protocol is supported
 
 	if($b['success'])
+		return;
+
+	$protocol = $b['protocol'];
+	if($protocol && strtolower($protocol) !== 'ostatus')
 		return;
 
 	require_once('include/network.php');
@@ -790,6 +859,7 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 	$network = null;
 	$gnusoc = false;
 
+	$address = $webbie;
 	$salmon_key = null;
 	$salmon = '';
 	$atom_feed = null;
@@ -798,6 +868,20 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 
 	$x = $b['webfinger'];
 
+	if($x && strpos($webbie,'@') === false) {
+		$address = '';
+		if(array_key_exists('aliases',$x) && $x['aliases']) {
+			foreach($x['aliases'] as $al) {
+				if(substr($al,0,5) === 'acct:') {
+					$address = substr($al,5);
+					break;
+				}
+			}
+		}
+		if((! $address) && array_key_exists('subject',$x) && substr($x['subject'],0,5) === 'acct:') {
+			$address = substr($x['subject'],5);
+		}
+	}
 	if($x && array_key_exists('links',$x) && $x['links']) {
 		foreach($x['links'] as $link) {
 			if(array_key_exists('rel',$link)) {
@@ -835,7 +919,7 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 	if($atom_feed && $salmon_key)
 		$gnusoc = true;
 
-	if(! $gnusoc)
+	if(! ($gnusoc && $address))
 		return;
 
 	$k = z_fetch_url($atom_feed);
@@ -847,9 +931,9 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 		// stash any discovered pubsubhubbub hubs in case we need to follow them
 		// this will save an expensive lookup later
 
-		if($feed_meta['hubs'] && $b['address']) {
-			set_xconfig($b['address'],'system','push_hubs',$feed_meta['hubs']);
-			set_xconfig($b['address'],'system','feed_url',$atom_feed);
+		if($feed_meta['hubs'] && $address) {
+			set_xconfig($address,'system','push_hubs',$feed_meta['hubs']);
+			set_xconfig($address,'system','feed_url',$atom_feed);
 		}
 		if($feed_meta['author']['author_name']) {
 			$fullname = $feed_meta['author']['author_name'];
@@ -871,14 +955,14 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 	}
 
 	if(! $fullname)
-		$fullname = $b['address'];
+		$fullname = $address;
 
 
-	if(! ($uri && $fullname && $salmon_key && $salmon))
+	if(! ($uri && $fullname && $address && $salmon_key && $salmon))
 		return false;
 
 	$r = q("select * from xchan where xchan_hash = '%s' limit 1",
-		dbesc($b['address'])
+		dbesc($address)
 	);
 
 	if($r) {
@@ -886,16 +970,16 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 			dbesc($fullname),
 			dbesc('gnusoc'),
 			dbesc(datetime_convert()),
-			dbesc($b['address'])
+			dbesc($address)
 		);
 	}
 	else {
 		$r = xchan_store_lowlevel(
 			[
-				'xchan_hash'		 => $b['address'],
+				'xchan_hash'		 => $address,
 				'xchan_guid'		 => $uri,
 				'xchan_pubkey'       => $salmon_key,
-				'xchan_addr'		 => $b['address'],
+				'xchan_addr'		 => $address,
 				'xchan_url'          => $uri,
 				'xchan_name'		 => $fullname,
 				'xchan_name_date'    => datetime_convert(),
@@ -904,15 +988,15 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 		);
 	}
 	$r = q("select * from hubloc where hubloc_hash = '%s' limit 1",
-		dbesc($b['address'])
+		dbesc($address)
 	);
 
 	if(! $r) {
 		$r = hubloc_store_lowlevel(
 			[
 				'hubloc_guid'     => $uri,
-				'hubloc_hash'     => $b['address'],
-				'hubloc_addr'     => $b['address'],
+				'hubloc_hash'     => $address,
+				'hubloc_addr'     => $address,
 				'hubloc_network'  => 'gnusoc',
 				'hubloc_url'	  => $base,
 				'hubloc_host'     => $host,
@@ -923,14 +1007,14 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 		);
 	}
 
-	$photos = import_xchan_photo($avatar,$b['address']);
+	$photos = import_xchan_photo($avatar,$address);
 	$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
-		dbescdate(datetime_convert('UTC','UTC',$arr['photo_updated'])),
+		dbesc(datetime_convert()),
 		dbesc($photos[0]),
 		dbesc($photos[1]),
 		dbesc($photos[2]),
 		dbesc($photos[3]),
-		dbesc($b['address'])
+		dbesc($address)
 	);
 	
 	$b['success'] = true;
@@ -942,25 +1026,47 @@ function gnusoc_import_author(&$a,&$b) {
 
 	$x = $b['author'];
 
-	if(strpos($x['network'],'gnusoc') === false)
+	// if a network is set, only look within this network; otherwise try and find this author anywhere
+
+	if(array_key_exists('network',$x) && strpos($x['network'],'gnusoc') === false)
 		return;
 
-	if(! $x['address'])
+	if((! $x['address']) && (! $x['url']))
 		return;
 
-	$r = q("select * from xchan where xchan_addr = '%s' limit 1",
-		dbesc($x['address'])
-	);
-	if($r) {
-		logger('in_cache: ' . $x['address'], LOGGER_DATA);
-		$b['result'] = $r[0]['xchan_hash'];
-		return;
-	}
-
-	if(discover_by_webbie($x['address'])) {
-		$r = q("select xchan_hash from xchan where xchan_addr = '%s' limit 1",
+	if($x['address']) {
+		$r = q("select * from xchan where xchan_addr = '%s' limit 1",
 			dbesc($x['address'])
 		);
+	}
+	elseif($x['url']) {
+		// let somebody upgrade from an 'unknown' connection which has no xchan_addr
+		$r = q("select * from xchan where xchan_url = '%s' and xchan_addr != '' limit 1",
+			dbesc($x['url'])
+		);
+	}
+	if($r) {
+		logger('in_cache: ' . $r[0]['xchan_name'], LOGGER_DATA);
+
+		if($r[0]['xchan_photo_date'] > datetime_convert('UTC','UTC','now - 1 month')) {
+			$b['result'] = $r[0]['xchan_hash'];
+			return;
+		}
+
+		logger('cache is more than 1 month old - refreshing');
+	}
+
+	$search = (($x['address']) ? $x['address'] : $x['url']);
+
+	if(discover_by_webbie($search)) {
+		$r = q("select xchan_hash from xchan where xchan_addr = '%s' limit 1",
+			dbesc($search)
+		);
+		if(! $r) {
+			$r = q("select xchan_hash from xchan where xchan_url = '%s' limit 1",
+				dbesc($search)
+			);
+		}
 		if($r) {
 			$b['result'] = $r[0]['xchan_hash'];
 			return;

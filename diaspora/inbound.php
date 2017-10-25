@@ -175,6 +175,11 @@ function diaspora_is_blacklisted($s) {
 		return true;
 	}
 
+	if(! check_channelallowed($s)) {
+		logger('blacklisted channel: ' . $s);
+		return true;
+	}
+
 	return false;
 }
 
@@ -232,7 +237,12 @@ function diaspora_decode($importer,$xml,$format) {
 	if($format !== 'legacy') {
 		$children = $basedom->children('http://salmon-protocol.org/ns/magic-env');
 		$public = true;
-		$author_link = str_replace('acct:','',base64url_decode($children->sig[0]->attributes()->key_id[0]));
+		if($children->sig && $children->sig[0]->attributes() && $children->sig[0]->attributes()->key_id) {
+			$author_link = str_replace('acct:','',base64url_decode($children->sig[0]->attributes()->key_id[0]));
+		}
+		else {
+			$author_link = '';
+		}
 
 		/**
 			SimpleXMLElement Object
@@ -292,6 +302,10 @@ function diaspora_decode($importer,$xml,$format) {
 
 			logger('decrypted: ' . $decrypted, LOGGER_DATA);
 			$idom = parse_xml_string($decrypted,false);
+			if($idom === false) {
+				logger('failed to parse decrypted content');				
+				http_status_exit(400);
+			}
 
 			$inner_iv = base64_decode($idom->iv);
 			$inner_aes_key = base64_decode($idom->aes_key);

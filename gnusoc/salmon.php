@@ -34,16 +34,14 @@ function salmon_post(&$a) {
 	logger('mod-salmon: new salmon ' . $xml, LOGGER_DATA);
 
 	$nick       = ((argc() > 1) ? trim(argv(1)) : '');
-//	$mentions   = ((App::$argc > 2 && App::$argv[2] === 'mention') ? true : false);
-
 	
 	$importer = channelx_by_nick($nick);
 
 	if(! $importer)
 		http_status_exit(500);
 
-// @fixme check that this channel has the GNU-Social protocol enabled
-
+	if(! get_pconfig($importer['channel_id'],'system','gnusoc_allowed'))
+		http_status_exit(500);
 
 	// parse the xml
 
@@ -193,6 +191,11 @@ function salmon_post(&$a) {
 	}
 
 	$xchan = $r[0];
+
+	if(! (check_siteallowed($xchan['xchan_guid']) && check_channelallowed($xchan['xchan_hash']))) {
+		logger('site or channel is blocked.');
+		http_status_exit(403);
+	}
 
 
 	/*
