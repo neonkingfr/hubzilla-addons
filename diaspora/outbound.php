@@ -411,7 +411,7 @@ function diaspora_send_upstream($item,$owner,$contact,$public_batch = false,$upl
 		return;
 	}
 
-	if(activity_match($item['verb'],[ ACTVITY_LIKE, ACTIVITY_DISLIKE ])
+	if(activity_match($item['verb'],[ ACTIVITY_LIKE, ACTIVITY_DISLIKE ])
 		&& activity_match($item['obj_type'],[ ACTIVITY_OBJ_NOTE, ACTIVITY_OBJ_COMMENT ])) {
 		$conv_like = true;
 		if(($item['thr_parent']) && ($item['thr_parent'] != $item['parent_mid']))
