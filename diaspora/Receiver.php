@@ -1517,14 +1517,37 @@ class Diaspora_Receiver {
 				dbesc($guid),
 				intval($this->importer['channel_id'])
 			);
+
 			if($r) {
+
+				// by default only delete your copy of the item without propagating it further
+
+				$stage = DROPITEM_NORMAL;
+
+				if($type === 'Comment' || $type === 'Like') {
+
+					// If we are the conversation owner, propagate the delete elsewhere
+
+					$p = q("select * from item where mid = '%s' and uid = %d",
+						dbesc($r[0]['parent_mid']),
+						intval($this->importer['channel_id'])
+					);
+					if($p && $p[0]['owner_xchan'] === $this->importer['channel_hash']) {
+						$stage = DROPITEM_PHASE1;
+					}
+				}
+
 				if(link_compare($r[0]['author_xchan'],$contact['xchan_hash'])
 					|| link_compare($r[0]['owner_xchan'],$contact['xchan_hash'])) {
-					drop_item($r[0]['id'],false);
+					drop_item($r[0]['id'],false, $stage);
+
+					// notification is not done in drop_item() unless the process is interactive
+					// so call it now
+
+					if($stage === DROPITEM_PHASE1) {
+						Zotlabs\Daemon\Master::Summon( [ 'Notifier','drop',$r[0]['id'] ] );
+					}
 				}
-				// @FIXME - ensure that relay is performed if this was an upstream
-				// Could probably check if we're the owner and it is a like or comment
-				// This may or may not be handled by drop_item
 			}
 		}
 
