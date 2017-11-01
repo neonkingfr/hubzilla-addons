@@ -686,7 +686,16 @@ class Diaspora_Receiver {
 
 		/* WARN: As a side effect of this, all of $this->xmlbase will now be unxmlified */
 
-		$unxml = array_map('unxmlify',$this->xmlbase);
+		$oldxml = array_map('unxmlify',$this->xmlbase);
+		if($oldxml) {
+			$unxml = [];
+			foreach($oldxml as $k => $v) {
+				if($k === 'diaspora_handle')
+					$k = 'author';
+				$unxml[$k] = $v;
+			}
+		}
+
 
 		if($parent_author_signature) {
 			// If a parent_author_signature exists, then we've received the comment
@@ -1481,7 +1490,20 @@ class Diaspora_Receiver {
 		$arr['obj_type'] = $objtype;
 		$arr['obj'] = $object;
 
-		set_iconfig($arr,'diaspora','fields',array_map('unxmlify',$this->xmlbase),true);
+		$oldxml = array_map('unxmlify',$this->xmlbase);
+		if($oldxml) {
+			$unxml = [];
+			foreach($oldxml as $k => $v) {
+				if($k === 'diaspora_handle')
+					$k = 'author';
+				if($k === 'target_type')
+					$k = 'parent_type';
+				$unxml[$k] = $v;
+			}
+		}
+
+
+		set_iconfig($arr,'diaspora','fields',$unxml,true);
 
 		$result = item_store($arr);
 
