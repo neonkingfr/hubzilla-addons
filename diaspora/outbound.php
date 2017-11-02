@@ -674,7 +674,7 @@ function diaspora_send_mail($item,$owner,$contact) {
 		}
 
 		$slap = diaspora_prepare_outbound($outmsg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],false);
-		return(diaspora_queue($owner,$contact,$slap,$false,$item['mid']));
+		return(diaspora_queue($owner,$contact,$slap,false,$item['mid']));
 	}
 
 	$created = datetime_convert('UTC','UTC',$item['created'],'Y-m-d H:i:s \U\T\C');
