@@ -1314,7 +1314,7 @@ class Diaspora_Receiver {
 			return 202;
 		}
 
-		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' and parent_mid = mid LIMIT 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($parent_guid)
 		);
