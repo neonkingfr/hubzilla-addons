@@ -655,7 +655,7 @@ function diaspora_send_mail($item,$owner,$contact) {
 			'created_at' => $created
 		]; 
 
-		if(! $item['mail_is_reply']) {
+		if(! $item['mail_isreply']) {
 			$conv = [
 				'author' => $cnv['creator'],
 				'guid' => $cnv['guid'],

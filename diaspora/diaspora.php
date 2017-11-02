@@ -214,7 +214,6 @@ function diaspora_notifier_process(&$arr) {
 
 
 function diaspora_process_outbound(&$arr) {
-
 /*
 
 	We are passed the following array from the notifier, providing everything we need to make delivery decisions.
