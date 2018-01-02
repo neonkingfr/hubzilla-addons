@@ -577,7 +577,7 @@ function gnusoc_notifier_process(&$a,&$b) {
 	if(! $recips)
 		return;
 
-	$slap = atom_entry($b['target_item'],'html',null,null,false);
+	$slap = atom_entry($b['target_item'],'html',null,null,false,'',true);
 
 	if($b['upstream']) {
 
