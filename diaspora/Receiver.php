@@ -454,8 +454,15 @@ class Diaspora_Receiver {
 		$orig_author = notags($this->get_root_author());
 		$orig_guid = notags($this->get_property('root_guid'));
 
+		$orig_author_xchan = find_diaspora_person_by_handle($orig_author);
+
+		if($orig_author_xchan['xchan_network'] === 'zot')
+			$orig_url_arg = 'display';
+		else
+			$orig_url_arg = 'posts';
+
 		$source_url = 'https://' . substr($orig_author,strpos($orig_author,'@')+1) . '/fetch/post/' . $orig_guid ;
-		$orig_url = 'https://'.substr($orig_author,strpos($orig_author,'@')+1).'/posts/'.$orig_guid;
+		$orig_url = 'https://'.substr($orig_author,strpos($orig_author,'@')+1).'/'.$orig_url_arg.'/'.$orig_guid;
 
 		if($text)
 			$text = markdown_to_bb($text) . "\n";
@@ -1770,6 +1777,11 @@ class Diaspora_Receiver {
 	function account_migration() {
 
 		$diaspora_handle = notags($this->get_author());
+		$old_identity = $this->get_property('old_identity');
+
+		if(! $old_identity) {
+			$old_identity = $diaspora_handle;
+		}
 
 		$profile = $this->xmlbase['profile'];
 		if(! $profile) {
@@ -1783,13 +1795,13 @@ class Diaspora_Receiver {
 		}
 
 		if($diaspora_handle != $this->msg['author']) {
-			logger('diaspora_post: Potential forgery. Message handle is not the same as envelope sender.');
+			logger('Potential forgery. Message handle is not the same as envelope sender.');
 			return 202;
 		}
 
 		$new_handle = notags($this->get_author($profile));
 
-		$signed_text = 'AccountMigration:' . $diaspora_handle . ':' . $new_handle;
+		$signed_text = 'AccountMigration:' . $old_identity . ':' . $new_handle;
 
 		$signature = $this->get_property('signature');
 
@@ -1799,7 +1811,7 @@ class Diaspora_Receiver {
 		}
 		$signature = str_replace(array(" ","\t","\r","\n"),array("","","",""),$signature);
 
-		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$diaspora_handle);
+		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$old_identity);
 		if(! $contact) {
 			logger('connection not found.');
 			return 202;
@@ -1814,7 +1826,10 @@ class Diaspora_Receiver {
 
 		$sig_decode = base64_decode($signature);
 
-		if(! rsa_verify($signed_text,$sig_decode,$new_contact['xchan_pubkey'],'sha256')) {
+		// check signature against old and new identities. Either can sign this message.
+
+		if(! (rsa_verify($signed_text,$sig_decode,$new_contact['xchan_pubkey'],'sha256')
+			|| rsa_verify($signed_text,$sig_decode,$contact['xchan_pubkey'],'sha256'))) {
 			logger('message verification failed.');
 			return 202;
 		}

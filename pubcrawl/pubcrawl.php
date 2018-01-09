@@ -1017,7 +1017,7 @@ function pubcrawl_queue_deliver(&$b) {
 					}
 				}
 				if($piled_up) {
-					do_delivery($piled_up);
+					do_delivery($piled_up,true);
 				}
 			}
 		}

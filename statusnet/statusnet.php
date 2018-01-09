@@ -537,7 +537,7 @@ function statusnet_shortenmsg($b, $max_char) {
 	$body = preg_replace("/\[share(.*?)\](.*?)\[\/share\]/ism","\n\n$2\n\n",$body);
 
 	// At first convert the text to html
-	$html = bbcode($body, false, false);
+	$html = bbcode($body, [ 'tryoembed' => false ]);
 
 	// Then convert it to plain text
 	//$msg = trim($b['title']." \n\n".html2plain($html, 0, true));
@@ -734,7 +734,8 @@ function statusnet_post_hook(&$a,&$b) {
 					// ok, all the links we want to send out are save, now strip 
 					// away the remaining bbcode
 
-			$msg = bbcode($tmp, false, false, true);
+			$msg = bbcode($tmp, [ 'tryoembed' => false, 'cache' => true ]);
+
 			$msg = str_replace(array('<br>','<br />'),"\n",$msg);
 			$msg = strip_tags($msg);
 
@@ -818,7 +819,7 @@ function statusnet_queue_deliver(&$a,&$b) {
 			$result = $dent->post('statuses/update', array('status' => $outq['outq_msg']));
 			if ($result->error) {
 				logger('Send to GNU social failed: "' . $result->error . '"');
-				update_queue_item($outq['outq_hash']);
+				update_queue_item($outq['outq_hash'],10);
 			}
 			else {
 				logger('statusnet_post send, result: ' . print_r($result, true) 

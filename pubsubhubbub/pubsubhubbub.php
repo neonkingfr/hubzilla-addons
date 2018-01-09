@@ -113,6 +113,7 @@ function push_notifier_process(&$a,&$b) {
 	if(array_key_exists('parent_item',$b) && $b['parent_item']) {
 
 		if($b['upstream'] && $channel['channel_hash'] === $b['parent_item']['owner_xchan']) {
+			logger('avoiding duplicates');
 			return;
 		}
 	}
@@ -131,9 +132,15 @@ function push_notifier_process(&$a,&$b) {
 		return;
 	}
 
-	$feed = get_feed_for($channel,'', [ 'compat' => 1, 'start' => 0, 'records' => 10 ]);
+	$feed = get_feed_for($channel,'', [ 'compat' => 1, 'start' => 0, 'records' => 10, 'interactive' => true ]);
+	if(! $feed) {
+		logger('empty feed');
+		return;
+	}
 
 	foreach($r as $rr) {
+
+		logger('processing: ' . print_r($rr,true));
 
 		//$compat = ((strpos($rr['topic'],'/ofeed/')) ? 1 : 0);
 
@@ -214,11 +221,35 @@ function push_queue_deliver(&$a,&$b) {
 			);
 
 			remove_queue_item($outq['outq_hash']);
+
+			if(! $b['immediate']) {
+				$x = q("select outq_hash from outq where outq_posturl = '%s' and outq_delivered = 0",
+					dbesc($outq['outq_posturl'])
+				);
+
+				$piled_up = array();
+				if($x) {
+					foreach($x as $xx) {
+						 $piled_up[] = $xx['outq_hash'];
+					}
+				}
+				if($piled_up) {
+
+					// add a pre-deliver interval, this should not be necessary
+
+					$interval = ((get_config('system','delivery_interval') !== false)
+						? intval(get_config('system','delivery_interval')) : 2 );
+					if($interval)
+						@time_sleep_until(microtime(true) + (float) $interval);
+
+					do_delivery($piled_up,true);
+				}
+			}
 		}
 		else {
 			logger('push_deliver: queue post returned ' . $result['return_code']
 				. ' from ' . $outq['outq_posturl'],LOGGER_DEBUG);
-				update_queue_item($outq['outq_hash']);
+				update_queue_item($outq['outq_hash'],10);
 		}
 		return;
 	}

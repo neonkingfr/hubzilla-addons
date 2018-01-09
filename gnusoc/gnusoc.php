@@ -443,7 +443,7 @@ function gnusoc_queue_deliver(&$a,&$b) {
     else {
         logger('slap_deliver: queue post returned ' . $result['return_code']
             . ' from ' . $outq['outq_posturl'],LOGGER_DEBUG);
-            update_queue_item($outq['outq_hash']);
+            update_queue_item($outq['outq_hash'],10);
     }
     return;
 
@@ -577,12 +577,12 @@ function gnusoc_notifier_process(&$a,&$b) {
 	if(! $recips)
 		return;
 
-	$slap = atom_entry($b['target_item'],'html',null,null,false);
+	$slap = atom_entry($b['target_item'],'html',null,null,false,'',true);
 
 	if($b['upstream']) {
 
 		foreach($recips as $rv) {
-			$slap = str_replace('</entry>', '<link rel="mentioned" ostatus:object-type="http://activitystrea.ms/schema/1.0/person" href="' . $rv['hubloc_guid'] . '"/></entry>',$slap);
+			$slap = str_replace('</entry>', '<link rel="mentioned" ostatus:object-type="http://activitystrea.ms/schema/1.0/person" href="' . xmlify($rv['hubloc_guid']) . '"/></entry>',$slap);
 		}
 
 		logger('slap: ' . $slap, LOGGER_DATA);
@@ -788,7 +788,7 @@ function gnusoc_atom_entry($a,&$b) {
 	if(is_array($item['term']) && $item['term']) {
 		foreach($item['term'] as $t) {
 			if($t['ttype'] == TERM_MENTION) {
-				$o .=  '<link rel="mentioned" ostatus:object-type="http://activitystrea.ms/schema/1.0/person" href="' . $t['url'] . '"/>' . "\r\n";		
+				$o .=  '<link rel="mentioned" ostatus:object-type="http://activitystrea.ms/schema/1.0/person" href="' . xmlify($t['url']) . '"/>' . "\r\n";		
 			}
 		}
 	}

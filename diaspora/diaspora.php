@@ -244,7 +244,7 @@ function diaspora_process_outbound(&$arr) {
 	if(! strstr($arr['hub']['hubloc_network'],'diaspora'))
 		return;
 
-	logger('upstream: ' . $arr['upstream']);
+	logger('upstream: ' . intval($arr['upstream']));
 //	logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
 
 
@@ -1178,7 +1178,7 @@ function diaspora_queue_deliver(&$b) {
 					if($interval)
 						@time_sleep_until(microtime(true) + (float) $interval);
 
-					do_delivery($piled_up);
+					do_delivery($piled_up,true);
 				}
 			}
 		}
