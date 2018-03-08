@@ -174,10 +174,10 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 function pubcrawl_import_author(&$b) {
 
-	if(! $b['url'])
+	if(! $b['author']['url'])
 		return;
 
-	$url = $b['url'];
+	$url = $b['author']['url'];
 
 	// let somebody upgrade from an 'unknown' connection which has no xchan_addr
 	$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_url = '%s' limit 1",
@@ -190,7 +190,8 @@ function pubcrawl_import_author(&$b) {
 	}
 	if($r) {
 		logger('in_cache: ' . $r[0]['xchan_name'], LOGGER_DATA);
-		return $r[0];
+		$b['result'] = $r[0]['xchan_hash'];
+		return;
 	}
 
 	$x = discover_by_webbie($url);
@@ -205,7 +206,8 @@ function pubcrawl_import_author(&$b) {
 			);
 		}
 		if($r) {
-			return $r[0];
+			$b['result'] = $r[0]['xchan_hash'];
+			return;
 		}
 	}
 
