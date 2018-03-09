@@ -63,8 +63,7 @@ function diaspora_init_relay() {
 	if(! get_config('diaspora','relay_handle')) {
 		if(plugin_is_installed('statistics')) {
 			$x = ['author' => [ 'address' => 'relay@relay.iliketoast.net', 'network' => 'diaspora' ], 'result' => false ];
-			$placeholder = 'placeholder';
-			diaspora_import_author($placeholder, $x);
+			diaspora_import_author($x);
 			if($x['result']) {
 				set_config('diaspora','relay_handle',$x['result']);
 				// Now register
@@ -105,7 +104,13 @@ function diaspora_well_known(&$b) {
 		$tags = get_config('diaspora','relay_tags');
 		if($tags) {
 			$disabled = false;
-			$scope = 'tags';
+
+			// set diaspora.firehose if you want to receive all public diaspora relay posts
+			// otherwise, only import posts with tags that have been followed by your site members
+
+			if(! get_config('diaspora','firehose')) {
+				$scope = 'tags';
+			}
 		}
 
 		$arr = array(
@@ -160,6 +165,8 @@ function diaspora_webfinger(&$b) {
 		'type' => 'text/html',
 		'href' => z_root()
 	];
+
+	$b['result']['properties']['http://purl.org/zot/federation'] .= ',diaspora';
 
 	// Diaspora requires a salmon link. 
 	// Use this *only* if the gnusoc plugin is not installed and enabled
@@ -830,8 +837,6 @@ function diaspora_post_local(&$item) {
 
 	if($item['mid'] === $item['parent_mid'])
 		return;
-	if($item['created'] != $item['edited'])
-		return;
 
 	$meta = null;
 
@@ -842,7 +847,7 @@ function diaspora_post_local(&$item) {
 		$meta = null;
 
 		if(activity_match($item['verb'], [ ACTIVITY_LIKE, ACTIVITY_DISLIKE ])) {
-			if(activity_match($item['obj_type'], [ ACTIVITY_OBJ_NOTE, ACTIVITY_OBJ_ACTIVITY, ACTIVITY_OBJ_COMMENT ])){
+			if(activity_match($item['obj_type'], [ ACTIVITY_OBJ_NOTE, ACTIVITY_OBJ_ACTIVITY, ACTIVITY_OBJ_COMMENT ])) {
 				$meta = [
 					'positive'        => (($item['verb'] === ACTIVITY_LIKE) ? 'true' : 'false'),
 					'guid'            => $item['mid'],
@@ -859,6 +864,28 @@ function diaspora_post_local(&$item) {
 				}
 			}
 		}
+		elseif(activity_match($item['verb'], [ ACTIVITY_ATTEND, ACTIVITY_ATTENDNO, ACTVITY_ATTENDMAYBE ])) {
+			if(activity_match($item['obj_type'], [ ACTIVITY_OBJ_NOTE ])) {
+				$status = 'tentative';
+				if(activity_match($item['verb'], [ ACTIVITY_ATTEND ]))
+					$status = 'accepted';
+				if(activity_match($item['verb'], [ ACTIVITY_ATTENDNO ]))
+					$status = 'declined';
+
+				$rawobj = ((is_array($item['obj'])) ? $item['obj'] : json_decode($item['obj'],true));
+				if($rawobj) {
+					$ev = bb2event($rawobj);
+					if($ev && $ev['hash'] && defined('DIASPORA_V2')) {
+						$meta = [
+							'author' => $handle,
+							'guid'   => $item['mid'],
+							'parent_guid' => $ev['hash'],
+							'status'      => $status
+						];
+					}
+				}
+			}
+		}
 		else {
 			$body = bb_to_markdown($item['body'], [ 'diaspora' ]);
 
@@ -871,6 +898,9 @@ function diaspora_post_local(&$item) {
 			if(defined('DIASPORA_V2')) {
 				$meta['author']     = $handle;
 				$meta['created_at'] = datetime_convert('UTC','UTC', $item['created'], ATOM_TIME );
+				if($item['edited'] > $item['created']) {
+					$meta['edited_at'] = datetime_convert('UTC','UTC', $item['edited'], ATOM_TIME );
+				}
 			}
 			else {
 				$meta['diaspora_handle'] = $handle;
@@ -1042,6 +1072,8 @@ function diaspora_markdown_to_bb_init(&$s) {
 	// if empty link text replace with the url
 	$s = preg_replace("/\[\]\((.*?)\)/ism",'[$1]($1)',$s);
 
+	$s = preg_replace_callback("/\!*\[(.*?)\]\((.*?)\)/ism",'diaspora_markdown_media_cb',$s);
+
   	$s = preg_replace_callback('/\@\{(.+?)\; (.+?)\@(.+?)\}\+/','diaspora_md_mention_callback',$s);
 	$s = preg_replace_callback('/\@\{(.+?)\; (.+?)\@(.+?)\}/','diaspora_md_mention_callback',$s);
 
@@ -1057,6 +1089,24 @@ function diaspora_markdown_to_bb_init(&$s) {
 }
 
 
+function diaspora_markdown_media_cb($matches) {
+
+	$audios = [ '.mp3', '.ogg', '.oga', '.m4a' ];
+	$videos = [ '.mp4', '.ogv', '.ogm', '.webm', '.opus' ];
+
+	foreach($audios as $aud) {
+		if(strpos(strtolower($matches[2]),$aud) !== false)
+			return '[audio]' . $matches[2] . '[/audio]';
+	}
+	foreach($videos as $vid) {
+		if(strpos(strtolower($matches[2]),$vid) !== false)
+			return '[video]' . $matches[2] . '[/video]';
+	}
+
+	return $matches[0];
+
+}
+
 function diaspora_bb_to_markdown_bb(&$x) {
 
 	if(! in_array('diaspora',$x['options']))
@@ -1066,7 +1116,6 @@ function diaspora_bb_to_markdown_bb(&$x) {
 
 	$Text = preg_replace_callback('/\@\!?\[([zu])rl\=(\w+.*?)\](\w+.*?)\[\/([zu])rl\]/i', 
 		'diaspora_bb_to_markdown_mention_callback', $Text);
-
 
 	// strip map and embed tags, as the rendering is performed in bbcode() and the resulting output
 	// is not compatible with Diaspora (at least in the case of openstreetmap and probably
@@ -1183,4 +1232,33 @@ function diaspora_queue_deliver(&$b) {
 			}
 		}
 	}
+}
+
+
+function diaspora_create_event($ev, $author) {
+
+	require_once('include/html2plain.php');
+	require_once('include/markdown.php');
+
+	$ret = [];
+
+	if(! ((is_array($ev)) && count($ev)))
+		return null;
+
+	$ret['author']  = $author;
+	$ret['guid']    = $ev['event_hash'];
+	$ret['summary'] = html2plain($ev['summary']);
+	$ret['start']   = $ev['dtstart'];
+	if(! $ev['nofinish'])
+		$ret['end'] = $ev['dtend'];
+	if(! $ev['adjust'])
+		$ret['all_day'] = true;
+
+	$ret['description'] = html2markdown($ev['description'] . (($ev['location']) ? "\n\n" . $ev['location'] : ''));
+	if($ev['created'] !== $ev['edited'])
+		$ret['edited_at'] = datetime_convert('UTC','UTC',$ev['edited'], ATOM_TIME);
+
+	return $ret;
+
+
 }

@@ -38,7 +38,8 @@ function pubcrawl_load() {
 		'personal_xrd'               => 'pubcrawl_personal_xrd',
 		'queue_deliver'              => 'pubcrawl_queue_deliver',
 		'import_author'              => 'pubcrawl_import_author',
-		'channel_protocols'          => 'pubcrawl_channel_protocols'
+		'channel_protocols'          => 'pubcrawl_channel_protocols',
+		'create_identity'            => 'pubcrawl_create_identity'
 	]);
 }
 
@@ -87,6 +88,11 @@ function pubcrawl_channel_links(&$b) {
 function pubcrawl_webfinger(&$b) {
 	if(! $b['channel'])
 		return;
+
+	if(! get_pconfig($b['channel']['channel_id'],'system','activitypub_allowed'))
+		return;
+
+	$b['result']['properties']['http://purl.org/zot/federation'] .= ',activitypub';
 
 	$b['result']['links'][] = [ 
 		'rel'  => 'self', 
@@ -168,10 +174,10 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 function pubcrawl_import_author(&$b) {
 
-	if(! $b['url'])
+	if(! $b['author']['url'])
 		return;
 
-	$url = $b['url'];
+	$url = $b['author']['url'];
 
 	// let somebody upgrade from an 'unknown' connection which has no xchan_addr
 	$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_url = '%s' limit 1",
@@ -184,7 +190,8 @@ function pubcrawl_import_author(&$b) {
 	}
 	if($r) {
 		logger('in_cache: ' . $r[0]['xchan_name'], LOGGER_DATA);
-		return $r[0];
+		$b['result'] = $r[0]['xchan_hash'];
+		return;
 	}
 
 	$x = discover_by_webbie($url);
@@ -199,7 +206,8 @@ function pubcrawl_import_author(&$b) {
 			);
 		}
 		if($r) {
-			return $r[0];
+			$b['result'] = $r[0]['xchan_hash'];
+			return;
 		}
 	}
 
@@ -632,7 +640,8 @@ function pubcrawl_permissions_create(&$x) {
 
 	$msg = array_merge(['@context' => [
 			ACTIVITYSTREAMS_JSONLD_REV,
-			'https://w3id.org/security/v1'
+			'https://w3id.org/security/v1',
+			z_root() . ZOT_APSCHEMA_REV
 		]], 
 		[
 			'id'     => z_root() . '/follow/' . $x['recipient']['abook_id'],
@@ -1058,3 +1067,10 @@ function pubcrawl_feature_settings(&$s) {
 
 }
 
+function pubcrawl_create_identity($b) {
+
+	if(get_config('system','activitypub_allowed')) {
+		set_pconfig($b,'system','activitypub_allowed','1');
+	}
+
+}

@@ -297,6 +297,8 @@ function diaspora_send_migration($item,$owner,$contact,$public_batch = false) {
 function diaspora_send_status($item,$owner,$contact,$public_batch = false) {
 
 	$msg = diaspora_build_status($item,$owner);
+	if(! $msg)
+		return [];
 
 	logger('diaspora_send_status: '.$owner['channel_name'].' -> '.$contact['xchan_name'].' base message: ' . $msg, LOGGER_DATA);
 	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'], $public_batch);
@@ -405,12 +407,17 @@ function diaspora_send_upstream($item,$owner,$contact,$public_batch = false,$upl
 
 	$conv_like = false;
 	$sub_like  = false;
+	$attendance = false;
 
 	if($uplink) {
 		logger('uplink not supported');
 		return;
 	}
 
+	if(activity_match($item['verb'],[ ACTIVITY_ATTEND, ACTIVITY_ATTENDNO, ACTIVITY_ATTENDMAYBE ])
+		&& activity_match($item['obj_type'],[ ACTIVITY_OBJ_NOTE ])) {
+		$attendance = true;
+	}
 	if(activity_match($item['verb'],[ ACTIVITY_LIKE, ACTIVITY_DISLIKE ])
 		&& activity_match($item['obj_type'],[ ACTIVITY_OBJ_NOTE, ACTIVITY_OBJ_COMMENT ])) {
 		$conv_like = true;
@@ -439,7 +446,12 @@ function diaspora_send_upstream($item,$owner,$contact,$public_batch = false,$upl
 	$signed_fields = get_iconfig($item,'diaspora','fields');
 
 	if($signed_fields) {
-		$msg = arrtoxml((($conv_like) ? 'like' : 'comment' ), $signed_fields);
+		if($attendance) {
+			$msg = arrtoxml('event_participation', $signed_fields);
+		}
+		else {
+			$msg = arrtoxml((($conv_like) ? 'like' : 'comment' ), $signed_fields);
+		}
 	}
 	else {
 		return;
@@ -498,6 +510,12 @@ function diaspora_send_downstream($item,$owner,$contact,$public_batch = false) {
 
 	$conv_like = false;
 	$sub_like  = false;
+	$attendance = false;
+
+	if(activity_match($item['verb'],[ ACTIVITY_ATTEND, ACTIVITY_ATTENDNO, ACTIVITY_ATTENDMAYBE ])
+		&& activity_match($item['obj_type'],[ ACTIVITY_OBJ_NOTE ])) {
+		$attendance = true;
+	}
 
 	if(activity_match($item['verb'], [ ACTIVITY_LIKE, ACTIVITY_DISLIKE ]) 
 		&& activity_match($item['obj_type'],[ ACTIVITY_OBJ_NOTE, ACTIVITY_OBJ_COMMENT ])) {
@@ -525,7 +543,12 @@ function diaspora_send_downstream($item,$owner,$contact,$public_batch = false) {
 	$signed_fields = get_iconfig($item,'diaspora','fields');
 
 	if($signed_fields) {
-		$msg = arrtoxml((($conv_like) ? 'like' : 'comment' ), $signed_fields);
+		if($attendance) {
+			$msg = arrtoxml('event_participation', $signed_fields);
+		}
+		else {
+			$msg = arrtoxml((($conv_like) ? 'like' : 'comment' ), $signed_fields);
+		}
 	}
 	else {
 		if($conv_like)
@@ -748,7 +771,7 @@ function diaspora_profile_change($channel,$recip,$public_batch = false,$profile_
 		$dob = '1000-00-00';
 
 		if(($profile['dob']) && ($profile['dob'] != '0000-00-00'))
-			$dob = ((intval($profile['dob'])) ? intval($profile['dob']) : '1000') . '-' . datetime_convert('UTC','UTC',$profile['dob'],'m-d');
+			$dob = ((intval(substr($profile['dob'],0,4))) ? intval($profile['dob']) : '1000') . '-' . datetime_convert('UTC','UTC',$profile['dob'],'m-d');
 		if($dob === '1000-00-00')
 			$dob = '';
 		$gender = xmlify($profile['gender']);
@@ -809,8 +832,8 @@ function diaspora_profile_change($channel,$recip,$public_batch = false,$profile_
 		}
 
 		$outmsg = arrtoxml('profile',$msg);
-		$slap = diaspora_prepare_outbound($outmsg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],$public_batch);
-		return(diaspora_queue($owner,$contact,$slap,$public_batch,$item['mid']));
+		$slap = diaspora_prepare_outbound($outmsg,$owner,$recip,$owner['channel_prvkey'],$recip['xchan_pubkey'],$public_batch);
+		return(diaspora_queue($owner,$recip,$slap,$public_batch,$item['mid']));
 	}
 
 	$tpl = get_markup_template('diaspora_profile.tpl','addon/diaspora');

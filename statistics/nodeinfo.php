@@ -44,7 +44,7 @@ function nodeinfo_content(&$a) {
 			'software' => array('name' => 'redmatrix','version' => Zotlabs\Lib\System::get_project_version()),
 			'protocols' => array('inbound' => array('redmatrix'), 'outbound' => array('redmatrix')),
 			'services' => array(),
-			'openRegistrations' => ((get_config('system','register_policy') === REGISTER_OPEN) ? true : false),
+			'openRegistrations' => ((intval(get_config('system','register_policy')) === REGISTER_OPEN) ? true : false),
 			'usage' => array(
 				'users' => array(
 					'total' => intval(get_config('system','channels_total_stat')),
@@ -66,10 +66,10 @@ function nodeinfo_content(&$a) {
 			$arr['protocols']['outbound'][] = 'gnusocial';
 		}
 
-		if(in_array('friendica',App::$plugins)) {
-			$arr['protocols']['inbound'][] = 'friendica';
-			$arr['protocols']['outbound'][] = 'friendica';
-		}
+//		if(in_array('friendica',App::$plugins)) {
+//			$arr['protocols']['inbound'][] = 'friendica';
+//			$arr['protocols']['outbound'][] = 'friendica';
+//		}
 
 		$services = array();
 		$iservices = array();
@@ -118,7 +118,7 @@ function nodeinfo_content(&$a) {
 			'software' => array('name' => strtolower(Zotlabs\Lib\System::get_platform_name()),'version' => Zotlabs\Lib\System::get_project_version()),
 			'protocols' => [ 'zot' ],
 			'services' => array(),
-			'openRegistrations' => ((get_config('system','register_policy') === REGISTER_OPEN) ? true : false),
+			'openRegistrations' => ((intval(get_config('system','register_policy')) === REGISTER_OPEN) ? true : false),
 
 			'usage' => array(
 				'users' => array(
@@ -139,9 +139,9 @@ function nodeinfo_content(&$a) {
 			$arr['protocols'][] = 'ostatus';
 		}
 
-		if(in_array('friendica',App::$plugins)) {
-			$arr['protocols'][] = 'friendica';
-		}
+//		if(in_array('friendica',App::$plugins)) {
+//			$arr['protocols'][] = 'friendica';
+//		}
 
 		if(in_array('pubcrawl',App::$plugins)) {
 			$arr['protocols'][] = 'activitypub';
@@ -185,7 +185,9 @@ function nodeinfo_content(&$a) {
 		if($iservices)
 			$arr['services']['inbound'] = $iservices;
 
-
+		$arr['metadata'] = [
+			'nodeName' => get_config('system','sitename')
+		];
 
 	}
 

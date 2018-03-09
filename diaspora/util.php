@@ -104,7 +104,7 @@ function diaspora_sign_fields($fields,$prvkey) {
 			$n[$k] = $v;
 	}
 
-	$s = implode($n,';');
+	$s = implode(';',$n);
 	logger('signing_string: ' . $s);
 	return base64_encode(rsa_sign($s,$prvkey));
 
@@ -122,7 +122,7 @@ function diaspora_verify_fields($fields,$sig,$pubkey) {
 			$n[$k] = $v;
 	}
 
-	$s = implode($n,';');
+	$s = implode(';',$n);
 	logger('signing_string: ' . $s);
 	return rsa_verify($s,base64_decode($sig),$pubkey);
 
@@ -214,20 +214,35 @@ function diaspora_build_status($item,$owner) {
 
 	$myaddr = channel_reddress($owner);
 
-	if(intval($item['id']) != intval($item['parent'])) {
+	if($item['mid'] !== $item['parent_mid']) {
 		logger('attempted to send a comment as a top-level post');
-		return;
+		return '';
 	}
 
-	if(($item['item_wall']) && ($item['owner_xchan'] != $item['author_xchan']) &&
-		get_pconfig($owner['channel_id'],'diaspora','sign_unsigned')) {
-		diaspora_share_unsigned($item,(($item['author']) ? $item['author'] : null));
+	if(($item['item_wall']) && ($item['owner_xchan'] != $item['author_xchan'])) {
+		if(get_pconfig($owner['channel_id'],'diaspora','sign_unsigned')) {
+			diaspora_share_unsigned($item,(($item['author']) ? $item['author'] : null));
+		}
+		else {
+			logger('cannot sign wall-to-wall post for Diaspora');
+			return '';
+		}
 	}
 
 	$images = array();
 
 	$title = $item['title'];
+
+	$ev = bbtoevent($item['body']);
+
 	$body = bb_to_markdown($item['body'], [ 'diaspora' ]);
+
+	$ev_obj = null;
+
+	if($ev) {
+		$ev_obj = diaspora_create_event($ev, $myaddr);
+		$body = $ev_obj['summary'];		
+	}
 
 	$poll = '';
 
@@ -236,6 +251,7 @@ function diaspora_build_status($item,$owner) {
 	$created = datetime_convert('UTC','UTC',$item['created'],'Y-m-d H:i:s \U\T\C');
 
 	$created_at = datetime_convert('UTC','UTC',$item['created'],ATOM_TIME);
+	$edited_at  = datetime_convert('UTC','UTC',$item['edited'],ATOM_TIME);
 
 	if(defined('DIASPORA_V2')) {
 
@@ -246,6 +262,14 @@ function diaspora_build_status($item,$owner) {
 			'guid'       => $item['mid'],
 			'created_at' => $created_at,
 		];
+
+		if($edited_at > $created_at)
+			$arr['edited_at'] = $edited_at;
+
+
+		if($ev_obj) {
+			$arr['event'] = $ev_obj;
+		}
 
 		// context specific attributes
 
