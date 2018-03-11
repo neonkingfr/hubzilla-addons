@@ -1791,6 +1791,13 @@ class Diaspora_Receiver {
 
 		$images = import_xchan_photo($image_url,$contact['xchan_hash']);
 	
+		// Somebody is sending us birthday arrays.
+		
+		if(is_array($birthday)) {
+			logger('Illegal input: Diaspora birthday is an array. ' . print_r($this->xmlbase,true));
+			return 202;
+		}
+
 		// Generic birthday. We don't know the timezone. The year is irrelevant. 
 
 		if(intval(substr($birthday,0,4)) <= 1004)
