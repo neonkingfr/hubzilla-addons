@@ -888,6 +888,9 @@ function as_actor_store($url,$person_obj) {
 	if(array_key_exists('publicKey',$person_obj) && array_key_exists('publicKeyPem',$person_obj['publicKey'])) {
 		if($person_obj['id'] === $person_obj['publicKey']['owner']) {
 			$pubkey = $person_obj['publicKey']['publicKeyPem'];
+			if(strstr($pubkey,'RSA ')) {
+				$pubkey = rsatopem($pubkey);
+			}
 		}
 	}
 
