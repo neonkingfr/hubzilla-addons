@@ -1140,8 +1140,6 @@ class Diaspora_Receiver {
 
 			$sig = ''; // placeholder
 
-			// @fixme - use mail_store or mail_store_lowlevel
-
 			$x = mail_store( [
 				'account_id' => intval($this->importer['channel_account_id']),
 				'channel_id' => intval($this->importer['channel_id']),
@@ -1168,14 +1166,6 @@ class Diaspora_Receiver {
 				intval($this->importer['channel_id'])
 			);
 
-			\Zotlabs\Lib\Enotify::submit(array(
-				'from_xchan' => $person['xchan_hash'],
-				'to_xchan' => $this->importer['channel_hash'],
-				'type' => NOTIFY_MAIL,
-				'item' => $z[0],
-				'verb' => ACTIVITY_POST,
-				'otype' => 'mail'
-			));
 		}
 
 		return;
@@ -1306,15 +1296,6 @@ class Diaspora_Receiver {
 			dbesc($msg_guid),
 			intval($this->importer['channel_id'])
 		);
-
-		\Zotlabs\Lib\Enotify::submit(array(
-			'from_xchan' => $person['xchan_hash'],
-			'to_xchan' => $this->importer['channel_hash'],
-			'type' => NOTIFY_MAIL,
-			'item' => $z[0],
-			'verb' => ACTIVITY_POST,
-			'otype' => 'mail'
-		));
 
 		return;
 	}
