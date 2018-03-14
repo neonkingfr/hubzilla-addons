@@ -864,7 +864,7 @@ function diaspora_post_local(&$item) {
 				}
 			}
 		}
-		elseif(activity_match($item['verb'], [ ACTIVITY_ATTEND, ACTIVITY_ATTENDNO, ACTVITY_ATTENDMAYBE ])) {
+		elseif(activity_match($item['verb'], [ ACTIVITY_ATTEND, ACTIVITY_ATTENDNO, ACTIVITY_ATTENDMAYBE ])) {
 			if(activity_match($item['obj_type'], [ ACTIVITY_OBJ_NOTE ])) {
 				$status = 'tentative';
 				if(activity_match($item['verb'], [ ACTIVITY_ATTEND ]))
