@@ -874,7 +874,7 @@ function diaspora_post_local(&$item) {
 
 				$rawobj = ((is_array($item['obj'])) ? $item['obj'] : json_decode($item['obj'],true));
 				if($rawobj) {
-					$ev = bb2event($rawobj);
+					$ev = bbtoevent($rawobj);
 					if($ev && $ev['hash'] && defined('DIASPORA_V2')) {
 						$meta = [
 							'author' => $handle,
