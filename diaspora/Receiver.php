@@ -624,6 +624,7 @@ class Diaspora_Receiver {
 			. "' profile='" . $orig_author_link 
 			. "' avatar='"  . $orig_author_photo 
 			. "' link='"    . $orig_url
+			. "' auth='"    . 'false'
 			. "' posted='"  . datetime_convert('UTC','UTC',$this->get_property('created_at',$source_xml['status_message']))
 			. "' message_id='" . $this->get_property('guid',$source_xml['status_message'])
 	 		. "']" . $body . "[/share]";

@@ -1260,6 +1260,7 @@ function as_announce_note($channel,$observer_hash,$act) {
 		"' profile='" . $act->sharee['xchan_url'] . 
 		"' avatar='" . $act->sharee['xchan_photo_s'] . 
 		"' link='" . $act->obj['url'] . 
+		"' auth='" . ((is_matrix_url($act->obj['url'])) ? 'true' : 'false' ) . 
 		"' posted='" . $act->obj['published'] . 
 		"' message_id='" . $act->obj['id'] . 
 	"']";
