@@ -186,6 +186,8 @@ function asencode_item($i) {
 		'href' => $i['plink']
 	];
 
+	$ret['attributedTo'] = $i['owner']['xchan_addr'];
+
 	$cnv = null;
 
 	if($i['id'] != $i['parent']) {
@@ -1256,10 +1258,10 @@ function as_announce_note($channel,$observer_hash,$act) {
 		$s['attach'] = $a;
 	}
 
-	$body = "[share author='" . urlencode($act->sharee['xchan_name']) . 
-		"' profile='" . $act->sharee['xchan_url'] . 
-		"' avatar='" . $act->sharee['xchan_photo_s'] . 
-		"' link='" . $act->obj['url'] . 
+	$body = "[share author='" . urlencode($act->sharee['name']) . 
+		"' profile='" . $act->sharee['url'] . 
+		"' avatar='" . $act->sharee['photo_s'] . 
+		"' link='" . ((is_array($act->obj['url'])) ? $act->obj['url']['href'] : $act->obj['url']) . 
 		"' auth='" . ((is_matrix_url($act->obj['url'])) ? 'true' : 'false' ) . 
 		"' posted='" . $act->obj['published'] . 
 		"' message_id='" . $act->obj['id'] . 
