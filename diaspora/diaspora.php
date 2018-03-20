@@ -946,6 +946,9 @@ function diaspora_profile_sidebar(&$x) {
 
 	$profile = $x['profile'];
 
+    if(! intval(get_pconfig($profile['channel_id'],'system','diaspora_allowed')))
+        return;
+
 	$firstname = ((strpos($profile['channel_name'],' '))
 		? trim(substr($profile['channel_name'],0,strpos($profile['channel_name'],' '))) : $profile['channel_name']);
 	$lastname = (($firstname === $profile['channel_name']) 
