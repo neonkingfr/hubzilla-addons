@@ -1070,6 +1070,40 @@ function diaspora_md_mention_callback2($matches) {
 
 }
 
+function diaspora_forum_mention_callback($matches) {
+
+    $webbie = $matches[1] . '@' . $matches[2];
+    $link = '';
+    if($webbie) {
+        $r = q("select * from hubloc left join xchan on hubloc_hash = xchan_hash where hubloc_addr = '%s' limit 1",
+            dbesc($webbie)
+        );
+        if(! $r) {
+            $x = discover_by_webbie($webbie);
+            if($x) {
+                $r = q("select * from hubloc left join xchan on hubloc_hash = xchan_hash where hubloc_addr = '%s' limit 1",
+                    dbesc($webbie)
+                );
+            }
+        }
+        if($r)
+            $link = $r[0]['xchan_url'];
+    }
+
+    $name = (($r) ? $r[0]['xchan_name'] : $matches[1]);
+
+    if(! $link)
+        $link = 'https://' . $matches[2] . '/u/' . $matches[1];
+
+    if($r && $r[0]['hubloc_network'] === 'zot')
+        return '![zrl=' . $link . ']' . trim($name) . '[/zrl]' ;
+    else
+        return '![url=' . $link . ']' . trim($name) . '[/url]' ;
+
+}
+
+
+
 function diaspora_markdown_to_bb_init(&$s) {
 
 	// if empty link text replace with the url
@@ -1082,6 +1116,9 @@ function diaspora_markdown_to_bb_init(&$s) {
 
 	$s = preg_replace_callback('/\@\{(.+?)\@(.+?)\}\+/','diaspora_md_mention_callback2',$s);
 	$s = preg_replace_callback('/\@\{(.+?)\@(.+?)\}/','diaspora_md_mention_callback2',$s);
+
+	$s = preg_replace_callback('/\!\{(.+?)\@(.+?)\}/','diaspora_forum_mention_callback2',$s);
+
 
 	// replace diaspora://$author_handle/$post_type/$guid with a local representation.
 	// Ideally we should eventually pass the author_handle and post_type to mod_display and from a hook
@@ -1120,6 +1157,9 @@ function diaspora_bb_to_markdown_bb(&$x) {
 	$Text = preg_replace_callback('/\@\!?\[([zu])rl\=(\w+.*?)\](\w+.*?)\[\/([zu])rl\]/i', 
 		'diaspora_bb_to_markdown_mention_callback', $Text);
 
+	$Text = preg_replace_callback('/\!\[([zu])rl\=(\w+.*?)\](\w+.*?)\[\/([zu])rl\]/i', 
+		'diaspora_bb_to_markdown_fmention_callback', $Text);
+
 	// strip map and embed tags, as the rendering is performed in bbcode() and the resulting output
 	// is not compatible with Diaspora (at least in the case of openstreetmap and probably
 	// due to the inclusion of an html iframe)
@@ -1136,17 +1176,27 @@ function diaspora_bb_to_markdown_bb(&$x) {
 
 function diaspora_bb_to_markdown_mention_callback($match) {
 
-	// may-2017 this needs to be updated to the "new protocol" where it is just '{$handle}'
-	// but we'll wait until a majority of sites are running the new protocol
+    $r = q("select xchan_addr from xchan where xchan_url = '%s'",
+        dbesc($match[2])
+    );
+
+    if($r)
+        return '@{' . $r[0]['xchan_addr'] . '}';
+
+    return '@' . $match[3];
+}
+
+
+function diaspora_bb_to_markdown_fmention_callback($match) {
 
     $r = q("select xchan_addr from xchan where xchan_url = '%s'",
         dbesc($match[2])
     );
 
     if($r)
-        return '@{' . $match[3] . ' ; ' . $r[0]['xchan_addr'] . '}';
+        return '!{' . $r[0]['xchan_addr'] . '}';
 
-    return '@' . $match[3];
+    return '!' . $match[3];
 }
 
 function diaspora_service_plink(&$b) {
