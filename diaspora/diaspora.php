@@ -1117,7 +1117,7 @@ function diaspora_markdown_to_bb_init(&$s) {
 	$s = preg_replace_callback('/\@\{(.+?)\@(.+?)\}\+/','diaspora_md_mention_callback2',$s);
 	$s = preg_replace_callback('/\@\{(.+?)\@(.+?)\}/','diaspora_md_mention_callback2',$s);
 
-	$s = preg_replace_callback('/\!\{(.+?)\@(.+?)\}/','diaspora_forum_mention_callback2',$s);
+	$s = preg_replace_callback('/\!\{(.+?)\@(.+?)\}/','diaspora_forum_mention_callback',$s);
 
 
 	// replace diaspora://$author_handle/$post_type/$guid with a local representation.
