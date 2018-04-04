@@ -228,9 +228,9 @@ function rendezvous_post($a) {
 						}
 						if($html === '') {
 								$html = '
-										<div class="descriptive-text">
-										Press the button above to create a rendezvous!
-										</div>
+										<div class="descriptive-text">'.
+										t('You have no rendezvous. Press the button above to create a rendezvous!')
+										.'</div>
 								';
 						}
 						rendezvous_api_return(array('groups' => $x['groups'], 'html' => $html));
