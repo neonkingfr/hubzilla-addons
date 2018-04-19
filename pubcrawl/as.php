@@ -210,7 +210,7 @@ function asencode_item($i) {
 		$ret['content'] = bbcode(trim($body_content));
 	}
 	else {
-		$ret['content'] = bbcode($$i['body']);
+		$ret['content'] = bbcode($i['body']);
 	}
 
 	$ret['actor'] = asencode_person($i['author']);
