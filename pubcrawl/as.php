@@ -922,7 +922,6 @@ function as_actor_store($url,$person_obj) {
 	$r = q("select * from xchan where xchan_hash = '%s' limit 1",
 		dbesc($url)
 	);
-	
 	if(! $r) {
 		// create a new record
 		$r = xchan_store_lowlevel(

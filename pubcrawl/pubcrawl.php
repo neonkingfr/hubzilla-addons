@@ -124,6 +124,8 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	$x        = $b['webfinger'];
 	$protocol = $b['protocol'];
 
+	logger('probing: activitypub');
+
 	if($protocol && strtolower($protocol) !== 'activitypub')
 		return;
 
@@ -168,6 +170,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 	as_actor_store($url,$person_obj);
 
+	$b['xchan']   = $url;
 	$b['success'] = true;
 
 }

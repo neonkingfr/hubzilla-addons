@@ -852,8 +852,11 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 	// allow more advanced protocols to win, use this as last resort
 	// if more than one protocol is supported
 
+
 	if($b['success'])
 		return;
+
+	logger('probing: gnusoc');
 
 	$protocol = $b['protocol'];
 	if($protocol && strtolower($protocol) !== 'ostatus')
@@ -1024,7 +1027,8 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 		dbesc($photos[3]),
 		dbesc($address)
 	);
-	
+
+	$b['xchan']   = $address;	
 	$b['success'] = true;
 
 }
