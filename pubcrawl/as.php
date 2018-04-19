@@ -265,7 +265,10 @@ function asencode_taxonomy($item) {
 		foreach($item['term'] as $t) {
 			switch($t['ttype']) {
 				case TERM_HASHTAG:
-					$ret[] = [ 'id' => $t['url'], 'name' => '#' . $t['term'] ];
+					// An id is required so if we don't have a url in the taxonomy, ignore it and keep going.
+					if($t['url']) {
+						$ret[] = [ 'id' => $t['url'], 'name' => '#' . $t['term'] ];
+					}
 					break;
 
 				case TERM_MENTION:
