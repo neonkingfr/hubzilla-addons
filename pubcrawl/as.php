@@ -201,9 +201,19 @@ function asencode_item($i) {
 		$ret['conversation'] = $cnv;
 	}
 
-	$ret['content']   = bbcode($i['body']);
+	if(strpos($i['body'],'[/summary]') !== false) {
+		$match = '';
+		preg_match("/\[summary\](.*?)\[\/summary\]/ism",$i['body'],$match);
+		$ret['summary'] = $match[1];
 
-	$ret['actor']     = asencode_person($i['author']);
+		$body_content = preg_replace("/^(.*?)\[summary\](.*?)\[\/summary\](.*?)$/ism", '', $i['body']);
+		$ret['content'] = bbcode(trim($body_content));
+	}
+	else {
+		$ret['content'] = bbcode($$i['body']);
+	}
+
+	$ret['actor'] = asencode_person($i['author']);
 
 	$t = asencode_taxonomy($i);
 	if($t) {
@@ -1123,9 +1133,14 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	if(! $s['parent_mid'])
 		$s['parent_mid'] = $s['mid'];
+
+	$summary = as_bb_content($content,'summary');
+
+	if($summary)
+		$summary = '[summary]' . $summary . '[/summary]';
 	
 	$s['title']    = as_bb_content($content,'name');
-	$s['body']     = as_bb_content($content,'content');
+	$s['body']     = $summary . as_bb_content($content,'content');
 	$s['verb']     = ACTIVITY_POST;
 	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
 	$s['app']      = t('ActivityPub');
