@@ -95,7 +95,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 				// look for channels with send_stream = PERMS_PUBLIC
 
-				$r = q("select * from channel where channel_id in (select uid from pconfig where cat = 'perm_limits' and k = 'send_stream' and v = 1 ) and channel_removed = 0 ");
+				$r = q("select * from channel where channel_id in (select uid from pconfig where cat = 'perm_limits' and k = 'send_stream' and v = '1' ) and channel_removed = 0 ");
 				if($r) {
 					$channels = array_merge($channels,$r);
 				}
