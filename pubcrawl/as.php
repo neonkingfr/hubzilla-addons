@@ -1227,6 +1227,9 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['item_private'] = 1;
 
 	set_iconfig($s,'activitypub','recips',$act->raw_recips);
+	if($parent) {
+		set_iconfig($s,'activitypub','rawmsg',$act->raw,1);
+	}
 
 	$r = q("select created, edited from item where mid = '%s' and uid = %d limit 1",
 		dbesc($s['mid']),
