@@ -309,7 +309,7 @@ function cart_do_additem (&$hookdata) {
 
   $startcontent = $hookdata["content"];
 	$iteminfo=$hookdata["iteminfo"];
-	$cart_itemtypes = cart_maybeunjson(get_pconfig("cart_itemtypes"));
+	//$cart_itemtypes = cart_maybeunjson(get_pconfig("cart_itemtypes"));
 	$required = Array("item_sku","item_qty","item_desc","item_price");
 	foreach ($required as $key) {
 		if (!array_key_exists($key,$iteminfo)) {
