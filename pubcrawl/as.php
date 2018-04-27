@@ -1063,7 +1063,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	$parent = ((array_key_exists('inReplyTo',$act->obj)) ? urldecode($act->obj['inReplyTo']) : '');
 	if($parent) {
 
-		$r = q("select * from item where uid = %d and ( mid = '%s' || mid = '%s' ) limit 1",
+		$r = q("select * from item where uid = %d and ( mid = '%s' or  mid = '%s' ) limit 1",
 			intval($channel['channel_id']),
 			dbesc($parent),
 			dbesc(basename($parent))
@@ -1362,7 +1362,7 @@ function as_like_note($channel,$observer_hash,$act) {
 	if(! $parent)
 		return;
 
-	$r = q("select * from item where uid = %d and ( mid = '%s' || mid = '%s' ) limit 1",
+	$r = q("select * from item where uid = %d and ( mid = '%s' or  mid = '%s' ) limit 1",
 		intval($channel['channel_id']),
 		dbesc($parent),
 		dbesc(urldecode(basename($parent)))
