@@ -85,8 +85,7 @@ function diaspora_dispatch($importer,$msg) {
 		return;
 	}
 
-	$oxml = parse_xml_string($msg['message'],false);
-	$parsed_xml = sxml2array($oxml);
+	$parsed_xml = xml2array($msg['message'],false,0,'tag');
 
 	if($parsed_xml) {
 		if(array_key_exists('xml',$parsed_xml) && array_key_exists('post',$parsed_xml['xml']))
