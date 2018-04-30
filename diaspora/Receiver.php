@@ -234,7 +234,6 @@ class Diaspora_Receiver {
 
 		$body = markdown_to_bb($this->get_body());
 
-
 		// photo could be a single photo or an array of photos.
 		// Turn singles into an array of one. 
 
