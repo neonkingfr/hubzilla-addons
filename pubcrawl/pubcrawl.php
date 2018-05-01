@@ -129,6 +129,19 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	if($protocol && strtolower($protocol) !== 'activitypub')
 		return;
 
+	$address = EMPTY_STR;
+
+	if(array_key_exists('subject',$x) && strpos($x['subject'],'acct:') === 0)
+		$address = str_replace('acct:','',$x['subject']);
+	if(array_key_exists('aliases',$x) && count($x['aliases'])) {
+		foreach($x['aliases'] as $a) {
+			if(strpos($a,'acct:') === 0) {
+				$address = str_replace('acct:','',$a);
+				break;
+			}
+		}
+	}	
+
     if(strpos($url,'@') && $x && array_key_exists('links',$x) && $x['links']) {
         foreach($x['links'] as $link) {
             if(array_key_exists('rel',$link) && array_key_exists('type',$link)) {
@@ -169,6 +182,15 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	}
 
 	as_actor_store($url,$person_obj);
+
+	if($address) {
+		q("update xchan set xchan_addr = '%s' where xchan_hash = '%s' and xchan_network = 'activitypub'",
+			dbesc($address)
+		);
+		q("update hubloc set hubloc_addr = '%s' where hubloc_hash = '%s' and hubloc_network = 'activitypub'",
+			dbesc($address)
+		);
+	}
 
 	$b['xchan']   = $url;
 	$b['success'] = true;
