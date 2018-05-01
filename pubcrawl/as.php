@@ -426,14 +426,14 @@ function asencode_activity($i) {
 		$ret['to'] = [ $reply_url ];
 	}
 	else {
-		//$ret['bto'] = as_map_acl($i);
+		$ret['to'] = as_map_acl($i);
+		$m = as_map_acl($i,true);
+		$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
 	}
 
 	if(in_array($ret['object']['type'], [ 'Note', 'Article' ])) {
 		if($ret['to'])
 			$ret['object']['to'] = $ret['to'];
-		//if($ret['bto'])
-		//	$ret['object']['bto'] = $ret['bto'];
 		if($ret['cc'])
 			$ret['object']['cc'] = $ret['cc'];
 	}
@@ -457,7 +457,7 @@ function as_map_mentions($i) {
 	return $list;
 }
 
-function as_map_acl($i) {
+function as_map_acl($i,$mentions = false) {
 
 	$private = false;
 	$list = [];
@@ -470,11 +470,16 @@ function as_map_acl($i) {
 		$strict = get_config('activitypub','compliance');
 		$sql_extra = (($strict) ? " and xchan_network = 'activitypub' " : '');
 
-		$details = q("select xchan_url from xchan where xchan_hash in (" . implode(',',$x) . ") $sql_extra");
+		$details = q("select xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") $sql_extra");
 
 		if($details) {
 			foreach($details as $d) {
-				$list[] = $d['xchan_url'];
+				if($mentions) {
+					$list[] = [ 'type' => 'Mention', 'href' => $d['xchan_url'], 'name' => '@' . (($d['xchan_addr']) ? $d['xchan_addr'] : $d['xchan_name']) ];
+				}
+				else { 
+					$list[] = $d['xchan_url'];
+				}
 			}
 		}
 	}
