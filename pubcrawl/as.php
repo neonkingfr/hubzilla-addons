@@ -380,11 +380,12 @@ function asencode_activity($i) {
 	if($i['id'] != $i['parent']) {
 		$ret['inReplyTo'] = ((strpos($i['parent_mid'],'http') === 0) ? $i['parent_mid'] : z_root() . '/item/' . urlencode($i['parent_mid']));
 
-		$d = q("select xchan_url from item left join xchan on xchan_hash = author_xchan where id = %d limit 1",
+		$d = q("select xchan_url, xchan_addr, xchan_name from item left join xchan on xchan_hash = author_xchan where id = %d limit 1",
 			intval($i['parent'])
 		);
 		if($d) {
 			$reply_url = $d[0]['xchan_url'];
+			$reply_addr = (($d[0]['xchan_addr']) ? $d[0]['xchan_addr'] : $d[0]['xchan_name']);
 		}
 
 		$reply = true;
@@ -424,6 +425,14 @@ function asencode_activity($i) {
 	}
 	elseif($reply) {
 		$ret['to'] = [ $reply_url ];
+
+		if($i['item_private']) {
+			$ret['tag'] = [
+				'type' => 'Mention',
+				'href' => $reply_url,
+				'name' => '@' . $reply_addr
+			];
+		}
 	}
 	else {
 		$ret['to'] = as_map_acl($i);
@@ -436,6 +445,8 @@ function asencode_activity($i) {
 			$ret['object']['to'] = $ret['to'];
 		if($ret['cc'])
 			$ret['object']['cc'] = $ret['cc'];
+		if($ret['tag'])
+			$ret['object']['tag'] = $ret['tag'];
 	}
 
 	return $ret;
