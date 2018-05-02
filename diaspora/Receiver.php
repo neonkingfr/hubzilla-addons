@@ -162,9 +162,9 @@ class Diaspora_Receiver {
 			return;
 		}
 
-		/* If there is a default group for this channel, add this member to it */
+		/* If there is a default group for this channel and friending is automatic, add this member to it */
 
-		if($this->importer['channel_default_group']) {
+		if($this->importer['channel_default_group'] && $automatic) {
 			require_once('include/group.php');
 			$g = group_rec_byhash($this->importer['channel_id'],$this->importer['channel_default_group']);
 			if($g)

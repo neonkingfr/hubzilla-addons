@@ -845,9 +845,9 @@ function as_follow($channel,$act) {
 	}
 
 
-	/* If there is a default group for this channel, add this member to it */
+	/* If there is a default group for this channel and permissions are automatic, add this member to it */
 
-	if($channel['channel_default_group']) {
+	if($channel['channel_default_group'] && $automatic) {
 		require_once('include/group.php');
 		$g = group_rec_byhash($channel['channel_id'],$channel['channel_default_group']);
 		if($g)
