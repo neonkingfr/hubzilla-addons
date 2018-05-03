@@ -185,10 +185,12 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 	if($address) {
 		q("update xchan set xchan_addr = '%s' where xchan_hash = '%s' and xchan_network = 'activitypub'",
-			dbesc($address)
+			dbesc($address),
+			dbesc($url)
 		);
 		q("update hubloc set hubloc_addr = '%s' where hubloc_hash = '%s' and hubloc_network = 'activitypub'",
-			dbesc($address)
+			dbesc($address),
+			dbesc($url)
 		);
 	}
 
