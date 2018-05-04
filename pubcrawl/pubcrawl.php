@@ -124,8 +124,23 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	$x        = $b['webfinger'];
 	$protocol = $b['protocol'];
 
+	logger('probing: activitypub');
+
 	if($protocol && strtolower($protocol) !== 'activitypub')
 		return;
+
+	$address = EMPTY_STR;
+
+	if(array_key_exists('subject',$x) && strpos($x['subject'],'acct:') === 0)
+		$address = str_replace('acct:','',$x['subject']);
+	if(array_key_exists('aliases',$x) && count($x['aliases'])) {
+		foreach($x['aliases'] as $a) {
+			if(strpos($a,'acct:') === 0) {
+				$address = str_replace('acct:','',$a);
+				break;
+			}
+		}
+	}	
 
     if(strpos($url,'@') && $x && array_key_exists('links',$x) && $x['links']) {
         foreach($x['links'] as $link) {
@@ -168,6 +183,18 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 	as_actor_store($url,$person_obj);
 
+	if($address) {
+		q("update xchan set xchan_addr = '%s' where xchan_hash = '%s' and xchan_network = 'activitypub'",
+			dbesc($address),
+			dbesc($url)
+		);
+		q("update hubloc set hubloc_addr = '%s' where hubloc_hash = '%s' and hubloc_network = 'activitypub'",
+			dbesc($address),
+			dbesc($url)
+		);
+	}
+
+	$b['xchan']   = $url;
 	$b['success'] = true;
 
 }
@@ -384,6 +411,13 @@ function pubcrawl_notifier_process(&$arr) {
 		if(strpos($arr['target_item']['author']['xchan_url'],z_root() . '/guest/') !== false) {
 			return;
 		}
+
+		// AP does not allow any messages where the sender is different from the actor
+
+		if($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) {
+			return;
+		}
+
 		
 	}
 
@@ -393,6 +427,7 @@ function pubcrawl_notifier_process(&$arr) {
 		logger('pubcrawl: disallowed for channel ' . $arr['channel']['channel_name']);
 		return;
 	}
+
 
 	if($arr['location'])
 		return;
@@ -1057,9 +1092,8 @@ function pubcrawl_feature_settings(&$s) {
 		'$field'	=> array('activitypub_send_media', t('Send multi-media HTML articles'), 1 - intval(get_pconfig(local_channel(),'activitypub','downgrade_media',true)), t('Not supported by some microblog services such as Mastodon'), $yes_no),
 	));
 
-
 	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('pubcrawl', t('ActivityPub Protocol Settings'), '', t('Submit')),
+		'$addon' 	=> array('pubcrawl', '<img src="addon/pubcrawl/pubcrawl.png" style="width:auto; height:1em; margin:-3px 5px 0px 0px;">' . t('ActivityPub Protocol Settings'), '', t('Submit')),
 		'$content'	=> $sc
 	));
 

@@ -162,9 +162,9 @@ class Diaspora_Receiver {
 			return;
 		}
 
-		/* If there is a default group for this channel, add this member to it */
+		/* If there is a default group for this channel and friending is automatic, add this member to it */
 
-		if($this->importer['channel_default_group']) {
+		if($this->importer['channel_default_group'] && $automatic) {
 			require_once('include/group.php');
 			$g = group_rec_byhash($this->importer['channel_id'],$this->importer['channel_default_group']);
 			if($g)
@@ -1755,7 +1755,13 @@ class Diaspora_Receiver {
 			return 202;
 		}
 
-		$name = unxmlify($this->xmlbase['first_name'] . (($this->xmlbase['last_name']) ? ' ' . $this->xmlbase['last_name'] : ''));
+		// full_name added to protocol 2018-04
+		if(array_key_exists('full_name',$this->xmlbase) && $this->xmlbase['full_name']) {
+			$name = unxmlify($this->xmlbase['full_name']);
+		}
+		else {
+			$name = unxmlify($this->xmlbase['first_name'] . (($this->xmlbase['last_name']) ? ' ' . $this->xmlbase['last_name'] : ''));
+		}
 		$image_url = unxmlify($this->xmlbase['image_url']);
 		$birthday = unxmlify($this->xmlbase['birthday']);
 
