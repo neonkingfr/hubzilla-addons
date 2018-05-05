@@ -31,8 +31,10 @@ function build_cat($seed=''){
     // create backgound
     $cat = @imagecreatetruecolor(300, 300)
         or die("GD image create failed");
-    $white = imagecolorallocate($cat, 255, 255, 255);
+
+    $white = imagecolorallocatealpha($cat, 255, 255, 255, 127);
     imagefill($cat,0,0,$white);
+    imagesavealpha($cat, true);
 
     // add parts
     foreach($parts as $part => $num){
@@ -40,7 +42,7 @@ function build_cat($seed=''){
 
         $im = @imagecreatefrompng($file);
         if(!$im) die('Failed to load '.$file);
-        imageSaveAlpha($im, true);
+
         imagecopy($cat,$im,0,0,0,0,300,300);
         imagedestroy($im);
     }
