@@ -411,7 +411,7 @@ function asencode_activity($i) {
 			return [];
 	}
 	else {
-		$obj = asencode_object($i['obj']);
+		$obj = asencode_item($i);
 		if($obj)
 			$ret['object'] = $obj;
 		else
