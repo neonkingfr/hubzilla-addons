@@ -91,7 +91,9 @@ function asencode_item_collection($items,$id,$type,$extra = null) {
 	if($items) {
 		$x = [];
 		foreach($items as $i) {
-			$x[] = asencode_activity($i);
+			$t = asencode_activity($i);
+			if($t)
+				$x[] = $t;
 		}
 		if($type === 'OrderedCollection')
 			$ret['orderedItems'] = $x;
@@ -213,7 +215,11 @@ function asencode_item($i) {
 		$ret['content'] = bbcode($i['body']);
 	}
 
-	$ret['actor'] = asencode_person($i['author']);
+	$actor = asencode_person($i['author']);
+	if($actor)
+		$ret['actor'] = $actor;
+	else
+		return [];
 
 	$t = asencode_taxonomy($i);
 	if($t) {
@@ -391,19 +397,34 @@ function asencode_activity($i) {
 		$reply = true;
 	}
 
-
-	$ret['actor'] = asencode_person($i['author']);
+	$actor = asencode_person($i['author']);
+	if($actor)
+		$ret['actor'] = $actor;
+	else
+		return []; 
 
 	if($i['obj']) {
-		$ret['object'] = asencode_object($i['obj']);
+		$obj = asencode_object($i['obj']);
+		if($obj)
+			$ret['object'] = $obj;
+		else
+			return [];
 	}
 	else {
-		$ret['object'] = asencode_item($i);
+		$obj = asencode_object($i['obj']);
+		if($obj)
+			$ret['object'] = $obj;
+		else
+			return [];
 	}
 
 
 	if($i['target']) {
-		$ret['target'] = asencode_object($i['target']);
+		$tgt = asencode_object($i['target']);
+		if($tgt)
+			$ret['target'] = $tgt;
+		else
+			return [];
 	}
 
 	if(! $i['item_private']) {
@@ -502,7 +523,11 @@ function as_map_acl($i,$mentions = false) {
 
 function asencode_person($p) {
 
+	if(! $p['xchan_url'])
+		return [];
+
 	$ret = [];
+
 	$ret['type']  = 'Person';
 	$ret['id']    = $p['xchan_url'];
 	if($p['xchan_addr'] && strpos($p['xchan_addr'],'@'))
