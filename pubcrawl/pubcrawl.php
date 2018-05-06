@@ -757,7 +757,7 @@ function pubcrawl_permissions_accept(&$x) {
 	if(! $accept)
 		return;
 
-	$p = asencode_person($x['sender']),
+	$p = asencode_person($x['sender']);
 	if(! $p)
 		return;
 
