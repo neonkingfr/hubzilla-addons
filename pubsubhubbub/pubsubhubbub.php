@@ -374,7 +374,7 @@ function pubsubhubbub_init(&$a) {
 		}
 
 		// fetch the old subscription if it exists
-		$orig = q("SELECT * FROM `push_subscriber` WHERE `callback_url` = '%s'",
+		$orig = q("SELECT * FROM push_subscriber WHERE callback_url = '%s'",
 		  dbesc($hub_callback));
 
 		// delete old subscription if it exists
