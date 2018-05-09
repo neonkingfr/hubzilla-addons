@@ -385,16 +385,17 @@ function asencode_activity($i) {
 
 	if($i['id'] != $i['parent']) {
 		$ret['inReplyTo'] = ((strpos($i['parent_mid'],'http') === 0) ? $i['parent_mid'] : z_root() . '/item/' . urlencode($i['parent_mid']));
-
-		$d = q("select xchan_url, xchan_addr, xchan_name from item left join xchan on xchan_hash = author_xchan where id = %d limit 1",
-			intval($i['parent'])
-		);
-		if($d) {
-			$reply_url = $d[0]['xchan_url'];
-			$reply_addr = (($d[0]['xchan_addr']) ? $d[0]['xchan_addr'] : $d[0]['xchan_name']);
-		}
-
 		$reply = true;
+
+		if($i['item_private']) {
+			$d = q("select xchan_url, xchan_addr, xchan_name from item left join xchan on xchan_hash = author_xchan where id = %d limit 1",
+				intval($i['parent'])
+			);
+			if($d) {
+				$reply_url = $d[0]['xchan_url'];
+				$reply_addr = (($d[0]['xchan_addr']) ? $d[0]['xchan_addr'] : $d[0]['xchan_name']);
+			}
+		}
 	}
 
 	$actor = asencode_person($i['author']);
@@ -418,7 +419,6 @@ function asencode_activity($i) {
 			return [];
 	}
 
-
 	if($i['target']) {
 		$tgt = asencode_object($i['target']);
 		if($tgt)
@@ -427,13 +427,38 @@ function asencode_activity($i) {
 			return [];
 	}
 
-	if(! $i['item_private']) {
-		$ret['to'] = [ ACTIVITY_PUBLIC_INBOX ];
-
-		if(!$reply && $i['item_origin']) {
-			$ret['cc'] = [ z_root() . '/followers/' . substr($i['owner']['xchan_addr'],0,strpos($i['owner']['xchan_addr'],'@')) ];
+	if($i['item_private']) {
+		if($reply) {
+			if($i['author_xchan'] == $i['owner_xchan']) {
+				$ret['to'] = [ $reply_url ];
+				$ret['cc'] = as_map_acl($i);
+				$m = as_map_acl($i,true);
+				$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
+			}
+			else {
+				$ret['to'] = [ $reply_url ];
+				$ret['tag'] = [
+					'type' => 'Mention',
+					'href' => $reply_url,
+					'name' => '@' . $reply_addr
+				];
+			}
 		}
-
+		else {
+			$ret['to'] = as_map_acl($i);
+			$m = as_map_acl($i,true);
+			$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
+		}
+	}
+	else {
+		if($reply) {
+			$ret['to'] = [ z_root() . '/followers/' . $i['author']['xchan_name'] ];
+			$ret['cc'] = [ ACTIVITY_PUBLIC_INBOX ];
+		}
+		else {
+			$ret['to'] = [ ACTIVITY_PUBLIC_INBOX ];
+			$ret['cc'] = [ z_root() . '/followers/' . $i['author']['xchan_name'] ];
+		}
 		$mentions = as_map_mentions($i);
 		if(count($mentions) > 0) {
 			if(! $ret['cc']) {
@@ -444,23 +469,7 @@ function asencode_activity($i) {
 			}
 		}
 	}
-	elseif($reply) {
-		$ret['to'] = [ $reply_url ];
-
-		if($i['item_private']) {
-			$ret['tag'] = [
-				'type' => 'Mention',
-				'href' => $reply_url,
-				'name' => '@' . $reply_addr
-			];
-		}
-	}
-	else {
-		$ret['to'] = as_map_acl($i);
-		$m = as_map_acl($i,true);
-		$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
-	}
-
+	
 	if(in_array($ret['object']['type'], [ 'Note', 'Article' ])) {
 		if($ret['to'])
 			$ret['object']['to'] = $ret['to'];
