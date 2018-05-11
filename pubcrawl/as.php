@@ -452,12 +452,12 @@ function asencode_activity($i) {
 	}
 	else {
 		if($reply) {
-			$ret['to'] = [ z_root() . '/followers/' . $i['author']['xchan_name'] ];
+			$ret['to'] = [ z_root() . '/followers/' . substr($i['author']['xchan_addr'],0,strpos($i['author']['xchan_addr'],'@')) ];
 			$ret['cc'] = [ ACTIVITY_PUBLIC_INBOX ];
 		}
 		else {
 			$ret['to'] = [ ACTIVITY_PUBLIC_INBOX ];
-			$ret['cc'] = [ z_root() . '/followers/' . $i['author']['xchan_name'] ];
+			$ret['cc'] = [ z_root() . '/followers/' . substr($i['author']['xchan_addr'],0,strpos($i['author']['xchan_addr'],'@')) ];
 		}
 		$mentions = as_map_mentions($i);
 		if(count($mentions) > 0) {
