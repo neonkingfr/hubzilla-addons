@@ -1265,6 +1265,8 @@ function as_create_note($channel,$observer_hash,$act) {
 		set_iconfig($s,'activitypub','rawmsg',$act->raw,1);
 	}
 
+	$x = null;
+
 	$r = q("select created, edited from item where mid = '%s' and uid = %d limit 1",
 		dbesc($s['mid']),
 		intval($s['uid'])
@@ -1279,6 +1281,22 @@ function as_create_note($channel,$observer_hash,$act) {
 	}
 	else {
 		$x = item_store($s);
+	}
+
+	if(is_array($x) && $x['item_id']) {
+		if($parent) {
+			if($s['owner_xchan'] === $channel['channel_hash']) {
+				// We are the owner of this conversation, so send all received comments back downstream
+				Zotlabs\Daemon\Master::Summon(array('Notifier','comment-import',$x['item_id']));
+			}
+			$r = q("select * from item where id = %d limit 1",
+				intval($x['item_id'])
+			);
+			if($r) {
+				send_status_notifications($x['item_id'],$r[0]);
+			}
+		}
+		sync_an_item($this->importer['channel_id'],$x['item_id']);
 	}
 
 }
