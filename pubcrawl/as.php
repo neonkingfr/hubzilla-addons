@@ -1235,10 +1235,17 @@ function as_create_note($channel,$observer_hash,$act) {
 	// standard content region
 
 	if($act->obj['type'] === 'Video') {
+
+		$vtypes = [
+			'video/mp4',
+			'video/ogg',
+			'video/webm'
+		];
+
 		$mps = [];
 		if(array_key_exists('url',$act->obj) && is_array($act->obj['url'])) {
 			foreach($act->obj['url'] as $vurl) {
-				if($vurl['mediaType'] === 'video/mp4') {
+				if(in_array($vurl['mimeType'], $vtypes)) {
 					if(! array_key_exists('width',$vurl)) {
 						$vurl['width'] = 0;
 					}
