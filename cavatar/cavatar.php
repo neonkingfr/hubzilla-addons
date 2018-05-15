@@ -33,7 +33,7 @@ function cavatar_channel_photo(&$x) {
 
 function cavatar_default_profile_photo(&$x) {
 	if($x['scheme'] === 'cavatar') {
-		$x['url'] = 'cavatar?f=&seed=' . random_string(14);
+		$x['url'] = 'cavatar?f=&seed=' . random_string(14) . '&size=' . $x['size'];
 	}
 }
 
@@ -41,9 +41,8 @@ function cavatar_module() {}
 
 
 function cavatar_init(&$a) {
-
 	require_once('addon/cavatar/cat-avatar-generator.php');
-	build_cat($_REQUEST['seed']);
+	build_cat($_REQUEST['seed'],$_REQUEST['size']);
 
 }
 
