@@ -9,11 +9,19 @@
 
 
 function cavatar_load() {
-	\Zotlabs\Extend\Hook::register('create_channel_photo', 'addon/cavatar/cavatar.php', 'cavatar_channel_photo');
+	\Zotlabs\Extend\Hook::register('create_channel_photo',  'addon/cavatar/cavatar.php', 'cavatar_channel_photo');
+	\Zotlabs\Extend\Hook::register('default_profile_photo', 'addon/cavatar/cavatar.php', 'cavatar_default_profile_photo');
+	$old = get_config('system','default_profile_photo',EMPTY_STR);
+	if($old !== 'cavatar') {
+		set_config('cavatar','original_profile_photo',$old);
+	}
+	set_config('system','default_profile_photo','cavatar');
 }
 
 function cavatar_unload() {
-	\Zotlabs\Extend\Hook::unregister('create_channel_photo', 'addon/cavatar/cavatar.php', 'cavatar_channel_photo');
+	\Zotlabs\Extend\Hook::unregister('create_channel_photo',  'addon/cavatar/cavatar.php', 'cavatar_channel_photo');
+	\Zotlabs\Extend\Hook::unregister('default_profile_photo', 'addon/cavatar/cavatar.php', 'cavatar_default_profile_photo');
+	set_config('system','default_profile_photo',get_config('cavatar','original_profile_photo',EMPTY_STR));
 }
 
 
@@ -23,6 +31,11 @@ function cavatar_channel_photo(&$x) {
 
 }
 
+function cavatar_default_profile_photo(&$x) {
+	if($x['scheme'] === 'cavatar') {
+		$x['url'] = 'cavatar?f=&seed=' . random_string(14);
+	}
+}
 
 function cavatar_module() {}
 
