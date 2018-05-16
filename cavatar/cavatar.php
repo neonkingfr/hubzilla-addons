@@ -42,7 +42,7 @@ function cavatar_module() {}
 
 function cavatar_init(&$a) {
 	require_once('addon/cavatar/cat-avatar-generator.php');
-	build_cat($_REQUEST['seed'],$_REQUEST['size']);
+	build_cat($_REQUEST['seed'],intval($_REQUEST['size']));
 
 }
 

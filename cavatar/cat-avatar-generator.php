@@ -15,10 +15,10 @@
 // Note: this path end with / and is relative to the cat-avatar-generator.php file.
 $cachepath = 'cache/';
 
-function build_cat($seed='',$size='300'){
+function build_cat($seed='',$size = 300){
 
-    if($size > 300)
-	$size = 300;
+    if((! $size) || ($size > 300))
+		$size = 300;
 
     // init random seed
     if($seed) srand( hexdec(substr(md5($seed),0,6)) );
