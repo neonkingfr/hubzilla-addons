@@ -74,6 +74,8 @@ function asfetch_item($x) {
 		dbesc($x['id'])
 	);
 	if($r) {
+		xchan_query($r,true);
+		$r = fetch_post_tags($r,true);
 		return asencode_item($r[0]);
 	}
 }
