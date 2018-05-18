@@ -58,12 +58,15 @@ function build_cat($seed='',$size = 300){
     // restore random seed
     if($seed) srand();
 
+    ob_start();
+
     header('Pragma: public');
     header('Cache-Control: max-age=86400');
     header('Expires: '. gmdate('D, d M Y H:i:s \G\M\T', time() + 86400));
     header('Content-Type: image/png');
     imagepng($cat, NULL, 9);
     imagedestroy($cat);
+    killme();
 }
 
 /*
