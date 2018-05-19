@@ -1223,10 +1223,10 @@ function as_create_note($channel,$observer_hash,$act) {
 			if(strpos($img['type'],'image') !== false) {
 				$s['body'] .= "\n\n" . '[img]' . $img['href'] . '[/img]';
 			}
-			if(array_key_exists('mediaType',$img) && strpos('video',$img['mediaType']) === 0) {
+			if(array_key_exists('type',$img) && strpos($img['type'], 'video') === 0) {
 				$s['body'] .= "\n\n" . '[video]' . $img['href'] . '[/video]';
  			}
-			if(array_key_exists('mediaType',$img) && strpos('audio',$img['mediaType']) === 0) {
+			if(array_key_exists('type',$img) && strpos($img['type'], 'audio') === 0) {
 				$s['body'] .= "\n\n" . '[audio]' . $img['href'] . '[/audio]';
  			}
 		}
