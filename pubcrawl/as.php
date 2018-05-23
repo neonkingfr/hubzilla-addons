@@ -1219,17 +1219,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	}
 
 	if($act->obj['type'] === 'Note' && $s['attach']) {
-		foreach($s['attach'] as $img) {
-			if(strpos($img['type'],'image') !== false) {
-				$s['body'] .= "\n\n" . '[img]' . $img['href'] . '[/img]';
-			}
-			if(array_key_exists('type',$img) && strpos($img['type'], 'video') === 0) {
-				$s['body'] .= "\n\n" . '[video]' . $img['href'] . '[/video]';
- 			}
-			if(array_key_exists('type',$img) && strpos($img['type'], 'audio') === 0) {
-				$s['body'] .= "\n\n" . '[audio]' . $img['href'] . '[/audio]';
- 			}
-		}
+		$s['body'] .= as_bb_attach($s['attach']);
 	}
 
 	// we will need a hook here to extract magnet links e.g. peertube
@@ -1393,11 +1383,7 @@ function as_announce_note($channel,$observer_hash,$act) {
 	$body .= as_bb_content($content,'content');
 
 	if($act->obj['type'] === 'Note' && $s['attach']) {
-		foreach($s['attach'] as $img) {
-			if(strpos($img['type'],'image') !== false) {
-				$body .= "\n\n" . '[img]' . $img['href'] . '[/img]';
-			}
-		}
+		$body .= as_bb_attach($s['attach']);
 	}
 
 	$body .= "[/share]";
@@ -1557,7 +1543,24 @@ function as_like_note($channel,$observer_hash,$act) {
 }
 
 
+function as_bb_attach($attach) {
 
+	$ret = false;
+
+	foreach($attach as $a) {
+		if(strpos($a['type'],'image') !== false) {
+			$ret .= "\n\n" . '[img]' . $a['href'] . '[/img]';
+		}
+		if(array_key_exists('type',$a) && strpos($a['type'], 'video') === 0) {
+			$ret .= "\n\n" . '[video]' . $a['href'] . '[/video]';
+		}
+		if(array_key_exists('type',$a) && strpos($a['type'], 'audio') === 0) {
+			$ret .= "\n\n" . '[audio]' . $a['href'] . '[/audio]';
+		}
+	}
+
+	return $ret;
+}
 
 
 
@@ -1578,6 +1581,7 @@ function as_bb_content($content,$field) {
 
 	return $ret;
 }
+
 
 
 
