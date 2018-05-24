@@ -1033,6 +1033,7 @@ function as_actor_store($url,$person_obj) {
 	$m = parse_url($url);
 	if($m) {
 		$hostname = $m['host'];
+		$baseurl = $m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '');
 	}
 
 	if(! $r) {
@@ -1042,7 +1043,7 @@ function as_actor_store($url,$person_obj) {
 				'hubloc_hash'     => $url,
 				'hubloc_addr'     => '',
 				'hubloc_network'  => 'activitypub',
-				'hubloc_url'      => $url,
+				'hubloc_url'      => $baseurl,
 				'hubloc_host'     => $hostname,
 				'hubloc_callback' => $inbox,
 				'hubloc_updated'  => datetime_convert(),
