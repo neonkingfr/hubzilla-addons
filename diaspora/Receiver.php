@@ -1377,6 +1377,13 @@ class Diaspora_Receiver {
 		$parent_author_signature = $this->get_property('parent_author_signature');
 
 		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$this->msg['author']);
+
+		// by default comments on public posts are allowed from anybody on Diaspora. That is their policy.
+		// Once this setting is set to something we'll track your preference and it will over-ride the default. 
+		$pubcomment = get_pconfig($this->importer['channel_id'],'system','diaspora_public_comments',1);
+		if(($pubcomment) && (! $contact))
+			$contact = find_diaspora_person_by_handle($this->msg['author']);
+
 		if(! $contact) {
 			logger('diaspora_like: cannot find contact: ' . $this->msg['author'] . ' for channel ' . $this->importer['channel_name']);
 			return;
