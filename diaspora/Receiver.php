@@ -245,9 +245,9 @@ class Diaspora_Receiver {
 		if($photos) {
 			$tmp = '';
 			foreach($photos as $ph) {
-				if((! $ph['remote_photo_path']) || (strpos($ph['remote_photo_path'],'http') !== 0))
+				if((! $ph->remote_photo_path) || (strpos($ph->remote_photo_path,'http') !== 0))
 					continue; 
-				$tmp .= '[img]' . $ph['remote_photo_path'] . $ph['remote_photo_name'] . '[/img]' . "\n\n";
+				$tmp .= '[img]' . $ph->remote_photo_path . $ph->remote_photo_name . '[/img]' . "\n\n";
 			}
 			
 			$body = $tmp . $body;
