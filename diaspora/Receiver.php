@@ -245,6 +245,9 @@ class Diaspora_Receiver {
 		if($photos) {
 			$tmp = '';
 			foreach($photos as $ph) {
+				// If there are multiple photos we get an array of objects here.
+				// Typecast them to array here to make sure we deal with an array in any case.
+				$ph = (array) $ph;
 				if((! $ph['remote_photo_path']) || (strpos($ph['remote_photo_path'],'http') !== 0))
 					continue; 
 				$tmp .= '[img]' . $ph['remote_photo_path'] . $ph['remote_photo_name'] . '[/img]' . "\n\n";
