@@ -40,7 +40,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 
 		$unsafe = ((array_key_exists('unsafe', $_POST) && $_POST['unsafe']) ? 1 : 0);
 
-		$r = q("SELECT resource_id, width, height, description  
+		$r = q("SELECT resource_id, width, height, description, display_path 
 			FROM photo WHERE uid = %d AND album = '%s' AND photo_usage = %d  
 			AND is_nsfw = %d  AND imgscale = 1 $sql_extra 
 			ORDER by created DESC",
@@ -52,11 +52,14 @@ class Gallery extends \Zotlabs\Web\Controller {
 
 		$i = 0;
 		foreach($r as $rr) {
+			$title = (($rr['description']) ? '<strong>' . $rr['description'] . '</strong><br>' . $rr['display_path'] : $rr['display_path']);
+
 			$items[$i]['resource_id'] = $rr['resource_id'];
 			$items[$i]['src'] = z_root() . '/photo/' . $rr['resource_id'] . '-1';
+			$items[$i]['msrc'] = z_root() . '/photo/' . $rr['resource_id'] . '-3';
 			$items[$i]['w'] = $rr['width'];
 			$items[$i]['h'] = $rr['height'];
-			$items[$i]['title'] = $rr['description'];
+			$items[$i]['title'] = $title;
 			$i++;
 		}
 
