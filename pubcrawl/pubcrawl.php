@@ -134,31 +134,32 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	if($protocol && strtolower($protocol) !== 'activitypub')
 		return;
 
-	if(! is_array($x))
-		return;
+	if(is_array($x)) {
 
-	$address = EMPTY_STR;
 
-	if(array_key_exists('subject',$x) && strpos($x['subject'],'acct:') === 0)
-		$address = str_replace('acct:','',$x['subject']);
-	if(array_key_exists('aliases',$x) && count($x['aliases'])) {
-		foreach($x['aliases'] as $a) {
-			if(strpos($a,'acct:') === 0) {
-				$address = str_replace('acct:','',$a);
-				break;
+		$address = EMPTY_STR;
+
+		if(array_key_exists('subject',$x) && strpos($x['subject'],'acct:') === 0)
+			$address = str_replace('acct:','',$x['subject']);
+		if(array_key_exists('aliases',$x) && count($x['aliases'])) {
+			foreach($x['aliases'] as $a) {
+				if(strpos($a,'acct:') === 0) {
+					$address = str_replace('acct:','',$a);
+					break;
+				}
 			}
-		}
-	}	
+		}	
 
-    if(strpos($url,'@') && $x && array_key_exists('links',$x) && $x['links']) {
-        foreach($x['links'] as $link) {
-            if(array_key_exists('rel',$link) && array_key_exists('type',$link)) {
-                if($link['rel'] === 'self' && ($link['type'] === 'application/activity+json' || strpos($link['type'],'ld+json') !== false)) {
-					$url = $link['href'];
-                }
-            }
-        }
-    }
+	    if(strpos($url,'@') && $x && array_key_exists('links',$x) && $x['links']) {
+    	    foreach($x['links'] as $link) {
+        	    if(array_key_exists('rel',$link) && array_key_exists('type',$link)) {
+            	    if($link['rel'] === 'self' && ($link['type'] === 'application/activity+json' || strpos($link['type'],'ld+json') !== false)) {
+						$url = $link['href'];
+                	}
+            	}
+        	}
+    	}
+	}
 	
 	if(($url) && (strpos($url,'http') === 0)) {
 		$x = as_fetch($url);
@@ -179,10 +180,10 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	// Now find the actor and see if there is something we can follow	
 
 	$person_obj = null;
-	if($AS->type === 'Person') {
+	if(in_array($AS->type, [ 'Person', 'Group', 'Profile' ])) {
 		$person_obj = $AS->data;
 	}
-	elseif($AS->obj && $AS->obj['type'] === 'Person') {
+	elseif($AS->obj && ( in_array($AS->obj['type'], [ 'Person', 'Group', 'Profile' ] ))) {
 		$person_obj = $AS->obj;
 	}
 	else {
