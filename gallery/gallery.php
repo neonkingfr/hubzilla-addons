@@ -15,10 +15,12 @@ function gallery_module() {}
 
 function gallery_load() {
 	Zotlabs\Extend\Hook::register('load_pdl', 'addon/gallery/gallery.php', 'gallery_load_pdl');
+	Zotlabs\Extend\Hook::register('channel_apps', 'addon/gallery/gallery.php', 'gallery_channel_apps');
 }
 
 function gallery_unload() {
 	Zotlabs\Extend\Hook::unregister('load_pdl', 'addon/gallery/gallery.php', 'gallery_load_pdl');
+	Zotlabs\Extend\Hook::unregister('channel_apps', 'addon/gallery/gallery.php', 'gallery_channel_apps');
 }
 
 function gallery_load_pdl(&$b) {
@@ -35,4 +37,14 @@ function gallery_load_pdl(&$b) {
 	}
 }
 
+function gallery_channel_apps(&$b) {
+	$b['tabs'][] = [
+		'label' => t('Gallery'),
+		'url'   => z_root() . '/gallery/' . $b['nickname'],
+		'sel'   => ((argv(0) == 'gallery') ? 'active' : ''),
+		'title' => t('Photo Gallery'),
+		'id'    => 'gallery-tab',
+		'icon'  => 'image'
+	];
+}
 
