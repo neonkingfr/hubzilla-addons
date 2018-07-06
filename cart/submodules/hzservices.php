@@ -16,8 +16,8 @@ class Cart_hzservices {
     }
 
     static public function load (){
-      Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings');
-      Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings_post');
+      Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings',1);
+      Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings_post',1);
       Zotlabs\Extend\Hook::register('cart_myshop_menufilter', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::myshop_menuitems',1,1000);
       Zotlabs\Extend\Hook::register('cart_myshop_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemadmin',1,1000);
       Zotlabs\Extend\Hook::register('cart_fulfill_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::fulfill_hzservices',1,1000);
@@ -26,7 +26,7 @@ class Cart_hzservices {
       Zotlabs\Extend\Hook::register('cart_post_hzservices_itemedit', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_post',1,1000);
       Zotlabs\Extend\Hook::register('cart_post_hzservices_itemactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_activation_post',1,1000);
       Zotlabs\Extend\Hook::register('cart_post_hzservices_itemdeactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_deactivation_post',1,1000);
-      cart_config_additemtype("hzservices");
+      Zotlabs\Extend\Hook::register('cart_submodule_activation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::module_activation',1,1000);
       notice('Loaded submodule "hzservices"'.EOL);
     }
 
@@ -41,49 +41,37 @@ class Cart_hzservices {
       Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemedit', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_post');
       Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_activation_post');
       Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemdeactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_deactivation_post');
+      Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::module_activation',1,1000);
     }
 
-    static public function settings () {
+    static public function module_activation (&$hookdata) {
+      cart_config_additemtype("hzservices");
+    }
+
+    static public function module_deactivation (&$hookdata) {
+      //cart_config_delitemtype("hzservices");
+    }
+
+    static public function settings (&$s) {
       $id = local_channel();
       if (! $id)
         return;
 
+      $enablecart = get_pconfig ($id,'cart','enable');
+      if (!isset($enablecart) || $enablecart != 1) {
+         return;
+      }
       $enable_hzservices = get_pconfig ($id,'cart_hzservices','enable');
       $sc = replace_macros(get_markup_template('field_checkbox.tpl'), array(
                  '$field'	=> array('enable_cart_hzservices', t('Enable Hubzilla Services Module'),
-                   (isset($enable_hzservices) ? $enable_hzservices : 0),
+                   (isset($enable_hzservices) ? intval($enable_hzservices) : 0),
                    '',array(t('No'),t('Yes')))));
-/*
-            if (isset($enablecart)  && $enablecart == 1) {
-          $testcatalog = get_pconfig ($id,'cart','enable_test_catalog');
-          $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-                 '$field'	=> array('enable_test_catalog', t('Enable Test Catalog'),
-                   (isset($testcatalog) ? $testcatalog : 0),
-                   '',array(t('No'),t('Yes')))));
-
-
-          $manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
-
-          $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-                 '$field'	=> array('enable_manual_payments', t('Enable Manual Payments'),
-                   (isset($manualpayments) ? $manualpayments : 0),
-                   '',array(t('No'),t('Yes')))));
-
-            }
-            /*
-             * @todo: Set payment options order
-             * @todo: Enable/Disable payment options
-             * $paymentopts = Array();
-             * call_hooks('cart_paymentopts',$paymentopts);
-             * @todo: Configuure payment options
-             */
 
       $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-                 '$addon' 	=> array('cart',
+                 '$addon' 	=> array('cart-hzsvc',
                    t('Cart - Hubzilla Services Addon'), '',
                    t('Submit')),
                  '$content'	=> $sc));
-            //return $s;
 
     }
 
@@ -91,15 +79,16 @@ class Cart_hzservices {
       if(!local_channel())
         return;
 
-      $prev_enable = get_pconfig(local_channel(),'cart-hzservices','enable');
-      $enable_cart_hzservices = isset($_POST['enable_cart_hzservices']) ? intval($_POST['enable_cart_hzservices']) : 0;
-      set_pconfig( local_channel(), 'cart-hzservices', 'enable', $enable_cart_hzservices );
-      if (!$enable_cart_hzservices || $enable_cart_hzservices != $prev_enable) {
+      if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1 || !isset($_POST['enable_cart_hzservices'])) {
+        notice("Skip hzsvc settings_post".EOL);
+        logger("POSTVARS: ".print_r($_POST,true),LOGGER_DEBUG);
         return;
       }
-      /*
-      set_pconfig( local_channel(), 'cart', 'enable_test_catalog', intval($_POST['enable_test_catalog']) );
-      */
+
+
+      $prev_enable = get_pconfig(local_channel(),'cart_hzservices','enable');
+      $enable_cart_hzservices = isset($_POST['enable_cart_hzservices']) ? intval($_POST['enable_cart_hzservices']) : 0;
+      set_pconfig( local_channel(), 'cart_hzservices', 'enable', $enable_cart_hzservices );
 
       Cart_hzservices::unload();
       Cart_hzservices::load();
