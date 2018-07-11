@@ -864,7 +864,7 @@ function cart_do_checkout_after (&$hookdata) {
 
 	$orderhash = isset($hookdata["order_hash"]) ? $hookdata["order_hash"] : cart_getorderhash();
 	if (!$orderhash) {
-                logger ("[cart] cart_do_checkout_after - no \$hookdata[order_hash]",LOGGER_ERROR);
+                logger ("[cart] cart_do_checkout_after - no \$hookdata[order_hash]",LOGGER_NORMAL);
 		return;
 	}
 
@@ -998,7 +998,7 @@ function cart_install() {
 		logger ('[cart] Install start.',LOGGER_DEBUG);
 	if (cart_dbUpgrade () == UPDATE_FAILED) {
 		notice ('[cart] Install error - Abort installation.');
-		logger ('[cart] Install error - Abort installation.',LOGGER_ERROR);
+		logger ('[cart] Install error - Abort installation.',LOGGER_NORMAL);
 		cart_setsysconfig("status","install error");
 		return;
 	}
