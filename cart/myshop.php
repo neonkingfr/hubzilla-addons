@@ -12,6 +12,8 @@ function cart_myshop_load(){
 	Zotlabs\Extend\Hook::register('cart_myshop_openorders','addon/cart/myshop.php','cart_myshop_openorders',1,99);
 	Zotlabs\Extend\Hook::register('cart_myshop_closedorders','addon/cart/myshop.php','cart_myshop_closedorders',1,99);
 	Zotlabs\Extend\Hook::register('cart_post_myshop_order_markpaid','addon/cart/myshop.php','cart_myshop_order_markpaid',1,99);
+	Zotlabs\Extend\Hook::register('cart_orderpaid','addon/cart/myshop.php','cart_myshop_orderpaid_hook',1,10000);
+        Zotlabs\Extend\Hook::register('cart_after_fulfill','addon/cart/cart.php','cart_myshop_itemfulfilled_hook',1,30000);
 }
 
 function cart_myshop_unload(){
@@ -27,6 +29,8 @@ function cart_myshop_unload(){
 	Zotlabs\Extend\Hook::unregister('cart_myshop_openorders','addon/cart/myshop.php','cart_myshop_openorders');
 	Zotlabs\Extend\Hook::unregister('cart_myshop_closedorders','addon/cart/myshop.php','cart_myshop_closedorders');
 	Zotlabs\Extend\Hook::unregister('cart_post_myshop_order_markpaid','addon/cart/myshop.php','cart_myshop_order_markpaid');
+	Zotlabs\Extend\Hook::unregister('cart_orderpaid','addon/cart/myshop.php','cart_myshop_orderpaid_hook',1,10000);
+        Zotlabs\Extend\Hook::unregister('cart_after_fulfill','addon/cart/cart.php','cart_myshop_itemfulfilled_hook',1,30000);
 }
 
 /* FUTURE/TODO
@@ -160,6 +164,8 @@ function cart_myshop_order(&$pagecontent) {
 	$templateinfo = array('name'=>'myshop_order.tpl','path'=>'addon/cart/');
 	call_hooks('cart_filter_myshop_order',$templateinfo);
 	$template = get_markup_template($templateinfo['name'],$templateinfo['path']);
+        $templatevalues['added_display']=Array("order"=>$order,"content"=>"");
+        call_hooks('cart_addons_myshop_order_display',$templatevalues['added_display']);
 	//HOOK: cart_post_myshop_order
 	$rendered = replace_macros($template, $templatevalues);
 	$pagecontent = $rendered;
@@ -190,10 +196,14 @@ function cart_myshop_order_markpaid () {
 		return;
 	}
 
+
+}
+
+function cart_myshop_orderpaid_hook (&$hookdata) {
+        $orderhash=$hookdata["order"]["order_hash"];
 	$order_meta=cart_getorder_meta ($orderhash);
 	$order_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Marked Paid";
 	cart_updateorder_meta($order_meta,$orderhash);
-
 }
 
 function cart_myshop_item_fulfill () {
@@ -229,10 +239,13 @@ function cart_myshop_item_fulfill () {
 		return;
 	}
 
+}
+
+function cart_myshop_itemfulfilled_hook (&$hookdata) {
+        $orderhash=$hookdata["item"]["order_hash"];
 	$item_meta=cart_getitem_meta ($itemid,$orderhash);
 	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Manual Fulfillment";
 	cart_updateitem_meta($itemid,$item_meta,$orderhash);
-
 }
 
 function cart_myshop_clear_item_exception () {
@@ -363,9 +376,9 @@ function cart_myshop_get_allorders ($search=null,$limit=100000,$offset=0) {
   *   [""]
 ***/
   $seller_hash=get_observer_hash();
-  $r=q("select distinct cart_orders.order_hash from cart_orders,cart_orderitems
+  $r=q("select distinct cart_orders.order_hash,cart_orders.id from cart_orders,cart_orderitems
         where cart_orders.order_hash = cart_orderitems.order_hash and
-        seller_channel = '%s'
+        seller_channel = '%s' ORDER BY cart_orders.id
         limit %d offset %d",
       dbesc($seller_hash),
       intval($limit), intval($offset));

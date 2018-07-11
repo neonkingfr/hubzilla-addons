@@ -75,5 +75,9 @@
       </div>
 
     </div>
+
+    <div>
+    {{$added_display.content}}
+    </div>
   </div>
 </div>
