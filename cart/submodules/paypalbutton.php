@@ -371,12 +371,13 @@ class Cart_paypalbutton {
         logger("[cart-ppbutton] - Fulfill: ".print_r($item,true),LOGGER_DEBUG);
         if (!$item["item_fulfilled"]) {
           $itemtofulfill=Array('order_hash'=>$orderhash,'id'=>$item["id"]);
+          logger("[cart-ppbutton] FULFILL ITEM: ".print_r($itemtofulfill,true),LOGGER_DEBUG);
           cart_do_fulfillitem ($itemtofulfill);
           if (isset($itemtofulfill["error"])) {
               $hookdata["errors"][]=$itemtofulfill["error"];
               $item_meta=cart_getitem_meta ($item["id"],$orderhash);
               $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Auto Fulfillment Error: ".$itemtofulfill["error"];
-              cart_updateitem_meta($itemid,$item_meta,$orderhash);
+              cart_updateitem_meta($item["id"],$item_meta,$orderhash);
           }
         }
       }

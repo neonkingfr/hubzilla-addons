@@ -365,7 +365,7 @@ class Cart_hzservices {
     $buyer_channel = xchan_fetch(Array("hash"=>$buyer_xchan));
     logger("[cart-hzservices] seller_channel: ".print_r($seller_chaninfo,true),LOGGER_DEBUG);
     logger("[cart-hzservices] buyer_channel: ".print_r($buyer_channel,true),LOGGER_DEBUG);
-    $skus=get_pconfig(local_channel(),'cart-hzservices','skus');
+    $skus=get_pconfig(App::$profile['uid'],'cart-hzservices','skus');
     $skus = $skus ? cart_maybeunjson($skus) : Array();
     $sku = $calldata["item"]["item_sku"];
 
