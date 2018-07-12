@@ -1231,7 +1231,7 @@ function cart_post_add_item () {
         $newitem["item_qty"]=$qty;
 
 	$hookdata=Array("content"=>'',"iteminfo"=>$newitem);
-        notice("ADD: ".print_r($newitem,true).EOL);
+//        notice("ADD: ".print_r($newitem,true).EOL);
 	call_hooks('cart_do_additem',$hookdata);
 }
 
