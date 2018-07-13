@@ -3,6 +3,7 @@
 </center>
 
 {{include file="./basic_cart.tpl"}}
+<div class="section-content-wrapper">
 <div class="center">
     <p>Print and send a copy of this invoice along with your check
     or money order to:</p>
@@ -19,3 +20,5 @@
 <h3>This order has been confirmed and is awaiting payment.</h3>
 <h4><a href="{{$finishedurl}}">{{$finishedtext}}</a></h4>
 {{/if}}
+</div>
+</div>

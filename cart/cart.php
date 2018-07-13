@@ -322,6 +322,28 @@ function cart_additem_hook (&$hookdata) {
         logger('[cart] post insert r = '.print_r($r,true));
 }
 
+function cart_removeitem_hook(&$hookdata) {
+
+        $order = $hookdata["order"];
+	$item = $hookdata["item"];
+
+        logger ("[cart] removeitem_hook - hookdata: " . print_r($hookdata, true));
+
+	q("delete from cart_orderitems where order_hash = '%s' and item_sku = '%s'",
+		dbesc($order['order_hash']),
+		dbesc($item['item_sku'])
+	);
+
+	$r = q("select count(*) as total from cart_orderitems where order_hash = '%s'",
+		dbesc($order['order_hash'])
+	);
+	if(! $r[0]['total']) {
+		q("delete from cart_orders where order_hash = '%s'",
+			dbesc($order['order_hash'])
+		);
+	}
+}
+
 //function cart_do_additem (array $iteminfo,&$c) {
 function cart_do_additem (&$hookdata) {
 
@@ -429,6 +451,132 @@ function cart_do_additem (&$hookdata) {
 	}
         notice (t('[cart] Item Added').EOL);
         logger ("[cart] Added Item: ".print_r($calldata,true),LOGGER_DEBUG);
+}
+
+function cart_do_removeitem(&$hookdata) {
+	$startcontent = $hookdata['content'];
+	$iteminfo = $hookdata['iteminfo'];
+	$cart_itemtypes = cart_getitemtypes();
+	$required = ['item_sku'];
+
+	foreach($required as $key) {
+		if(!array_key_exists($key, $iteminfo)) {
+			$hookdata['content'] = $startcontent;
+			$hookdata['errorcontent'][] = '';
+			$hookdata['error'][] = '[cart] Cannot remove item, missing required parameter.';
+			return;
+		}
+	}
+
+	$order = cart_loadorder(cart_getorderhash(true));
+
+	logger('[cart] cart_do_removeitem ITEMINFO: ' . print_r($iteminfo, true), LOGGER_DEBUG);
+	logger('[cart] cart_do_removeitem cart_itemtypes: ' . print_r($cart_itemtypes, true), LOGGER_DEBUG);
+
+	$itemtype = ((isset($iteminfo['item_type'])) ? $iteminfo['item_type'] : null);
+
+	if($itemtype && !in_array($iteminfo['item_type'], $cart_itemtypes)) {
+		unset($iteminfo['item_type']);
+	}
+
+	$calldata['order'] = $order;
+	$calldata['item'] = $iteminfo;
+
+	$itemtype = ((isset($calldata['item']['item_type'])) ? $calldata['item']['item_type'] : null);
+
+	if($itemtype) {
+		$itemtypehook = 'cart_order_after_removeitem_' . $itemtype;
+		call_hooks($itemtypehook, $calldata);
+		$hookdata['content'] .= ((isset($calldata['content'])) ? $calldata['content'] :'');
+		unset($calldata['content']);
+		if (isset($calldata['error']) && $calldata['error'] != null) {
+			$hookdata['content'] = $startcontent;
+			$hookdata['errorcontent'][] = isset($calldata['errorcontent']) ? $calldata['errorcontent'] : null;
+			$hookdata['error'][] = $calldata['error'];
+			unset($calldata['error']);
+			return;
+		}
+	}
+
+	if (!isset($calldata['item'])) {
+		return;
+	}
+
+	call_hooks('cart_order_after_removeitem', $calldata);
+
+	$hookdata['content'] .= isset($calldata['content']) ? $calldata['content'] : '';
+	unset($calldata['content']);
+
+	if(isset($calldata['error']) && $calldata['error'] != null) {
+		$hookdata['content'] = $startcontent;
+		$hookdata['errorcontent'][] = ((isset($calldata['errorcontent'])) ? $calldata['errorcontent'] : null);
+		$hookdata['error'][] = $calldata['error'];
+		unset($calldata['error']);
+		return;
+	}
+
+	if (!isset($calldata['item'])) {
+		return;
+	}
+
+	if ($itemtype) {
+		$itemtypehook = 'cart_order_removeitem_' . $itemtype;
+		call_hooks($itemtypehook, $calldata);
+		$hookdata['content'] .= ((isset($calldata['content'])) ? $calldata['content'] : '');
+		unset($calldata['content']);
+		if (isset($calldata['error']) && $calldata['error']!=null) {
+			$hookdata['content'] = $startcontent;
+			$hookdata['errorcontent'][] = isset($calldata['errorcontent']) ? $calldata['errorcontent'] : null;
+			$hookdata['error'][] = $calldata['error'];
+			unset($calldata['error']);
+		}
+	}
+
+	if (!isset($calldata['item'])) {
+		return;
+	}
+
+	logger('[cart] call_hooks[cart_order_removeitem] calldata: ' . print_r($calldata, true));
+
+	call_hooks('cart_order_removeitem', $calldata);
+
+	$hookdata['content'] .= ((isset($calldata['content'])) ? $calldata['content'] : '');
+	unset($calldata['content']);
+
+	if(isset($calldata['error']) && $calldata['error'] != null) {
+		$hookdata['content'] = $startcontent;
+		$hookdata['errorcontent'][] = isset($calldata['errorcontent']) ? $calldata['errorcontent'] : null;
+		$hookdata['error'][] = $calldata['error'];
+		unset($calldata['error']);
+		return;
+	}
+
+	if($itemtype) {
+		$itemtypehook = 'cart_order_after_removeitem_' . $itemtype;
+		call_hooks($itemtypehook,$calldata);
+		$hookdata['content'] .= ((isset($calldata['content'])) ? $calldata['content'] : '');
+		unset($calldata['content']);
+		if(isset($calldata['error']) && $calldata['error']!=null) {
+			$hookdata['content'] = $startcontent;
+			$hookdata['errorcontent'][] = ((isset($calldata['errorcontent'])) ? $calldata['errorcontent'] : null);
+			$hookdata['error'][] = $calldata['error'];
+			unset($calldata['error']);
+		}
+	}
+
+	call_hooks('cart_order_after_removeitem', $calldata);
+	$hookdata['content'] .= ((isset($calldata['content'])) ? $calldata['content'] : '');
+
+	unset($calldata['content']);
+	if(isset($calldata['error']) && $calldata['error'] != null) {
+		$hookdata['content'] = $startcontent;
+		$hookdata['errorcontent'][] = ((isset($calldata['errorcontent'])) ? $calldata['errorcontent'] : null);
+		$hookdata['error'][] = $calldata['error'];
+		unset($calldata['error']);
+	}
+
+	notice (t('[cart] Item Removed') . EOL);
+	logger ('[cart] Removed Item: '. print_r($calldata, true), LOGGER_DEBUG);
 }
 
 function cart_getorder_meta ($orderhash=null) {
@@ -1030,7 +1178,9 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/cart.php', 'cart_settings');
 	Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/cart.php', 'cart_settings_post');
 	Zotlabs\Extend\Hook::register('cart_do_additem','addon/cart/cart.php','cart_do_additem');
+	Zotlabs\Extend\Hook::register('cart_do_removeitem','addon/cart/cart.php','cart_do_removeitem');
 	Zotlabs\Extend\Hook::register('cart_order_additem','addon/cart/cart.php','cart_additem_hook');
+	Zotlabs\Extend\Hook::register('cart_order_removeitem','addon/cart/cart.php','cart_removeitem_hook');
 	Zotlabs\Extend\Hook::register('cart_do_updateitem','addon/cart/cart.php','cart_do_updateitem');
 	Zotlabs\Extend\Hook::register('cart_order_updateitem','addon/cart/cart.php','cart_updateitem_hook');
 	Zotlabs\Extend\Hook::register('cart_checkout','addon/cart/cart.php','cart_checkout_hook');
@@ -1042,6 +1192,7 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('cart_display_after','addon/cart/cart.php','cart_display_totals',1,99);
 	Zotlabs\Extend\Hook::register('cart_mod_content','addon/cart/cart.php','cart_mod_content',1,99);
 	Zotlabs\Extend\Hook::register('cart_post_add_item','addon/cart/cart.php','cart_post_add_item');
+	Zotlabs\Extend\Hook::register('cart_post_remove_item','addon/cart/cart.php','cart_post_remove_item');
 	Zotlabs\Extend\Hook::register('cart_checkout_start','addon/cart/cart.php','cart_checkout_start');
 	Zotlabs\Extend\Hook::register('cart_post_checkout_choosepayment','addon/cart/cart.php','cart_post_choose_payment',1,32000);
 	Zotlabs\Extend\Hook::register('cart_aside_filter','addon/cart/cart.php','cart_render_aside',1,10000);
@@ -1073,7 +1224,9 @@ function cart_unload(){
 	Zotlabs\Extend\Hook::unregister('feature_settings', 'addon/cart/cart.php', 'cart_settings');
 	Zotlabs\Extend\Hook::unregister('feature_settings_post', 'addon/cart/cart.php', 'cart_settings_post');
 	Zotlabs\Extend\Hook::unregister('cart_do_additem','addon/cart/cart.php','cart_do_additem');
+	Zotlabs\Extend\Hook::unregister('cart_do_removeitem','addon/cart/cart.php','cart_do_removeitem');
 	Zotlabs\Extend\Hook::unregister('cart_order_additem','addon/cart/cart.php','cart_additem_hook');
+	Zotlabs\Extend\Hook::unregister('cart_order_removeitem','addon/cart/cart.php','cart_removeitem_hook');
 	Zotlabs\Extend\Hook::unregister('cart_do_updateitem','addon/cart/cart.php','cart_do_updateitem');
 	Zotlabs\Extend\Hook::unregister('cart_order_updateitem','addon/cart/cart.php','cart_updateitem_hook');
 	Zotlabs\Extend\Hook::unregister('cart_checkout','addon/cart/cart.php','cart_checkout_hook');
@@ -1085,6 +1238,7 @@ function cart_unload(){
 	Zotlabs\Extend\Hook::unregister('cart_display_after','addon/cart/cart.php','cart_display_totals');
 	Zotlabs\Extend\Hook::unregister('cart_mod_content','addon/cart/cart.php','cart_mod_content');
 	Zotlabs\Extend\Hook::unregister('cart_post_add_item','addon/cart/cart.php','cart_post_add_item');
+	Zotlabs\Extend\Hook::unregister('cart_post_remove_item','addon/cart/cart.php','cart_post_remove_item');
 	Zotlabs\Extend\Hook::unregister('cart_checkout_start','addon/cart/cart.php','cart_checkout_start');
 	Zotlabs\Extend\Hook::unregister('cart_post_checkout_choosepayment','addon/cart/cart.php','cart_post_choose_payment');
 	Zotlabs\Extend\Hook::unregister('cart_aside_filter','addon/cart/cart.php','cart_render_aside');
@@ -1231,8 +1385,24 @@ function cart_post_add_item () {
         $newitem["item_qty"]=$qty;
 
 	$hookdata=Array("content"=>'',"iteminfo"=>$newitem);
-//        notice("ADD: ".print_r($newitem,true).EOL);
 	call_hooks('cart_do_additem',$hookdata);
+}
+
+function cart_post_remove_item() {
+	$items = [];
+
+	call_hooks('cart_get_catalog', $items);
+
+	$item_sku = preg_replace('[^0-9A-Za-z\-]', '', $_POST["remove"]);
+	$rm_item = $items[$item_sku];
+	logger("[cart] cart_post_remove_item newitem: " . print_r($rm_item, true), LOGGER_DEBUG);
+
+	$hookdata = [
+		'content' => '',
+		'iteminfo' => $rm_item
+	];
+
+	call_hooks('cart_do_removeitem', $hookdata);
 }
 
 function cart_post(&$a) {
@@ -1343,13 +1513,34 @@ function cart_pagecontent($a=null) {
 
 		call_hooks('cart_get_catalog',$items);
 		call_hooks('cart_filter_catalog_display',$items);
+
+		$total_qtty = 0;
+		$orderhash = cart_getorderhash(false);
+		if ($orderhash) {
+			$order = cart_loadorder($orderhash);
+
+			$x = [];
+			foreach($order['items'] as $oitem) {
+				if(array_key_exists($oitem['item_sku'], $items)) {
+					$x[$oitem['item_sku']]++;
+				}
+				$items[$oitem['item_sku']]['order_qtty'] = $x[$oitem['item_sku']];
+			}
+
+			$total_qtty = cart_get_order_total_qtty($orderhash);
+		}
+
 		if (count($items)<1) {
 			return "<H1>Catalog has no items</H1>";
 		}
 		$templateinfo = array('name'=>'basic_catalog.tpl','path'=>'addon/cart/');
 		call_hooks('cart_filter_catalogtemplate',$templateinfo);
 		$template = get_markup_template($templateinfo['name'],$templateinfo['path']);
-		return replace_macros($template, array('$items'	=> $items ));
+		return replace_macros($template, array(
+			'$items' => $items,
+			'$total_qtty' => $total_qtty,
+			'$sellernick' => $sellernick
+		));
 	}
 
 	if ((argc() >= 3) && (argv(2) == 'checkout')) {
@@ -1370,7 +1561,7 @@ function cart_pagecontent($a=null) {
                 //logger("[cart] HOOK ($hookname) : ".print_r($order,true));
 		if ($order["checkoutdisplay"]=='' && argc(3)!='start') {
 			notice(t("An unknown error has occurred Please start again.") . EOL );
-			//goaway(z_root() . '/cart/' . $sellernick . '/checkout/start');
+			goaway(z_root() . '/cart/' . $sellernick . '/checkout/start');
 		}
 		return $order["checkoutdisplay"];
 	}
@@ -1411,19 +1602,29 @@ function cart_del_aside ($slug) {
 }
 
 function cart_render_aside (&$aside) {
+	$rendered = '';
+	$orderhash = cart_getorderhash(false);
+	$itemscount = cart_get_order_total_qtty($orderhash);
 
-	$rendered='';
-  $orderhash = cart_getorderhash(false);
-	if ($orderhash) {
-		$order=cart_loadorder($orderhash);
-		$itemcount = count($order["items"]);
-		$rendered .= "<li><a href='".z_root() . '/cart/' . argv(1) . '/checkout/start'."'>Checkout (".$itemcount." items)</a></li>";
+	if($itemscount) {
+		$rendered .= "<li><a href='".z_root() . '/cart/' . argv(1) . '/checkout/start'."'>Checkout (" . $itemscount . " items)</a></li>";
 	}
-	$templatevalues['content']=$rendered;
-  $template = get_markup_template('cart_aside.tpl','addon/cart/');
-  $rendered = replace_macros($template, $templatevalues);
-  $rendered .= $aside;
-  $aside = $rendered;
+
+	$templatevalues['content'] = $rendered;
+	$template = get_markup_template('cart_aside.tpl', 'addon/cart/');
+	$rendered = replace_macros($template, $templatevalues);
+	$rendered .= $aside;
+	$aside = $rendered;
+}
+
+function cart_get_order_total_qtty($orderhash) {
+	if(! $orderhash)
+		return;
+
+	$order = cart_loadorder($orderhash);
+	$itemcount = count($order['items']);
+
+	return $itemcount;
 }
 
 function cart_checkout_pay (&$hookdata) {
@@ -1469,20 +1670,25 @@ function cart_checkout_start (&$hookdata) {
 	 * NOTE: Slugs can only contain the characters A-Za-z0-9_-
 	 */
 
-	 $orderhash = cart_getorderhash(false);
+	$orderhash = cart_getorderhash(false);
 
-	 if (!$orderhash) {
-		 return "<h1>".t("No Order Found")."</h1>";
-	 }
+	if (!$orderhash) {
+		return "<h1>".t("No Order Found")."</h1>";
+	}
 
-	 $ordermeta = cart_getorder_meta($orderhash);
-	 unset($ordermeta["paytype"]);
-	 cart_updateorder_meta($ordermeta,$orderhash);
-         $hookdata["order_meta"]=$ordermeta;
+	$ordermeta = cart_getorder_meta($orderhash);
+	unset($ordermeta["paytype"]);
+	cart_updateorder_meta($ordermeta,$orderhash);
+	$hookdata["order_meta"]=$ordermeta;
 	call_hooks('cart_before_checkout',$hookdata);
 
 	$template = get_markup_template('basic_checkout_start.tpl','addon/cart/');
-        $hookdata["links"]["checkoutlink"]= z_root() . '/cart/' . argv(1) . '/checkout/start?cart='.$order["order_hash"];
+
+	$nick = App::$profile['channel_address'];
+
+	$hookdata["links"]["cataloglink"] = z_root() . '/cart/' . $nick . '/catalog';
+	$hookdata["links"]["checkoutlink"] = z_root() . '/cart/' . $nick . '/checkout/start?cart='.$order["order_hash"];
+
 	$display = replace_macros($template, $hookdata);
 
 	$hookdata["checkoutdisplay"] = $display;

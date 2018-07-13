@@ -5,6 +5,7 @@
 
 {{include file="../../../view/tpl/basic_cart.tpl"}}
 
+<div class="section-content-wrapper">
 {{if !$order.checkedout}}
 
 <div id="paypal-button"></div>
@@ -30,3 +31,6 @@
 <h3>This order has been confirmed and is awaiting payment.</h3>
 <h4><a href="{{$finishedurl}}">{{$finishedtext}}</a></h4>
 {{/if}}
+</div>
+</div>
+
