@@ -3,13 +3,24 @@
 {{else}}
 <div><span style="font-weight:bold;">Item Fulfilled</span></div>
 {{/if}}
-<div class="cart-myshop-itemfulfill-form">
+<div style="width:100%;">
+<div class="cart-myshop-itemfulfill-form" style="float:left;">
 <form method="post">
 <input type=hidden name="form_security_token" value="{{$security_token}}">
 <input type="hidden" name="cart_posthook" value="myshop_item_fulfill">
 <input type="hidden" name="itemid" value="{{$item.id}}">
-<button class="btn btn-primary" type="submit" name="cart-myshop-fullfill-item" id="newchannel-submit-button" value="{{$item.item_sku}}">Fulfill</button>
+<button class="btn btn-primary" type="submit" name="cart-myshop-fullfill-item" id="item-{{$item.id}}-fulfill-button" value="{{$item.item_sku}}">Fulfill</button>
 </form>
+</div>
+<div class="cart-myshop-itemcancel-form" style="float:left;">
+<form method="post">
+<input type=hidden name="form_security_token" value="{{$security_token}}">
+<input type="hidden" name="cart_posthook" value="myshop_item_cancel">
+<input type="hidden" name="itemid" value="{{$item.id}}">
+<button class="btn btn-primary" type="submit" name="cart-myshop-cancel-item" id="item-{{$item.id}}-cancel-button" value="{{$item.item_sku}}">Cancel</button>
+</form>
+</div>
+<div style="clear:both;"></div>
 </div>
 {{if $item.item_fulfilled}}<div class="warning">Warning: May result in duplicate product being sent.</div>{{/if}}
 {{if $item.item_exception}}<div class="warning">Item Exception: Please review notes.</div>

@@ -60,7 +60,7 @@ class Cart_paypalbutton {
       Zotlabs\Extend\Hook::register('cart_paymentopts','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::register');
       Zotlabs\Extend\Hook::register('cart_addons_myshop_order_display','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::admin_payment_display');
 
-      notice('Loaded submodule: paypalbutton'.EOL);
+      //notice('Loaded submodule: paypalbutton'.EOL);
     }
 
     static public function unload () {
@@ -75,7 +75,7 @@ class Cart_paypalbutton {
       Zotlabs\Extend\Hook::unregister('cart_post_custom_paypal_buttonhook_execute','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::buttonhook_execute');
       Zotlabs\Extend\Hook::unregister('cart_paymentopts','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::register');
       Zotlabs\Extend\Hook::unregister('cart_addons_myshop_order_display','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::admin_payment_display');
-      notice('UNLoaded submodule: paypalbutton'.EOL);
+      //notice('UNLoaded submodule: paypalbutton'.EOL);
 
     }
 
@@ -128,6 +128,12 @@ class Cart_paypalbutton {
                    (isset($paypalbutton_productionsecret) ? $paypalbutton_productionsecret : ''),
                    '',''
                    )));
+     $paypalbutton_productionsecret = get_pconfig ($id,'cart','paypalbutton_currency');
+     $sc .= replace_macros(get_markup_template('field_input.tpl'),array(
+                  '$field'     => array ('paypalbutton_currency', t('Paypal Currency (See: https://developer.paypal.com/docs/classic/mass-pay/integration-guide/currency_codes/)'),
+                  (isset($paypalbutton_currency) ? $paypalbutton_currency : 'USD'),
+                  '',''
+                  )));
       $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
                  '$addon' 	=> array('cart-ppbutton',
                    t('Cart - Paypal Addon'), '',
@@ -160,6 +166,9 @@ class Cart_paypalbutton {
       set_pconfig( local_channel(), 'cart', 'paypalbutton_productionsecret', $production_secret);
       $paypalbutton_production = isset($_POST['paypalbutton_production']) ? intval($_POST['paypalbutton_production']) : 0;
       set_pconfig( local_channel(), 'cart', 'paypalbutton_production', $paypalbutton_production);
+      //$paypalbutton_productionsecret = get_pconfig ($id,'cart','paypalbutton_currency');
+      $paypalbutton_currency = isset($_POST['paypalbutton_currency']) ? $_POST['paypalbutton_currency'] : 'USD';
+      set_pconfig( local_channel(), 'cart', 'paypalbutton_currency', $paypalbutton_currency);
 
 /*
   @TODO: Add paypal specific config $options
@@ -211,7 +220,6 @@ class Cart_paypalbutton {
       if (!$credentials) {
         $credentials=Cart_paypalbutton::paypal_getcredentials();
       }
-      //logger("[cart-ppbutton] paypal_post credentials: ".print_r($credentials,true),LOGGER_DEBUG);
       $paypal_apiurl=$credentials["url"].$endpoint;
       $data=$data_array;
       $curl = curl_init($paypal_apiurl);
@@ -242,8 +250,8 @@ class Cart_paypalbutton {
       $headers = Cart_paypalbutton::http_parse_headers(substr ($result, 0, $header_len));
       $ppdata = substr ($result, $header_len);
       $ppdata = cart_maybeunjson($ppdata);
-      //logger("[cart-ppbutton] PAYPAL POST: (".$paypal_apiurl.") \n      Headers: ".print_r(curl_getinfo($curl,CURLINFO_HEADER_OUT),true)."\n      Data: ".$data,LOGGER_DEBUG);
-      //logger("[cart-ppbutton] Paypal Post Response: (".$paypal_apiurl.") Headers: ".print_r($headers,true)."\nDATA: ".print_r($ppdata,true),LOGGER_DEBUG);
+      logger("[cart-ppbutton] PAYPAL POST: (".$paypal_apiurl.") \n      Headers: ".print_r(curl_getinfo($curl,CURLINFO_HEADER_OUT),true)."\n      Data: ".$data,LOGGER_DATA);
+      logger("[cart-ppbutton] Paypal Post Response: (".$paypal_apiurl.") Headers: ".print_r($headers,true)."\nDATA: ".print_r($ppdata,true),LOGGER_DATA);
       if ($responsecode >= 200 && $responsecode <= 300) {
         $success=true;
       } else {
@@ -287,9 +295,8 @@ class Cart_paypalbutton {
     }
 
     static function checkout (&$hookdata) {
-      //header("Content-Security-Policy: default-src 'self'; script-src https://www.paypalobjects.com/*");
-      header("X-DM42-Test: default-src 'self'; script-src https://www.paypalobjects.com/*");
       $paypal_environment=Cart_paypalbutton::check_enabled();
+      $paypal_currency=get_pconfig($page_uid,'cart','paypalbutton_currency');
 
       $page_uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
       $orderhash = cart_getorderhash(false);
@@ -302,7 +309,8 @@ class Cart_paypalbutton {
       $order["finishedurl"]= z_root() . '/cart/' . $nick . '/order/'.$order["order_hash"];
       $order["links"]["checkoutlink"]= z_root() . '/cart/' . $nick . '/checkout/start?cart='.$order["order_hash"];
       $order["paypalenv"]=$paypal_environment;
-      //logger("PAYPAL CHECKOUT: TEMPLATEDATA = ".print_r($order,true),LOGGER_DEBUG);
+      $order["currency"]=$paypal_currency;
+      Zotlabs\Extend\Hook::insert('content_security_policy', 'Cart_paypalbutton::paypal_CSP',1);
       $template = get_markup_template('basic_checkout_ppbutton.tpl','addon/cart/submodules/');
       $display = replace_macros($template, $order);
 
@@ -310,6 +318,10 @@ class Cart_paypalbutton {
 
       //TODO: Currency Selection in Plugin Settings
 
+    }
+
+    static function paypal_CSP(&$hookdata) {
+      $hookdata["script-src"][]="www.paypalobjects.com";
     }
 
     static function buttonhook_execute(&$hookdata){
@@ -327,26 +339,28 @@ class Cart_paypalbutton {
 
       call_hooks('cart_calc_totals',$order);
 
+      $paypal_currency=get_pconfig($page_uid,'cart','paypalbutton_currency');
+
       $payment["body"]=Array (
         'payer_id' => $_POST["payerID"],
         'transactions' => Array (
-          Array( 'amount'=> 
+          Array( 'amount'=>
             Array('total'=>$order["totals"]["OrderTotal"],
-              'currency'=>"USD"
+              'currency'=>$paypal_currency
             )
             )
           ),
       );
       $paymenturl="/v1/payments/payment/".$_POST["paymentID"]."/execute";
       $paymentresponse=Cart_paypalbutton::paypal_post(cart_maybejson($payment["body"]),null,$paymenturl,"application/json");
-      logger("[cart-ppbutton] PAYMENT EXECUTE: ".print_r($payment,true),LOGGER_DEBUG);
+      logger("[cart-ppbutton] PAYMENT EXECUTE: ".print_r($payment,true),LOGGER_DATA);
       $ordermeta = cart_getorder_meta($orderhash);
       $timestamp = time();
       $ordermeta["paypal_button_history"][$timestamp]["resquest"]=$payment;
       $ordermeta["paypal_button_history"][$timestamp]["response"]=$paymentresponse;
       $ordermeta["paypal_button"]["mostrecent"]=$timestamp;
       cart_updateorder_meta ($ordermeta,$orderhash);
-      logger("[cart-ppbutton] PAYMENT RESULTS: ".print_r($paymentresponse,true),LOGGER_DEBUG);
+      logger("[cart-ppbutton] PAYMENT RESULTS: ".print_r($paymentresponse,true),LOGGER_DATA);
       if ($paymentresponse["success"]==true) {
         logger("[cart-ppbutton] PAYMENT SUCCESS!",LOGGER_DEBUG);
     	cart_do_checkout ($order);
@@ -365,13 +379,13 @@ class Cart_paypalbutton {
     }
 
     static function fulfill_order(&$hookdata) {
-      logger("[cart-ppbutton] - FULFILLORDER: ".print_r($hookdata,true),LOGGER_DEBUG);
       $orderhash=$hookdata["order_hash"];
+      logger("[cart-ppbutton] - FULFILLORDER: ".print_r($orderhash,true),LOGGER_DEBUG);
       foreach ($hookdata["items"] as $item) {
-        logger("[cart-ppbutton] - Fulfill: ".print_r($item,true),LOGGER_DEBUG);
+        logger("[cart-ppbutton] - Fulfill: ".print_r($item,true),LOGGER_DATA);
         if (!$item["item_fulfilled"]) {
           $itemtofulfill=Array('order_hash'=>$orderhash,'id'=>$item["id"]);
-          logger("[cart-ppbutton] FULFILL ITEM: ".print_r($itemtofulfill,true),LOGGER_DEBUG);
+          logger("[cart-ppbutton] FULFILL ITEM: ".print_r($itemtofulfill,true),LOGGER_DATA);
           cart_do_fulfillitem ($itemtofulfill);
           if (isset($itemtofulfill["error"])) {
               $hookdata["errors"][]=$itemtofulfill["error"];
@@ -389,7 +403,7 @@ class Cart_paypalbutton {
       header("Cache-Control: no-store");
 
       $orderhash = cart_getorderhash(false);
-      logger("PAYPAL CREATE: ".$orderhash,LOGGER_DEBUG);
+      logger("PAYPAL CREATE PAYMENT FOR: ".$orderhash,LOGGER_DEBUG);
 
     	if (!$orderhash) {
     		notice (t('Order not found.') . EOL );
@@ -406,7 +420,7 @@ class Cart_paypalbutton {
         'intent'=>"sale",
         'payer' => Array('payment_method'=>"paypal"),
         'transactions' => Array (
-          Array( 'amount'=> 
+          Array( 'amount'=>
             Array('total'=>$order["totals"]["OrderTotal"],
               'currency'=>"USD"
             )
@@ -418,9 +432,7 @@ class Cart_paypalbutton {
             )
       );
 
-      //logger("PAYPAL CREATE: Payment = ".print_r($payment,true),LOGGER_DEBUG);
       $paymentresponse=Cart_paypalbutton::paypal_post(cart_maybejson($payment["body"]),null,'/v1/payments/payment');
-      //logger("PAYPAL CREATE: Paypal Response = ".print_r($paymentresponse,true),LOGGER_DEBUG);
 
       $ordermeta = cart_getorder_meta($orderhash);
       $timestamp = time();
@@ -429,8 +441,8 @@ class Cart_paypalbutton {
       $ordermeta["paypal_button"]["mostrecent"]=$timestamp;
 
       cart_updateorder_meta ($ordermeta,$orderhash);
-      //logger("PAYPAL CREATE: Request: ".print_r($payment,true),LOGGER_DEBUG);
-      logger("PAYPAL CREATE: Response: ".print_r($paymentresponse,true),LOGGER_DEBUG);
+      logger("PAYPAL CREATE: Request: ".print_r($payment,true),LOGGER_DATA);
+      logger("PAYPAL CREATE: Response: ".print_r($paymentresponse,true),LOGGER_DATA);
       echo json_encode(Array("id"=>$paymentresponse["data"]["id"]));
     }
 
@@ -463,7 +475,7 @@ class Cart_paypalbutton {
 
     	$enabled = get_pconfig(App::$profile['uid'],'cart','paypalbutton_enable');
     	$enabled = isset($enabled) ? $enabled : false;
-            logger ("[cart] PAYPAL BUTTON ($nick , ".$id.") ? ".print_r($enabled,true));
+            logger ("[cart] PAYPAL BUTTON ($nick , ".$id.") ? ".print_r($enabled,true),LOGGER_DEBUG);
     	if ($enabled) {
     		$hookdata["paypalbutton"]=Array('title'=>'PAYPAL','html'=>"<b>Pay with Paypal</b>");
     	}
@@ -486,14 +498,14 @@ class Cart_paypalbutton {
             $paypaldata[$id]["intent"]=isset($entry["data"]["intent"]) ? $entry["data"]["intent"] : null;
             $paypaldata[$id]["state"]=isset($entry["data"]["state"]) ? $entry["data"]["state"] : null;
             $paypaldata[$id]["payer"]=isset($entry["data"]["payer"]["payer_info"]["email"]) ? $entry["data"]["payer"]["payer_info"]["email"] : null;
-            $paypaldata[$id]["amount"]=isset($entry["data"]["transactions"][0]["amount"]["total"]) ? 
+            $paypaldata[$id]["amount"]=isset($entry["data"]["transactions"][0]["amount"]["total"]) ?
                                              $entry["data"]["transactions"][0]["amount"]["total"] : 0;
-            $paypaldata[$id]["currency"]=isset($entry["data"]["transactions"][0]["amount"]["currency"]) ? 
+            $paypaldata[$id]["currency"]=isset($entry["data"]["transactions"][0]["amount"]["currency"]) ?
                                              $entry["data"]["transactions"][0]["amount"]["currency"] : 0;
             $paypaldata[$id]["transactions"]=isset($entry["data"]["transactions"]) ?
-                                             $entry["data"]["transactions"] : 
+                                             $entry["data"]["transactions"] :
                                                 Array();
-            
+
           }
        }
        return $paypaldata;
@@ -507,7 +519,7 @@ class Cart_paypalbutton {
         //$hookdata["content"].="<div><pre>".print_r($order["order_meta"]["paypal_button_history"],true)."</pre></div>";
         //$hookdata["content"].="<div><pre>".print_r($paypaldata,true)."</pre></div>";
         $hookdata["content"].=$display;
-     
+
     }
 }
 
