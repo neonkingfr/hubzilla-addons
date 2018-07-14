@@ -128,11 +128,11 @@ class Cart_paypalbutton {
                    (isset($paypalbutton_productionsecret) ? $paypalbutton_productionsecret : ''),
                    '',''
                    )));
-     $paypalbutton_productionsecret = get_pconfig ($id,'cart','paypalbutton_currency');
+     $paypalbutton_currency = get_pconfig ($id,'cart','paypalbutton_currency');
      $sc .= replace_macros(get_markup_template('field_input.tpl'),array(
-                  '$field'     => array ('paypalbutton_currency', t('Paypal Currency (See: https://developer.paypal.com/docs/classic/mass-pay/integration-guide/currency_codes/)'),
+                  '$field'     => array ('paypalbutton_currency', t('Paypal Currency'),
                   (isset($paypalbutton_currency) ? $paypalbutton_currency : 'USD'),
-                  '',''
+                  t('See:') . ' https://developer.paypal.com/docs/classic/mass-pay/integration-guide/currency_codes/',''
                   )));
       $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
                  '$addon' 	=> array('cart-ppbutton',
