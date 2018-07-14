@@ -166,7 +166,6 @@ class Cart_paypalbutton {
       set_pconfig( local_channel(), 'cart', 'paypalbutton_productionsecret', $production_secret);
       $paypalbutton_production = isset($_POST['paypalbutton_production']) ? intval($_POST['paypalbutton_production']) : 0;
       set_pconfig( local_channel(), 'cart', 'paypalbutton_production', $paypalbutton_production);
-      //$paypalbutton_productionsecret = get_pconfig ($id,'cart','paypalbutton_currency');
       $paypalbutton_currency = isset($_POST['paypalbutton_currency']) ? $_POST['paypalbutton_currency'] : 'USD';
       set_pconfig( local_channel(), 'cart', 'paypalbutton_currency', $paypalbutton_currency);
 
@@ -295,10 +294,10 @@ class Cart_paypalbutton {
     }
 
     static function checkout (&$hookdata) {
+      $page_uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
       $paypal_environment=Cart_paypalbutton::check_enabled();
       $paypal_currency=get_pconfig($page_uid,'cart','paypalbutton_currency');
 
-      $page_uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
       $orderhash = cart_getorderhash(false);
       $nick = argv(1);
       $ppbutton_payopts = get_pconfig($page_uid,'cart','paypalbutton_payopts');
@@ -315,8 +314,6 @@ class Cart_paypalbutton {
       $display = replace_macros($template, $order);
 
       $hookdata["checkoutdisplay"] = $display;
-
-      //TODO: Currency Selection in Plugin Settings
 
     }
 
@@ -339,8 +336,8 @@ class Cart_paypalbutton {
 
       call_hooks('cart_calc_totals',$order);
 
-      $paypal_currency=get_pconfig($page_uid,'cart','paypalbutton_currency');
-
+      $paypal_currency=get_pconfig(App::$profile_uid,'cart','paypalbutton_currency');
+      $paypal_currency=isset($paypal_currency) ? $paypal_currency : 'USD';
       $payment["body"]=Array (
         'payer_id' => $_POST["payerID"],
         'transactions' => Array (
@@ -416,13 +413,15 @@ class Cart_paypalbutton {
 
       call_hooks('cart_calc_totals',$order);
 
+      $paypal_currency=get_pconfig(App::$profile_uid,'cart','paypalbutton_currency');
+      $paypal_currency=isset($paypal_currency) ? $paypal_currency : 'USD';
       $payment["body"]=Array (
         'intent'=>"sale",
         'payer' => Array('payment_method'=>"paypal"),
         'transactions' => Array (
           Array( 'amount'=>
             Array('total'=>$order["totals"]["OrderTotal"],
-              'currency'=>"USD"
+              'currency'=>$paypal_currency
             )
             )
           ),
