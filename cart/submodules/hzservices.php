@@ -21,13 +21,13 @@ class Cart_hzservices {
       Zotlabs\Extend\Hook::register('cart_myshop_menufilter', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::myshop_menuitems',1,1000);
       Zotlabs\Extend\Hook::register('cart_myshop_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemadmin',1,1000);
       Zotlabs\Extend\Hook::register('cart_fulfill_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::fulfill_hzservices',1,1000);
+      Zotlabs\Extend\Hook::register('cart_cancel_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::rollback_hzservices',1,1000);
       Zotlabs\Extend\Hook::register('cart_get_catalog', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::get_catalog',1,1000);
       Zotlabs\Extend\Hook::register('cart_filter_catalog_display', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::filter_catalog_display',1,1000);
       Zotlabs\Extend\Hook::register('cart_post_hzservices_itemedit', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_post',1,1000);
       Zotlabs\Extend\Hook::register('cart_post_hzservices_itemactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_activation_post',1,1000);
       Zotlabs\Extend\Hook::register('cart_post_hzservices_itemdeactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_deactivation_post',1,1000);
       Zotlabs\Extend\Hook::register('cart_submodule_activation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::module_activation',1,1000);
-      notice('Loaded submodule "hzservices"'.EOL);
     }
 
     static public function unload () {
@@ -36,6 +36,7 @@ class Cart_hzservices {
       Zotlabs\Extend\Hook::unregister('cart_myshop_menufilter', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::myshop_menuitems');
       Zotlabs\Extend\Hook::unregister('cart_myshop_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemadmin');
       Zotlabs\Extend\Hook::unregister('cart_fulfill_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::fulfill_hzservices');
+      Zotlabs\Extend\Hook::unregister('cart_cancel_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::rollback_hzservices');
       Zotlabs\Extend\Hook::unregister('cart_get_catalog', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::get_catalog');
       Zotlabs\Extend\Hook::unregister('cart_filter_catalog_display', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::filter_catalog_display');
       Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemedit', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_post');
@@ -80,8 +81,6 @@ class Cart_hzservices {
         return;
 
       if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1 || !isset($_POST['enable_cart_hzservices'])) {
-        notice("Skip hzsvc settings_post".EOL);
-        logger("POSTVARS: ".print_r($_POST,true),LOGGER_DEBUG);
         return;
       }
 
@@ -235,6 +234,10 @@ class Cart_hzservices {
   }
 
   static public function itemedit_activation_post () {
+    if (!check_form_security_token()) {
+  		notice (check_form_security_std_err_msg());
+  		return;
+  	}
     $items=get_pconfig(local_channel(),'cart-hzservices','skus');
     $items = $items ? cart_maybeunjson($items) : Array();
     $sku = isset($_POST["SKU"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_POST["SKU"]) : null;
@@ -288,7 +291,6 @@ class Cart_hzservices {
     } else {
      if ($_POST["del"]) {
         $delcommand = isset($_POST['del']) ? preg_replace("[^a-zA-Z0-9\-]",'',$_POST['del']) : null;
-        notice ("DEL: $delcommand  ".$_POST['del']);
         if ($delcommand) {
           unset($item["activate_commands"][$delcommand]);
         }
@@ -301,6 +303,10 @@ class Cart_hzservices {
 
 
   static public function itemedit_deactivation_post () {
+    if (!check_form_security_token()) {
+  		notice (check_form_security_std_err_msg());
+  		return;
+  	}
     $items=get_pconfig(local_channel(),'cart-hzservices','skus');
     $items = $items ? cart_maybeunjson($items) : Array();
     $sku = isset($_POST["SKU"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_POST["SKU"]) : null;
@@ -342,7 +348,6 @@ class Cart_hzservices {
     } else {
      if ($_POST["del"]) {
         $delcommand = isset($_POST['del']) ? preg_replace("[^a-zA-Z0-9\-]",'',$_POST['del']) : null;
-        notice ("DEL: $delcommand  ".$_POST['del']);
         if ($delcommand) {
           unset($item["deactivate_commands"][$delcommand]);
         }
@@ -363,8 +368,6 @@ class Cart_hzservices {
     $seller_uid = $seller_chaninfo["channel_id"];
     $buyer_xchan = $order["buyer_xchan"];
     $buyer_channel = xchan_fetch(Array("hash"=>$buyer_xchan));
-    logger("[cart-hzservices] seller_channel: ".print_r($seller_chaninfo,true),LOGGER_DEBUG);
-    logger("[cart-hzservices] buyer_channel: ".print_r($buyer_channel,true),LOGGER_DEBUG);
     $skus=get_pconfig(App::$profile['uid'],'cart-hzservices','skus');
     $skus = $skus ? cart_maybeunjson($skus) : Array();
     $sku = $calldata["item"]["item_sku"];
@@ -373,22 +376,20 @@ class Cart_hzservices {
 
     $commandlist = $item["activate_commands"];
     foreach ($commandlist as $command) {
-      logger("[cart-hzservices] Fulfill Command: ".print_r($command,true),LOGGER_DEBUG);
       switch ($command["cmd"]) {
         case "addtoprivacygroup":
           $grouphash = $command["params"]["group"];
           $grouprecord = group_rec_byhash($seller_uid,$grouphash);
           if (!$grouprecord) {
-            $calldata["error"]="Unable to add buyer to group: [Group Not Found] ".$groupname;
-            //return;
-            //continue;
+            $errortext = "Unable to add buyer to group: [Group Not Found] ".$groupname;
+            $calldata["fulfillment_errors"][]=$errortext;
           }
           $groupname = $grouprecord["gname"];
           $r=group_add_member($seller_uid,$groupname,$buyer_xchan);
           if (!$r) {
-            $calldata["error"]="Unable to add buyer to group: ".$groupname;
-            notice ("Unable to add buyer to group".EOL);
-            //return;
+            $errortext = "Unable to add buyer to group: [Add Failed] ".$groupname;
+            $calldata["fulfillment_errors"][]=$errortext;
+            logger($errortext." ORDER: ".$orderhash, LOGGER_NORMAL);
             //continue;
           }
           break;
@@ -397,10 +398,11 @@ class Cart_hzservices {
           $buyer_url=$buyer_channel["address"];
           require_once ('include/follow.php');
           $result=new_contact($seller_chaninfo["channel_id"],$buyer_url,$seller_chaninfo,false, true);
-          logger("[cart-hzservices] new_contact: new_contact(".$seller_chaninfo['channel_id'].",$buyer_url,$seller_chaninfo,false, true);",LOGGER_DEBUG);
           if (!$result["success"]){
-            $calldata["error"]=$result["message"];
-            notice ($result["message"].EOL);
+            $errortext = $result["message"];
+            $calldata["fulfillment_errors"][]=$errortext;
+            logger($errortext." ORDER: ".$orderhash, LOGGER_NORMAL);
+            notice ("There was an error proccessing the order: ".$result["message"].EOL);
             return;
           }
           break;
@@ -410,48 +412,65 @@ class Cart_hzservices {
   }
 
   static public function rollback_hzservices(&$calldata) {
-    //@TODO  - **********Convert to remove from add*************
     $orderhash=$calldata["item"]["order_hash"];
     $order=cart_loadorder($orderhash);
-
+    
     $seller_hash=$order["seller_channel"];
     $seller_chaninfo = channelx_by_hash($seller_hash);
     $seller_address = $seller_chaninfo["xchan_address"];
     $seller_uid = $seller_chaninfo["channel_id"];
     $buyer_xchan = $order["buyer_xchan"];
     $buyer_channel = xchan_fetch(Array("hash"=>$buyer_xchan));
-    logger("BUYER: ".$buyer_channel,LOGGER_DEBUG);
 
-    $items=get_pconfig(local_channel(),'cart-hzservices','skus');
+    $skus=get_pconfig(App::$profile['uid'],'cart-hzservices','skus');
     $skus = $skus ? cart_maybeunjson($skus) : Array();
-    $sku = $calldata["item"]["item_sku"];
+    $itemsku = $calldata["item"]["item_sku"];
+    $sku = $skus[$itemsku];
 
-    $item= isset ($items[$sku]) ? $items[$sku] : null;
-
-    foreach ($item["deactivate_commands"] as $command) {
+    foreach ($sku["deactivate_commands"] as $command) {
       switch ($command["cmd"]) {
         case "rmvfromprivacygroup":
           $grouphash = $command["params"]["group"];
           $grouprecord = group_rec_byhash($seller_uid,$grouphash);
           if (!$grouprecord) {
-            $calldata["error"]="Unable to remove buyer from group: [Group Not Found] ".$groupname;
-            return;
+            $errortext = "Unable to remove buyer from group: [Group Not Found] ".$groupname;
+            $calldata["rollback_errors"][]=$errortext;
+            logger($errortext." ORDER: ".$orderhash, LOGGER_NORMAL);
           }
-          $r=group_add_member($seller_uid,$groupname,$buyer_xchan);
+          $r=group_rmv_member($seller_uid,$groupname,$buyer_xchan);
           if (!$r) {
-            $calldata["error"]="Unable to remove buyer from group: ".$groupname;
-            return;
+            $errortext = "Unable to remove buyer from group: ".$groupname;
+            $calldata["rollback_errors"][]=$errortext;
+            logger($errortext." ORDER: ".$orderhash, LOGGER_NORMAL);
           }
           break;
         case "rmvconnection":
-          $buyer_url=buyer_channel["xchan_addr"];
-          $result=new_contact($seller_uid,$buyer_url,$seller_chaninfo,false, true);
-          if (!$result["success"]){
-            $calldata["error"]=$result["message"];
-            return;
+          $cn = q("SELECT abook_id from abook where abook_channel = %d and abook_self = 0 and abook_xchan = '%s' limit 1",
+                  intval($seller_uid),
+                  dbesc($buyer_xchan)
+                 );
+          if (!$cn) {
+             continue;
+          }
+
+          $removed=contact_remove(local_channel(), $cn[0]['abook_id']);
+          build_sync_packet($seller_uid,
+            array('abook' => array(array(
+                  'abook_xchan' => $cn[0]['abook_xchan'],
+                  'entry_deleted' => true))
+                 )
+          );
+
+          if (!$removed) {
+            $errortext = "Unable to remove contact";
+            $calldata["rollback_errors"][]=$errortext;
+            logger($errortext." ORDER: ".$orderhash, LOGGER_NORMAL);
           }
           break;
         default:
+            $errortext = "Unknown Command";
+            $calldata["rollback_errors"][]=$errortext;
+            logger($errortext." ORDER: ".$orderhash, LOGGER_NORMAL);
       }
     }
   }
@@ -471,7 +490,6 @@ class Cart_hzservices {
         }
 
     }
-    logger('Cart_hzservices::groupselect: ' . print_r($grps,true), LOGGER_DATA);
 
     $o = replace_macros(get_markup_template('group_selection.tpl'), array(
         '$label' => t('Add to this privacy group'),
@@ -497,10 +515,6 @@ class Cart_hzservices {
     $formelements["submit"]=t("Submit");
     $formelements["uri"]=strtok($_SERVER["REQUEST_URI"],'?').'?SKU='.$sku;
     // item_locked, item_desc, item_price, item_active
-    // @TODO: List current rules
-    // @TODO: Deal with locked items (report only, do not allow changes except for unlock)
-    // @TODO: DEACTIVATION rules
-    // @TODO: Delete delete rule button
     $formelements["itemdetails"].= replace_macros(get_markup_template('field_checkbox.tpl'), array(
   				     '$field'	=> array('item_locked', t('Changes Locked'),
   							 (isset($item["item_locked"]) ? $item["item_locked"] : 0),
