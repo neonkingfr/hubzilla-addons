@@ -213,13 +213,15 @@ function cart_loadorder ($orderhash) {
 
 function cart_getorderhash ($create=false) {
 
-        $query_orderhash = isset($_GET["cart"]) ? $_GET["cart"] : null;
+  $query_orderhash = isset($_GET["cart"]) ? $_GET["cart"] : null;
 	$session_orderhash = isset($_SESSION["cart_order_hash"]) ? $_SESSION["cart_order_hash"] : null;
-        $orderhash = isset($query_orderhash) ? $query_orderhash : $session_orderhash;
-        $session_orderhash = $orderhash;
+  $orderhash = isset($query_orderhash) ? $query_orderhash : $session_orderhash;
+  $session_orderhash = $orderhash;
 	$observerhash = get_observer_hash();
 	if ($observerhash === '') { $observerhash = null; }
 	$cartemail = isset($_SESSION["cart_email_addy"]) ? $_SESSION["cart_email_addy"] : null;
+	$channel=channelx_by_n(\App::$profile_uid);
+	$channel_hash=$channel["channel_hash"];
 
 	if ($orderhash) {
 		$r = q("select * from cart_orders where order_hash = '%s' limit 1",dbesc($orderhash));
@@ -238,42 +240,33 @@ function cart_getorderhash ($create=false) {
 			$orderhash=null;
 		    }
                }
-	} else {
-               logger ("orderhash not in SESSION - search db",LOGGER_DEBUG);
-               $r = q("select * from cart_orders where buyer_xchan = '%s' and order_checkedout is null limit 1",dbesc($observerhash));
+	}
+	if (!$orderhash) {
+      logger ("orderhash not in SESSION - search db",LOGGER_DEBUG);
+      $r = q("select * from cart_orders where
+			           buyer_xchan = '%s'
+	               and seller_channel = '%s'
+                 and order_checkedout is null limit 1",dbesc($observerhash),dbesc($channel_hash));
 
-               if (!$r) {
-		    $orderhash=null;
-                    logger ("no matching orderhash in db",LOGGER_DEBUG);
-               } else {
-		    $order = $r[0];
+      if (!$r) {
+          $orderhash=null;
+          logger ("no matching orderhash in db",LOGGER_DEBUG);
+      } else {
+          $order = $r[0];
+          $orderhash = $order["order_hash"];
+     }
 
-                    $orderhash = $order["order_hash"];
-
-		    if ($order["buyer_xchan"]!=$observerhash) {
-			$orderhash=null;
-		    }
-
-		    if ($order["order_checkedout"]!=null) {
-			$orderhash=null;
-		    }
-               }
-
-        }
+  }
 
 	if (!$orderhash && $create === true) {
 		//$channel=\App::get_channel();
-		$channel=channelx_by_n(\App::$profile_uid);
-		$channel_hash=$channel["channel_hash"];
 		$orderhash=hash('whirlpool',microtime().$observerhash.$channel_hash);
 		q("insert into cart_orders (seller_channel,buyer_xchan,order_hash) values ('%s', '%s', '%s')",
 				dbesc($channel_hash),dbesc($observerhash),dbesc($orderhash));
-
-		$_SESSION["cart_order_hash"]=$orderhash;
 	}
 
+	$_SESSION["cart_order_hash"]=$orderhash;
 	return $orderhash;
-
 }
 
 function cart_additem_hook (&$hookdata) {
