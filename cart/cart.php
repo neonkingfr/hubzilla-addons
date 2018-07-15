@@ -638,6 +638,7 @@ function cart_updateitem_hook (&$hookdata) {
 
 	$params = Array();
 	$dodel=false;
+
 	if (isset($item["item_qty"]) && $item["item_qty"] == 0) {
 		$sql = "delete from cart_orderitems ";
 		$dodel=true;
@@ -684,10 +685,13 @@ function cart_updateitem_hook (&$hookdata) {
 }
 
 function cart_do_updateitem (&$hookdata) {
+
 	$iteminfo=$hookdata["iteminfo"];
+
+
 	$required = Array("id");
 	foreach ($required as $key) {
-		if (!array_key_exists($iteminfo,$key)) {
+		if (!array_key_exists($key, $iteminfo)) {
 			$hookdata["errorcontent"][]="[cart] Cannot update item, missing $key.";
 			$hookdata["error"][]=$calldata["error"];
 			return;
@@ -1177,6 +1181,7 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('cart_display_after','addon/cart/cart.php','cart_display_totals',1,99);
 	Zotlabs\Extend\Hook::register('cart_mod_content','addon/cart/cart.php','cart_mod_content',1,99);
 	Zotlabs\Extend\Hook::register('cart_post_add_item','addon/cart/cart.php','cart_post_add_item');
+	Zotlabs\Extend\Hook::register('cart_post_update_item','addon/cart/cart.php','cart_post_update_item');
 	Zotlabs\Extend\Hook::register('cart_post_remove_item','addon/cart/cart.php','cart_post_remove_item');
 	Zotlabs\Extend\Hook::register('cart_checkout_start','addon/cart/cart.php','cart_checkout_start');
 	Zotlabs\Extend\Hook::register('cart_post_checkout_choosepayment','addon/cart/cart.php','cart_post_choose_payment',1,32000);
@@ -1224,6 +1229,7 @@ function cart_unload(){
 	Zotlabs\Extend\Hook::unregister('cart_display_after','addon/cart/cart.php','cart_display_totals');
 	Zotlabs\Extend\Hook::unregister('cart_mod_content','addon/cart/cart.php','cart_mod_content');
 	Zotlabs\Extend\Hook::unregister('cart_post_add_item','addon/cart/cart.php','cart_post_add_item');
+	Zotlabs\Extend\Hook::unregister('cart_post_update_item','addon/cart/cart.php','cart_post_update_item');
 	Zotlabs\Extend\Hook::unregister('cart_post_remove_item','addon/cart/cart.php','cart_post_remove_item');
 	Zotlabs\Extend\Hook::unregister('cart_checkout_start','addon/cart/cart.php','cart_checkout_start');
 	Zotlabs\Extend\Hook::unregister('cart_post_checkout_choosepayment','addon/cart/cart.php','cart_post_choose_payment');
@@ -1376,6 +1382,29 @@ function cart_post_add_item () {
 	call_hooks('cart_do_additem',$hookdata);
 }
 
+function cart_post_update_item () {
+	$items = [];
+
+	call_hooks('cart_get_catalog', $items);
+
+	$item_sku = preg_replace('[^0-9A-Za-z\-]', '', $_POST["update"]);
+	$newitem = $items[$item_sku];
+
+	logger("[cart] cart_post_update_item newitem: " . print_r($newitem, true), LOGGER_DEBUG);
+
+	$qty = ((isset($_POST['qty'])) ? preg_replace('[^0-9\.]', '', $_POST['qty']) : 1);
+	$id = ((isset($_POST['id'])) ? preg_replace('[^0-9\.]', '', $_POST['id']) : '');
+	$newitem['item_qty'] = $qty;
+	$newitem['id'] = $id;
+
+	$hookdata = [
+		'content' => '',
+		'iteminfo' => $newitem
+	];
+
+	call_hooks('cart_do_updateitem', $hookdata);
+}
+
 function cart_post_remove_item() {
 	$items = [];
 
@@ -1502,7 +1531,7 @@ function cart_pagecontent($a=null) {
 		call_hooks('cart_get_catalog',$items);
 		call_hooks('cart_filter_catalog_display',$items);
 
-		$total_qtty = 0;
+		$total_qty = 0;
 		$orderhash = cart_getorderhash(false);
 		if ($orderhash) {
 			$order = cart_loadorder($orderhash);
@@ -1512,21 +1541,24 @@ function cart_pagecontent($a=null) {
 				if(array_key_exists($oitem['item_sku'], $items)) {
 					$x[$oitem['item_sku']]++;
 				}
-				$items[$oitem['item_sku']]['order_qtty'] = $x[$oitem['item_sku']];
+				$items[$oitem['item_sku']]['order_qty'] = $x[$oitem['item_sku']];
+				$items[$oitem['item_sku']]['order_item_id'] = $oitem['id'];
 			}
 
-			$total_qtty = cart_get_order_total_qtty($orderhash);
+			$total_qty = cart_get_order_total_qty($orderhash);
 		}
+
 
 		if (count($items)<1) {
 			return "<H1>Catalog has no items</H1>";
 		}
+
 		$templateinfo = array('name'=>'basic_catalog.tpl','path'=>'addon/cart/');
 		call_hooks('cart_filter_catalogtemplate',$templateinfo);
 		$template = get_markup_template($templateinfo['name'],$templateinfo['path']);
 		return replace_macros($template, array(
 			'$items' => $items,
-			'$total_qtty' => $total_qtty,
+			'$total_qty' => $total_qty,
 			'$sellernick' => $sellernick
 		));
 	}
@@ -1591,7 +1623,7 @@ function cart_del_aside ($slug) {
 function cart_render_aside (&$aside) {
 	$rendered = '';
 	$orderhash = cart_getorderhash(false);
-	$itemscount = cart_get_order_total_qtty($orderhash);
+	$itemscount = cart_get_order_total_qty($orderhash);
 
 	if($itemscount) {
 		$rendered .= "<li><a href='".z_root() . '/cart/' . argv(1) . '/checkout/start'."'>Checkout (" . $itemscount . " items)</a></li>";
@@ -1604,7 +1636,7 @@ function cart_render_aside (&$aside) {
 	$aside = $rendered;
 }
 
-function cart_get_order_total_qtty($orderhash) {
+function cart_get_order_total_qty($orderhash) {
 	if(! $orderhash)
 		return;
 
