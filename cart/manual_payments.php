@@ -22,6 +22,7 @@ function cart_checkout_complete (&$hookdata) {
 function cart_checkout_manual (&$hookdata) {
 
         $page_uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
+	$nick = App::$profile['channel_address'];
 	$manualpayments = get_pconfig($page_uid,'cart','enable_manual_payments');
 	$manualpayments = isset($manualpayments) ? $manualpayments : false;
 
@@ -44,6 +45,7 @@ function cart_checkout_manual (&$hookdata) {
 	$order["payopts"]=$manualpayopts;
 	$order["finishedtext"]=t("Finished");
 	$order["finishedurl"]= z_root() . '/cart/' . $nick;
+   	$order["links"]["checkoutlink"] = z_root() . '/cart/' . $nick . '/checkout/start?cart='.$order["order_hash"];
         $template = get_markup_template('basic_checkout_manual_confirm.tpl','addon/cart/');
 	$display = replace_macros($template, $order);
 

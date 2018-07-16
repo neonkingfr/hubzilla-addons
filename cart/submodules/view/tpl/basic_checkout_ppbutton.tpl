@@ -7,9 +7,10 @@
 
 <div class="section-content-wrapper">
 {{if !$order.checkedout}}
-
-<div id="paypal-button"></div>
-
+<div class="clearfix">
+<div id="paypal-button" class="float-left mr-2"></div>
+<a href="{{$links.checkoutlink}}" class="float-left p-1">Back to Payment Options</a>
+</div>
 <script>
   paypal.Button.render({
     env: '{{$paypalenv}}',

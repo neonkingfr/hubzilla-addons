@@ -15,6 +15,7 @@
     <input type=hidden name="cart_posthook" value="manual_checkout_confirm">
     <input type=hidden name="orderhash" value="{{$order_hash}}">
     <button class="btn btn-primary" type="submit" name="Confirm" id="cart-submit-button" value="Confirm">Confirm Order</button>
+    <a href="{{$links.checkoutlink}}" class="btn btn-outline-secondary">Back to Payment Options</a>
 </form>
 {{else}}
 <h3>This order has been confirmed and is awaiting payment.</h3>

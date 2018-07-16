@@ -59,14 +59,6 @@
 				<td style="text-align:right;">{{$totals.Payment}}</td>
 			</tr>
 			{{/if}}
-
-			{{**if !$order.checkedout}}
-			<tr>
-				<td></td>
-				<th>Order Not Checked Out</th>
-				<td><a href="{{$links.checkoutlink}}">Check Out</a></td>
-			</tr>
-			{{/if**}}
 		</table>
 	</div>
 	<!-- basic_checkout_*.tpl -->

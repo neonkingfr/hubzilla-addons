@@ -1543,6 +1543,7 @@ function cart_checkout_start (&$hookdata) {
 		return "<h1>".t("No Order Found")."</h1>";
 	}
 
+	$order = cart_loadorder($orderhash);
 	$ordermeta = cart_getorder_meta($orderhash);
 	unset($ordermeta["paytype"]);
 	cart_updateorder_meta($ordermeta,$orderhash);
