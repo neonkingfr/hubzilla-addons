@@ -1233,9 +1233,9 @@ function cart_post_add_item () {
 
 function cart_post_update_item () {
 	$orderhash = cart_getorderhash(false);
-	if (!orderhash) {
-					notice (t("Order Not Found").EOL);
-					return;
+	if (!$orderhash) {
+		notice (t("Order Not Found").EOL);
+		return;
 	}
 
 	$order = cart_loadorder($orderhash);
@@ -1485,6 +1485,7 @@ function cart_get_order_total_qty($orderhash) {
 		return;
 
 	$order = cart_loadorder($orderhash);
+
 	$order_total_qty = 0;
 	foreach($order['items'] as $item) {
 		$order_total_qty = $order_total_qty + $item['item_qty'];
