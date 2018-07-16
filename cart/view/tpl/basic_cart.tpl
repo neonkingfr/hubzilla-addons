@@ -32,7 +32,7 @@
 			<tr>
 				<td colspan=4>
 					{{if !$order_checkedout}}
-					<button class="btn btn-outline-success btn-sm" type="submit" name="Submit" title="Update Cart"><i class="fa fa-check"></i> Update</button>
+					<button class="btn btn-outline-success btn-sm" type="submit" name="Submit" title="Update Cart">Update</button>
 					{{/if}}
 				</td>
 			</tr>

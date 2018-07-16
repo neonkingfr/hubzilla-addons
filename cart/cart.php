@@ -1018,6 +1018,7 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('construct_page', 'addon/cart/cart.php', 'cart_construct_page',1);
 	Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/cart.php', 'cart_settings',1);
 	Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/cart.php', 'cart_settings_post',1);
+	Zotlabs\Extend\Hook::register('channel_apps', 'addon/cart/cart.php', 'cart_channel_apps');
 	Zotlabs\Extend\Hook::register('cart_do_additem','addon/cart/cart.php','cart_do_additem',1);
 	Zotlabs\Extend\Hook::register('cart_order_additem','addon/cart/cart.php','cart_additem_hook',1);
 	Zotlabs\Extend\Hook::register('cart_do_updateitem','addon/cart/cart.php','cart_do_updateitem',1);
@@ -1064,6 +1065,7 @@ function cart_unload(){
 	Zotlabs\Extend\Hook::unregister('construct_page', 'addon/cart/cart.php', 'cart_construct_page');
 	Zotlabs\Extend\Hook::unregister('feature_settings', 'addon/cart/cart.php', 'cart_settings');
 	Zotlabs\Extend\Hook::unregister('feature_settings_post', 'addon/cart/cart.php', 'cart_settings_post');
+	Zotlabs\Extend\Hook::unregister('channel_apps', 'addon/cart/cart.php', 'cart_channel_apps');
 	Zotlabs\Extend\Hook::unregister('cart_do_additem','addon/cart/cart.php','cart_do_additem');
 	Zotlabs\Extend\Hook::unregister('cart_order_additem','addon/cart/cart.php','cart_additem_hook');
 	Zotlabs\Extend\Hook::unregister('cart_do_updateitem','addon/cart/cart.php','cart_do_updateitem');
@@ -1188,6 +1190,17 @@ function cart_plugin_admin(&$a,&$s) {
 				     '$content'	=> $sc));
 */
 
+}
+
+function cart_channel_apps(&$hookdata) {
+	$hookdata['tabs'][] = [
+		'label' => t('Shop'),
+		'url'   => z_root() . '/cart/' . $hookdata['nickname'] . '/catalog',
+		'sel'   => ((argv(0) == 'cart') ? 'active' : ''),
+		'title' => t('Shop'),
+		'id'    => 'cart-tab',
+		'icon'  => 'shopping-cart'
+	];
 }
 
 function cart_getnick () {
