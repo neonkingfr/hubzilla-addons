@@ -78,13 +78,14 @@ function cart_myshop_main (&$pagecontent) {
 function cart_myshop_menu() {
 	$urlroot = '/' . argv(0) . '/' . argv(1) . '/myshop';
 	$openorders=cart_myshop_get_openorders(null,10000,0);
+	$ordercount = cart_myshop_get_ordercount();
 	//$allorders=cart_myshop_get_allorders(null,10000,0);
 	//$closedorders=cart_myshop_get_closedorders(null,10000,0);
         $rendered = '';
 	$rendered .= "<a href='".$urlroot."'>Home</a><BR />";
 	//$rendered .= "<a href='".$urlroot."/openorders'>Open Orders (".count($openorders).")</a><BR />";
 	//$rendered .= "<a href='".$urlroot."/closedorders'>Closed Orders (".count($closedorders).")</a><BR />";
-	$rendered .= "<a href='".$urlroot."/allorders'>All Orders (".count($allorders).")</a><BR />";
+	$rendered .= "<a href='".$urlroot."/allorders'>All Orders (" . $ordercount . ")</a><BR />";
 	call_hooks('cart_myshop_menufilter',$rendered);
         return $rendered;
 }
