@@ -78,8 +78,8 @@ function cart_myshop_main (&$pagecontent) {
 function cart_myshop_menu() {
 	$urlroot = '/' . argv(0) . '/' . argv(1) . '/myshop';
 	$openorders=cart_myshop_get_openorders(null,10000,0);
-	$allorders=cart_myshop_get_allorders(null,10000,0);
-	$closedorders=cart_myshop_get_closedorders(null,10000,0);
+	//$allorders=cart_myshop_get_allorders(null,10000,0);
+	//$closedorders=cart_myshop_get_closedorders(null,10000,0);
         $rendered = '';
 	$rendered .= "<a href='".$urlroot."'>Home</a><BR />";
 	//$rendered .= "<a href='".$urlroot."/openorders'>Open Orders (".count($openorders).")</a><BR />";
@@ -364,17 +364,28 @@ function cart_myshop_aside (&$aside) {
 	$urlroot = '/' . argv(0) . '/' . argv(1) . '/myshop';
 	$rendered .= "<li><a href='".$urlroot."'>Home</a></li>";
         //$openorders=cart_myshop_get_openorders(null,10000,0);
-	$allorders=cart_myshop_get_allorders(null,10000,0);
+	//$allorders=cart_myshop_get_allorders(null,10000,0);
+        $ordercount=cart_myshop_get_ordercount();
 	//$closedorders=cart_myshop_get_closedorders(null,10000,0);
         //$rendered .= "<li><a href='".$urlroot."/openorders'>Open Orders (".count($openorders).")</a></li>";
 	//$rendered .= "<li><a href='".$urlroot."/closedorders'>Closed Orders (".count($closedorders).")</a></li>";
-	$rendered .= "<li><a href='".$urlroot."/allorders'>All Orders (".count($allorders).")</a></li>";
+	$rendered .= "<li><a href='".$urlroot."/allorders'>All Orders (".$ordercount.")</a></li>";
 	$templatevalues["content"]=$rendered;
 	$template = get_markup_template('myshop_aside.tpl','addon/cart/');
 	$rendered = replace_macros($template, $templatevalues);
 	$aside = $rendered . $aside;
 
 	return ($aside);
+}
+
+function cart_myshop_get_ordercount () {
+  $seller_hash=get_observer_hash();
+  $r=q("select count(cart_orders.order_hash) as ordercount from cart_orders where
+        seller_channel = '%s'
+        ",
+      dbesc($seller_hash));
+  if (!$r) {return 0;}
+  return $r[0]["ordercount"];
 }
 
 function cart_myshop_get_allorders ($search=null,$limit=100000,$offset=0) {
