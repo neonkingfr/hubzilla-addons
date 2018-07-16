@@ -1485,9 +1485,12 @@ function cart_get_order_total_qty($orderhash) {
 		return;
 
 	$order = cart_loadorder($orderhash);
-	$itemcount = count($order['items']);
+	$order_total_qty = 0;
+	foreach($order['items'] as $item) {
+		$order_total_qty = $order_total_qty + $item['item_qty'];
+	}
 
-	return $itemcount;
+	return $order_total_qty;
 }
 
 function cart_checkout_pay (&$hookdata) {
