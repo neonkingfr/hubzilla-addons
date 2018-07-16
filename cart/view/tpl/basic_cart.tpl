@@ -8,8 +8,8 @@
 	<div class="section-content-wrapper">
 		<table class="w-100">
 			<tr>
-				<th width=5%>Qty</th>
-				<th width=55%>Description</th>
+				<th width=10%>Qty</th>
+				<th width=50%>Description</th>
 				<th width=20% style="text-align:right;">Price each {{if $currencysymbol}}({{$currencysymbol}}){{/if}}</th>
 				<th width=20% style="text-align:right;">Extended</th>
 			</tr>
@@ -18,21 +18,24 @@
 			{{foreach $items as $item}}
 			<tr>
 				<td>
-          {{if $order_checkedout}}{{$item.item_qty}}
-          {{else}}
-          <input type="text" name="qty-{{$item.id}}" value="{{$item.item_qty}}" size=4>
-          {{/if}}
+				{{if $order_checkedout}}
+				{{$item.item_qty}}
+				{{else}}
+				<input class="form-control form-control-sm" type="text" name="qty-{{$item.id}}" value="{{$item.item_qty}}" style="min-width: 4em;">
+				{{/if}}
 				</td>
 				<td>{{$item.item_desc}}</td>
 				<td style="text-align:right;">{{$item.item_price}}</td>
 				<td style="text-align:right;">{{$item.extended}}</td>
 			</tr>
 			{{/foreach}}
-			{{if !$order_checkedout}}
-        <tr>
-          <td colspan=4><button class="btn btn-outline border-0" type="submit" name="Submit" title="Update Cart">Update</button></td>
-        </tr>
-      {{/if}}
+			<tr>
+				<td colspan=4>
+					{{if !$order_checkedout}}
+					<button class="btn btn-outline-success btn-sm" type="submit" name="Submit" title="Update Cart"><i class="fa fa-check"></i> Update</button>
+					{{/if}}
+				</td>
+			</tr>
                         </form>
 			<tr>
 				<td></td>
