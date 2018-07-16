@@ -197,7 +197,10 @@ function cart_loadorder ($orderhash) {
 	$items=Array();
 	foreach ($r as $key=>$iteminfo) {
 		$items[$iteminfo["id"]]=$iteminfo;
-		$items[$iteminfo["id"]]["extended"]=$iteminfo["item_qty"]*$iteminfo["item_price"];
+                $item=$iteminfo;
+                $itemprice=$items[$iteminfo["id"]]["item_price"];
+		$linetotal=floatval($item["item_qty"])*floatval($itemprice);
+		$items[$iteminfo["id"]]["extended"]=$linetotal;
                 $items[$iteminfo["id"]]["item_meta"]=cart_maybeunjson($iteminfo["item_meta"]);
                 if($iteminfo["item_confirmed"] == false) $flags["confirmed"]=false;
                 if($iteminfo["item_fulfilled"] == false) $flags["fulfilled"]=false;
@@ -668,9 +671,15 @@ function cart_calc_totals(&$hookdata) {
 		$taxtotal = floatval($taxtotal) + floatval($linetax);
 	}
 	$ordertotal = $subtotal+$taxtotal;
+	$order["order_meta"]["totals"]["Tax"]=cart_formatamount($taxtotal);
+	$order["order_meta"]["totals"]["Subtotal"]=cart_formatamount($subtotal);
+	$order["order_meta"]["totals"]["OrderTotal"]=cart_formatamount($ordertotal);
+
+/*
 	$order["order_meta"]["totals"]["Tax"]=number_format(round($taxtotal,2),2);
 	$order["order_meta"]["totals"]["Subtotal"]=number_format(round($subtotal,2),2);
 	$order["order_meta"]["totals"]["OrderTotal"]=number_format(round($ordertotal,2),2);
+*/
 	//Preserve order_meta from overwriting by filter
 	$ordermeta=$order["order_meta"];
 	call_hooks("cart_calc_totals_filter",$order);
@@ -681,57 +690,6 @@ function cart_calc_totals(&$hookdata) {
 	//set return values
         $hookdata["order_meta"]=$ordermeta;
 	$hookdata["totals"]=$order["order_meta"]["totals"];
-}
-
-function cart_do_display (&$hookdata) {
-
-/* *Note: No errors or error messages returned
- */
-	$orderhash=$hookdata["order"]["order_hash"];
-        $cart_itemtypes = cart_getitemtypes();
-
-	$order=cart_loadorder($orderhash);
-	$calldata = Array("order"=>$order,"content"=>null);
-	call_hooks('cart_display_before',$calldata);
-	$hookdata["content"].= isset($calldata["content"]) ? $calldata["content"] : '';
-
-	foreach ($order["items"] as $iteminfo) {
-		$itemtype = isset($iteminfo["item_type"]) ? $iteminfo["item_type"] : null;
-                if ($itemtype && !in_array($iteminfo['item_type'],$cart_itemtypes)) {
-			continue;
-		}
-
-		$calldata = Array('item'=>$iteminfo,'error'=>null,'content'=>null);
-		$itemtype = isset($calldata['item']['item_type']) ? $calldata['item']['item_type'] : null;
-
-		if ($itemtype) {
-			$itemtypehook='cart_display_before_'.$itemtype;
-			call_hooks($itemtypehook,$calldata);
-			$hookdata["content"].= isset($calldata["content"]) ? $calldata["content"] : '';
-			unset($calldata["content"]);
-		}
-
-		$calldata["content"]=null;
-
-		call_hooks("cart_display_item",$calldata);
-		$hookdata["content"].= isset($calldata["content"]) ? $calldata["content"] : '';
-		unset($calldata["content"]);
-		call_hooks("cart_display_item_after",$calldata);
-		$hookdata["content"].= isset($calldata["content"]) ? $calldata["content"] : '';
-		unset($calldata["content"]);
-
-		if ($itemtype) {
-			$itemtypehook='cart_display_after_'.$itemtype;
-			$calldata["content"]=null;
-			call_hooks($itemtypehook,$calldata);
-			$hookdata["content"].= isset($calldata["content"]) ? $calldata["content"] : '';
-			unset($calldata["content"]);
-		}
-	}
-
-	$calldata = Array("orderhash"=>$orderhash,"content"=>null);
-	call_hooks('cart_display_after',$calldata);
-	$hookdata["content"].= $calldata["content"];
 }
 
 function cart_checkout_hook(&$hookdata) {
@@ -1031,7 +989,10 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('cart_do_orderpaid','addon/cart/cart.php','cart_do_orderpaid',1);
 	Zotlabs\Extend\Hook::register('cart_before_checkout','addon/cart/cart.php','cart_calc_totals',1,10);
 	Zotlabs\Extend\Hook::register('cart_calc_totals','addon/cart/cart.php','cart_calc_totals',1,10);
-	Zotlabs\Extend\Hook::register('cart_display_after','addon/cart/cart.php','cart_display_totals',1,99);
+	Zotlabs\Extend\Hook::register('cart_display_before','addon/cart/cart.php','cart_calc_totals',1,99);
+        Zotlabs\Extend\Hook::register('cart_display_before','addon/cart/cart.php','cart_display_before_addcheckoutlink',1,31000);
+        Zotlabs\Extend\Hook::register('cart_display_before','addon/cart/cart.php','cart_display_before_formatcurrency',1,31001);
+	Zotlabs\Extend\Hook::register('cart_display','addon/cart/cart.php','cart_display_applytemplate',1,31000);
 	Zotlabs\Extend\Hook::register('cart_mod_content','addon/cart/cart.php','cart_mod_content',1,99);
 	Zotlabs\Extend\Hook::register('cart_post_add_item','addon/cart/cart.php','cart_post_add_item');
 	Zotlabs\Extend\Hook::register('cart_post_update_item','addon/cart/cart.php','cart_post_update_item');
@@ -1042,7 +1003,6 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('cart_after_fulfill','addon/cart/cart.php','cart_fulfillitem_markfulfilled',1,31000);
 	Zotlabs\Extend\Hook::register('cart_after_cancel','addon/cart/cart.php','cart_cancelitem_unmarkfulfilled',1,31000);
 	Zotlabs\Extend\Hook::register('cart_get_catalog','addon/cart/cart.php','cart_get_test_catalog',1,0);
-
 
 	//$manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
 	//if ($manualpayments) {
@@ -1078,7 +1038,10 @@ function cart_unload(){
 	Zotlabs\Extend\Hook::unregister('cart_do_orderpaid','addon/cart/cart.php','cart_do_orderpaid');
 	Zotlabs\Extend\Hook::unregister('cart_before_checkout','addon/cart/cart.php','cart_calc_totals');
 	Zotlabs\Extend\Hook::unregister('cart_calc_totals','addon/cart/cart.php','cart_calc_totals');
-	Zotlabs\Extend\Hook::unregister('cart_display_after','addon/cart/cart.php','cart_display_totals');
+	Zotlabs\Extend\Hook::unregister('cart_display_before','addon/cart/cart.php','cart_calc_totals');
+	Zotlabs\Extend\Hook::unregister('cart_display_before','addon/cart/cart.php','cart_display_before_addcheckoutlink');
+	Zotlabs\Extend\Hook::unregister('cart_display_before','addon/cart/cart.php','cart_display_before_formatcurrency');
+	Zotlabs\Extend\Hook::unregister('cart_display','addon/cart/cart.php','cart_display_applytemplate',1,31000);
 	Zotlabs\Extend\Hook::unregister('cart_mod_content','addon/cart/cart.php','cart_mod_content');
 	Zotlabs\Extend\Hook::unregister('cart_post_add_item','addon/cart/cart.php','cart_post_add_item');
 	Zotlabs\Extend\Hook::unregister('cart_post_update_item','addon/cart/cart.php','cart_post_update_item');
@@ -1095,7 +1058,6 @@ function cart_unload(){
 	require_once('myshop.php');
 	cart_myshop_unload();
         global $cart_submodules;
-        //notice("MODULES: ".print_r($cart_submodules,true).EOL);
 	foreach ($cart_submodules as $module) {
 		require_once('submodules/'.$module.".php");
 		$moduleclass = 'Cart_'.$module;
@@ -1107,18 +1069,60 @@ function cart_unload(){
 
 function cart_module() { return; }
 
+function cart_getcurrencies () {
+        $currencylist = file_get_contents ( dirname(__FILE__).'/currencycodes.json' );
+        $currencylist = cart_maybeunjson($currencylist);
+
+        call_hooks('cart_currency_filter',$currencylist);
+        return $currencylist;
+}
+
+function cart_getcurrency($code) {
+	$currencies=cart_getcurrencies();
+	if (isset($currencies[$code])) {
+		return $currencies[$code];
+	} else {
+		return $currencies["USD"];
+	}
+}
+
+function cart_getcurrencyformat() {
+	$currency = get_pconfig(\App::$profile['profile_uid'],'cart','cart_currency');
+	$currency = cart_getcurrency($currency);
+        logger("Currency Info: ".print_r($currency,true),LOGGER_DEBUG);
+	$precision = $currency["decimal_digits"];
+	$format="%.0".$precision."f";
+	return $format;
+}
+
+function cart_formatamount($amount) {
+	return sprintf(cart_getcurrencyformat(),$amount);
+}
+
 function cart_settings_post(&$s) {
 	if(! local_channel())
 		return;
 
+        logger("POST VARS: ".print_r($_POST,true),LOGGER_DEBUG);
         $prev_enable = get_pconfig(local_channel(),'cart','enable');
 
-	set_pconfig( local_channel(), 'cart', 'enable', $_POST['enable_cart'] );
+	set_pconfig( local_channel(), 'cart', 'enable', intval($_POST['enable_cart']) );
         if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != $prev_enable) {
             return;
         }
-	set_pconfig( local_channel(), 'cart', 'enable_test_catalog', $_POST['enable_test_catalog'] );
-	set_pconfig( local_channel(), 'cart', 'enable_manual_payments', $_POST['enable_manual_payments'] );
+	set_pconfig( local_channel(), 'cart', 'enable_test_catalog', intval($_POST['enable_test_catalog'] ));
+	set_pconfig( local_channel(), 'cart', 'enable_manual_payments', intval($_POST['enable_manual_payments']) );
+
+  $curcurrency = get_pconfig(local_channel(),'cart','cart_currency');
+  $curcurrency = isset($curcurrency) ? $curcurrency : 'USD';
+  logger("CURRENT CURRENCY: ".$curcurrency,LOGGER_DEBUG);
+  $currency = substr(preg_replace('[^0-9A-Z]','',$_POST["currency"]),0,3);
+  logger("POSTVAR CURRENCY: ".$curcurrency,LOGGER_DEBUG);
+  $currencylist=cart_getcurrencies();
+  logger("CURRENCY LIST CURRENCY INFO: ".print_r($currencylist[$currency],true),LOGGER_DEBUG);
+  $currency = isset($currencylist[$currency]) ? $currency : 'USD';
+  logger("FINAL CURRENCY: ".$currency,LOGGER_DEBUG);
+  set_pconfig(local_channel(), 'cart','cart_currency', $currency);
 
 	cart_unload();
 	cart_load();
@@ -1163,6 +1167,22 @@ function cart_settings(&$s) {
 							 '',array(t('No'),t('Yes')))));
 
         }
+
+				$currencylist=cart_getcurrencies();
+				$currency=get_pconfig(local_channel(), 'cart','cart_currency');
+                                logger("PROFILE CURRENCY: ".$currency,LOGGER_DEBUG);
+				$saved_currency = isset($currencylist[$currency]) ? $currency : 'USD';
+                                logger("SAVED CURRENCY: ".$saved_currency,LOGGER_DEBUG);
+
+        $currencyoptions=Array();
+
+        foreach($currencylist as $c) {
+					$currencyoptions[$c["code"]]=$c["code"]." - ".$c["name"];
+				}
+
+				$sc .= replace_macros(get_markup_template('field_select.tpl'), array(
+					     '$field'	=> array('currency', t('Base Merchant Currency'),
+								  $saved_currency, '', $currencyoptions)));
         /*
          * @todo: Set payment options order
          * @todo: Enable/Disable payment options
@@ -1309,6 +1329,13 @@ function cart_mod_content(&$arr) {
   return ;
 }
 
+function cart_do_display($order) {
+                call_hooks('cart_display_before',$order);
+                call_hooks('cart_display',$order);
+                call_hooks('cart_display_after',$order);
+		return($order["content"]);
+}
+
 function cart_pagecontent($a=null) {
 
     if(observer_prohibited(true)) {
@@ -1369,18 +1396,10 @@ function cart_pagecontent($a=null) {
                         if (!$r) {
 			  notice ( t('Access denied.' . EOL));
 			  return "<h1>Access denied</h1>";
-
-                        }
-                }
-		$templateinfo = array('name'=>'basic_cart.tpl','path'=>'addon/cart/');
-		call_hooks('cart_filter_carttemplate',$templateinfo);
-		$template = get_markup_template($templateinfo['name'],$templateinfo['path']);
-		call_hooks('cart_show_order_filter',$cart_template);
-		$order = cart_loadorder($orderhash);
-                call_hooks('cart_calc_totals',$order);
-                $order["links"]["checkoutlink"]=z_root().'/cart/'.argv(1).'/checkout/start?cart='.$orderhash;
-                logger("DISPLAY ORDER: ".print_r($order,true),LOGGER_DEBUG);
-		return replace_macros($template, $order);
+        }
+      }
+                $order=cart_loadorder($orderhash);
+		return cart_do_display($order);
 	}
 
     if ((argc() >= 3) && (argv(2) == 'catalog')) {
@@ -1458,6 +1477,28 @@ function cart_pagecontent($a=null) {
 
 }
 
+function cart_display_before_addcheckoutlink(&$order) {
+        logger("DISPLAY BEFORE - ORDER: ".print_r($order,true),LOGGER_DEBUG);
+	$order["links"]["checkoutlink"]=z_root().'/cart/'.argv(1).'/checkout/start?cart='.$order["order_hash"];
+}
+
+function cart_display_before_formatcurrency(&$order) {
+        logger("DISPLAY BEFORE - ORDER ITEMS: ".print_r($order["items"],true),LOGGER_DEBUG);
+	foreach ($order["items"] as $item) {
+          $order["items"][$item["id"]]["extended"]=cart_formatamount($item["extended"]);
+          $order["items"][$item["id"]]["item_price"]=cart_formatamount($item["item_price"]);
+	}
+}
+
+function cart_display_applytemplate(&$order) {
+	$templateinfo = array('name'=>'basic_cart.tpl','path'=>'addon/cart/');
+	call_hooks('cart_filter_carttemplate',$templateinfo);
+	$template = get_markup_template($templateinfo['name'],$templateinfo['path']);
+	call_hooks('cart_show_order_filter',$cart_template);
+	$order["content"] = replace_macros($template, $order);
+}
+
+
 $cart_aside = Array();
 
 function cart_insert_aside ($html,$slug,$priority=35000) {
@@ -1526,12 +1567,8 @@ function cart_checkout_pay (&$hookdata) {
 }
 
 function cart_checkout_start (&$hookdata) {
-
 	$display = $hookdata["checkoutdisplay"];
 	cart_do_checkout_before($hookdata);
-
-//	$manualpayments = get_pconfig(local_channel(),'cart','enable_manual_payments');
-//	$manualpayments = isset($manualpayments) ? $manualpayments : false;
 
 	$paymentopts = Array();
 	call_hooks('cart_paymentopts',$paymentopts);
@@ -1562,6 +1599,7 @@ function cart_checkout_start (&$hookdata) {
 	cart_updateorder_meta($ordermeta,$orderhash);
 	$hookdata["order_meta"]=$ordermeta;
 	call_hooks('cart_before_checkout',$hookdata);
+	call_hooks('cart_display_before',$hookdata);
 
 	$template = get_markup_template('basic_checkout_start.tpl','addon/cart/');
 

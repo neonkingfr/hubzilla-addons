@@ -59,6 +59,7 @@ class Cart_paypalbutton {
       Zotlabs\Extend\Hook::register('cart_post_custom_paypal_buttonhook_execute','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::buttonhook_execute');
       Zotlabs\Extend\Hook::register('cart_paymentopts','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::register');
       Zotlabs\Extend\Hook::register('cart_addons_myshop_order_display','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::admin_payment_display');
+      Zotlabs\Extend\Hook::register('cart_currency_filter','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::currency_filter');
 
       //notice('Loaded submodule: paypalbutton'.EOL);
     }
@@ -75,6 +76,7 @@ class Cart_paypalbutton {
       Zotlabs\Extend\Hook::unregister('cart_post_custom_paypal_buttonhook_execute','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::buttonhook_execute');
       Zotlabs\Extend\Hook::unregister('cart_paymentopts','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::register');
       Zotlabs\Extend\Hook::unregister('cart_addons_myshop_order_display','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::admin_payment_display');
+      Zotlabs\Extend\Hook::register('cart_currency_filter','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::currency_filter');
       //notice('UNLoaded submodule: paypalbutton'.EOL);
 
     }
@@ -128,12 +130,14 @@ class Cart_paypalbutton {
                    (isset($paypalbutton_productionsecret) ? $paypalbutton_productionsecret : ''),
                    '',''
                    )));
-     $paypalbutton_currency = get_pconfig ($id,'cart','paypalbutton_currency');
+                   /*
+     $paypalbutton_productionsecret = get_pconfig ($id,'cart','paypalbutton_currency');
      $sc .= replace_macros(get_markup_template('field_input.tpl'),array(
-                  '$field'     => array ('paypalbutton_currency', t('Paypal Currency'),
+                  '$field'     => array ('paypalbutton_currency', t('Paypal Currency (See: https://developer.paypal.com/docs/classic/mass-pay/integration-guide/currency_codes/)'),
                   (isset($paypalbutton_currency) ? $paypalbutton_currency : 'USD'),
-                  t('See:') . ' https://developer.paypal.com/docs/classic/mass-pay/integration-guide/currency_codes/',''
+                  '',''
                   )));
+                  */
       $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
                  '$addon' 	=> array('cart-ppbutton',
                    t('Cart - Paypal Addon'), '',
@@ -166,8 +170,11 @@ class Cart_paypalbutton {
       set_pconfig( local_channel(), 'cart', 'paypalbutton_productionsecret', $production_secret);
       $paypalbutton_production = isset($_POST['paypalbutton_production']) ? intval($_POST['paypalbutton_production']) : 0;
       set_pconfig( local_channel(), 'cart', 'paypalbutton_production', $paypalbutton_production);
+      //$paypalbutton_productionsecret = get_pconfig ($id,'cart','paypalbutton_currency');
+      /*
       $paypalbutton_currency = isset($_POST['paypalbutton_currency']) ? $_POST['paypalbutton_currency'] : 'USD';
       set_pconfig( local_channel(), 'cart', 'paypalbutton_currency', $paypalbutton_currency);
+      */
 
 /*
   @TODO: Add paypal specific config $options
@@ -294,10 +301,9 @@ class Cart_paypalbutton {
     }
 
     static function checkout (&$hookdata) {
-      $page_uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
       $paypal_environment=Cart_paypalbutton::check_enabled();
-      $paypal_currency=get_pconfig($page_uid,'cart','paypalbutton_currency');
-
+      $page_uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
+      $paypal_currency=get_pconfig($page_uid,'cart','cart_currency');
       $orderhash = cart_getorderhash(false);
       $nick = argv(1);
       $ppbutton_payopts = get_pconfig($page_uid,'cart','paypalbutton_payopts');
@@ -312,9 +318,12 @@ class Cart_paypalbutton {
       $order["currency"]=$paypal_currency;
       Zotlabs\Extend\Hook::insert('content_security_policy', 'Cart_paypalbutton::paypal_CSP',1);
       $template = get_markup_template('basic_checkout_ppbutton.tpl','addon/cart/submodules/');
+      call_hooks("cart_display_before",$order);
       $display = replace_macros($template, $order);
 
       $hookdata["checkoutdisplay"] = $display;
+
+      //TODO: Currency Selection in Plugin Settings
 
     }
 
@@ -337,8 +346,9 @@ class Cart_paypalbutton {
 
       call_hooks('cart_calc_totals',$order);
 
-      $paypal_currency=get_pconfig(App::$profile_uid,'cart','paypalbutton_currency');
-      $paypal_currency=isset($paypal_currency) ? $paypal_currency : 'USD';
+      $page_uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
+      $paypal_currency=get_pconfig($page_uid,'cart','cart_currency');
+
       $payment["body"]=Array (
         'payer_id' => $_POST["payerID"],
         'transactions' => Array (
@@ -413,9 +423,8 @@ class Cart_paypalbutton {
       cart_do_checkout_before($order);
 
       call_hooks('cart_calc_totals',$order);
-
-      $paypal_currency=get_pconfig(App::$profile_uid,'cart','paypalbutton_currency');
-      $paypal_currency=isset($paypal_currency) ? $paypal_currency : 'USD';
+      $page_uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
+      $paypal_currency=get_pconfig($page_uid,'cart','cart_currency');
       $payment["body"]=Array (
         'intent'=>"sale",
         'payer' => Array('payment_method'=>"paypal"),
@@ -520,6 +529,18 @@ class Cart_paypalbutton {
         //$hookdata["content"].="<div><pre>".print_r($paypaldata,true)."</pre></div>";
         $hookdata["content"].=$display;
 
+    }
+
+    static function currency_filter(&$currencies) {
+      $paypal_currencies = Array(
+        "AUD","BRL","CAD","CZK","DKK","EUR","HKD","HUF","INR","ILS","JPY","MYR","MXN","NOK",
+        "NZD","PHP","PLN","GBP","RUB","SGD","SEK","CHF","TWD","THB","USD"
+      );
+      foreach ($currencies as $c) {
+        if (!in_array($c["code"],$paypal_currencies)) {
+          unset($currencies[$c["code"]]);
+        }
+      }
     }
 }
 
