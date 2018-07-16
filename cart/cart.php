@@ -1040,7 +1040,6 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('cart_after_cancel','addon/cart/cart.php','cart_cancelitem_unmarkfulfilled',1,31000);
 	Zotlabs\Extend\Hook::register('cart_get_catalog','addon/cart/cart.php','cart_get_test_catalog',1,0);
 
-	//cart_after_fullfill_finishorder
 
 	//$manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
 	//if ($manualpayments) {
@@ -1734,7 +1733,7 @@ function cart_fulfillitem_error($error,$itemid,$orderhash) {
 	cart_updateitem_meta($itemid,$item_meta,$orderhash);
 }
 
-function cart_after_fullfill_finishorder(&$hookdata) {
+function cart_after_fulfill_finishorder(&$hookdata) {
 	$iteminfo=$hookdata["item"];
 	$orderhash=$iteminfo["order_hash"];
 
@@ -1744,7 +1743,6 @@ function cart_after_fullfill_finishorder(&$hookdata) {
 			dbesc($orderhash));
 
 	if ($r) {
-    notice("Order Fulfilled".EOL);
 		return;
 	}
 
