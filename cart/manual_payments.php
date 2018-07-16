@@ -12,7 +12,7 @@ function cart_post_manual_checkout_confirm () {
 	cart_do_checkout ($order);
 	cart_do_checkout_after ($order);
 	//cart_do_fulfill ($order); //No auto fulfillment on manual payments.
-  //goaway(z_root() . '/cart/' . argv(1) . '/checkout/complete');
+	goaway(z_root() . '/cart/' . argv(1) . '/order/' . $orderhash);
 }
 
 function cart_checkout_complete (&$hookdata) {
