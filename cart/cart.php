@@ -495,7 +495,7 @@ function cart_updateitem_hook (&$hookdata) {
 		$sql = "delete from cart_orderitems ";
 		$dodel=true;
 	} else {
-		$sql = "update cart_orderitems ";
+		$sql = "update cart_orderitems set ";
 		foreach ($item as $key=>$val) {
 			$prepend = '';
 			if (count($params) > 0) {
@@ -506,15 +506,15 @@ function cart_updateitem_hook (&$hookdata) {
 				$params[] = dbesc($val);
 			} else
 			if (in_array($key,$int_components)) {
-				$sql .= $prepend."`$key`"." = %d ";
+				$sql .= $prepend." `$key`"." = %d ";
 				$params[] = intval($val);
 			} else
 			if (in_array($key,$decimal_components)) {
-				$sql .= $prepend."`$key`"." = %d ";
+				$sql .= $prepend." `$key`"." = %f ";
 				$params[] = floatval($val);
 			} else
 			if (in_array($key,$bool_components)) {
-				$sql .= $prepend."`$key`"." = %d ";
+				$sql .= $prepend." `$key`"." = %d ";
 				$params[] = intval($val);
 			}
 		}
@@ -1022,6 +1022,8 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('cart_order_additem','addon/cart/cart.php','cart_additem_hook',1);
 	Zotlabs\Extend\Hook::register('cart_do_updateitem','addon/cart/cart.php','cart_do_updateitem',1);
 	Zotlabs\Extend\Hook::register('cart_order_updateitem','addon/cart/cart.php','cart_updateitem_hook',1);
+	Zotlabs\Extend\Hook::register('cart_order_before_updateitem','addon/cart/cart.php','cart_updateitem_qty_hook',1,32000);
+	Zotlabs\Extend\Hook::register('cart_order_before_updateitem','addon/cart/cart.php','cart_updateitem_delsku_hook',1,32000);
 	Zotlabs\Extend\Hook::register('cart_checkout','addon/cart/cart.php','cart_checkout_hook',1);
 	Zotlabs\Extend\Hook::register('cart_do_checkout','addon/cart/cart.php','cart_do_checkout',1);
 	Zotlabs\Extend\Hook::register('cart_orderpaid','addon/cart/cart.php','cart_orderpaid_hook',1);
@@ -1067,6 +1069,8 @@ function cart_unload(){
 	Zotlabs\Extend\Hook::unregister('cart_order_additem','addon/cart/cart.php','cart_additem_hook');
 	Zotlabs\Extend\Hook::unregister('cart_do_updateitem','addon/cart/cart.php','cart_do_updateitem');
 	Zotlabs\Extend\Hook::unregister('cart_order_updateitem','addon/cart/cart.php','cart_updateitem_hook');
+	Zotlabs\Extend\Hook::unregister('cart_order_before_updateitem','addon/cart/cart.php','cart_updateitem_qty_hook');
+	Zotlabs\Extend\Hook::unregister('cart_order_before_updateitem','addon/cart/cart.php','cart_updateitem_delsku_hook');
 	Zotlabs\Extend\Hook::unregister('cart_checkout','addon/cart/cart.php','cart_checkout_hook');
 	Zotlabs\Extend\Hook::unregister('cart_do_checkout','addon/cart/cart.php','cart_do_checkout');
 	Zotlabs\Extend\Hook::unregister('cart_orderpaid','addon/cart/cart.php','cart_orderpaid_hook');
@@ -1080,10 +1084,10 @@ function cart_unload(){
 	Zotlabs\Extend\Hook::unregister('cart_checkout_start','addon/cart/cart.php','cart_checkout_start');
 	Zotlabs\Extend\Hook::unregister('cart_post_checkout_choosepayment','addon/cart/cart.php','cart_post_choose_payment');
 	Zotlabs\Extend\Hook::unregister('cart_aside_filter','addon/cart/cart.php','cart_render_aside');
-	Zotlabs\Extend\Hook::unregister('cart_after_fulfill','addon/cart/cart.php','cart_after_fulfill_finishorder',1,32000);
-	Zotlabs\Extend\Hook::unregister('cart_after_fulfill','addon/cart/cart.php','cart_fulfillitem_markfulfilled',1,31000);
-	Zotlabs\Extend\Hook::unregister('cart_after_cancel','addon/cart/cart.php','cart_fulfillitem_markunfulfilled',1,31000);
-	Zotlabs\Extend\Hook::unregister('cart_get_catalog','addon/cart/cart.php','cart_get_test_catalog',1,0);
+	Zotlabs\Extend\Hook::unregister('cart_after_fulfill','addon/cart/cart.php','cart_after_fulfill_finishorder');
+	Zotlabs\Extend\Hook::unregister('cart_after_fulfill','addon/cart/cart.php','cart_fulfillitem_markfulfilled');
+	Zotlabs\Extend\Hook::unregister('cart_after_cancel','addon/cart/cart.php','cart_fulfillitem_markunfulfilled');
+	Zotlabs\Extend\Hook::unregister('cart_get_catalog','addon/cart/cart.php','cart_get_test_catalog');
 
 	require_once("manual_payments.php");
 	cart_manualpayments_unload();
@@ -1229,27 +1233,40 @@ function cart_post_add_item () {
 }
 
 function cart_post_update_item () {
-	$items = [];
+	$orderhash = cart_getorderhash(false);
+	if (!orderhash) {
+					notice (t("Order Not Found").EOL);
+					return;
+	}
 
-	call_hooks('cart_get_catalog', $items);
+	$order = cart_loadorder($orderhash);
 
-	$item_sku = preg_replace('[^0-9A-Za-z\-]', '', $_POST["update"]);
-	$newitem = $items[$item_sku];
-
-	logger("[cart] cart_post_update_item newitem: " . print_r($newitem, true), LOGGER_DEBUG);
-
-	$qty = ((isset($_POST['qty'])) ? preg_replace('[^0-9\.]', '', $_POST['qty']) : 1);
-	$id = ((isset($_POST['id'])) ? preg_replace('[^0-9\.]', '', $_POST['id']) : '');
-	$newitem['item_qty'] = $qty;
-	$newitem['id'] = $id;
-
-	$hookdata = [
-		'content' => '',
-		'iteminfo' => $newitem
-	];
-
-	call_hooks('cart_do_updateitem', $hookdata);
+	foreach ($order["items"] as $item) {
+		if ($order["order_checkedout"]) {
+						continue;
+		}
+		$hookdata=Array("content"=>'',"iteminfo"=>$item);
+		call_hooks('cart_do_updateitem',$hookdata);
+	}
 }
+
+function cart_updateitem_qty_hook(&$hookdata) {
+        //POSTVAR qty-$item_id
+        $item=$hookdata["item"];
+        if(!is_array($item)) {return;}
+        $postvar="qty-".$item["id"];
+        $hookdata["item"]["item_qty"]=isset($_POST[$postvar]) ? preg_replace('[^0-9\.]','',$_POST[$postvar]) : intval($item["item_qty"]);
+}
+
+function cart_updateitem_delsku_hook(&$hookdata) {
+              logger("Delete SKU hook: ".print_r($hookdata,true),LOGGER_DEBUG);
+	      $item=$hookdata["item"];
+              $delsku = isset($_POST["delsku"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_POST["delsku"]) : null;
+              if($delsku && $item["item_sku"]==$delsku) {
+                 $hookdata["item"]["item_qty"]=0;
+              }
+}
+
 
 function cart_post(&$a) {
 	$cart_formname=preg_replace('/[^a-zA-Z0-9\_]/','',$_POST["cart_posthook"]);
@@ -1368,7 +1385,7 @@ function cart_pagecontent($a=null) {
 			$x = [];
 			foreach($order['items'] as $oitem) {
 				if(array_key_exists($oitem['item_sku'], $items)) {
-					$x[$oitem['item_sku']]++;
+					$x[$oitem['item_sku']]=$x[$oitem['item_sku']]+$oitem['item_qty'];
 				}
 				$items[$oitem['item_sku']]['order_qty'] = $x[$oitem['item_sku']];
 				$items[$oitem['item_sku']]['order_item_id'] = $oitem['id'];
