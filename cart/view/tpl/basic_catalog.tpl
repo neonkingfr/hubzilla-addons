@@ -30,9 +30,8 @@
 					{{if $item.order_qty}}
 					<form method="post">
 						<input type="hidden" name="cart_posthook" value="update_item">
-						<input type="hidden" name="qty" value="0">
-						<input type="hidden" name="id" value="{{$item.order_item_id}}">
-						<button class="btn btn-outline-danger btn-outline border-0" type="submit" name="update" value="{{$item.item_sku}}" title="Remove from cart"><i class="fa fa-remove"></i></button>
+						<input type="hidden" name="delsku" value="{{$item.item_sku}}">
+						<button class="btn btn-outline-danger btn-outline border-0" type="submit" name="remove" title="Remove from cart"><i class="fa fa-remove"></i></button>
 					</form>
 					{{/if}}
 				</td>
