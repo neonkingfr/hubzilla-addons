@@ -1387,7 +1387,6 @@ function cart_pagecontent($a=null) {
 					$x[$oitem['item_sku']]=$x[$oitem['item_sku']]+$oitem['item_qty'];
 				}
 				$items[$oitem['item_sku']]['order_qty'] = $x[$oitem['item_sku']];
-				$items[$oitem['item_sku']]['order_item_id'] = $oitem['id'];
 			}
 
 			$total_qty = cart_get_order_total_qty($orderhash);
