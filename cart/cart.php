@@ -104,12 +104,13 @@ function cart_dbCleanup () {
 }
 
 function cart_dbUpgrade () {
+	global $db_type;
 	$dbverconfig = cart_getsysconfig("dbver");
 	logger ('[cart] Current sysconfig dbver:'.$dbverconfig,LOGGER_NORMAL);
 
 	$dbver = $dbverconfig ? $dbverconfig : 0;
 
-	$dbsql = Array (
+	$dbsql[0] = Array (
 		1 => Array (
 			// order_currency = ISO4217 currency alphabetic code
 			// buyer_altid = email address or other unique identifier for the buyer
@@ -148,10 +149,55 @@ function cart_dbUpgrade () {
 		),
 		2 => Array (
 			"alter table `cart_orders` modify `order_meta` mediumtext;"
+		),
+		3 => Array (
+			"alter table `cart_orderitems` modify `item_price` numeric(10,4);",
+			"alter table `cart_orderitems` modify `item_meta` mediumtext;"
 			)
 	);
 
-   	foreach ($dbsql as $ver => $sql) {
+	$dbsql[1] = Array (
+		1 => Array (
+			// order_currency = ISO4217 currency alphabetic code
+			// buyer_altid = email address or other unique identifier for the buyer
+			"CREATE TABLE `cart_orders` (
+				`id` int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+				`seller_channel` varchar(255),
+				`buyer_xchan` varchar(255),
+				`buyer_altid` varchar(255),
+				`order_hash` varchar(255) NOT NULL,
+				`order_expires` datetime,
+				`order_checkedout` datetime,
+				`order_paid` datetime,
+				`order_currency` varchar(10) default 'USD',
+				`order_meta` text,
+				UNIQUE (order_hash)
+				);
+			",
+			"alter table `cart_orders` add index (`seller_channel`)",
+			"CREATE TABLE cart_orderitems (
+				`id` int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+				`order_hash` varchar(255),
+				`item_lastupdate` datetime,
+				`item_type` varchar(25),
+				`item_sku` varchar(25),
+				`item_desc` varchar(255),
+				`item_qty` int(10) UNSIGNED,
+				`item_price` numeric(10,4),
+				`item_tax_rate` numeric (4,4),
+				`item_confirmed` bool default false,
+				`item_fulfilled` bool default false,
+				`item_exception` bool default false,
+				`item_meta` text
+				)
+			",
+			"alter table `cart_orderitems` add index (`order_hash`)"
+		),
+		2 => Array (),
+		3 => Array ()
+	);
+
+   	foreach ($dbsql[$db_type] as $ver => $sql) {
 		if ($ver <= $dbver) {
 			continue;
 		}
