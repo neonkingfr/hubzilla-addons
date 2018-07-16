@@ -303,6 +303,7 @@ class Cart_paypalbutton {
       $ppbutton_payopts = get_pconfig($page_uid,'cart','paypalbutton_payopts');
       $ppbutton_payopts["order_hash"]=$orderhash;
       $order = cart_loadorder($orderhash);
+      call_hooks('cart_calc_totals',$order);
       $order["payopts"]=$ppbutton_payopts;
       $order["buttonhook"]= z_root() . '/cart/' . $nick . '/custom/paypal_buttonhook';
       $order["finishedurl"]= z_root() . '/cart/' . $nick . '/order/'.$order["order_hash"];
