@@ -38,17 +38,17 @@
 			</tr>
                         </form>
 			<tr>
-				<td></td>
+				<td></td><td></td>
 				<th style="text-align:right;">Subtotal</th>
 				<td style="text-align:right;">{{$totals.Subtotal}}</td>
 			</tr>
 			<tr>
-				<td></td>
+				<td></td><td></td>
 				<th style="text-align:right;">Tax Total</th>
 				<td style="text-align:right;">{{$totals.Tax}}</td>
 			</tr>
 			<tr>
-				<td></td>
+				<td></td><td></td>
 				<th style="text-align:right;">Order Total</th>
 				<td style="text-align:right;">{{$totals.OrderTotal}}</td>
 			</tr>
