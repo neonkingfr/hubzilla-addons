@@ -38,6 +38,7 @@ function cart_checkout_manual (&$hookdata) {
 	}
 
 	$order = cart_loadorder($orderhash);
+	call_hooks('cart_calc_totals',$order);
 	$manualpayopts = get_pconfig($page_uid,'cart','manual_payopts');
 	$manualpayopts["order_hash"]=$orderhash;
 	$order["payopts"]=$manualpayopts;
