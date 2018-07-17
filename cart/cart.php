@@ -138,9 +138,9 @@ function cart_dbUpgrade () {
 				item_qty int(10) UNSIGNED,
 				item_price numeric(7,2),
 				item_tax_rate numeric (4,4),
-				item_confirmed bool default false,
-				item_fulfilled bool default false,
-				item_exception bool default false,
+				item_confirmed tinyint(1) NOT NULL DEFAULT 0,
+				item_fulfilled tinyint(1) NOT NULL DEFAULT 0,
+				item_exception tinyint(1) NOT NULL DEFAULT 0,
 				item_meta text
 				) ENGINE = MYISAM DEFAULT CHARSET=utf8;
 			",
@@ -185,9 +185,9 @@ function cart_dbUpgrade () {
 				item_qty int,
 				item_price numeric(10,4),
 				item_tax_rate numeric (4,4),
-				item_confirmed bool default false,
-				item_fulfilled bool default false,
-				item_exception bool default false,
+				item_confirmed smallint NOT NULL DEFAULT 0,
+				item_fulfilled smallint NOT NULL DEFAULT 0,
+				item_exception smallint NOT NULL DEFAULT 0,
 				item_meta text,
 				PRIMARY KEY (id)
 				);
@@ -533,10 +533,8 @@ function cart_updateitem_hook (&$hookdata) {
 	$item=$hookdata["item"];
 
 	$string_components = Array ( "item_sku","item_desc" );
-	$int_components = Array ( "item_qty" );
+	$int_components = Array ( "item_qty","item_confirmed","item_fulfilled","item_exception" );
 	$decimal_components = Array ("item_price","item_tax_rate");
-	$bool_components = Array ("item_confirmed","item_fulfilled","item_exception");
-
 
 	$params = Array();
 	$dodel=false;
@@ -562,10 +560,6 @@ function cart_updateitem_hook (&$hookdata) {
 			if (in_array($key,$decimal_components)) {
 				$sql .= $prepend." $key"." = %f ";
 				$params[] = floatval($val);
-			} else
-			if (in_array($key,$bool_components)) {
-				$sql .= $prepend." $key"." = %d ";
-				$params[] = intval($val);
 			}
 		}
 	}
@@ -1845,7 +1839,7 @@ function cart_fulfillitem_error($error,$itemid,$orderhash) {
 	$item_meta=cart_getitem_meta ($itemid,$orderhash);
 	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Error fulfilling item: ".$error;
 
-	$r=q("update cart_orderitems set item_exception = true where order_hash = '%s' and id = %d",
+	$r=q("update cart_orderitems set item_exception = 1 where order_hash = '%s' and id = %d",
 			dbesc($orderhash),intval($itemid));
 
 	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Exception Set";
@@ -1857,7 +1851,7 @@ function cart_after_fulfill_finishorder(&$hookdata) {
 	$orderhash=$iteminfo["order_hash"];
 
 	$r=q("select unique(cart_orderitems.item_id) from cart_orderitems
-				where cart_orderitems.item_fulfilled is NULL AND
+				where cart_orderitems.item_fulfilled = 0 AND
 				cart_orderitems.order_hash = %s",
 			dbesc($orderhash));
 
@@ -1887,7 +1881,7 @@ function cart_cancelitem_error($error,$itemid,$orderhash) {
 	$item_meta=cart_getitem_meta ($itemid,$orderhash);
 	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Error cancelling item: ".$error;
 
-	$r=q("update cart_orderitems set item_exception = true where order_hash = '%s' and id = %d",
+	$r=q("update cart_orderitems set item_exception = 1 where order_hash = '%s' and id = %d",
 			dbesc($orderhash),intval($itemid));
 
 	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Exception Set";

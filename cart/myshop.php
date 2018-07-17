@@ -283,7 +283,7 @@ function cart_myshop_clear_item_exception () {
 		return;
 	}
 
-	$r=q("update cart_orderitems set item_exception = false where order_hash = '%s' and id = %d",
+	$r=q("update cart_orderitems set item_exception = 0 where order_hash = '%s' and id = %d",
 			dbesc($orderhash),intval($itemid));
 
 	$item_meta=cart_getitem_meta ($itemid,$orderhash);
@@ -344,7 +344,7 @@ function cart_myshop_add_itemnote () {
   $item_meta=cart_getitem_meta ($itemid,$orderhash);
 	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ").filter_var($_POST["notetext"], FILTER_SANITIZE_STRING);
   if (isset($_POST["exception"])) {
-  	$r=q("update cart_orderitems set item_exception = true where order_hash = '%s' and id = %d",
+  	$r=q("update cart_orderitems set item_exception = 1 where order_hash = '%s' and id = %d",
 			dbesc($orderhash),intval($itemid));
 		$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Exception Set";
 	}
@@ -430,8 +430,8 @@ function cart_myshop_get_openorders ($search=null,$limit=100,$offset=1) {
   $r=q("select distinct cart_orders.order_hash from cart_orders,cart_orderitems
         where cart_orders.order_hash = cart_orderitems.order_hash and
         seller_channel = '%s' and
-        cart_orderitems.item_fulfilled != true and
-        cart_orderitems.item_confirmed = true
+        cart_orderitems.item_fulfilled = 0 and
+        cart_orderitems.item_confirmed = 1
         limit %d offset %d",
       dbesc($seller_hash),
       intval($limit), intval($offset));
@@ -450,7 +450,7 @@ function cart_myshop_get_closedorders ($search=null,$limit=100,$offset=1) {
   $r=q("select distinct order_hash from cart_orders where
         seller_channel = '%s' and
         cart_orders.order_hash not in (select order_hash from cart_orderitems
-        where item_fulfilled is not NULL)
+        where item_fulfilled = 1)
         limit %d offset %d",
       dbesc($seller_hash),
       intval($limit), intval($offset));
