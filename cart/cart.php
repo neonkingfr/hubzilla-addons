@@ -160,37 +160,39 @@ function cart_dbUpgrade () {
 			// order_currency = ISO4217 currency alphabetic code
 			// buyer_altid = email address or other unique identifier for the buyer
 			"CREATE TABLE cart_orders (
-				id int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+				id serial NOT NULL,
 				seller_channel varchar(255),
 				buyer_xchan varchar(255),
 				buyer_altid varchar(255),
 				order_hash varchar(255) NOT NULL,
-				order_expires datetime,
-				order_checkedout datetime,
-				order_paid datetime,
-				order_currency varchar(10) default 'USD',
+				order_expires timestamp NOT NULL DEFAULT '0001-01-01 00:00:00',
+				order_checkedout timestamp NOT NULL DEFAULT '0001-01-01 00:00:00',
+				order_paid timestamp NOT NULL DEFAULT '0001-01-01 00:00:00',
+				order_currency varchar(10) DEFAULT 'USD',
 				order_meta text,
+				PRIMARY KEY (id),
 				UNIQUE (order_hash)
 				);
 			",
-			"alter table cart_orders add index (seller_channel)",
+			"CREATE INDEX idx_seller_channel ON cart_orders (seller_channel);",
 			"CREATE TABLE cart_orderitems (
-				id int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+				id serial NOT NULL,
 				order_hash varchar(255),
-				item_lastupdate datetime,
+				item_lastupdate timestamp NOT NULL DEFAULT '0001-01-01 00:00:00',
 				item_type varchar(25),
 				item_sku varchar(25),
 				item_desc varchar(255),
-				item_qty int(10) UNSIGNED,
+				item_qty int,
 				item_price numeric(10,4),
 				item_tax_rate numeric (4,4),
 				item_confirmed bool default false,
 				item_fulfilled bool default false,
 				item_exception bool default false,
-				item_meta text
-				)
+				item_meta text,
+				PRIMARY KEY (id)
+				);
 			",
-			"alter table cart_orderitems add index (order_hash)"
+			"CREATE INDEX idx_order_hash ON cart_orderitems (order_hash);"
 		),
 		2 => Array (),
 		3 => Array ()
