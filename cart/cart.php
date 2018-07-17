@@ -104,13 +104,12 @@ function cart_dbCleanup () {
 }
 
 function cart_dbUpgrade () {
-	global $db_type;
 	$dbverconfig = cart_getsysconfig("dbver");
 	logger ('[cart] Current sysconfig dbver:'.$dbverconfig,LOGGER_NORMAL);
 
 	$dbver = $dbverconfig ? $dbverconfig : 0;
 
-	$dbsql[0] = Array (
+	$dbsql[DBTYPE_MYSQL] = Array (
 		1 => Array (
 			// order_currency = ISO4217 currency alphabetic code
 			// buyer_altid = email address or other unique identifier for the buyer
@@ -156,7 +155,7 @@ function cart_dbUpgrade () {
 			)
 	);
 
-	$dbsql[1] = Array (
+	$dbsql[DBTYPE_POSTGRES] = Array (
 		1 => Array (
 			// order_currency = ISO4217 currency alphabetic code
 			// buyer_altid = email address or other unique identifier for the buyer
@@ -197,7 +196,7 @@ function cart_dbUpgrade () {
 		3 => Array ()
 	);
 
-   	foreach ($dbsql[$db_type] as $ver => $sql) {
+	foreach ($dbsql[ACTIVE_DBTYPE] as $ver => $sql) {
 		if ($ver <= $dbver) {
 			continue;
 		}
