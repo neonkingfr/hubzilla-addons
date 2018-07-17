@@ -113,45 +113,45 @@ function cart_dbUpgrade () {
 		1 => Array (
 			// order_currency = ISO4217 currency alphabetic code
 			// buyer_altid = email address or other unique identifier for the buyer
-			"CREATE TABLE `cart_orders` (
-				`id` int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-				`seller_channel` varchar(255),
-				`buyer_xchan` varchar(255),
-				`buyer_altid` varchar(255),
-				`order_hash` varchar(255) NOT NULL,
-				`order_expires` datetime,
-				`order_checkedout` datetime,
-				`order_paid` datetime,
-				`order_currency` varchar(10) default 'USD',
-				`order_meta` text,
+			"CREATE TABLE cart_orders (
+				id int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+				seller_channel varchar(255),
+				buyer_xchan varchar(255),
+				buyer_altid varchar(255),
+				order_hash varchar(255) NOT NULL,
+				order_expires datetime,
+				order_checkedout datetime,
+				order_paid datetime,
+				order_currency varchar(10) default 'USD',
+				order_meta text,
 				UNIQUE (order_hash)
 				) ENGINE = MYISAM DEFAULT CHARSET=utf8;
 			",
-			"alter table `cart_orders` add index (`seller_channel`)",
+			"alter table cart_orders add index (seller_channel)",
 			"CREATE TABLE cart_orderitems (
-				`id` int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-				`order_hash` varchar(255),
-				`item_lastupdate` datetime,
-				`item_type` varchar(25),
-				`item_sku` varchar(25),
-				`item_desc` varchar(255),
-				`item_qty` int(10) UNSIGNED,
-				`item_price` numeric(7,2),
-				`item_tax_rate` numeric (4,4),
-				`item_confirmed` bool default false,
-				`item_fulfilled` bool default false,
-				`item_exception` bool default false,
-				`item_meta` text
+				id int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+				order_hash varchar(255),
+				item_lastupdate datetime,
+				item_type varchar(25),
+				item_sku varchar(25),
+				item_desc varchar(255),
+				item_qty int(10) UNSIGNED,
+				item_price numeric(7,2),
+				item_tax_rate numeric (4,4),
+				item_confirmed bool default false,
+				item_fulfilled bool default false,
+				item_exception bool default false,
+				item_meta text
 				) ENGINE = MYISAM DEFAULT CHARSET=utf8;
 			",
-			"alter table `cart_orderitems` add index (`order_hash`)"
+			"alter table cart_orderitems add index (order_hash)"
 		),
 		2 => Array (
-			"alter table `cart_orders` modify `order_meta` mediumtext;"
+			"alter table cart_orders modify order_meta mediumtext;"
 		),
 		3 => Array (
-			"alter table `cart_orderitems` modify `item_price` numeric(10,4);",
-			"alter table `cart_orderitems` modify `item_meta` mediumtext;"
+			"alter table cart_orderitems modify item_price numeric(10,4);",
+			"alter table cart_orderitems modify item_meta mediumtext;"
 			)
 	);
 
@@ -159,38 +159,38 @@ function cart_dbUpgrade () {
 		1 => Array (
 			// order_currency = ISO4217 currency alphabetic code
 			// buyer_altid = email address or other unique identifier for the buyer
-			"CREATE TABLE `cart_orders` (
-				`id` int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-				`seller_channel` varchar(255),
-				`buyer_xchan` varchar(255),
-				`buyer_altid` varchar(255),
-				`order_hash` varchar(255) NOT NULL,
-				`order_expires` datetime,
-				`order_checkedout` datetime,
-				`order_paid` datetime,
-				`order_currency` varchar(10) default 'USD',
-				`order_meta` text,
+			"CREATE TABLE cart_orders (
+				id int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+				seller_channel varchar(255),
+				buyer_xchan varchar(255),
+				buyer_altid varchar(255),
+				order_hash varchar(255) NOT NULL,
+				order_expires datetime,
+				order_checkedout datetime,
+				order_paid datetime,
+				order_currency varchar(10) default 'USD',
+				order_meta text,
 				UNIQUE (order_hash)
 				);
 			",
-			"alter table `cart_orders` add index (`seller_channel`)",
+			"alter table cart_orders add index (seller_channel)",
 			"CREATE TABLE cart_orderitems (
-				`id` int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-				`order_hash` varchar(255),
-				`item_lastupdate` datetime,
-				`item_type` varchar(25),
-				`item_sku` varchar(25),
-				`item_desc` varchar(255),
-				`item_qty` int(10) UNSIGNED,
-				`item_price` numeric(10,4),
-				`item_tax_rate` numeric (4,4),
-				`item_confirmed` bool default false,
-				`item_fulfilled` bool default false,
-				`item_exception` bool default false,
-				`item_meta` text
+				id int(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+				order_hash varchar(255),
+				item_lastupdate datetime,
+				item_type varchar(25),
+				item_sku varchar(25),
+				item_desc varchar(255),
+				item_qty int(10) UNSIGNED,
+				item_price numeric(10,4),
+				item_tax_rate numeric (4,4),
+				item_confirmed bool default false,
+				item_fulfilled bool default false,
+				item_exception bool default false,
+				item_meta text
 				)
 			",
-			"alter table `cart_orderitems` add index (`order_hash`)"
+			"alter table cart_orderitems add index (order_hash)"
 		),
 		2 => Array (),
 		3 => Array ()
@@ -550,19 +550,19 @@ function cart_updateitem_hook (&$hookdata) {
 				$prepend = ',';
 			}
 			if (in_array($key,$string_components)) {
-				$sql .= $prepend." `$key`"." = '%s' ";
+				$sql .= $prepend." $key"." = '%s' ";
 				$params[] = dbesc($val);
 			} else
 			if (in_array($key,$int_components)) {
-				$sql .= $prepend." `$key`"." = %d ";
+				$sql .= $prepend." $key"." = %d ";
 				$params[] = intval($val);
 			} else
 			if (in_array($key,$decimal_components)) {
-				$sql .= $prepend." `$key`"." = %f ";
+				$sql .= $prepend." $key"." = %f ";
 				$params[] = floatval($val);
 			} else
 			if (in_array($key,$bool_components)) {
-				$sql .= $prepend." `$key`"." = %d ";
+				$sql .= $prepend." $key"." = %d ";
 				$params[] = intval($val);
 			}
 		}
@@ -752,7 +752,7 @@ function cart_checkout_hook(&$hookdata) {
 		return;
 	}
 
-	q("update cart_orders set `order_checkedout`=NOW() where `order_hash`='%s'",dbesc($orderhash));
+	q("update cart_orders set order_checkedout=NOW() where order_hash='%s'",dbesc($orderhash));
 
 	return;
 	}
@@ -886,13 +886,13 @@ function cart_orderpaid_hook (&$hookdata) {
 	$items = $hookdata["order"]["items"];
 /*
 	foreach ($items as $item) {
-		q ("update cart_orderitems set `paid` = NOW() where order_hash = `%s` and id = %d",
+		q ("update cart_orderitems set paid = NOW() where order_hash = %s and id = %d",
 				dbesc($hookdata["order"]["order_hash"]),
 				intval($item["id"])
 		);
 	}
 */
-		q ("update cart_orders set `order_paid` = NOW() where order_hash = '%s'",
+		q ("update cart_orders set order_paid = NOW() where order_hash = '%s'",
 				dbesc($hookdata["order"]["order_hash"]));
 }
 
