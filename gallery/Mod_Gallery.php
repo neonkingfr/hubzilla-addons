@@ -82,7 +82,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 
 		$unsafe = ((array_key_exists('unsafe', $_GET) && $_GET['unsafe']) ? 1 : 0);
 
-		$albums = q("SELECT DISTINCT album FROM photo
+		$albums = q("SELECT DISTINCT album, created FROM photo
 			WHERE uid = %d AND photo_usage = %d  
 			AND is_nsfw = %d $sql_extra 
 			ORDER BY created DESC",
