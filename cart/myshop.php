@@ -431,7 +431,7 @@ function cart_myshop_get_openorders ($search=null,$limit=100,$offset=1) {
         where cart_orders.order_hash = cart_orderitems.order_hash and
         seller_channel = '%s' and
         cart_orderitems.item_fulfilled != true and
-        cart_orderitems.confirmed = true
+        cart_orderitems.item_confirmed = true
         limit %d offset %d",
       dbesc($seller_hash),
       intval($limit), intval($offset));
