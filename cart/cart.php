@@ -1864,7 +1864,9 @@ function cart_after_fulfill_finishorder(&$hookdata) {
 		return;
 	}
 
-	call_hooks('cart_after_orderfulfilled',Array("orderhash"=>$orderhash));
+	$calldata = [ 'orderhash' => $orderhash ];
+
+	call_hooks('cart_after_orderfulfilled', $calldata);
 }
 
 
