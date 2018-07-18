@@ -11,6 +11,8 @@
 
 class Cart_hzservices {
 
+    public static $catalog=array();
+
     public function __construct() {
       load_config("cart-hzservices");
     }
@@ -28,6 +30,7 @@ class Cart_hzservices {
       Zotlabs\Extend\Hook::register('cart_post_hzservices_itemactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_activation_post',1,1000);
       Zotlabs\Extend\Hook::register('cart_post_hzservices_itemdeactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_deactivation_post',1,1000);
       Zotlabs\Extend\Hook::register('cart_submodule_activation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::module_activation',1,1000);
+      Zotlabs\Extend\Hook::register('cart_order_before_additem_hzservices', 'addon/cart/submodule/hzservices.php', 'Cart_hzservices::filter_before_add',1,1);
     }
 
     static public function unload () {
@@ -42,7 +45,8 @@ class Cart_hzservices {
       Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemedit', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_post');
       Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_activation_post');
       Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemdeactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_deactivation_post');
-      Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::module_activation',1,1000);
+      Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::module_activation');
+      Zotlabs\Extend\Hook::unregister('cart_order_before_additem_hzservices', 'addon/cart/submodule/hzservices.php', 'Cart_hzservices::filter_before_add');
     }
 
     static public function module_activation (&$hookdata) {
@@ -103,6 +107,7 @@ class Cart_hzservices {
   }
 
   static public function get_catalog(&$catalog) {
+    if (count(Cart_hzservices::$catalog) > 0) return Cart_hzservices::$catalog;
     // 		"sku-1"=>Array("item_sku"=>"sku-1","item_desc"=>"Description Item 1","item_price"=>5.55),
     $itemlist = Cart_hzservices::get_itemlist();
     foreach ($itemlist as $item) {
@@ -140,7 +145,6 @@ class Cart_hzservices {
   }
 
   static public function itemadmin(&$pagecontent) {
-
     $is_seller = ((local_channel()) && (local_channel() == \App::$profile['profile_uid']) ? true : false);
     if (!$is_seller) {
       notice ("Access Denied.".EOL);
@@ -284,6 +288,23 @@ class Cart_hzservices {
           "params"=>Array("group"=>$privacygroup)
         );
         break;
+      case "setsvcclass":
+        if (Cart_hzservices::is_admin_merchant()) {
+          $svcclass=$_POST["svcclass"];
+          if (!isset(App::$config['service_class'][$svcclass])) {
+            logger("Attempt to set invalid service class: ".$svcclass,LOGGER_NORMAL);
+            break;
+          }
+          $cmdhash = md5("setsvcclass".$svcclass);
+          $item["activate_commands"][$cmdhash]=Array(
+            "cmdhash"=>$cmdhash,
+            "cmd"=>"setsvcclass",
+            "params"=>Array("class"=>$svcclass)
+          );
+        } else {
+          notice (t('Invalid Activation Directive.').EOL);
+        }
+        break;
       default:
         notice (t('Invalid Activation Directive.').EOL);
         return;
@@ -291,6 +312,7 @@ class Cart_hzservices {
     } else {
      if ($_POST["del"]) {
         $delcommand = isset($_POST['del']) ? preg_replace("[^a-zA-Z0-9\-]",'',$_POST['del']) : null;
+        logger ("DEL COMMAND: ".$delcommand,LOGGER_DEBUG);
         if ($delcommand) {
           unset($item["activate_commands"][$delcommand]);
         }
@@ -340,6 +362,23 @@ class Cart_hzservices {
           "params"=>Array("group"=>$privacygroup)
         );
         $item["deactivate_commands"]=array_unique($item["deactivate_commands"]);
+        break;
+      case "setsvcclass":
+        if (Cart_hzservices::is_admin_merchant()) {
+          $svcclass=$_POST["svcclass"];
+          if (!isset(App::$config['service_class'][$svcclass])) {
+            logger("Attempt to set invalid service class: ".$svcclass,LOGGER_NORMAL);
+            break;
+          }
+          $cmdhash = md5("setsvcclass".$svcclass);
+          $item["deactivate_commands"][$cmdhash]=Array(
+            "cmdhash"=>$cmdhash,
+            "cmd"=>"setsvcclass",
+            "params"=>Array("class"=>$svcclass)
+          );
+        } else {
+          notice (t('Invalid Deactivation Directive.').EOL);
+        }
         break;
       default:
         notice (t('Invalid Deactivation Directive.').EOL);
@@ -402,13 +441,32 @@ class Cart_hzservices {
             $errortext = $result["message"];
             $calldata["fulfillment_errors"][]=$errortext;
             logger($errortext." ORDER: ".$orderhash, LOGGER_NORMAL);
-            notice ("There was an error proccessing the order: ".$result["message"].EOL);
             return;
+          }
+          break;
+        case "setsvcclass":
+          if (Cart_hzservices::buyer_is_local($buyer_xchan)) {
+              $r = q("UPDATE account SET account_service_class='%s' WHERE account_id=%d",
+                dbesc($command["params"]["class"]),
+                intval(Cart_hzservices::get_account_id_from_channel_hash($buyer_xchan))
+              );
+              if($r) {
+                logger("Account (".Cart_hzservices::get_account_id_from_channel_hash($buyer_xchan)
+                                .") changed to service class: ".$command["params"]["class"],LOGGER_NORMAL);
+              } else {
+                $errortext = "FAILURE: Account NOT changed to service class: ".$cmd["params"]["class"];
+                $calldata["fullfilment_errors"][]=$errortext;
+                logger($errortext." ORDER: ".$orderhash, LOGGER_NORMAL);
+              }
           }
           break;
         default:
       }
     }
+  }
+
+  static public function set_user_svcclass($uid,$class) {
+
   }
 
   static public function rollback_hzservices(&$calldata) {
@@ -425,6 +483,7 @@ class Cart_hzservices {
     $skus=get_pconfig(App::$profile['uid'],'cart-hzservices','skus');
     $skus = $skus ? cart_maybeunjson($skus) : Array();
     $itemsku = $calldata["item"]["item_sku"];
+    $itemid = $calldata["item"]["id"];
     $sku = $skus[$itemsku];
 
     foreach ($sku["deactivate_commands"] as $command) {
@@ -467,6 +526,22 @@ class Cart_hzservices {
             logger($errortext." ORDER: ".$orderhash, LOGGER_NORMAL);
           }
           break;
+          case "setsvcclass":
+          if (Cart_hzservices::buyer_is_local($buyer_xchan)) {
+              $r = q("UPDATE account SET account_service_class='%s' WHERE account_id=%d",
+                dbesc($command["params"]["class"]),
+                intval(Cart_hzservices::get_account_id_from_channel_hash($buyer_xchan))
+              );
+              if($r) {
+                logger("Account (".Cart_hzservices::get_account_id_from_channel_hash($buyer_xchan)
+                                .") changed to service class: ".$command["params"]["class"],LOGGER_NORMAL);
+              } else {
+                $errortext = "FAILURE: Account NOT changed to service class: ".$cmd["params"]["class"];
+                $calldata["rollback_errors"][]=$errortext;
+                logger($errortext." ORDER: ".$orderhash, LOGGER_NORMAL);
+              }
+          }
+          break;
         default:
             $errortext = "Unknown Command";
             $calldata["rollback_errors"][]=$errortext;
@@ -498,9 +573,66 @@ class Cart_hzservices {
     return $o;
   }
 
+  static public function service_class_select() {
+    $service_classes = isset(\App::$config['service_class']) ? \App::$config['service_class'] : Array ();
+    if (count ($service_classes) < 1) {
+        return 'No service classes configured.';
+    }
+    $classes = Array();
+    foreach ($service_classes as $class=>$class_info) {
+      $classes[$class] = $class;
+    }
+    $o = replace_macros(get_markup_template('field_select.tpl'), array(
+        '$field' => Array('svcclass',t('Set user service class'),'','',$classes)
+    ));
+    return $o;
+  }
+
+  static public function get_account_id_from_channel_hash($hash) {
+    $r = q("select channel_account_id,channel_address from channel where channel_hash = '%s'",dbesc($hash));
+    if (!$r) { return false; }
+    return $r[0]["channel_account_id"];
+  }
+
+  static public function buyer_is_local($hash) {
+    $accountinfo = Cart_hzservices::get_account_id_from_channel_hash($hash);
+    return ( $accountinfo ? true : false );
+  }
+
+  static public function filter_before_add(&$hookdata) {
+
+        $order=$hookdata["order"];
+        if (!isset($hookdata["item"])) return;
+        $item=$hookdata["item"];
+        if ($item["item_qty"] < 1) return;
+        $hz_catalog=Array();
+        Cart_hzservices::get_catalog($hz_catalog);
+        if (isset($hz_catalog[$item["sku"]]["activate_commands"])) {
+           foreach ($hz_catalog[$item["sku"]]["activate_commands"] as $command) {
+             if ($command["cmd"]=="setsvcclass") {
+                notice(t("You must be using a local account to purchase this service."));
+                unset($hookdata["item"]);
+                return;
+             }
+           }
+        }
+  }
+
+  static public function is_admin_merchant() {
+    $account_id = ((App::$profile['profile_uid']) ? App::$profile['channel_account_id'] : 0 );
+    if (!$account_id) {
+       return false;
+    }
+    $merchant_account = get_account_by_id($account_id);
+    if ($merchant_account && $merchant_account["account_roles"] == ACCOUNT_ROLE_ADMIN) {
+      return true;
+    }
+    return false;
+  }
+
   static public function itemedit_form($sku) {
 
-    $is_seller = ((local_channel()) && (local_channel() == \App::$profile['profile_uid']) ? true : false);
+    $is_seller = ((local_channel()) && (local_channel() == \App::$profile["profile_uid"]) ? true : false);
     if (!$is_seller) {
       notice ("Access Denied.".EOL);
       return;
@@ -538,6 +670,18 @@ class Cart_hzservices {
    				     '$field'	=> array('cmd', t('Add buyer as connection'),
 							 "addconnection","Add purchaser as a channel connection"
 							 )));
+
+    if (Cart_hzservices::is_admin_merchant()) {
+        $formelements["itemactivation"].= "<div id=\"cart-admin-merchant-activation\">\n";
+        $formelements["itemactivation"].= replace_macros(get_markup_template('field_radio.tpl'), array(
+   				     '$field'	=> array('cmd', t('Set Service Class'),
+							 "setsvcclass","Set the service class of the user"
+							 )));
+        $formelements["itemactivation"].=Cart_hzservices::service_class_select();
+
+        $formelements["itemactivation"].="</div>\n";
+    }
+
     if (isset($item["activate_commands"])) {
       $formelements["activate_commands"]="<UL>\n";
       foreach ($item["activate_commands"] as $command) {
@@ -553,11 +697,31 @@ class Cart_hzservices {
             $cmdtext.="Add buyer as connection.";
             $cmdtext.=' <button class="btn btn-sm" type="submit" name="del" value="'.$command["cmdhash"].'"><i class="fa fa-trash fa-fw" aria-hidden="true"></i></button>';
         }
+        if (Cart_hzservices::is_admin_merchant()) {
+          switch($command["cmd"]) {
+            case 'setsvcclass':
+              $cmdtext.="Set service class of user to <b>".$command["params"]["class"]."</b>.";
+              $cmdtext.=' <button class="btn btn-sm" type="submit" name="del" value="'.$command["cmdhash"].'"><i class="fa fa-trash fa-fw" aria-hidden="true"></i></button>';
+              break;
+          }
+        }
+
+
         $formelements["activate_commands"].="<LI>".$cmdtext."</LI>\n";
       }
       $formelements["activate_commands"].="</UL>\n";
     }
     if (isset($item["deactivate_commands"])) {
+      if (Cart_hzservices::is_admin_merchant()) {
+        $formelements["itemdeactivation"].= "<div id=\"cart-admin-merchant-activation\">\n";
+        $formelements["itemdeactivation"].= replace_macros(get_markup_template('field_radio.tpl'), array(
+   				     '$field'	=> array('cmd', t('Set Service Class'),
+							 "setsvcclass","Set the service class of the user"
+							 )));
+        $formelements["itemdeactivation"].=Cart_hzservices::service_class_select();
+
+        $formelements["itemdeactivation"].="</div>\n";
+      }
       $formelements["deactivate_commands"]="<UL>\n";
       foreach ($item["deactivate_commands"] as $command) {
         $cmdtext="";
@@ -571,6 +735,14 @@ class Cart_hzservices {
           case "rmvconnection":
             $cmdtext.="Add buyer as connection.";
             $cmdtext.=' <button class="btn btn-sm" type="submit" name="del" value="'.$command["cmdhash"].'"><i class="fa fa-trash fa-fw" aria-hidden="true"></i></button>';
+        }
+        if (Cart_hzservices::is_admin_merchant()) {
+          switch($command["cmd"]) {
+            case 'setsvcclass':
+              $cmdtext.="Set service class of user to <b>".$command["params"]["class"]."</b>.";
+              $cmdtext.=' <button class="btn btn-sm" type="submit" name="del" value="'.$command["cmdhash"].'"><i class="fa fa-trash fa-fw" aria-hidden="true"></i></button>';
+              break;
+          }
         }
         $formelements["deactivate_commands"].="<LI>".$cmdtext."</LI>\n";
       }
@@ -586,3 +758,5 @@ class Cart_hzservices {
     $menu .= "<a href='".$urlroot."/hzservices'>Add/Remove Service Items</a><BR />";
   }
 }
+
+$Cart_hzservices = new Cart_hzservices();

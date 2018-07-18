@@ -322,8 +322,10 @@ function cart_getorderhash ($create=false) {
 function cart_additem_hook (&$hookdata) {
 
         $order=$hookdata["order"];
+        if (!isset($hookdata["item"])) return;
 	$item=$hookdata["item"];
         logger ("[cart] additem_hook - hookdata: ".print_r($hookdata,true),LOGGER_DATA);
+        if ($item["item_qty"] < 1) return;
         $item["order_hash"] = $order["order_hash"];
 	if (isset($item["item_meta"])) {
 		$item["item_meta"] = cart_maybejson($item["item_meta"]);
@@ -1850,9 +1852,9 @@ function cart_after_fulfill_finishorder(&$hookdata) {
 	$iteminfo=$hookdata["item"];
 	$orderhash=$iteminfo["order_hash"];
 
-	$r=q("select unique(cart_orderitems.item_id) from cart_orderitems
-				where cart_orderitems.item_fulfilled = 0 AND
-				cart_orderitems.order_hash = %s",
+	$r=q("select distinct(cart_orderitems.id) from cart_orderitems
+				where cart_orderitems.item_fulfilled is NULL AND
+				cart_orderitems.order_hash = '%s'",
 			dbesc($orderhash));
 
 	if ($r) {
@@ -1860,7 +1862,6 @@ function cart_after_fulfill_finishorder(&$hookdata) {
 	}
 
 	$calldata = [ 'orderhash' => $orderhash ];
-
 	call_hooks('cart_after_orderfulfilled', $calldata);
 }
 
@@ -1928,3 +1929,9 @@ function cart_search_orders() {
 function cart_myshop_searchparams ($search) {
 
 */
+
+function cart_add_item_note($orderhash,$itemid,$note) {
+     $item_meta=cart_getitem_meta ($itemid,$orderhash);
+     $item_meta["notes"][]=date("Y-m-d h:i:sa T - ").$note;
+     cart_updateitem_meta($itemid,$item_meta,$orderhash);
+}
