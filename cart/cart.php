@@ -575,6 +575,17 @@ function cart_updateitem_hook (&$hookdata) {
 
 		array_unshift($params,$sql);
 		$r=call_user_func_array('q', $params);
+
+		if($dodel) {
+			$r = q("select * from cart_orderitems where order_hash = '%s'",
+				dbesc($order["order_hash"])
+			);
+			if(! $r) {
+				q("delete from cart_orders where order_hash = '%s'",
+					dbesc($order["order_hash"])
+				);
+			}
+		}
 	}
 
 	if (isset($item["item_meta"])) {
