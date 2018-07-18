@@ -1578,14 +1578,14 @@ function cart_render_aside (&$aside) {
 	$itemscount = cart_get_order_total_qty($orderhash);
 
 	if($itemscount) {
-		$rendered .= "<li><a href='".z_root() . '/cart/' . argv(1) . '/checkout/start'."'>Checkout (" . $itemscount . " items)</a></li>";
+		$rendered .= "<li><a class='nav-link' href='".z_root() . '/cart/' . argv(1) . '/checkout/start'."'>Checkout (" . $itemscount . " items)</a></li>";
 	}
 
 	$templatevalues['content'] = $rendered;
 	$template = get_markup_template('cart_aside.tpl', 'addon/cart/');
 	$rendered = replace_macros($template, $templatevalues);
 	$rendered .= $aside;
-	$aside = $rendered;
+	$aside = '<ul class="nav nav-pills flex-column">' . $rendered . '</ul>' . $aside;
 }
 
 function cart_get_order_total_qty($orderhash) {

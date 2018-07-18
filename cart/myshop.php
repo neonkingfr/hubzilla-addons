@@ -82,12 +82,13 @@ function cart_myshop_menu() {
 	//$allorders=cart_myshop_get_allorders(null,10000,0);
 	//$closedorders=cart_myshop_get_closedorders(null,10000,0);
         $rendered = '';
-	$rendered .= "<a href='".$urlroot."'>Home</a><BR />";
-	//$rendered .= "<a href='".$urlroot."/openorders'>Open Orders (".count($openorders).")</a><BR />";
-	//$rendered .= "<a href='".$urlroot."/closedorders'>Closed Orders (".count($closedorders).")</a><BR />";
-	$rendered .= "<a href='".$urlroot."/allorders'>All Orders (" . $ordercount . ")</a><BR />";
+	$rendered .= "<li><a class='nav-link' href='".$urlroot."'>Home</a></li>";
+	$rendered .= "<li><a class='nav-link' href='/" . argv(0) . "/" . argv(1) . "/catalog'>Catalog</a></li>";
+	//$rendered .= "<li><a class='nav-link' href='".$urlroot."/openorders'>Open Orders (".count($openorders).")</a></li>";
+	//$rendered .= "<li><a class='nav-link' href='".$urlroot."/closedorders'>Closed Orders (".count($closedorders).")</a></li>";
+	$rendered .= "<li><a class='nav-link' href='".$urlroot."/allorders'>All Orders (" . $ordercount . ")</a></li>";
 	call_hooks('cart_myshop_menufilter',$rendered);
-        return $rendered;
+        return '<ul class="nav nav-pills flex-column">' . $rendered . '</ul>';
 }
 
 function cart_myshop_openorders (&$pagecontent) {
@@ -363,18 +364,20 @@ function cart_myshop_aside (&$aside) {
 
 	$rendered = '';
 	$urlroot = '/' . argv(0) . '/' . argv(1) . '/myshop';
-	$rendered .= "<li><a href='".$urlroot."'>Home</a></li>";
+	$rendered .= "<li><a class='nav-link' href='".$urlroot."'>Home</a></li>";
+	$rendered .= "<li><a class='nav-link' href='/" . argv(0) . "/" . argv(1) . "/catalog'>Catalog</a></li>";
         //$openorders=cart_myshop_get_openorders(null,10000,0);
 	//$allorders=cart_myshop_get_allorders(null,10000,0);
         $ordercount=cart_myshop_get_ordercount();
 	//$closedorders=cart_myshop_get_closedorders(null,10000,0);
-        //$rendered .= "<li><a href='".$urlroot."/openorders'>Open Orders (".count($openorders).")</a></li>";
-	//$rendered .= "<li><a href='".$urlroot."/closedorders'>Closed Orders (".count($closedorders).")</a></li>";
-	$rendered .= "<li><a href='".$urlroot."/allorders'>All Orders (".$ordercount.")</a></li>";
+        //$rendered .= "<li><a class='nav-link' href='".$urlroot."/openorders'>Open Orders (".count($openorders).")</a></li>";
+	//$rendered .= "<li><a class='nav-link' href='".$urlroot."/closedorders'>Closed Orders (".count($closedorders).")</a></li>";
+	$rendered .= "<li><a class='nav-link' href='".$urlroot."/allorders'>All Orders (".$ordercount.")</a></li>";
+	call_hooks('cart_myshop_menufilter',$rendered);
 	$templatevalues["content"]=$rendered;
 	$template = get_markup_template('myshop_aside.tpl','addon/cart/');
 	$rendered = replace_macros($template, $templatevalues);
-	$aside = $rendered . $aside;
+	$aside = '<ul class="nav nav-pills flex-column">' . $rendered . '</ul>' . $aside;
 
 	return ($aside);
 }

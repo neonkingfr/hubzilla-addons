@@ -755,7 +755,7 @@ class Cart_hzservices {
 
   static public function myshop_menuitems (&$menu) {
     $urlroot = '/' . argv(0) . '/' . argv(1) . '/myshop';
-    $menu .= "<a href='".$urlroot."/hzservices'>Add/Remove Service Items</a><BR />";
+    $menu .= "<li><a class='nav-link' href='".$urlroot."/hzservices'>Add/Remove Service Items</a></li>";
   }
 }
 
