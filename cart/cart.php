@@ -1852,10 +1852,11 @@ function cart_after_fulfill_finishorder(&$hookdata) {
 	$iteminfo=$hookdata["item"];
 	$orderhash=$iteminfo["order_hash"];
 
-	$r=q("select distinct(cart_orderitems.id) from cart_orderitems
-				where cart_orderitems.item_fulfilled is NULL AND
-				cart_orderitems.order_hash = '%s'",
-			dbesc($orderhash));
+	$r=q("SELECT cart_orderitems.id FROM cart_orderitems WHERE
+		cart_orderitems.item_fulfilled = 0 AND
+		cart_orderitems.order_hash = '%s' LIMIT 1",
+		dbesc($orderhash)
+	);
 
 	if ($r) {
 		return;
