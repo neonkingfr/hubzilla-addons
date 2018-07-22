@@ -85,7 +85,7 @@ function cart_dbCleanup () {
 		logger("DB Cleanup Failure in cart-dbcleanup hooks",LOGGER_NORMAL);
 	}
 
-	$dbverconfig = get_sysconfig("dbver");
+	$dbverconfig = cart_getsysconfig("dbver");
 	$dbver = $dbverconfig ? intval($dbverconfig) : 0;
 
 	$sqlstmts[DBTYPE_MYSQL] = Array (
@@ -106,6 +106,7 @@ function cart_dbCleanup () {
 			continue;
 		}
 	  foreach ($sql as $query) {
+                  logger ('[cart] UNINSTALL db query: '.$query,LOGGER_DEBUG);
 		  $r = q($query);
 		  if (!$r) {
 			  logger ('[cart] Error running dbCleanup. sql query failed: '.$query,LOGGER_NORMAL);
@@ -1036,7 +1037,8 @@ function cart_install() {
 function cart_uninstall() {
 	$dropTablesOnUninstall = intval(cart_getsysconfig("dropTablesOnUninstall"));
   	logger ('[cart] Uninstall start.',LOGGER_DEBUG);
-	if ($dropTablesOnUinstall == 1) {
+  	logger ('[cart] drop tables? '.$dropTablesOnUninstall,LOGGER_DEBUG);
+	if ($dropTablesOnUninstall == 1) {
   	      logger ('[cart] DB Cleanup table.',LOGGER_DEBUG);
 		      cart_dbCleanup ();
 	        cart_delsysconfig("dbver");
@@ -1205,13 +1207,11 @@ function cart_plugin_admin_post(&$a,&$s) {
 
   $prev_dropval = cart_getsysconfig("dropTablesOnUninstall");
 
-  $dropdbonuninstall = isset($_POST["cart_uninstall_drop_tables"]) ?
-	                           intval($_POST["cart_uninstall_drop_tables"]) : 0;
+  $dropdbonuninstall = intval($_POST["cart_uninstall_drop_tables"]);
 
-	if (isset($_POST['cart_uninstall_drop_tables']) &&
-	    $dropdbonuninstall != $prev_dropval) {
-		 			cart_setsysconfig("dropTablesOnUninstall",$dropdbonuninstall);
-	 	  }
+  if ($dropdbonuninstall != $prev_dropval) {
+      cart_setsysconfig("dropTablesOnUninstall",$dropdbonuninstall);
+  }
 }
 
 function cart_settings(&$s) {
@@ -1279,7 +1279,7 @@ function cart_plugin_admin(&$a,&$s) {
     $dropdbonuninstall = intval(cart_getsysconfig("dropTablesOnUninstall"));
 
     $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-			 '$field'	=> array('drop_tables_on_uninstall', t('Drop database tables when uninstalling.'),
+			 '$field'	=> array('cart_uninstall_drop_tables', t('Drop database tables when uninstalling.'),
 				 (isset($dropdbonuninstall) ? $dropdbonuninstall : 0),
 				 '',array(t('No'),t('Yes')))));
 	$sc .= "<div class='warn'>If set to yes, ALL CART DATA will be lost when the cart module is disabled.</div>";
