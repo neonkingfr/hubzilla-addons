@@ -77,30 +77,52 @@ function cart_config_additemtype ($itemtype) {
 }
 
 function cart_dbCleanup () {
-	$dbverconfig = get_config("dm42cart","dbver");
 
-	$dbver = $dbverconfig ? $dbverconfig : 0;
+	$success=UPDATE_SUCCESS;
+	call_hooks("cart-dbcleanup",$success);
+	if ($success!=UPDATE_SUCCESS) {
+		notice(t("DB Cleanup Failure").EOL);
+		logger("DB Cleanup Failure in cart-dbcleanup hooks",LOGGER_NORMAL);
+	}
 
-	$dbsql = Array (
+	$dbverconfig = cart_getsysconfig("dbver");
+	$dbver = $dbverconfig ? intval($dbverconfig) : 0;
+
+	$sqlstmts[DBTYPE_MYSQL] = Array (
 	    1 => Array (
 	      	"DROP TABLE IF EXISTS cart_orders",
-			"DROP TABLE IF EXISTS cart_orderitems"
+			    "DROP TABLE IF EXISTS cart_orderitems"
 	    )
     );
-    $sql = $dbsql[$dbver];
-	foreach ($sql as $query) {
-		$r = q($query);
-		if (!$r) {
-			notice ('[cart] Error running dbCleanup.');
-			logger ('[cart] Error running dbCleanup. sql query: '.$query,LOGGER_NORMAL);
-			return UPDATE_FAILED;
+  $sqlstmts[DBTYPE_POSTGRES] = Array (
+	   1 => Array (
+	     	"DROP TABLE IF EXISTS cart_orders",
+		    "DROP TABLE IF EXISTS cart_orderitems"
+	   )
+	);
+  $dbsql=$sqlstmts[ACTIVE_DBTYPE];
+	foreach ($dbsql as $updatever=>$sql) {
+		if ($dbver > $updatever) {
+			continue;
 		}
-
+	  foreach ($sql as $query) {
+                  logger ('[cart] UNINSTALL db query: '.$query,LOGGER_DEBUG);
+		  $r = q($query);
+		  if (!$r) {
+			  logger ('[cart] Error running dbCleanup. sql query failed: '.$query,LOGGER_NORMAL);
+			  $success = UPDATE_FAILED;
+		  }
+	  }
 	}
-	notice ('[cart] dbCleanup successful.');
-	logger ('[cart] dbCleanup successful.',LOGGER_NORMAL);
-	cart_delsysconfig("dbver");
-	return UPDATE_SUCCESS;
+	if ($success==UPDATE_SUCCESS) {
+	  notice ('[cart] dbCleanup successful.');
+	  logger ('[cart] dbCleanup successful.',LOGGER_NORMAL);
+	  cart_delsysconfig("dbver");
+  } else {
+		notice ('[cart] Error in dbCleanup. Check the log for details.');
+	  logger ('[cart] Error in dbCleanup.',LOGGER_NORMAL);
+	}
+	return $success;
 }
 
 function cart_dbUpgrade () {
@@ -213,7 +235,9 @@ function cart_dbUpgrade () {
 		}
 		cart_setsysconfig("dbver",$ver);
 	}
-	return UPDATE_SUCCESS;
+	$success=UPDATE_SUCCESS;
+	call_hooks("cart-dbupgrade",$success);
+	return $success;
 }
 
 function cart_loadorder ($orderhash) {
@@ -1013,9 +1037,10 @@ function cart_install() {
 function cart_uninstall() {
 	$dropTablesOnUninstall = intval(cart_getsysconfig("dropTablesOnUninstall"));
   	logger ('[cart] Uninstall start.',LOGGER_DEBUG);
-	if ($dropTablesOnUinstall == 1) {
-  	        logger ('[cart] DB Cleanup table.',LOGGER_DEBUG);
-		cart_dbCleanup ();
+  	logger ('[cart] drop tables? '.$dropTablesOnUninstall,LOGGER_DEBUG);
+	if ($dropTablesOnUninstall == 1) {
+  	      logger ('[cart] DB Cleanup table.',LOGGER_DEBUG);
+		      cart_dbCleanup ();
 	        cart_delsysconfig("dbver");
 	}
 
@@ -1156,8 +1181,6 @@ function cart_formatamount($amount) {
 function cart_settings_post(&$s) {
 	if(! local_channel())
 		return;
-
-        logger("POST VARS: ".print_r($_POST,true),LOGGER_DEBUG);
         $prev_enable = get_pconfig(local_channel(),'cart','enable');
 
 	set_pconfig( local_channel(), 'cart', 'enable', intval($_POST['enable_cart']) );
@@ -1169,13 +1192,10 @@ function cart_settings_post(&$s) {
 
   $curcurrency = get_pconfig(local_channel(),'cart','cart_currency');
   $curcurrency = isset($curcurrency) ? $curcurrency : 'USD';
-  logger("CURRENT CURRENCY: ".$curcurrency,LOGGER_DEBUG);
   $currency = substr(preg_replace('[^0-9A-Z]','',$_POST["currency"]),0,3);
-  logger("POSTVAR CURRENCY: ".$curcurrency,LOGGER_DEBUG);
   $currencylist=cart_getcurrencies();
-  logger("CURRENCY LIST CURRENCY INFO: ".print_r($currencylist[$currency],true),LOGGER_DEBUG);
   $currency = isset($currencylist[$currency]) ? $currency : 'USD';
-  logger("FINAL CURRENCY: ".$currency,LOGGER_DEBUG);
+
   set_pconfig(local_channel(), 'cart','cart_currency', $currency);
 
 	cart_unload();
@@ -1184,14 +1204,14 @@ function cart_settings_post(&$s) {
 }
 
 function cart_plugin_admin_post(&$a,&$s) {
-/*
-	if(! local_channel())
-		return;
 
-	set_pconfig( local_channel(), 'cart', 'enable_test_catalog', $_POST['enable_test_catalog'] );
-	set_pconfig( local_channel(), 'cart', 'enable_manual_payments', $_POST['enable_manual_payments'] );
-*/
+  $prev_dropval = cart_getsysconfig("dropTablesOnUninstall");
 
+  $dropdbonuninstall = intval($_POST["cart_uninstall_drop_tables"]);
+
+  if ($dropdbonuninstall != $prev_dropval) {
+      cart_setsysconfig("dropTablesOnUninstall",$dropdbonuninstall);
+  }
 }
 
 function cart_settings(&$s) {
@@ -1255,14 +1275,20 @@ function cart_settings(&$s) {
 }
 
 function cart_plugin_admin(&$a,&$s) {
-/*
+
+    $dropdbonuninstall = intval(cart_getsysconfig("dropTablesOnUninstall"));
+
+    $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
+			 '$field'	=> array('cart_uninstall_drop_tables', t('Drop database tables when uninstalling.'),
+				 (isset($dropdbonuninstall) ? $dropdbonuninstall : 0),
+				 '',array(t('No'),t('Yes')))));
+	$sc .= "<div class='warn'>If set to yes, ALL CART DATA will be lost when the cart module is disabled.</div>";
 
 	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
 				     '$addon' 	=> array('cart',
 							 t('Cart Settings'), '',
 							 t('Submit')),
 				     '$content'	=> $sc));
-*/
 
 }
 
