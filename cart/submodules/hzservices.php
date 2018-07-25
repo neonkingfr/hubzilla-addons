@@ -155,6 +155,7 @@ class Cart_hzservices {
     $sku = isset($_REQUEST["SKU"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_REQUEST["SKU"]) : null;
     if ($sku) {
       $pagecontent=Cart_hzservices::itemedit_form($sku);
+      call_hooks('itemedit_formextras',$pagecontent);
       return;
     }
 
@@ -472,7 +473,7 @@ class Cart_hzservices {
   static public function rollback_hzservices(&$calldata) {
     $orderhash=$calldata["item"]["order_hash"];
     $order=cart_loadorder($orderhash);
-    
+
     $seller_hash=$order["seller_channel"];
     $seller_chaninfo = channelx_by_hash($seller_hash);
     $seller_address = $seller_chaninfo["xchan_address"];

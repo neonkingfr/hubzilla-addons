@@ -1336,6 +1336,7 @@ function cart_init() {
 }
 
 function cart_post_add_item () {
+	//@TODO: Add output of errors someplace
 	$items=Array();
 
 	call_hooks('cart_get_catalog',$items);
@@ -1857,7 +1858,6 @@ function cart_do_cancelitem ($iteminfo) {
 }
 
 function cart_fulfillitem_markfulfilled(&$hookdata) {
-
   $orderhash=$hookdata["item"]["order_hash"];
   $itemid=$hookdata["item"]["id"];
   $r=q("update cart_orderitems set item_fulfilled = 1 where order_hash = '%s' and id=%d",
@@ -1874,19 +1874,51 @@ function cart_fulfillitem_unmarkfulfilled(&$hookdata) {
   $r=q("update cart_orderitems set item_fulfilled = 0 where order_hash = '%s' and id=%d",
 			dbesc($orderhash),intval($itemid));
   $item_meta=cart_getitem_meta ($itemid,$orderhash);
-  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Item Fulfilled";
+  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Item fulfillment rolled back.";
   cart_updateitem_meta($itemid,$item_meta,$orderhash);
+}
 
+function cart_add_error($errors,$new_error) {
+	if (!is_array($errors)) {
+		$firsterr=$errors;
+		$errors=Array();
+		if ($firsterr) {
+			$errors[]=$firsterr;
+		}
+	} else {
+		$errors[]=$new_error;
+	}
+	return $errors;
+}
+
+function cart_item_note($note,$itemid,$orderhash) {
+	$item_meta=cart_getitem_meta ($itemid,$orderhash);
+	if (is_array($error)) {
+		foreach ($error as $errtxt) {
+		  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ").$errtxt;
+		}
+	} else {
+	  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ").$error;
+	}
+	cart_updateitem_meta($itemid,$item_meta,$orderhash);
 }
 
 function cart_fulfillitem_error($error,$itemid,$orderhash) {
 	$item_meta=cart_getitem_meta ($itemid,$orderhash);
-	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Error fulfilling item: ".$error;
+	if (is_array($error)) {
+		foreach ($error as $errtxt) {
+		  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Error fulfilling item: ".$errtxt;
+		}
+	} else {
+	  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Error fulfilling item: ".$error;
+	}
 
-	$r=q("update cart_orderitems set item_exception = 1 where order_hash = '%s' and id = %d",
+  if ($exception) {
+	  $r=q("update cart_orderitems set item_exception = 1 where order_hash = '%s' and id = %d",
 			dbesc($orderhash),intval($itemid));
+	  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Exception Set";
+  }
 
-	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Exception Set";
 	cart_updateitem_meta($itemid,$item_meta,$orderhash);
 }
 
