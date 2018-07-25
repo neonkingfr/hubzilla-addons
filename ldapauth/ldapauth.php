@@ -31,8 +31,11 @@
  * ldap_bindpw = password for LDAP bind DN
  * ldap_searchdn = base DN for the search root of the LDAP directory
  * ldap_userattr = the name of the attribute containing the username, e.g. SAMAccountName
+ * ldap_nameattr = the name of the attribute containing the displayname, e.g. displayName - only required if creating a channel
  * ldap_group = (optional) DN of group to check membership
  * create_account = (optional) 1 or 0 (default), automatically create Hubzilla accounts based on the LDAP 'mail' attribute
+ * create_channel = (optional) 1 or 0 (default), automatically create channel if create_account succeeds using nameattr and userattr
+ *    and the system default_permissions_role or 'social'
  *
  */
 
@@ -48,8 +51,14 @@ function ldapauth_unload() {
 
 
 function ldapauth_hook_authenticate($a,&$b) {
+
 	$mail = '';
-	if(ldapauth_authenticate($b['username'],$b['password'],$mail)) {
+	$username = '';
+	$displayname = '';
+
+	$perms_role = get_config('system','default_permissions_role','social');
+
+	if(ldapauth_authenticate($b['username'],$b['password'],$mail,$nickname,$displayname)) {
 		$results = q("SELECT * FROM account where account_email = '%s' OR account_email = '%s'  AND account_flags in (0,1) limit 1",
 			dbesc($b['username']), dbesc($mail)
 		);
@@ -68,6 +77,19 @@ function ldapauth_hook_authenticate($a,&$b) {
 		  notice( t('Authentication successful but rejected: account creation is disabled.'));
 		  return;
 		}
+		if((! $results) && $b['user_record'] && $nickname && $displayname && intval(get_config('ldapauth','create_channel'))) {
+			$c = create_identity( [
+				'name' => $displayname, 
+				'nickname' => $nickname, 
+				'account_id' => $b['user_record']['account_id'], 
+				'permissions_role' => $perms_role
+			] );
+
+			if(! $c['success']) {
+				logger('ldapauth: channel creation failed');
+				return;
+			}
+		}
 		if($results) {
 			logger('ldapauth: Login success for ' . $b['username']);
 			$b['user_record'] = $results[0];
@@ -78,13 +100,14 @@ function ldapauth_hook_authenticate($a,&$b) {
 }
 
 
-function ldapauth_authenticate($username,$password,&$mail) {
+function ldapauth_authenticate($username,$password,&$mail,&$nickname,&$displayname) {
     logger('ldapauth: Searching user '.$username.'.');
     $ldap_server   = get_config('ldapauth','ldap_server');
     $ldap_binddn   = get_config('ldapauth','ldap_binddn');
     $ldap_bindpw   = get_config('ldapauth','ldap_bindpw');
     $ldap_searchdn = get_config('ldapauth','ldap_searchdn');
-    $ldap_userattr = get_config('ldapauth','ldap_userattr');
+    $ldap_userattr = get_config('ldapauth','ldap_userattr','SAMAccountName');
+    $ldap_nameattr = get_config('ldapauth','ldap_nameattr','displayName');
     $ldap_group    = get_config('ldapauth','ldap_group');
 
     if(empty($password)) {
@@ -112,7 +135,7 @@ function ldapauth_authenticate($username,$password,&$mail) {
         return false;
     }
 
-    $res = @ldap_search($connect,$ldap_searchdn, $ldap_userattr . '=' . $username, array('mail'));
+    $res = @ldap_search($connect,$ldap_searchdn, $ldap_userattr . '=' . $username, [ 'mail', $ldap_nameattr, $ldap_userattr ]);
 
     if(! $res) {
 	logger('ldapauth: User '.$username.' not found.');
@@ -136,6 +159,19 @@ function ldapauth_authenticate($username,$password,&$mail) {
 			$mail = $attrs['mail'][0];
 		else
 			$mail = $attrs['mail'];
+	}
+	if($attrs['count'] && $attrs[$ldap_nameattr]) {
+		if(is_array($attrs[$ldap_nameattr]))
+			$displayname = $attrs[$ldap_nameattr][0];
+		else
+			$displayname = $attrs[$ldap_nameattr];
+	}
+
+	if($attrs['count'] && $attrs[$ldap_userattr]) {
+		if(is_array($attrs[$ldap_userattr]))
+			$nickname = $attrs[$ldap_userattr][0];
+		else
+			$nickname = $attrs[$ldap_userattr];
 	}
 
     $dn = @ldap_get_dn($connect,$id);

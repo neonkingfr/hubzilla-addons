@@ -35,14 +35,12 @@ function std_embeds_action(&$arr) {
 	// So https://youtube.com.badguy.com/watch/111111111 and https://foobar.com/youtube.com/watch/111111111 and
 	// https://foobar.com/?fakeurl=https://youtube.com/watch/111111 will not be allowed unfiltered access.
 
-	$s = array(
-		'youtube'    => 'https://youtube.com',
-		'youtu.be'   => 'https://youtu.be',
-		'vimeo'      => 'https://vimeo.com',
-		'soundcloud' => 'https://soundcloud.com',
-		'dailymotion' => 'https://dailymotion.com',
-		'dai.ly' => 'https://dai.ly'
-	);
+	$s = [
+		'youtube'       => 'https://youtube.com',
+		'youtu.be'      => 'https://youtu.be',
+		'vimeo'         => 'https://vimeo.com',
+		'soundcloud'    => 'https://soundcloud.com'
+	];
 
 	foreach($s as $k => $v) {
 		if(strpos($m['host'],$k) !== false) {

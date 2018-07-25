@@ -20,7 +20,7 @@ class Ap_probe extends \Zotlabs\Web\Controller {
 		if(x($_REQUEST,'addr')) {
 			$addr = $_REQUEST['addr'];
 
-			$headers = 'Accept: application/ld+json; profile="https://www.w3.org/ns/activitystreams", application/activity+json, application/ld+json';
+			$headers = 'Accept: application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams", application/ld+json;profile="https://www.w3.org/ns/activitystreams", application/activity+json, application/ld+json';
 
 
 			$redirects = 0;

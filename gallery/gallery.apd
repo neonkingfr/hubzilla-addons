@@ -1,0 +1,5 @@
+version: 1
+requires: local_channel
+url: $baseurl/gallery/$nick
+name: Gallery
+photo: icon:photo

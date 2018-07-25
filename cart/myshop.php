@@ -5,6 +5,7 @@ function cart_myshop_load(){
 	Zotlabs\Extend\Hook::register('cart_aside_filter','addon/cart/myshop.php','cart_myshop_aside',1,99);
 	Zotlabs\Extend\Hook::register('cart_myshop_order','addon/cart/myshop.php','cart_myshop_order',1,99);
 	Zotlabs\Extend\Hook::register('cart_post_myshop_item_fulfill','addon/cart/myshop.php','cart_myshop_item_fulfill',1,99);
+	Zotlabs\Extend\Hook::register('cart_post_myshop_item_cancel','addon/cart/myshop.php','cart_myshop_item_cancel',1,99);
 	Zotlabs\Extend\Hook::register('cart_post_myshop_clear_item_exception','addon/cart/myshop.php','cart_myshop_clear_item_exception',1,99);
 	Zotlabs\Extend\Hook::register('cart_post_myshop_add_itemnote','addon/cart/myshop.php','cart_myshop_add_itemnote',1,99);
 	Zotlabs\Extend\Hook::register('cart_post_myshop_add_ordernote','addon/cart/myshop.php','cart_myshop_add_ordernote',1,99);
@@ -12,14 +13,17 @@ function cart_myshop_load(){
 	Zotlabs\Extend\Hook::register('cart_myshop_openorders','addon/cart/myshop.php','cart_myshop_openorders',1,99);
 	Zotlabs\Extend\Hook::register('cart_myshop_closedorders','addon/cart/myshop.php','cart_myshop_closedorders',1,99);
 	Zotlabs\Extend\Hook::register('cart_post_myshop_order_markpaid','addon/cart/myshop.php','cart_myshop_order_markpaid',1,99);
+	Zotlabs\Extend\Hook::register('cart_orderpaid','addon/cart/myshop.php','cart_myshop_orderpaid_hook',1,10000);
+  Zotlabs\Extend\Hook::register('cart_after_fulfill','addon/cart/cart.php','cart_myshop_itemfulfilled_hook',1,30000);
+	Zotlabs\Extend\Hook::register('cart_after_cancel','addon/cart/cart.php','cart_myshop_cancelled_hook',1,30000);
 }
 
 function cart_myshop_unload(){
-
 	Zotlabs\Extend\Hook::unregister('cart_main_myshop','addon/cart/myshop.php','cart_myshop_main');
 	Zotlabs\Extend\Hook::unregister('cart_aside_filter','addon/cart/myshop.php','cart_myshop_aside');
 	Zotlabs\Extend\Hook::unregister('cart_myshop_order','addon/cart/myshop.php','cart_myshop_order');
 	Zotlabs\Extend\Hook::unregister('cart_post_myshop_item_fulfill','addon/cart/myshop.php','cart_myshop_item_fulfill');
+	Zotlabs\Extend\Hook::unregister('cart_post_myshop_item_cancel','addon/cart/myshop.php','cart_myshop_item_cancel',1,99);
 	Zotlabs\Extend\Hook::unregister('cart_post_myshop_clear_item_exception','addon/cart/myshop.php','cart_myshop_clear_item_exception');
 	Zotlabs\Extend\Hook::unregister('cart_post_myshop_add_itemnote','addon/cart/myshop.php','cart_myshop_add_itemnote');
 	Zotlabs\Extend\Hook::unregister('cart_post_myshop_add_ordernote','addon/cart/myshop.php','cart_myshop_add_ordernote');
@@ -27,42 +31,10 @@ function cart_myshop_unload(){
 	Zotlabs\Extend\Hook::unregister('cart_myshop_openorders','addon/cart/myshop.php','cart_myshop_openorders');
 	Zotlabs\Extend\Hook::unregister('cart_myshop_closedorders','addon/cart/myshop.php','cart_myshop_closedorders');
 	Zotlabs\Extend\Hook::unregister('cart_post_myshop_order_markpaid','addon/cart/myshop.php','cart_myshop_order_markpaid');
+	Zotlabs\Extend\Hook::unregister('cart_orderpaid','addon/cart/myshop.php','cart_myshop_orderpaid_hook',1,10000);
+  Zotlabs\Extend\Hook::unregister('cart_after_fulfill','addon/cart/cart.php','cart_myshop_itemfulfilled_hook',1,30000);
+	Zotlabs\Extend\Hook::unregister('cart_after_cancel','addon/cart/cart.php','cart_myshop_cancelled_hook',1,30000);
 }
-
-/* FUTURE/TODO
-
-function cart_myshop_searchparams ($search) {
-
-  $keys = Array (
-		"order_hash"=>Array("key"=>"order_hash","cast"=>"'%s'","escfunc"=>"dbesc"),
-
-		"item_desc"=>Array("key"=>"item_desc","cast"=>"'%s'","escfunc"=>"dbesc"),
-		"item_type"=>Array("key"=>"item_type","cast"=>"'%s'","escfunc"=>"dbesc"),
-		"item_sku"=>Array("key"=>"item_sku","cast"=>"'%s'","escfunc"=>"dbesc"),
-		"item_qty"=>Array("key"=>"item_qty","cast"=>"%d","escfunc"=>"intval"),
-		"item_price"=>Array("key"=>"item_price","cast"=>"%f","escfunc"=>"floatval"),
-		"item_tax_rate"=>Array("key"=>"item_tax_rate","cast"=>"%f","escfunc"=>"floatval"),
-		"item_meta"=>Array("key"=>"item_meta","cast"=>"'%s'","escfunc"=>"dbesc"),
-		);
-
-	$colnames = '';
-	$valuecasts = '';
-	$params = Array();
-	$count=0;
-	foreach ($keys as $key=>$cast) {
-		if (isset($search[$key])) {
-			$colnames .= ($count > 0) ? "," : '';
-			$colnames .= $cast["key"];
-			$valuecasts .= ($count > 0) ? "," : '';
-			$valuecasts .= $cast["cast"];
-                        $escfunc = $cast["escfunc"];
-                        logger ("[cart] escfunc = ".$escfunc);
-			$params[] = $escfunc($item[$key]);
-			$count++;
-		}
-	}
-}
-*/
 
 function cart_myshop_main (&$pagecontent) {
 
@@ -105,15 +77,18 @@ function cart_myshop_main (&$pagecontent) {
 
 function cart_myshop_menu() {
 	$urlroot = '/' . argv(0) . '/' . argv(1) . '/myshop';
-	//$openorders=cart_myshop_get_openorders(null,10000,0);
-	$allorders=cart_myshop_get_allorders(null,10000,0);
+	$openorders=cart_myshop_get_openorders(null,10000,0);
+	$ordercount = cart_myshop_get_ordercount();
+	//$allorders=cart_myshop_get_allorders(null,10000,0);
 	//$closedorders=cart_myshop_get_closedorders(null,10000,0);
         $rendered = '';
-	//$rendered .= "<a href='".$urlroot."/openorders'>Open Orders (".count($openorders).")</a><BR />";
-	//$rendered .= "<a href='".$urlroot."/closedorders'>Closed Orders (".count($closedorders).")</a><BR />";
-	$rendered .= "<a href='".$urlroot."/allorders'>All Orders (".count($allorders).")</a><BR />";
+	$rendered .= "<li><a class='nav-link' href='".$urlroot."'>Home</a></li>";
+	$rendered .= "<li><a class='nav-link' href='/" . argv(0) . "/" . argv(1) . "/catalog'>Catalog</a></li>";
+	//$rendered .= "<li><a class='nav-link' href='".$urlroot."/openorders'>Open Orders (".count($openorders).")</a></li>";
+	//$rendered .= "<li><a class='nav-link' href='".$urlroot."/closedorders'>Closed Orders (".count($closedorders).")</a></li>";
+	$rendered .= "<li><a class='nav-link' href='".$urlroot."/allorders'>All Orders (" . $ordercount . ")</a></li>";
 	call_hooks('cart_myshop_menufilter',$rendered);
-        return $rendered;
+        return '<ul class="nav nav-pills flex-column">' . $rendered . '</ul>';
 }
 
 function cart_myshop_openorders (&$pagecontent) {
@@ -159,6 +134,8 @@ function cart_myshop_order(&$pagecontent) {
 	$templateinfo = array('name'=>'myshop_order.tpl','path'=>'addon/cart/');
 	call_hooks('cart_filter_myshop_order',$templateinfo);
 	$template = get_markup_template($templateinfo['name'],$templateinfo['path']);
+        $templatevalues['added_display']=Array("order"=>$order,"content"=>"");
+        call_hooks('cart_addons_myshop_order_display',$templatevalues['added_display']);
 	//HOOK: cart_post_myshop_order
 	$rendered = replace_macros($template, $templatevalues);
 	$pagecontent = $rendered;
@@ -189,10 +166,14 @@ function cart_myshop_order_markpaid () {
 		return;
 	}
 
+
+}
+
+function cart_myshop_orderpaid_hook (&$hookdata) {
+        $orderhash=$hookdata["order"]["order_hash"];
 	$order_meta=cart_getorder_meta ($orderhash);
 	$order_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Marked Paid";
 	cart_updateorder_meta($order_meta,$orderhash);
-
 }
 
 function cart_myshop_item_fulfill () {
@@ -221,17 +202,59 @@ function cart_myshop_item_fulfill () {
 	}
 	$itemtofulfill=Array('order_hash'=>$orderhash,'id'=>$itemid);
 
-
 	cart_do_fulfillitem ($itemtofulfill);
 	if (isset($itemtofulfill["error"])) {
 		notice (t($itemtofulfill["error"]));
 		return;
 	}
+}
 
+function cart_myshop_item_cancel () {
+        notice("Cancel Item".EOL);
+	if (!check_form_security_token()) {
+		notice (check_form_security_std_err_msg());
+		return;
+	}
+	$itemid = preg_replace('/[^0-9]/','',$_POST["itemid"]);
+	$orderhash = argv(4);
+	$orderhash = preg_replace('/[^a-z0-9]/','',$orderhash);
+	$order = cart_loadorder($orderhash);
+	$channel=\App::get_channel();
+	$channel_hash=$channel["channel_hash"];
+	if (!$order || $order["seller_channel"]!=$channel_hash) {
+		notice (t("Access Denied"));
+		return;
+	}
+	foreach ($order["items"] as $item) {
+		if ($item["id"]==$itemid) {
+			$itemtocancel=$itemid;
+		}
+	}
+	if (!$itemtocancel) {
+		notice (t("Invalid Item"));
+		return;
+	}
+	$itemtocancel=Array('order_hash'=>$orderhash,'id'=>$itemid);
+        logger("Call do_cancelitem",LOGGER_DEBUG);
+	cart_do_cancelitem ($itemtocancel);
+	if (isset($itemtocancel["error"])) {
+		notice (t($itemtocancel["error"]));
+		return;
+	}
+}
+
+function cart_myshop_itemfulfilled_hook (&$hookdata) {
+        $orderhash=$hookdata["item"]["order_hash"];
 	$item_meta=cart_getitem_meta ($itemid,$orderhash);
 	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Manual Fulfillment";
 	cart_updateitem_meta($itemid,$item_meta,$orderhash);
+}
 
+function cart_myshop_itemcancelled_hook (&$hookdata) {
+        $orderhash=$hookdata["item"]["order_hash"];
+	$item_meta=cart_getitem_meta ($itemid,$orderhash);
+	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Manual Cancellation";
+	cart_updateitem_meta($itemid,$item_meta,$orderhash);
 }
 
 function cart_myshop_clear_item_exception () {
@@ -261,7 +284,7 @@ function cart_myshop_clear_item_exception () {
 		return;
 	}
 
-	$r=q("update cart_orderitems set item_exception = false where order_hash = '%s' and id = %d",
+	$r=q("update cart_orderitems set item_exception = 0 where order_hash = '%s' and id = %d",
 			dbesc($orderhash),intval($itemid));
 
 	$item_meta=cart_getitem_meta ($itemid,$orderhash);
@@ -322,7 +345,7 @@ function cart_myshop_add_itemnote () {
   $item_meta=cart_getitem_meta ($itemid,$orderhash);
 	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ").filter_var($_POST["notetext"], FILTER_SANITIZE_STRING);
   if (isset($_POST["exception"])) {
-  	$r=q("update cart_orderitems set item_exception = true where order_hash = '%s' and id = %d",
+  	$r=q("update cart_orderitems set item_exception = 1 where order_hash = '%s' and id = %d",
 			dbesc($orderhash),intval($itemid));
 		$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Exception Set";
 	}
@@ -341,18 +364,32 @@ function cart_myshop_aside (&$aside) {
 
 	$rendered = '';
 	$urlroot = '/' . argv(0) . '/' . argv(1) . '/myshop';
+	$rendered .= "<li><a class='nav-link' href='".$urlroot."'>Home</a></li>";
+	$rendered .= "<li><a class='nav-link' href='/" . argv(0) . "/" . argv(1) . "/catalog'>Catalog</a></li>";
         //$openorders=cart_myshop_get_openorders(null,10000,0);
-	$allorders=cart_myshop_get_allorders(null,10000,0);
+	//$allorders=cart_myshop_get_allorders(null,10000,0);
+        $ordercount=cart_myshop_get_ordercount();
 	//$closedorders=cart_myshop_get_closedorders(null,10000,0);
-        //$rendered .= "<li><a href='".$urlroot."/openorders'>Open Orders (".count($openorders).")</a></li>";
-	//$rendered .= "<li><a href='".$urlroot."/closedorders'>Closed Orders (".count($closedorders).")</a></li>";
-	$rendered .= "<li><a href='".$urlroot."/allorders'>All Orders (".count($allorders).")</a></li>";
+        //$rendered .= "<li><a class='nav-link' href='".$urlroot."/openorders'>Open Orders (".count($openorders).")</a></li>";
+	//$rendered .= "<li><a class='nav-link' href='".$urlroot."/closedorders'>Closed Orders (".count($closedorders).")</a></li>";
+	$rendered .= "<li><a class='nav-link' href='".$urlroot."/allorders'>All Orders (".$ordercount.")</a></li>";
+	call_hooks('cart_myshop_menufilter',$rendered);
 	$templatevalues["content"]=$rendered;
 	$template = get_markup_template('myshop_aside.tpl','addon/cart/');
 	$rendered = replace_macros($template, $templatevalues);
-	$aside = $rendered . $aside;
+	$aside = '<ul class="nav nav-pills flex-column">' . $rendered . '</ul>' . $aside;
 
 	return ($aside);
+}
+
+function cart_myshop_get_ordercount () {
+  $seller_hash=get_observer_hash();
+  $r=q("select count(cart_orders.order_hash) as ordercount from cart_orders where
+        seller_channel = '%s'
+        ",
+      dbesc($seller_hash));
+  if (!$r) {return 0;}
+  return $r[0]["ordercount"];
 }
 
 function cart_myshop_get_allorders ($search=null,$limit=100000,$offset=0) {
@@ -361,9 +398,10 @@ function cart_myshop_get_allorders ($search=null,$limit=100000,$offset=0) {
   *   [""]
 ***/
   $seller_hash=get_observer_hash();
-  $r=q("select distinct cart_orders.order_hash from cart_orders,cart_orderitems
+  $r=q("select distinct cart_orders.order_hash,cart_orders.id from cart_orders,cart_orderitems
         where cart_orders.order_hash = cart_orderitems.order_hash and
         seller_channel = '%s'
+				ORDER BY cart_orders.id
         limit %d offset %d",
       dbesc($seller_hash),
       intval($limit), intval($offset));
@@ -381,6 +419,8 @@ function cart_myshop_get_openorders ($search=null,$limit=100,$offset=1) {
   *   [""]
 ***/
   $seller_hash=get_observer_hash();
+
+/*
   $r=q("select distinct cart_orders.order_hash from cart_orders,cart_orderitems
         where cart_orders.order_hash = cart_orderitems.order_hash and
         seller_channel = '%s' and cart_orderitems.item_fulfilled is NULL
@@ -388,7 +428,16 @@ function cart_myshop_get_openorders ($search=null,$limit=100,$offset=1) {
         limit %d offset %d",
       dbesc($seller_hash),
       intval($limit), intval($offset));
+*/
 
+  $r=q("select distinct cart_orders.order_hash from cart_orders,cart_orderitems
+        where cart_orders.order_hash = cart_orderitems.order_hash and
+        seller_channel = '%s' and
+        cart_orderitems.item_fulfilled = 0 and
+        cart_orderitems.item_confirmed = 1
+        limit %d offset %d",
+      dbesc($seller_hash),
+      intval($limit), intval($offset));
   if (!$r) {return Array();}
 
   $orders=Array();
@@ -404,7 +453,7 @@ function cart_myshop_get_closedorders ($search=null,$limit=100,$offset=1) {
   $r=q("select distinct order_hash from cart_orders where
         seller_channel = '%s' and
         cart_orders.order_hash not in (select order_hash from cart_orderitems
-        where item_fulfilled is not null)
+        where item_fulfilled = 1)
         limit %d offset %d",
       dbesc($seller_hash),
       intval($limit), intval($offset));

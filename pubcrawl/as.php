@@ -394,10 +394,21 @@ function asencode_activity($i) {
 				intval($i['parent'])
 			);
 			if($d) {
-				$reply_url = $d[0]['xchan_url'];
+				$is_directmessage = false;
+				$recips = get_iconfig($i['parent'], 'activitypub', 'recips');
+
+				if(in_array($i['author']['xchan_url'], $recips['to'])) {
+					$reply_url = $d[0]['xchan_url'];
+					$is_directmessage = true;
+				}
+				else {
+					$reply_url = z_root() . '/followers/' . substr($i['author']['xchan_addr'],0,strpos($i['author']['xchan_addr'],'@'));
+				}
+
 				$reply_addr = (($d[0]['xchan_addr']) ? $d[0]['xchan_addr'] : $d[0]['xchan_name']);
 			}
 		}
+
 	}
 
 	$actor = asencode_person($i['author']);
@@ -432,22 +443,24 @@ function asencode_activity($i) {
 	if($i['item_private']) {
 		if($reply) {
 			if($i['author_xchan'] == $i['owner_xchan']) {
-				$ret['to'] = [ $reply_url ];
-				$ret['cc'] = as_map_acl($i);
 				$m = as_map_acl($i,true);
 				$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
 			}
 			else {
-				$ret['to'] = [ $reply_url ];
-				$ret['tag'] = [
-					'type' => 'Mention',
-					'href' => $reply_url,
-					'name' => '@' . $reply_addr
-				];
+				if($is_directmessage) {
+					$m = [
+						'type' => 'Mention',
+						'href' => $reply_url,
+						'name' => '@' . $reply_addr
+					];
+					$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
+				}
+				else {
+					$ret['to'] = [ $reply_url ];
+				}
 			}
 		}
 		else {
-			$ret['to'] = as_map_acl($i);
 			$m = as_map_acl($i,true);
 			$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
 		}
@@ -461,14 +474,15 @@ function asencode_activity($i) {
 			$ret['to'] = [ ACTIVITY_PUBLIC_INBOX ];
 			$ret['cc'] = [ z_root() . '/followers/' . substr($i['author']['xchan_addr'],0,strpos($i['author']['xchan_addr'],'@')) ];
 		}
-		$mentions = as_map_mentions($i);
-		if(count($mentions) > 0) {
-			if(! $ret['cc']) {
-				$ret['cc'] = $mentions;
-			}
-			else {
-				$ret['cc'] = array_merge($ret['cc'], $mentions);
-			}
+	}
+
+	$mentions = as_map_mentions($i);
+	if(count($mentions) > 0) {
+		if(! $ret['cc']) {
+			$ret['cc'] = $mentions;
+		}
+		else {
+			$ret['cc'] = array_merge($ret['cc'], $mentions);
 		}
 	}
 	
@@ -504,13 +518,17 @@ function as_map_acl($i,$mentions = false) {
 
 	$private = false;
 	$list = [];
-	$x = collect_recipients($i,$private);
+
+	$g = intval(get_pconfig($i['uid'],'activitypub','include_groups'));
+
+	$x = collect_recipients($i,$private,$g);
 	if($x) {
 		stringify_array_elms($x);
 		if(! $x)
 			return;
 
-		$strict = get_config('activitypub','compliance');
+		$strict = (($mentions) ? true : get_config('activitypub','compliance'));
+
 		$sql_extra = (($strict) ? " and xchan_network = 'activitypub' " : '');
 
 		$details = q("select xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") $sql_extra");
@@ -682,7 +700,7 @@ function as_fetch($url) {
 
 	$redirects = 0;
 	$x = z_fetch_url($url,true,$redirects,
-		['headers' => [ 'Accept: application/ld+json; profile="https://www.w3.org/ns/activitystreams", application/activity+json']]);
+		['headers' => [ 'Accept: application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ]]);
 
 	if($x['success']) {
 		return $x['body'];
@@ -1110,6 +1128,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
 	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
 	// This is not part of the activitypub protocol - we might change this to show all public posts in pubstream at some point.
+
 	$pubstream = ((is_array($act->obj) && array_key_exists('to', $act->obj) && in_array(ACTIVITY_PUBLIC_INBOX, $act->obj['to'])) ? true : false);
 	$is_sys_channel = is_sys_channel($channel['channel_id']);
 
@@ -1198,6 +1217,15 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s['verb']     = ACTIVITY_POST;
 	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
 	$s['app']      = t('ActivityPub');
+
+
+	if($channel['channel_system']) {
+		if(! \Zotlabs\Lib\MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
+			logger('post is filtered');
+			return;
+		}
+	}
+
 
 	if($abook) {
 		if(! post_is_importable($s,$abook[0])) {
@@ -1344,6 +1372,13 @@ function as_announce_note($channel,$observer_hash,$act) {
 	$s['verb']     = ACTIVITY_POST;
 	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
 	$s['app']      = t('ActivityPub');
+
+	if($channel['channel_system']) {
+		if(! \Zotlabs\Lib\MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
+			logger('post is filtered');
+			return;
+		}
+	}
 
 	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
 		dbesc($observer_hash),

@@ -39,6 +39,7 @@ function pubcrawl_load() {
 		'queue_deliver'              => 'pubcrawl_queue_deliver',
 		'import_author'              => 'pubcrawl_import_author',
 		'channel_protocols'          => 'pubcrawl_channel_protocols',
+		'federated_transports'       => 'pubcrawl_federated_transports',
 		'create_identity'            => 'pubcrawl_create_identity'
 	]);
 }
@@ -53,6 +54,10 @@ function pubcrawl_channel_protocols(&$b) {
 	if(intval(get_pconfig($b['channel_id'],'system','activitypub_allowed')))
 		$b['protocols'][] = 'activitypub';
 
+}
+
+function pubcrawl_federated_transports(&$x) {
+	$x[] = 'ActivityPub';
 }
 
 
@@ -129,28 +134,32 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	if($protocol && strtolower($protocol) !== 'activitypub')
 		return;
 
-	$address = EMPTY_STR;
+	if(is_array($x)) {
 
-	if(array_key_exists('subject',$x) && strpos($x['subject'],'acct:') === 0)
-		$address = str_replace('acct:','',$x['subject']);
-	if(array_key_exists('aliases',$x) && count($x['aliases'])) {
-		foreach($x['aliases'] as $a) {
-			if(strpos($a,'acct:') === 0) {
-				$address = str_replace('acct:','',$a);
-				break;
+
+		$address = EMPTY_STR;
+
+		if(array_key_exists('subject',$x) && strpos($x['subject'],'acct:') === 0)
+			$address = str_replace('acct:','',$x['subject']);
+		if(array_key_exists('aliases',$x) && count($x['aliases'])) {
+			foreach($x['aliases'] as $a) {
+				if(strpos($a,'acct:') === 0) {
+					$address = str_replace('acct:','',$a);
+					break;
+				}
 			}
-		}
-	}	
+		}	
 
-    if(strpos($url,'@') && $x && array_key_exists('links',$x) && $x['links']) {
-        foreach($x['links'] as $link) {
-            if(array_key_exists('rel',$link) && array_key_exists('type',$link)) {
-                if($link['rel'] === 'self' && ($link['type'] === 'application/activity+json' || strpos($link['type'],'ld+json') !== false)) {
-					$url = $link['href'];
-                }
-            }
-        }
-    }
+	    if(strpos($url,'@') && $x && array_key_exists('links',$x) && $x['links']) {
+    	    foreach($x['links'] as $link) {
+        	    if(array_key_exists('rel',$link) && array_key_exists('type',$link)) {
+            	    if($link['rel'] === 'self' && ($link['type'] === 'application/activity+json' || strpos($link['type'],'ld+json') !== false)) {
+						$url = $link['href'];
+                	}
+            	}
+        	}
+    	}
+	}
 	
 	if(($url) && (strpos($url,'http') === 0)) {
 		$x = as_fetch($url);
@@ -171,10 +180,10 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	// Now find the actor and see if there is something we can follow	
 
 	$person_obj = null;
-	if($AS->type === 'Person') {
+	if(in_array($AS->type, [ 'Person', 'Group', 'Profile' ])) {
 		$person_obj = $AS->data;
 	}
-	elseif($AS->obj && $AS->obj['type'] === 'Person') {
+	elseif($AS->obj && ( in_array($AS->obj['type'], [ 'Person', 'Group', 'Profile' ] ))) {
 		$person_obj = $AS->obj;
 	}
 	else {
@@ -1123,7 +1132,7 @@ function pubcrawl_feature_settings_post(&$b) {
 	if($_POST['pubcrawl-submit']) {
 		set_pconfig(local_channel(),'system','activitypub_allowed',intval($_POST['activitypub_allowed']));
 		set_pconfig(local_channel(),'activitypub','downgrade_media', 1 - intval($_POST['activitypub_send_media']));
-		
+		set_pconfig(local_channel(),'activitypub','include_groups',intval($_POST['include_groups']));		
 		info( t('ActivityPub Protocol Settings updated.') . EOL);
 	}
 }
@@ -1139,11 +1148,15 @@ function pubcrawl_feature_settings(&$s) {
 		'$field'	=> array('activitypub_allowed', t('Enable the ActivityPub protocol for this channel'), $ap_allowed, '', $yes_no),
 	));
 	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
+		'$field'	=> array('include_groups', t('Deliver to ActivityPub recipients in privacy groups'), get_pconfig(local_channel(),'activitypub','include_groups'), t('May result in a large number of mentions and expose all the members of your privacy group'), $yes_no),
+	));
+
+	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
 		'$field'	=> array('activitypub_send_media', t('Send multi-media HTML articles'), 1 - intval(get_pconfig(local_channel(),'activitypub','downgrade_media',true)), t('Not supported by some microblog services such as Mastodon'), $yes_no),
 	));
 
 	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('pubcrawl', '<img src="addon/pubcrawl/pubcrawl.png" style="width:auto; height:1em; margin:-3px 5px 0px 0px;">' . t('ActivityPub Protocol Settings'), '', t('Submit')),
+		'$addon' 	=> array('pubcrawl', '<img src="addon/pubcrawl/activitypub.png" style="width:auto; height:1em; margin:-3px 5px 0px 0px;">' . t('ActivityPub Protocol Settings'), '', t('Submit')),
 		'$content'	=> $sc
 	));
 

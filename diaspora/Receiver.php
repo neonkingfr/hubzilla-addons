@@ -232,7 +232,7 @@ class Diaspora_Receiver {
 		}
 
 
-		$body = markdown_to_bb($this->get_body());
+		$body = markdown_to_bb($this->get_body(), false, [ 'diaspora' => true ]);
 
 
 		// photo could be a single photo or an array of photos.
@@ -280,7 +280,7 @@ class Diaspora_Receiver {
 			$ev['summary'] = escape_tags($this->get_property('summary',$event));
 			$ev['adjust'] = (($this->get_property('all_day',$event)) ? false : true);
 			$ev_timezone = notags($this->get_property('timezone',$event));
-			$ev['description'] = markdown_to_bb($this->get_property('description',$event));
+			$ev['description'] = markdown_to_bb($this->get_property('description',$event), false, [ 'diaspora' => true ]);
 			$ev_loc = $this->get_property('location',$event);
 			if($ev_loc) {
 				$ev_address = escape_tags($this->get_property('address',$ev_loc));
@@ -311,7 +311,7 @@ class Diaspora_Receiver {
 		$datarray = array();
 
 		// Look for tags and linkify them
-		$results = linkify_tags('', $body, $this->importer['channel_id'], true);
+		$results = linkify_tags('', $body, $this->importer['channel_id'], false);
 
 		$datarray['term'] = array();
 
@@ -358,13 +358,11 @@ class Diaspora_Receiver {
 		$cnt = preg_match_all('/@\[zrl=(.*?)\](.*?)\[\/zrl\]/ism',$body,$matches,PREG_SET_ORDER);
 		if($cnt) {
 			foreach($matches as $mtch) {
-				// don't include plustags in the term
-				$term = ((substr($mtch[2],-1,1) === '+') ? substr($mtch[2],0,-1) : $mtch[2]);
 				$datarray['term'][] = [
 					'uid'   => $this->importer['channel_id'],
 					'ttype' => TERM_MENTION,
 					'otype' => TERM_OBJ_POST,
-					'term'  => $term,
+					'term'  => $mtch[2],
 					'url'   => $mtch[1]
 				];
 			}
@@ -386,13 +384,11 @@ class Diaspora_Receiver {
 		$cnt = preg_match_all('/\!\[zrl=(.*?)\](.*?)\[\/zrl\]/ism',$body,$matches,PREG_SET_ORDER);
 		if($cnt) {
 			foreach($matches as $mtch) {
-				// don't include plustags in the term
-				$term = ((substr($mtch[2],-1,1) === '+') ? substr($mtch[2],0,-1) : $mtch[2]);
 				$datarray['term'][] = [
 					'uid'   => $this->importer['channel_id'],
 					'ttype' => TERM_FORUM,
 					'otype' => TERM_OBJ_POST,
-					'term'  => $term,
+					'term'  => $mtch[2],
 					'url'   => $mtch[1]
 				];
 			}
@@ -446,6 +442,14 @@ class Diaspora_Receiver {
 		if((! $this->importer['system']) && (! perm_is_allowed($this->importer['channel_id'],$xchan['xchan_hash'],'send_stream')) && (! $tgroup) && (! $found_tags)) {
 			logger('diaspora_post: Ignoring this author.');
 			return 202;
+		}
+
+		if($this->importer['system']) {
+			if(! \Zotlabs\Lib\MessageFilter::evaluate($datarray,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
+
+				logger('diaspora_post: filtering this author.');
+				return 202;
+			}
 		}
 
 		// Diaspora allows anybody to comment on public posts in theory
@@ -519,7 +523,7 @@ class Diaspora_Receiver {
 		$orig_url = 'https://'.substr($orig_author,strpos($orig_author,'@')+1).'/'.$orig_url_arg.'/'.$orig_guid;
 
 		if($text)
-			$text = markdown_to_bb($text) . "\n";
+			$text = markdown_to_bb($text, false, [ 'diaspora' => true ]) . "\n";
 		else
 			$text = '';
 
@@ -527,7 +531,7 @@ class Diaspora_Receiver {
 		$source_xml = get_diaspora_reshare_xml($source_url);
 
 		if($source_xml['status_message']) {
-			$body = markdown_to_bb($this->get_body($source_xml['status_message']));
+			$body = markdown_to_bb($this->get_body($source_xml['status_message']), false, [ 'diaspora' => true ]);
 
 			$orig_author = $this->get_author($source_xml['status_message']);
 			$orig_guid   = notags($this->get_property('guid',$source_xml['status_message']));
@@ -576,7 +580,7 @@ class Diaspora_Receiver {
 		$datarray = array();
 
 		// Look for tags and linkify them
-		$results = linkify_tags('', $body, $this->importer['channel_id'], true);
+		$results = linkify_tags('', $body, $this->importer['channel_id'], false);
 
 		$datarray['term'] = array();
 
@@ -611,13 +615,11 @@ class Diaspora_Receiver {
 		$cnt = preg_match_all('/@\[zrl=(.*?)\](.*?)\[\/zrl\]/ism',$body,$matches,PREG_SET_ORDER);
 		if($cnt) {
 			foreach($matches as $mtch) {
-				// don't include plustags in the term
-				$term = ((substr($mtch[2],-1,1) === '+') ? substr($mtch[2],0,-1) : $mtch[2]);
 				$datarray['term'][] = array(
 					'uid'   => $this->importer['channel_id'],
 					'ttype'  => TERM_MENTION,
 					'otype' => TERM_OBJ_POST,
-					'term'  => $term,
+					'term'  => $mtch[2],
 					'url'   => $mtch[1]
 				);
 			}
@@ -652,6 +654,15 @@ class Diaspora_Receiver {
 			logger('diaspora_reshare: Ignoring this author.');
 			return 202;
 		}
+		if($this->importer['system']) {
+			if(! \Zotlabs\Lib\MessageFilter::evaluate($datarray,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
+
+				logger('diaspora_reshare: filtering this author.');
+				return 202;
+			}
+		}
+
+
 
 		if(! post_is_importable($datarray,$contact)) {
 			logger('diaspora_reshare: filtering this author.');
@@ -841,7 +852,7 @@ class Diaspora_Receiver {
 			return;
 		}
 
-		$body = markdown_to_bb($text);
+		$body = markdown_to_bb($text, false, [ 'diaspora' => true ]);
 
 		$maxlen = get_max_import_size();
 
@@ -853,7 +864,7 @@ class Diaspora_Receiver {
 		$datarray = array();
 
 		// Look for tags and linkify them
-		$results = linkify_tags('', $body, $this->importer['channel_id'], true);
+		$results = linkify_tags('', $body, $this->importer['channel_id'], false);
 
 		$datarray['term'] = array();
 
@@ -888,13 +899,11 @@ class Diaspora_Receiver {
 		$cnt = preg_match_all('/@\[zrl=(.*?)\](.*?)\[\/zrl\]/ism',$body,$matches,PREG_SET_ORDER);
 		if($cnt) {
 			foreach($matches as $mtch) {
-				// don't include plustags in the term
-				$term = ((substr($mtch[2],-1,1) === '+') ? substr($mtch[2],0,-1) : $mtch[2]);
 				$datarray['term'][] = [
 					'uid'   => $this->importer['channel_id'],
 					'ttype' => TERM_MENTION,
 					'otype' => TERM_OBJ_POST,
-					'term'  => $term,
+					'term'  => $mtch[2],
 					'url'   => $mtch[1]
 				];
 			}
@@ -954,6 +963,17 @@ class Diaspora_Receiver {
 			logger('diaspora_comment: Ignoring this author.');
 			return 202;
 		}
+
+
+		if($this->importer['system']) {
+			if(! \Zotlabs\Lib\MessageFilter::evaluate($datarray,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
+				logger('diaspora_comment: filtering this author.');
+				return 202;
+			}
+		}
+
+
+
 
 		set_iconfig($datarray,'diaspora','fields',$unxml,true);
 
@@ -1073,7 +1093,7 @@ class Diaspora_Receiver {
 				continue;
 			}
 
-			$body = markdown_to_bb($msg_text);
+			$body = markdown_to_bb($msg_text, false, [ 'diaspora' => true ]);
 
 			$maxlen = get_max_import_size();
 
@@ -1216,7 +1236,7 @@ class Diaspora_Receiver {
 		$reply = 0;
 
 		$subject = $conversation['subject']; //this is already encoded
-		$body = markdown_to_bb($msg_text);
+		$body = markdown_to_bb($msg_text, false, [ 'diaspora' => true ]);
 
 
 		$maxlen = get_max_import_size();
@@ -1867,7 +1887,7 @@ class Diaspora_Receiver {
 		$ev['summary'] = escape_tags($this->get_property('summary'));
 		$ev['adjust'] = (($this->get_property('all_day')) ? false : true);
 		$ev_timezone = notags($this->get_property('timezone'));
-		$ev['description'] = markdown_to_bb($this->get_property('description'));
+		$ev['description'] = markdown_to_bb($this->get_property('description'), false, [ 'diaspora' => true ]);
 		$ev_loc = $this->get_property('location');
 		if($ev_loc) {
 			$ev_address = escape_tags($this->get_property('address',$ev_loc));
