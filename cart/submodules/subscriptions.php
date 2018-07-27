@@ -28,8 +28,11 @@ class Cart_subscriptions {
       Zotlabs\Extend\Hook::register('cart_post_subscriptions_itemdeactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_deactivation_post',1,1000);
       Zotlabs\Extend\Hook::register('cart_submodule_activation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_activation',1,1000);
       Zotlabs\Extend\Hook::register('cart_submodule_deactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_deactivation',1,1000);
+      Zotlabs\Extend\Hook::register('cart_post_subedit', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subedit_post',1,1000);
       Zotlabs\Extend\Hook::register('cart_dbcleanup', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbCleanup',1,1000);
       Zotlabs\Extend\Hook::register('cart_dbupgrade', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbUpgrade',1,1000);
+      Zotlabs\Extend\Hook::register('itemedit_formextras', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subscriptionadmin',1,1000);
+
     }
 
     static public function unload () {
@@ -46,8 +49,10 @@ class Cart_subscriptions {
       Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemdeactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_deactivation_post');
       Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_activation');
       Zotlabs\Extend\Hook::unregister('cart_submodule_deactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_deactivation');
+      Zotlabs\Extend\Hook::unregister('cart_post_subedit', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subedit_post');
       Zotlabs\Extend\Hook::unregister('cart_dbcleanup', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbCleanup');
       Zotlabs\Extend\Hook::unregister('cart_dbupgrade', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbUpgrade');
+      Zotlabs\Extend\Hook::unregister('itemedit_formextras', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subscriptionadmin');
     }
 
     static public function module_activation (&$hookdata) {
@@ -176,7 +181,7 @@ class Cart_subscriptions {
 
     static public function get_subinfo($sku) {
       $configparam = "subs-".$sku;
-      $subinfo = cart_maybeunjson(cart_getcartconfig($configparam));
+      $subinfo = cart_getcartconfig($configparam);
       return $subinfo;
     }
 
@@ -199,7 +204,7 @@ class Cart_subscriptions {
         unset($subskus[$sku]);
         cart_setcartconfig("subskus",cart_maybejson($subskus));
       }
-      cart_delcartconfig($configparam,$json);
+      cart_delcartconfig($configparam);
     }
 
     static public function before_additem(&$hookdata)  {
@@ -340,11 +345,11 @@ class Cart_subscriptions {
     }
 
     static public function subscriptionadmin_form($sku) {
-      $subinfo = Cart_subscriptions::get_subinfo($orderitem["sku"]);
+      $subinfo = Cart_subscriptions::get_subinfo($sku);
       $formelements["submit"]=t("Submit");
       $formelements["uri"]=strtok($_SERVER["REQUEST_URI"],'?').'?SKU='.$sku;
-      $formelements[""]='';
-      $sc = replace_macros(get_markup_template('field_checkbox.tpl'), array(
+      //$formelements[""]='';
+      $formelements["itemdetails"] .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
                  '$field'	=> array('subscription_enable', t('Subscription Item'),
                    (($subinfo!=null) ? 1 : 0),
                    '',array(t('No'),t('Yes')))));
@@ -355,13 +360,16 @@ class Cart_subscriptions {
 
 
         $formelements["itemdetails"] .= replace_macros(get_markup_template('field_select.tpl'), array(
-          "subscription_term", t('Term'),
-          "month", "",
-          Array("hour"=>"Hours","day"=>"Days","week"=>"Weeks",
+          "field" => Array ("subscription_term", t('Term'),
+          isset($subinfo["term"]) ? $subinfo ["term"] : "month", "",
+          Array("minute"=>"Minutes","hour"=>"Hours","day"=>"Days","week"=>"Weeks",
                             "month"=>"Months","year"=>"Years")
+          )
         ));
       }
       $macrosubstitutes=Array("security_token"=>get_form_security_token(),"sku"=>$sku,"formelements"=>$formelements);
+      return $pagecontent.=replace_macros(get_markup_template('subscription.itemedit.tpl','addon/cart/submodules/'), $macrosubstitutes);
+      
     }
 
     static public function subedit_post() {
@@ -370,7 +378,6 @@ class Cart_subscriptions {
     		notice (check_form_security_std_err_msg());
     		return;
     	}
-
       $is_seller = ((local_channel()) && (local_channel() == \App::$profile['profile_uid']) ? true : false);
       if (!$is_seller) {
         notice ("Access Denied.".EOL);
@@ -382,10 +389,15 @@ class Cart_subscriptions {
         return;
       }
       $subinfo = Cart_subscriptions::get_subinfo($sku);
-
       if (!$subinfo && $_POST["subscription_enable"]==1) {
-        $subinfo=Array();
+        $subinfo=Array("SKU"=>$sku);
         Cart_subscriptions::set_subinfo($sku,$subinfo);
+        return;
+      }
+  
+      if(!isset($_POST["subscription_enable"]) || $_POST["subscription_enable"]==0) {
+        notice("TEST".EOL);
+        Cart_subscriptions::del_subinfo($sku);
         return;
       }
 
@@ -410,7 +422,7 @@ class Cart_subscriptions {
 
     static public function cron () {
       $r = q("select * from cart_subscriptions where sub_expires is not null
-                        and sub_expires < NOW();"
+                        and sub_nexttrigger < NOW();"
                   );
       if (!$r) { return; }
 

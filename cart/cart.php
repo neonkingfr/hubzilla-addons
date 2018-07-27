@@ -25,7 +25,7 @@
 $cart_version = 0.9;
 load_config("cart");
 global $cart_submodules;
-$cart_submodules=Array("paypalbutton","hzservices");
+$cart_submodules=Array("paypalbutton","hzservices","subscriptions");
 
 $cart_manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
 if ($cart_manualpayments) {
@@ -1000,10 +1000,12 @@ function cart_getcartconfig($param) {
 	if (! local_channel()) {
 		return null;
 	}
-	return get_pconfig(local_channel(),"cart",$param);
+	$cartconfig=cart_maybeunjson(get_pconfig(local_channel(),"cart",$param));
+        notice ("GOT CARTCONFIG (".$param."):".print_r($cartconfig,true).EOL);
+        return $cartconfig;
 }
 
-function cart_delcartconfig($param,$val) {
+function cart_delcartconfig($param) {
 	if (! local_channel()) {
 		return null;
 	}
