@@ -26,8 +26,8 @@ class Cart_subscriptions {
       Zotlabs\Extend\Hook::register('cart_post_subscriptions_itemedit', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_post',1,1000);
       //Zotlabs\Extend\Hook::register('cart_post_subscriptions_itemactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_activation_post',1,1000);
       //Zotlabs\Extend\Hook::register('cart_post_subscriptions_itemdeactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_deactivation_post',1,1000);
-      //Zotlabs\Extend\Hook::register('cart_submodule_activation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_activation',1,1000);
-      //Zotlabs\Extend\Hook::register('cart_submodule_deactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_deactivation',1,1000);
+      Zotlabs\Extend\Hook::register('cart_submodule_activation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_activation',1,1000);
+      Zotlabs\Extend\Hook::register('cart_submodule_deactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_deactivation',1,1000);
       Zotlabs\Extend\Hook::register('cart_post_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subedit_post',1,1000);
       Zotlabs\Extend\Hook::register('cart_dbcleanup', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbCleanup',1,1000);
       Zotlabs\Extend\Hook::register('cart_dbupgrade', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbUpgrade',1,1000);
@@ -46,8 +46,8 @@ class Cart_subscriptions {
       Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemedit', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_post');
       //Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_activation_post');
       //Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemdeactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_deactivation_post');
-      //Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_activation');
-      //Zotlabs\Extend\Hook::unregister('cart_submodule_deactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_deactivation');
+      Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_activation');
+      Zotlabs\Extend\Hook::unregister('cart_submodule_deactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_deactivation');
       Zotlabs\Extend\Hook::unregister('cart_post_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subedit_post');
       Zotlabs\Extend\Hook::unregister('cart_dbcleanup', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbCleanup');
       Zotlabs\Extend\Hook::unregister('cart_dbupgrade', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbUpgrade');
@@ -55,12 +55,13 @@ class Cart_subscriptions {
     }
 
     static public function module_activation (&$hookdata) {
-
+      cart_config_additemtype("hzservices");
     }
 
     static public function module_deactivation (&$hookdata) {
-
+      //cart_config_delitemtype("hzservices");
     }
+
 
     static public function dbCleanup (&$success) {
     	$dbverconfig = cart_getsysconfig("subscription-dbver");
