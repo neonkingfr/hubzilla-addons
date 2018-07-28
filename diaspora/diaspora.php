@@ -584,18 +584,18 @@ function diaspora_discover(&$b) {
 			if(array_key_exists('rel',$link)) {
 
 				if($link['rel'] === NAMESPACE_DFRN)
-					$dfrn = $link['href'];				
+					$dfrn = escape_tags($link['href']);				
 
 				if($link['rel'] === 'http://joindiaspora.com/seed_location') {
-					$diaspora_base = $link['href'];
+					$diaspora_base = escape_tags($link['href']);
 					$diaspora = true;
 				}
 				if($link['rel'] === 'http://joindiaspora.com/guid') {
-					$diaspora_guid = $link['href'];
+					$diaspora_guid = escape_tags($link['href']);
 					$diaspora = true;
 				}
 				if($link['rel'] === 'diaspora-public-key') {
-					$diaspora_key = base64_decode($link['href']);
+					$diaspora_key = escape_tags(base64_decode($link['href']));
 					if(strstr($diaspora_key,'RSA '))
 						$pubkey = rsatopem($diaspora_key);
 					else
@@ -603,9 +603,9 @@ function diaspora_discover(&$b) {
 					$diaspora = true;
 				}
 				if($link['rel'] === 'http://microformats.org/profile/hcard')
-					$hcard = $link['href'];
+					$hcard = escape_tags($link['href']);
 				if($link['rel'] === 'http://webfinger.net/rel/profile-page')
-					$profile = $link['href'];
+					$profile = escape_tags($link['href']);
 			}
 		}
 	}
@@ -623,22 +623,22 @@ function diaspora_discover(&$b) {
 		foreach($x as $link) {
 			if(is_array($link)) {
 				if($link['@attributes']['rel'] === NAMESPACE_DFRN)
-					$dfrn = unamp($link['@attributes']['href']);				
+					$dfrn = escape_tags(unamp($link['@attributes']['href']));				
 				if($link['@attributes']['rel'] === 'http://microformats.org/profile/hcard')
-					$hcard = unamp($link['@attributes']['href']);
+					$hcard = escape_tags(unamp($link['@attributes']['href']));
 				if($link['@attributes']['rel'] === 'http://webfinger.net/rel/profile-page')
-					$profile = unamp($link['@attributes']['href']);
+					$profile = escape_tags(unamp($link['@attributes']['href']));
 				if($link['@attributes']['rel'] === 'http://joindiaspora.com/seed_location') {
-					$diaspora_base = unamp($link['@attributes']['href']);
+					$diaspora_base = escape_tags(unamp($link['@attributes']['href']));
 					$diaspora = true;
 				}
 			
 				if($link['@attributes']['rel'] === 'http://joindiaspora.com/guid') {
-					$diaspora_guid = unamp($link['@attributes']['href']);
+					$diaspora_guid = escape_tags(unamp($link['@attributes']['href']));
 					$diaspora = true;
 				}
 				if($link['@attributes']['rel'] === 'diaspora-public-key') {
-					$diaspora_key = base64_decode(unamp($link['@attributes']['href']));
+					$diaspora_key = escape_tags(base64_decode(unamp($link['@attributes']['href'])));
 					if(strstr($diaspora_key,'RSA '))
 						$pubkey = rsatopem($diaspora_key);
 					else
