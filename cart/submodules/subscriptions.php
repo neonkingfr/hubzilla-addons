@@ -18,41 +18,40 @@ class Cart_subscriptions {
       Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::settings',1);
       Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::settings_post',1);
       //Zotlabs\Extend\Hook::register('cart_myshop_menufilter', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::myshop_menuitems',1,1000);
-      //Zotlabs\Extend\Hook::register('cart_myshop_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemadmin',1,1000);
+      Zotlabs\Extend\Hook::register('cart_myshop_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subscriptionadmin',1,1000);
       //Zotlabs\Extend\Hook::register('cart_fulfill_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::fulfill_subscriptions',1,1000);
       //Zotlabs\Extend\Hook::register('cart_cancel_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::rollback_subscriptions',1,1000);
       //Zotlabs\Extend\Hook::register('cart_get_catalog', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::get_catalog',1,1000);
       //Zotlabs\Extend\Hook::register('cart_filter_catalog_display', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::filter_catalog_display',1,1000);
       Zotlabs\Extend\Hook::register('cart_post_subscriptions_itemedit', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_post',1,1000);
-      Zotlabs\Extend\Hook::register('cart_post_subscriptions_itemactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_activation_post',1,1000);
-      Zotlabs\Extend\Hook::register('cart_post_subscriptions_itemdeactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_deactivation_post',1,1000);
-      Zotlabs\Extend\Hook::register('cart_submodule_activation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_activation',1,1000);
-      Zotlabs\Extend\Hook::register('cart_submodule_deactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_deactivation',1,1000);
-      Zotlabs\Extend\Hook::register('cart_post_subedit', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subedit_post',1,1000);
+      //Zotlabs\Extend\Hook::register('cart_post_subscriptions_itemactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_activation_post',1,1000);
+      //Zotlabs\Extend\Hook::register('cart_post_subscriptions_itemdeactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_deactivation_post',1,1000);
+      //Zotlabs\Extend\Hook::register('cart_submodule_activation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_activation',1,1000);
+      //Zotlabs\Extend\Hook::register('cart_submodule_deactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_deactivation',1,1000);
+      Zotlabs\Extend\Hook::register('cart_post_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subedit_post',1,1000);
       Zotlabs\Extend\Hook::register('cart_dbcleanup', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbCleanup',1,1000);
       Zotlabs\Extend\Hook::register('cart_dbupgrade', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbUpgrade',1,1000);
-      Zotlabs\Extend\Hook::register('itemedit_formextras', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subscriptionadmin',1,1000);
-
+      Zotlabs\Extend\Hook::register('itemedit_formextras', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_formextras',1,1000);
     }
 
     static public function unload () {
       Zotlabs\Extend\Hook::unregister('feature_settings', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::settings');
       Zotlabs\Extend\Hook::unregister('feature_settings_post', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::settings_post');
       //Zotlabs\Extend\Hook::unregister('cart_myshop_menufilter', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::myshop_menuitems');
-      //Zotlabs\Extend\Hook::unregister('cart_myshop_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemadmin');
+      Zotlabs\Extend\Hook::unregister('cart_myshop_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subscriptionadminadmin');
       //Zotlabs\Extend\Hook::unregister('cart_fulfill_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::fulfill_subscriptions');
       //Zotlabs\Extend\Hook::unregister('cart_cancel_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::rollback_subscriptions');
       //Zotlabs\Extend\Hook::unregister('cart_get_catalog', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::get_catalog');
       //Zotlabs\Extend\Hook::unregister('cart_filter_catalog_display', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::filter_catalog_display');
       Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemedit', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_post');
-      Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_activation_post');
-      Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemdeactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_deactivation_post');
-      Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_activation');
-      Zotlabs\Extend\Hook::unregister('cart_submodule_deactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_deactivation');
-      Zotlabs\Extend\Hook::unregister('cart_post_subedit', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subedit_post');
+      //Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_activation_post');
+      //Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemdeactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_deactivation_post');
+      //Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_activation');
+      //Zotlabs\Extend\Hook::unregister('cart_submodule_deactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_deactivation');
+      Zotlabs\Extend\Hook::unregister('cart_post_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subedit_post');
       Zotlabs\Extend\Hook::unregister('cart_dbcleanup', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbCleanup');
       Zotlabs\Extend\Hook::unregister('cart_dbupgrade', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbUpgrade');
-      Zotlabs\Extend\Hook::unregister('itemedit_formextras', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subscriptionadmin');
+      Zotlabs\Extend\Hook::unregister('itemedit_formextras', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_formextras');
     }
 
     static public function module_activation (&$hookdata) {
@@ -318,15 +317,25 @@ class Cart_subscriptions {
 
     static public function get_catalog(&$catalog) {
       // 		"sku-1"=>Array("item_sku"=>"sku-1","item_desc"=>"Description Item 1","item_price"=>5.55),
-      // @TODO: Possibly cull catalog of items with subscription terms not
-      //               matching the current order's subscription term.
-      return ; // For now, unimplemented. We do have a check when items are added.
-      /*
-      foreach ($catalog as $sku=>$data) {
-        $subinfo = Cart_subscriptions::get_subinfo($orderitem["sku"]);
-        if (!$subinfo) { continue; }
+      $subskus = cart_maybeunjson(cart_getcartconfig("subskus"));
+      foreach ($subskus as $subsku) {
+        $subinfo = Cart_subscriptions::get_subinfo($subsku);
+        $active = isset($subinfo["item_active"]) ? $subinfo["item_active"] : false;
+        if ($active) {
+          $catalog[$subinfo["item_sku"]] = Array("item_sku"=>$subinfo["item_sku"],
+            "item_desc"=>$subinfo["item_description"],
+            "item_price"=>$subinfo["item_price"],
+            "item_type"=>"subscription"
+          );
+        }
       }
-      */
+    }
+
+    static public function itemedit_formextras(&$pagecontent) {
+       $sku = isset($_REQUEST["SKU"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_REQUEST["SKU"]) : null;
+       $formelements = "";
+       $macrosubstitutes=Array("security_token"=>get_form_security_token(),"sku"=>$sku,"formelements"=>$formelements);
+       return $pagecontent.=replace_macros(get_markup_template('subscription.itemedit.tpl','addon/cart/submodules/'), $macrosubstitutes);
     }
 
     static public function subscriptionadmin(&$pagecontent) {
@@ -335,7 +344,6 @@ class Cart_subscriptions {
       if (!$is_seller) {
         return;
       }
-
       /*have SKU - display edit*/
       $sku = isset($_REQUEST["SKU"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_REQUEST["SKU"]) : null;
       if ($sku) {
@@ -345,35 +353,54 @@ class Cart_subscriptions {
     }
 
     static public function subscriptionadmin_form($sku) {
+      $formelements="";
       $subinfo = Cart_subscriptions::get_subinfo($sku);
-      $formelements["submit"]=t("Submit");
-      $formelements["uri"]=strtok($_SERVER["REQUEST_URI"],'?').'?SKU='.$sku;
-      //$formelements[""]='';
-      $formelements["itemdetails"] .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-                 '$field'	=> array('subscription_enable', t('Subscription Item'),
-                   (($subinfo!=null) ? 1 : 0),
-                   '',array(t('No'),t('Yes')))));
-      if ($subinfo) {
-        $formelements["itemdetails"].= replace_macros(get_markup_template('field_input.tpl'), array(
+      $itemsku = isset($subinfo["item_sku"]) ? $subinfo["item_sku"] : null;
+      $session_itemsku = isset($_SESSION["item_sku"]) ? $_SESSION["item_sku"] : null;
+      $itemsku = $itemsku ? $itemsku : $session_itemsku;
+      if (!$itemsku) {
+        notice("Invalid Request: unknown item (".$itemsku.")".EOL);
+        return;
+      }
+      if ($sku=="new") {
+        $formelements["itemdetails"] .= replace_macros(get_markup_template('field_input.tpl'), array(
+                  '$field'	=> array('sku', t('Subscription SKU'),
+                  "")));
+      } else {
+        $formelements["itemdetails"] .= "<input type='hidden' name='sku' value='".$sku."'>";
+      }
+        $formelements["submit"]=t("Submit");
+        $formelements["uri"]=strtok($_SERVER["REQUEST_URI"],'?').'?SKU='.urlencode($sku);
+        //$formelements[""]='';
+        $formelements["itemdetails"] .= replace_macros(get_markup_template('field_input.tpl'), array(
+                  '$field'	=> array('catalog_description', t('Catalog Description'),
+                  (isset($subinfo["item_description"]) ? $item_description : "New Subscription"))));
+
+        $formelements["itemdetails"] .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
+     				     '$field'	=> array('item_active', t('Subscription available for purchase.'),
+  							 $subinfo["item_description"],
+  							 '',array(t('No'),t('Yes')))));
+
+        $formelements["itemdetails"] .= replace_macros(get_markup_template('field_input.tpl'), array(
+        				     '$field'	=> array('maxsubscriptions', t('Maximum active subscriptions to this item per account.'),
+       							 (isset($subinfo["item_maxsubscriptions"]) ? intval($subinfo["item_maxsubscriptions"]) : 1))));
+
+        $formelements["itemdetails"] .= replace_macros(get_markup_template('field_input.tpl'), array(
                   '$field'	=> array('subscription_interval', t('Quantity'),
                   (isset($subinfo["interval"]) ? intval($subinfo["interval"]) : 1))));
-
 
         $formelements["itemdetails"] .= replace_macros(get_markup_template('field_select.tpl'), array(
           "field" => Array ("subscription_term", t('Term'),
           isset($subinfo["term"]) ? $subinfo ["term"] : "month", "",
           Array("minute"=>"Minutes","hour"=>"Hours","day"=>"Days","week"=>"Weeks",
                             "month"=>"Months","year"=>"Years")
-          )
-        ));
-      }
-      $macrosubstitutes=Array("security_token"=>get_form_security_token(),"sku"=>$sku,"formelements"=>$formelements);
+          )));
+      $macrosubstitutes=Array("security_token"=>get_form_security_token(),"itemsku"=>$itemsku,"sku"=>$sku,"formelements"=>$formelements);
       return $pagecontent.=replace_macros(get_markup_template('subscription.itemedit.tpl','addon/cart/submodules/'), $macrosubstitutes);
-      
     }
 
     static public function subedit_post() {
-
+      unset($_SESSION["sub_item_sku"]);
       if (!check_form_security_token()) {
     		notice (check_form_security_std_err_msg());
     		return;
@@ -384,40 +411,62 @@ class Cart_subscriptions {
         return;
       }
 
-      $sku = isset($_POST["SKU"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_POST["SKU"]) : null;
-      if (trim($sku)=='') {
-        return;
+      $sku = isset($_POST["sku"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_POST["sku"]) : null;
+      $item_sku = isset($_POST["item_sku"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_POST["item_sku"]) : null;
+
+      $catalog=cart_get_catalog(false);
+      if (isset($catalog[$item_sku]) && $catalog[$item_sku]["item_type"] == "subscription") {
+          unset($item_sku);
       }
+
+      if(!$item_sku) {
+        notice ("Invalid Request: Unable to create subscriptions for sku: $item_sku".EOL);
+        goaway(z_root() . '/cart/' . argv(1) . '/myshop');
+      }
+
+      if (!$sku=='new') {
+        $_SESSION["sub_item_sku"] = $item_sku;
+        goaway(z_root() . '/cart/' . argv(1) . '/myshop/subscriptions');
+      }
+
       $subinfo = Cart_subscriptions::get_subinfo($sku);
-      if (!$subinfo && $_POST["subscription_enable"]==1) {
-        $subinfo=Array("SKU"=>$sku);
-        Cart_subscriptions::set_subinfo($sku,$subinfo);
-        return;
-      }
-  
-      if(!isset($_POST["subscription_enable"]) || $_POST["subscription_enable"]==0) {
-        notice("TEST".EOL);
-        Cart_subscriptions::del_subinfo($sku);
-        return;
+      if (!is_array($subinfo)) {
+        $subinfo = Array();
       }
 
-      if ($subinfo) {
-        $term = isset($_POST["subscription_term"]) ?
-                           preg_replace("[^a-zA-Z0-9\-]",'',$_POST["subscription_term"])
-                           : null;
-        if (!in_array($term,Array("minute","hour","day","week","month","year"))) {
+      if ($_POST["subscription_enable"]==1) {
+        $subinfo["subscription_enable"]=true;
+      } else {
+        $subinfo["subscription_enable"]=false;
+      }
+
+      $subinfo["item_sku"] = $item_sku;
+
+      $description = isset($_POST["catalog_description"]) ?
+                   preg_replace("[^a-zA-Z0-9\-\ ]",'',$_POST["subscription_term"]) :
+                   'New Subscription';
+      $subinfo["item_description"] = $description;
+
+      $term = isset($_POST["subscription_term"]) ?
+                   preg_replace("[^a-zA-Z0-9\-]",'',$_POST["subscription_term"]) :
+                   null;
+      if (!in_array($term,Array("minute","hour","day","week","month","year"))) {
           $term=null;
-        }
-        $interval = intval($_POST["subscription_interval"]);
+      }
 
-        if ($term && $interval) {
-          $subinfo["term"]=$term;
-          $subinfo["inteval"]=$interval;
-          Cart_subscriptions::set_subinfo($sku,$subinfo);
-        }
+      $interval = intval($_POST["subscription_interval"]);
+
+      if ($term && $interval) {
+        $subinfo["term"]=$term;
+        $subinfo["inteval"]=$interval;
+      } else {
+        $subinfo["subscription_enable"]=false;
+      }
+
+      Cart_subscriptions::set_subinfo($sku,$subinfo);
 
         // @TODO: ACTIONS: Before expire, On expire, After expire
-      }
+      goaway(z_root() . '/cart/' . argv(1) . '/myshop/sububscriptions?SKU='.urlencode($sku));
     }
 
     static public function cron () {

@@ -1417,6 +1417,15 @@ function cart_mod_content(&$arr) {
   return ;
 }
 
+function cart_get_catalog($filtered=true) {
+	$items=Array();
+	call_hooks('cart_get_catalog',$items);
+	if ($filtered) {
+	  call_hooks('cart_filter_catalog_display',$items);
+	}
+	return $iems;
+}
+
 function cart_do_display($order) {
                 call_hooks('cart_display_before',$order);
                 call_hooks('cart_display',$order);
