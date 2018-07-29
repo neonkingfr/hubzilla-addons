@@ -1267,14 +1267,19 @@ function cart_plugin_admin(&$a,&$s) {
 }
 
 function cart_channel_apps(&$hookdata) {
-	$hookdata['tabs'][] = [
-		'label' => t('Shop'),
-		'url'   => z_root() . '/cart/' . $hookdata['nickname'] . '/catalog',
-		'sel'   => ((argv(0) == 'cart') ? 'active' : ''),
-		'title' => t('Shop'),
-		'id'    => 'cart-tab',
-		'icon'  => 'shopping-cart'
-	];
+	$channelid = App::$profile['uid'];
+	$enablecart = get_pconfig ($channelid,'cart','enable');
+
+	if($enablecart) {
+		$hookdata['tabs'][] = [
+			'label' => t('Shop'),
+			'url'   => z_root() . '/cart/' . $hookdata['nickname'] . '/catalog',
+			'sel'   => ((argv(0) == 'cart') ? 'active' : ''),
+			'title' => t('Shop'),
+			'id'    => 'cart-tab',
+			'icon'  => 'shopping-cart'
+		];
+	}
 }
 
 function cart_getnick () {
