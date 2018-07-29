@@ -1009,12 +1009,12 @@ function as_actor_store($url,$person_obj) {
 		// create a new record
 		$r = xchan_store_lowlevel(
 			[
-				'xchan_hash'         => $url,
-				'xchan_guid'         => $url,
-				'xchan_pubkey'       => $pubkey,
+				'xchan_hash'         => escape_tags($url),
+				'xchan_guid'         => escape_tags($url),
+				'xchan_pubkey'       => escape_tags($pubkey),
 				'xchan_addr'         => '',
-				'xchan_url'          => $profile,
-				'xchan_name'         => $name,
+				'xchan_url'          => escape_tags($profile),
+				'xchan_name'         => escape_tags($name),
 				'xchan_name_date'    => datetime_convert(),
 				'xchan_network'      => 'activitypub'
 			]
@@ -1031,8 +1031,8 @@ function as_actor_store($url,$person_obj) {
 
 		// update existing record
 		$r = q("update xchan set xchan_name = '%s', xchan_pubkey = '%s', xchan_network = '%s', xchan_name_date = '%s' where xchan_hash = '%s'",
-			dbesc($name),
-			dbesc($pubkey),
+			dbesc(escape_tags($name)),
+			dbesc(escape_tags($pubkey)),
 			dbesc('activitypub'),
 			dbesc(datetime_convert()),
 			dbesc($url)
@@ -1057,12 +1057,12 @@ function as_actor_store($url,$person_obj) {
 	if(! $r) {
 		$r = hubloc_store_lowlevel(
 			[
-				'hubloc_guid'     => $url,
-				'hubloc_hash'     => $url,
+				'hubloc_guid'     => escape_tags($url),
+				'hubloc_hash'     => escape_tags($url),
 				'hubloc_addr'     => '',
 				'hubloc_network'  => 'activitypub',
 				'hubloc_url'      => $baseurl,
-				'hubloc_host'     => $hostname,
+				'hubloc_host'     => escape_tags($hostname),
 				'hubloc_callback' => $inbox,
 				'hubloc_updated'  => datetime_convert(),
 				'hubloc_primary'  => 1
