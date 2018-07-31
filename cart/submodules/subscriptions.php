@@ -483,9 +483,9 @@ class Cart_subscriptions {
       }
 
       if (isset($_POST["item_active"]) && $_POST["item_active"]==1) {
-        $subinfo["item_active"]=true;
+        $subinfo["item_active"]=1;
       } else {
-        $subinfo["item_active"]=false;
+        $subinfo["item_active"]=isset($_POST["item_description"]) ? false : $subinfo["item_active"];
       }
 
       $subinfo["item_sku"] = $item_sku;
