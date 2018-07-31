@@ -546,7 +546,7 @@ function gnusoc_notifier_process(&$a,&$b) {
 
     $channel = $b['channel'];
 
-	if(! perm_is_allowed($channel['channel_id'],'','view_stream'))
+	if(! perm_is_allowed($channel['channel_id'],'','view_stream',false))
 		return;
 
 	// $b['recipients'][0] should point to the top level post owner

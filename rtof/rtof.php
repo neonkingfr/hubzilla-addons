@@ -34,7 +34,7 @@ function rtof_unload() {
 }
 
 function rtof_jot_nets(&$a,&$b) {
-    if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream')))
+    if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
         return;
 
 	$rtof_post = get_pconfig(local_channel(),'rtof','post');
@@ -108,7 +108,7 @@ function rtof_post_local(&$a,&$b) {
 	if($b['created'] != $b['edited'])
 		return;
 
-	if(! perm_is_allowed($b['uid'],'','view_stream'))
+	if(! perm_is_allowed($b['uid'],'','view_stream',false))
 		return;
 
 	if((local_channel()) && (local_channel() == $b['uid']) && (! $b['item_private'])) {
@@ -145,7 +145,7 @@ function rtof_post_hook(&$a,&$b) {
 		return;
 
 
-	if(! perm_is_allowed($b['uid'],'','view_stream'))
+	if(! perm_is_allowed($b['uid'],'','view_stream',false))
 		return;
 
 
