@@ -23,7 +23,8 @@ function cart_checkout_manual (&$hookdata) {
 
         $page_uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
 	$nick = App::$profile['channel_address'];
-	$manualpayments = get_pconfig($page_uid,'cart','enable_manual_payments');
+	//$manualpayments = get_pconfig($page_uid,'cart','enable_manual_payments');
+        $manualpayments = cart_getcartconfig("enable_manual_payments");
 	$manualpayments = isset($manualpayments) ? $manualpayments : false;
 
 	if (!$manualpayments) {
@@ -65,7 +66,6 @@ function cart_paymentopts_register_manual (&$hookdata) {
 
 	$manualpayments = get_pconfig(App::$profile['uid'],'cart','enable_manual_payments');
 	$manualpayments = isset($manualpayments) ? $manualpayments : false;
-        logger ("[cart] MANUAL PAYMENTS ($nick , ".$id.") ? ".print_r($manual_payments,true));
 	if ($manualpayments) {
 		$hookdata["manual"]=Array('title'=>'Manual Payment','html'=>"<b>Pay by Check, Money Order, or other manual payment method</b>");
 	}

@@ -256,8 +256,8 @@ class Cart_paypalbutton {
       $headers = Cart_paypalbutton::http_parse_headers(substr ($result, 0, $header_len));
       $ppdata = substr ($result, $header_len);
       $ppdata = cart_maybeunjson($ppdata);
-      logger("[cart-ppbutton] PAYPAL POST: (".$paypal_apiurl.") \n      Headers: ".print_r(curl_getinfo($curl,CURLINFO_HEADER_OUT),true)."\n      Data: ".$data,LOGGER_DATA);
-      logger("[cart-ppbutton] Paypal Post Response: (".$paypal_apiurl.") Headers: ".print_r($headers,true)."\nDATA: ".print_r($ppdata,true),LOGGER_DATA);
+      //logger("[cart-ppbutton] PAYPAL POST: (".$paypal_apiurl.") \n      Headers: ".print_r(curl_getinfo($curl,CURLINFO_HEADER_OUT),true)."\n      Data: ".$data,LOGGER_DATA);
+      //logger("[cart-ppbutton] Paypal Post Response: (".$paypal_apiurl.") Headers: ".print_r($headers,true)."\nDATA: ".print_r($ppdata,true),LOGGER_DATA);
       if ($responsecode >= 200 && $responsecode <= 300) {
         $success=true;
       } else {
@@ -361,14 +361,14 @@ class Cart_paypalbutton {
       );
       $paymenturl="/v1/payments/payment/".$_POST["paymentID"]."/execute";
       $paymentresponse=Cart_paypalbutton::paypal_post(cart_maybejson($payment["body"]),null,$paymenturl,"application/json");
-      logger("[cart-ppbutton] PAYMENT EXECUTE: ".print_r($payment,true),LOGGER_DATA);
+      //logger("[cart-ppbutton] PAYMENT EXECUTE: ".print_r($payment,true),LOGGER_DATA);
       $ordermeta = cart_getorder_meta($orderhash);
       $timestamp = time();
       $ordermeta["paypal_button_history"][$timestamp]["resquest"]=$payment;
       $ordermeta["paypal_button_history"][$timestamp]["response"]=$paymentresponse;
       $ordermeta["paypal_button"]["mostrecent"]=$timestamp;
       cart_updateorder_meta ($ordermeta,$orderhash);
-      logger("[cart-ppbutton] PAYMENT RESULTS: ".print_r($paymentresponse,true),LOGGER_DATA);
+      //logger("[cart-ppbutton] PAYMENT RESULTS: ".print_r($paymentresponse,true),LOGGER_DATA);
       if ($paymentresponse["success"]==true) {
         logger("[cart-ppbutton] PAYMENT SUCCESS!",LOGGER_DEBUG);
     	cart_do_checkout ($order);
@@ -388,12 +388,12 @@ class Cart_paypalbutton {
 
     static function fulfill_order(&$hookdata) {
       $orderhash=$hookdata["order_hash"];
-      logger("[cart-ppbutton] - FULFILLORDER: ".print_r($orderhash,true),LOGGER_DEBUG);
+      //logger("[cart-ppbutton] - FULFILLORDER: ".print_r($orderhash,true),LOGGER_DEBUG);
       foreach ($hookdata["items"] as $item) {
-        logger("[cart-ppbutton] - Fulfill: ".print_r($item,true),LOGGER_DATA);
+        //logger("[cart-ppbutton] - Fulfill: ".print_r($item,true),LOGGER_DATA);
         if (!$item["item_fulfilled"]) {
           $itemtofulfill=Array('order_hash'=>$orderhash,'id'=>$item["id"]);
-          logger("[cart-ppbutton] FULFILL ITEM: ".print_r($itemtofulfill,true),LOGGER_DATA);
+          //logger("[cart-ppbutton] FULFILL ITEM: ".print_r($itemtofulfill,true),LOGGER_DATA);
           cart_do_fulfillitem ($itemtofulfill);
           if (isset($itemtofulfill["error"])) {
               $hookdata["errors"][]=$itemtofulfill["error"];
@@ -450,8 +450,8 @@ class Cart_paypalbutton {
       $ordermeta["paypal_button"]["mostrecent"]=$timestamp;
 
       cart_updateorder_meta ($ordermeta,$orderhash);
-      logger("PAYPAL CREATE: Request: ".print_r($payment,true),LOGGER_DATA);
-      logger("PAYPAL CREATE: Response: ".print_r($paymentresponse,true),LOGGER_DATA);
+      //logger("PAYPAL CREATE: Request: ".print_r($payment,true),LOGGER_DATA);
+      //logger("PAYPAL CREATE: Response: ".print_r($paymentresponse,true),LOGGER_DATA);
       echo json_encode(Array("id"=>$paymentresponse["data"]["id"]));
     }
 
@@ -484,7 +484,7 @@ class Cart_paypalbutton {
 
     	$enabled = get_pconfig(App::$profile['uid'],'cart','paypalbutton_enable');
     	$enabled = isset($enabled) ? $enabled : false;
-            logger ("[cart] PAYPAL BUTTON ($nick , ".$id.") ? ".print_r($enabled,true),LOGGER_DEBUG);
+            //logger ("[cart] PAYPAL BUTTON ($nick , ".$id.") ? ".print_r($enabled,true),LOGGER_DEBUG);
     	if ($enabled) {
     		$hookdata["paypalbutton"]=Array('title'=>'PAYPAL','html'=>"<b>Pay with Paypal</b>");
     	}

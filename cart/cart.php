@@ -22,10 +22,59 @@
   */
 
 
+class Cart {
+  public static $seller;
+  public static $buyer;
+
+  public static function get_seller_id() {
+        return (isset(\App::$profile["profile_uid"]) && \App::$profile["profile_uid"] != null) ? \App::$profile["profile_uid"] : Cart::$seller["channel_id"];
+  }
+
+  public static function set_seller_by_hash($channel_hash) {
+    Cart::$seller=Array();
+    $params=Array("channel_id","channel_account_id","channel_primary","channel_name","channel_address","channel_hash","channel_timezone");
+    $channel=channelx_by_hash($channel_hash);
+    if ($channel) {
+      foreach($params as $key) {
+        Cart::$seller[$key]=$channel[$key];
+      }
+      Cart::$seller["channel_address"]=Cart::$seller["channel_address"].'@'.App::get_hostname();
+      return true;
+    } else {
+      Cart:$seller=null;
+      return false;
+    }
+  }
+
+  public static function set_buyer_by_hash($channel_hash) {
+    Cart::$buyer=Array();
+    $channel = channelx_by_hash($channel_hash);
+    if ($channel) {
+        $params=Array("channel_id","channel_account_id","channel_primary","channel_name","channel_address","channel_hash","channel_timezone");
+        foreach($params as $key) {
+          Cart::$buyer[$key]=$channel[$key];
+        }
+        Cart::$buyer["channel_address"]=Cart::$buyer["channel_address"].'@'.App::get_hostname();
+        return true;
+    } else {
+        $params=Array("channel_id"=>"channel_id","channel_account_id"=>"channel_account_id","channel_primary"=>"channel_primary","channel_timezone"=>"channel_timezone","hash"=>"channel_hash","address"=>"channel_address","name"=>"channel_name");
+        $channel=xchan_fetch(Array("hash"=>$channel_hash));
+        if ($channel) {
+          foreach($params as $xkey=>$key) {
+            Cart::$buyer[$key]=isset($channel[$xkey]) ? $channel[$xkey] : null;
+          }
+          return true;
+        } else {
+          return false;
+        }
+      }
+    }
+}
+
 $cart_version = 0.9;
 load_config("cart");
 global $cart_submodules;
-$cart_submodules=Array("paypalbutton","hzservices");
+$cart_submodules=Array("paypalbutton","hzservices","subscriptions");
 
 $cart_manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
 if ($cart_manualpayments) {
@@ -70,11 +119,6 @@ function cart_maybejson ($value,$options=0) {
     }
 }
 
-function cart_config_additemtype ($itemtype) {
-	$itemtypes=cart_getsysconfig("itemtypes");
-	$itemtypes["$itemtype"]=$itemtype;
-        cart_setsysconfig("itemtypes",$itemtypes);
-}
 
 function cart_dbCleanup () {
 
@@ -122,7 +166,9 @@ function cart_dbCleanup () {
 		notice ('[cart] Error in dbCleanup. Check the log for details.');
 	  logger ('[cart] Error in dbCleanup.',LOGGER_NORMAL);
 	}
-	return $success;
+        $response = UPDATE_SUCCESS;
+        call_hooks("cart_dbcleanup",$response);
+	return $response;
 }
 
 function cart_dbUpgrade () {
@@ -235,9 +281,10 @@ function cart_dbUpgrade () {
 		}
 		cart_setsysconfig("dbver",$ver);
 	}
-	$success=UPDATE_SUCCESS;
-	call_hooks("cart-dbupgrade",$success);
-	return $success;
+        $response = UPDATE_SUCCESS;
+        logger("CART: run db_upgrade hooks",LOGGER_DEBUG);
+        call_hooks("cart_dbupgrade",$response);
+	return $response;
 }
 
 function cart_loadorder ($orderhash) {
@@ -248,6 +295,8 @@ function cart_loadorder ($orderhash) {
 	}
 
 	$order = $r[0];
+        Cart::set_seller_by_hash($order["seller_channel"]);
+        Cart::set_buyer_by_hash($order["buyer_xchan"]);
 	$order["order_meta"]=cart_maybeunjson($order["order_meta"]);
 	$order["totals"]=$order["order_meta"]["totals"];
         $xchan = xchan_fetch(Array('hash'=>$order["buyer_xchan"]));
@@ -294,7 +343,7 @@ function cart_getorderhash ($create=false) {
 	$observerhash = get_observer_hash();
 	if ($observerhash === '') { $observerhash = null; }
 	$cartemail = isset($_SESSION["cart_email_addy"]) ? $_SESSION["cart_email_addy"] : null;
-	$channel=channelx_by_n(\App::$profile_uid);
+	$channel=channelx_by_n(Cart::get_seller_id());
 	$channel_hash=$channel["channel_hash"];
 
 	if ($orderhash) {
@@ -316,7 +365,6 @@ function cart_getorderhash ($create=false) {
                }
 	}
 	if (!$orderhash) {
-      logger ("orderhash not in SESSION - search db",LOGGER_DEBUG);
       $r = q("select * from cart_orders where
 			           buyer_xchan = '%s'
 	               and seller_channel = '%s'
@@ -324,7 +372,6 @@ function cart_getorderhash ($create=false) {
 
       if (!$r) {
           $orderhash=null;
-          logger ("no matching orderhash in db",LOGGER_DEBUG);
       } else {
           $order = $r[0];
           $orderhash = $order["order_hash"];
@@ -348,7 +395,6 @@ function cart_additem_hook (&$hookdata) {
         $order=$hookdata["order"];
         if (!isset($hookdata["item"])) return;
 	$item=$hookdata["item"];
-        logger ("[cart] additem_hook - hookdata: ".print_r($hookdata,true),LOGGER_DATA);
         if ($item["item_qty"] < 1) return;
         $item["order_hash"] = $order["order_hash"];
 	if (isset($item["item_meta"])) {
@@ -489,7 +535,6 @@ function cart_do_additem (&$hookdata) {
 		unset($calldata["error"]);
 	}
         notice (t('[cart] Item Added').EOL);
-        logger ("[cart] Added Item: ".print_r($calldata,true),LOGGER_DEBUG);
 }
 
 function cart_getorder_meta ($orderhash=null) {
@@ -540,7 +585,6 @@ function cart_updateorder_meta ($meta,$orderhash=null) {
 
 function cart_updateitem_meta ($itemid,$meta,$orderhash=null) {
 	$orderhash = $orderhash ? $orderhash : cart_getorderhash();
-
 	if (!$orderhash) {
 		return null;
 	}
@@ -790,6 +834,12 @@ function cart_checkout_hook(&$hookdata) {
 	return;
 	}
 
+function cart_config_additemtype ($itemtype) {
+	$itemtypes=cart_getsysconfig("itemtypes");
+	$itemtypes["$itemtype"]=$itemtype;
+        cart_setsysconfig("itemtypes",$itemtypes);
+}
+
 function cart_getitemtypes() {
   $itemtypes = cart_getsysconfig("itemtypes");
   $itemtypes = is_array($itemtypes) ? $itemtypes : Array();
@@ -979,7 +1029,6 @@ function cart_checkver() {
 }
 
 function cart_getsysconfig($param) {
-	logger ('[cart] getconfig ('.$param.')',LOGGER_DEBUG);
 	$val = get_config("cart",$param);
 	$val=cart_maybeunjson($val);
 	return $val;
@@ -987,23 +1036,20 @@ function cart_getsysconfig($param) {
 
 function cart_setsysconfig($param,$val) {
 	  $val=cart_maybejson($val);
-		logger ('[cart] setsysconfig ('.$param.') as ('.$val.').',LOGGER_DEBUG);
 		return set_config("cart",$param,$val);
 }
 
 function cart_delsysconfig($param) {
-		logger ('[cart] delsysconfig ('.$param.').',LOGGER_DEBUG);
 		return del_config("cart",$param);
 }
 
 function cart_getcartconfig($param) {
-	if (! local_channel()) {
-		return null;
-	}
-	return get_pconfig(local_channel(),"cart",$param);
+        $id = (isset(\App::$profile["profile_uid"]) && \App::$profile["profile_uid"] != null) ? \App::$profile["profile_uid"] : Cart::$seller["channel_id"];
+	$cartconfig=cart_maybeunjson(get_pconfig($id,"cart",$param));
+        return $cartconfig;
 }
 
-function cart_delcartconfig($param,$val) {
+function cart_delcartconfig($param) {
 	if (! local_channel()) {
 		return null;
 	}
@@ -1092,7 +1138,7 @@ function cart_load(){
 	cart_myshop_load();
 	global $cart_submodules;
 	foreach ($cart_submodules as $module) {
-    //notice ("Submodule-load: $module".EOL);
+                logger ("Submodule-load: $module",LOGGER_DEBUG);
 		require_once('submodules/'.$module.".php");
 		$moduleclass = 'Cart_'.$module;
 		$moduleclass::load();
@@ -1166,9 +1212,9 @@ function cart_getcurrency($code) {
 }
 
 function cart_getcurrencyformat() {
-	$currency = get_pconfig(\App::$profile['profile_uid'],'cart','cart_currency');
+	//$currency = get_pconfig(\App::$profile['profile_uid'],'cart','cart_currency');
+        $currency = cart_getcartconfig("cart_currency");
 	$currency = cart_getcurrency($currency);
-        logger("Currency Info: ".print_r($currency,true),LOGGER_DEBUG);
 	$precision = $currency["decimal_digits"];
 	$format="%.0".$precision."f";
 	return $format;
@@ -1195,7 +1241,6 @@ function cart_settings_post(&$s) {
   $currency = substr(preg_replace('[^0-9A-Z]','',$_POST["currency"]),0,3);
   $currencylist=cart_getcurrencies();
   $currency = isset($currencylist[$currency]) ? $currency : 'USD';
-
   set_pconfig(local_channel(), 'cart','cart_currency', $currency);
 
 	cart_unload();
@@ -1244,9 +1289,7 @@ function cart_settings(&$s) {
 
 				$currencylist=cart_getcurrencies();
 				$currency=get_pconfig(local_channel(), 'cart','cart_currency');
-                                logger("PROFILE CURRENCY: ".$currency,LOGGER_DEBUG);
 				$saved_currency = isset($currencylist[$currency]) ? $currency : 'USD';
-                                logger("SAVED CURRENCY: ".$saved_currency,LOGGER_DEBUG);
 
         $currencyoptions=Array();
 
@@ -1336,12 +1379,12 @@ function cart_init() {
 }
 
 function cart_post_add_item () {
+	//@TODO: Add output of errors someplace
 	$items=Array();
 
 	call_hooks('cart_get_catalog',$items);
 	$item_sku = preg_replace('[^0-9A-Za-z\-]','',$_POST["add"]);
 	$newitem = $items[$item_sku];
-        logger("[cart] cart_post_add_item newitem: ".print_r($newitem,true),LOGGER_DEBUG);
 	$qty=isset($_POST["qty"]) ? preg_replace('[^0-9\.]','',$_POST['qty']) : 1;
         $newitem["item_qty"]=$qty;
 
@@ -1376,7 +1419,6 @@ function cart_updateitem_qty_hook(&$hookdata) {
 }
 
 function cart_updateitem_delsku_hook(&$hookdata) {
-              logger("Delete SKU hook: ".print_r($hookdata,true),LOGGER_DEBUG);
 	      $item=$hookdata["item"];
               $delsku = isset($_POST["delsku"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_POST["delsku"]) : null;
               if($delsku && $item["item_sku"]==$delsku) {
@@ -1412,6 +1454,15 @@ function cart_mod_content(&$arr) {
   \App::$page['aside'] =  $aside;
   $arr['replace'] = true;
   return ;
+}
+
+function cart_get_catalog($filtered=true) {
+	$items=Array();
+	call_hooks('cart_get_catalog',$items);
+	if ($filtered) {
+	  call_hooks('cart_filter_catalog_display',$items);
+	}
+	return $items;
 }
 
 function cart_do_display($order) {
@@ -1477,7 +1528,6 @@ function cart_pagecontent($a=null) {
 	                if ($observerhash === '') { $observerhash = null; }
 		        $r = q("select * from cart_orders where order_hash = '%s' and buyer_xchan = '%s' limit 1",
                                  dbesc($orderhash),dbesc($observerhash));
-                        //return print_r($r,true);
                         if (!$r) {
 			  notice ( t('Access denied.' . EOL));
 			  return "<h1>Access denied</h1>";
@@ -1563,12 +1613,10 @@ function cart_pagecontent($a=null) {
 }
 
 function cart_display_before_addcheckoutlink(&$order) {
-        logger("DISPLAY BEFORE - ORDER: ".print_r($order,true),LOGGER_DEBUG);
 	$order["links"]["checkoutlink"]=z_root().'/cart/'.argv(1).'/checkout/start?cart='.$order["order_hash"];
 }
 
 function cart_display_before_formatcurrency(&$order) {
-        logger("DISPLAY BEFORE - ORDER ITEMS: ".print_r($order["items"],true),LOGGER_DEBUG);
 	foreach ($order["items"] as $item) {
           $order["items"][$item["id"]]["extended"]=cart_formatamount($item["extended"]);
           $order["items"][$item["id"]]["item_price"]=cart_formatamount($item["item_price"]);
@@ -1729,7 +1777,8 @@ function cart_post_choose_payment () {
 }
 
 function cart_get_test_catalog (&$items) {
-	$testcatalog = get_pconfig ( \App::$profile['profile_uid'] ,'cart','enable_test_catalog');
+	//$testcatalog = get_pconfig ( \App::$profile['profile_uid'] ,'cart','enable_test_catalog');
+	$testcatalog = cart_getcartconfig ('enable_test_catalog');
 	$testcatalog = $testcatalog ? $testcatalog : 0;
 	if (!$testcatalog) { return; }
 
@@ -1747,10 +1796,11 @@ function cart_get_test_catalog (&$items) {
 }
 
 function cart_do_fulfillitem ($iteminfo) {
-
-	$orderhash=$iteminfo["order_hash"];
-	$order=cart_loadorder($orderhash);
-  $iteminfo = $order["items"][$iteminfo["id"]];
+  $orderhash=$iteminfo["order_hash"];
+  $order=cart_loadorder($orderhash);
+  $iteminfo = isset($iteminfo["item_type"]) ? $iteminfo : $order["items"][$iteminfo["id"]];
+  //$iteminfo = $order["items"][$iteminfo["id"]];
+  
   $valid_itemtypes = cart_getitemtypes();
 	$itemtype = isset($iteminfo["item_type"]) ? $iteminfo["item_type"] : null;
   if ($itemtype && !in_array($iteminfo['item_type'],$valid_itemtypes)) {
@@ -1802,16 +1852,15 @@ function cart_do_fulfillitem ($iteminfo) {
 }
 
 function cart_do_cancelitem ($iteminfo) {
-
-	$orderhash=$iteminfo["order_hash"];
-	$order=cart_loadorder($orderhash);
-  $iteminfo = $order["items"][$iteminfo["id"]];
+  $orderhash=$iteminfo["order_hash"];
+  $order=cart_loadorder($orderhash);
+  //$iteminfo = $order["items"][$iteminfo["id"]];
+  $iteminfo = isset($iteminfo["item_type"]) ? $iteminfo : $order["items"][$iteminfo["id"]];
   $valid_itemtypes = cart_getitemtypes();
 	$itemtype = isset($iteminfo["item_type"]) ? $iteminfo["item_type"] : null;
-	logger ("[cart] Cancel Item: ".print_r($iteminfo,true),LOGGER_DATA);
   if ($itemtype && !in_array($iteminfo['item_type'],$valid_itemtypes)) {
-		$itemtype=null;
-	}
+	$itemtype=null;
+  }
 
   $calldata=Array();
   $calldata["orderid"]=$order["id"];
@@ -1857,9 +1906,10 @@ function cart_do_cancelitem ($iteminfo) {
 }
 
 function cart_fulfillitem_markfulfilled(&$hookdata) {
-
   $orderhash=$hookdata["item"]["order_hash"];
   $itemid=$hookdata["item"]["id"];
+
+  
   $r=q("update cart_orderitems set item_fulfilled = 1 where order_hash = '%s' and id=%d",
 			dbesc($orderhash),intval($itemid));
   $item_meta=cart_getitem_meta ($itemid,$orderhash);
@@ -1874,19 +1924,51 @@ function cart_fulfillitem_unmarkfulfilled(&$hookdata) {
   $r=q("update cart_orderitems set item_fulfilled = 0 where order_hash = '%s' and id=%d",
 			dbesc($orderhash),intval($itemid));
   $item_meta=cart_getitem_meta ($itemid,$orderhash);
-  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Item Fulfilled";
+  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Item fulfillment rolled back.";
   cart_updateitem_meta($itemid,$item_meta,$orderhash);
+}
 
+function cart_add_error($errors,$new_error) {
+	if (!is_array($errors)) {
+		$firsterr=$errors;
+		$errors=Array();
+		if ($firsterr) {
+			$errors[]=$firsterr;
+		}
+	} else {
+		$errors[]=$new_error;
+	}
+	return $errors;
+}
+
+function cart_item_note($note,$itemid,$orderhash) {
+	$item_meta=cart_getitem_meta ($itemid,$orderhash);
+	if (is_array($error)) {
+		foreach ($error as $errtxt) {
+		  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ").$errtxt;
+		}
+	} else {
+	  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ").$error;
+	}
+	cart_updateitem_meta($itemid,$item_meta,$orderhash);
 }
 
 function cart_fulfillitem_error($error,$itemid,$orderhash) {
 	$item_meta=cart_getitem_meta ($itemid,$orderhash);
-	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Error fulfilling item: ".$error;
+	if (is_array($error)) {
+		foreach ($error as $errtxt) {
+		  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Error fulfilling item: ".$errtxt;
+		}
+	} else {
+	  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Error fulfilling item: ".$error;
+	}
 
-	$r=q("update cart_orderitems set item_exception = 1 where order_hash = '%s' and id = %d",
+  if ($exception) {
+	  $r=q("update cart_orderitems set item_exception = 1 where order_hash = '%s' and id = %d",
 			dbesc($orderhash),intval($itemid));
+	  $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Exception Set";
+  }
 
-	$item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Exception Set";
 	cart_updateitem_meta($itemid,$item_meta,$orderhash);
 }
 
