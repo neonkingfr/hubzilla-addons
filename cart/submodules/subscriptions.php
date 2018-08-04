@@ -1,4 +1,5 @@
 <?php
+//require_once("/opt/hubzdev/appdir/addon/cart/cart.php");
 /**
  * Name: subscriptions
  * Description: Submodule for the Hubzilla Cart system to track subscriptions.
@@ -254,6 +255,7 @@ class Cart_subscriptions {
       $subscriptionitem["item_sku"]=$subinfo["item_sku"];
       $catalog = cart_get_catalog(false);
       $subscriptionitem["item_type"]=$catalog[$subinfo["item_sku"]]["item_type"];
+      $subscriptionitem["proxy_item"]=1;
       cart_do_cancelitem ($subscriptionitem);
       $master_order = $orderitem["item"]["order_hash"];
       $master_itemid = $orderitem["item"]["id"];
