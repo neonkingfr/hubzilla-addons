@@ -1250,7 +1250,7 @@ function cart_settings_post(&$s) {
         cart_load();
 }
 
-function cart_plugin_admin_post(&$a,&$s) {
+function cart_plugin_admin_post(&$s) {
 
   $prev_dropval = cart_getsysconfig("dropTablesOnUninstall");
 
