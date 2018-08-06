@@ -74,7 +74,7 @@ class Cart {
 $cart_version = 0.9;
 load_config("cart");
 global $cart_submodules;
-$cart_submodules=Array("paypalbutton","hzservices","subscriptions");
+$cart_submodules=Array("paypalbutton","hzservices","subscriptions","manualcat");
 
 $cart_manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
 if ($cart_manualpayments) {
@@ -1099,8 +1099,8 @@ function cart_uninstall() {
 
 function cart_load(){
 	Zotlabs\Extend\Hook::register('construct_page', 'addon/cart/cart.php', 'cart_construct_page',1);
-	Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/cart.php', 'cart_settings',1);
-	Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/cart.php', 'cart_settings_post',1);
+	Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/cart.php', 'cart_settings',1,32000);
+	Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/cart.php', 'cart_settings_post',1,32000);
 	Zotlabs\Extend\Hook::register('channel_apps', 'addon/cart/cart.php', 'cart_channel_apps');
 	Zotlabs\Extend\Hook::register('cart_do_additem','addon/cart/cart.php','cart_do_additem',1);
 	Zotlabs\Extend\Hook::register('cart_order_additem','addon/cart/cart.php','cart_additem_hook',1);
@@ -1993,6 +1993,9 @@ function cart_after_fulfill_finishorder(&$hookdata) {
 
 function cart_cancelitem_unmarkfulfilled(&$hookdata) {
 
+  if (isset($hookdata["item"]["proxy_item"])) {
+    return;
+  }
   $orderhash=$hookdata["item"]["order_hash"];
   $itemid=$hookdata["item"]["id"];
   $r=q("update cart_orderitems set item_fulfilled = 0 where order_hash = '%s' and id=%d",
@@ -2000,7 +2003,6 @@ function cart_cancelitem_unmarkfulfilled(&$hookdata) {
   $item_meta=cart_getitem_meta ($itemid,$orderhash);
   $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Item Cancelled (rollback fulfillment)";
   cart_updateitem_meta($itemid,$item_meta,$orderhash);
-
 }
 
 function cart_cancelitem_error($error,$itemid,$orderhash) {
