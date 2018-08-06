@@ -18,8 +18,9 @@ class Cart_hzservices {
     }
 
     static public function load (){
-      Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings',1);
-      Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings_post',1);
+      Zotlabs\Extend\Hook::register('cart_addon_settings', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::addon_settings',1);
+      Zotlabs\Extend\Hook::register('cart_addon_settings_post', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::addon_settings_post',1);
+      
       Zotlabs\Extend\Hook::register('cart_myshop_menufilter', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::myshop_menuitems',1,1001);
       Zotlabs\Extend\Hook::register('cart_myshop_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemadmin',1,1001);
       Zotlabs\Extend\Hook::register('cart_fulfill_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::fulfill_hzservices',1,1001);
@@ -34,8 +35,8 @@ class Cart_hzservices {
     }
 
     static public function unload () {
-      Zotlabs\Extend\Hook::unregister('feature_settings', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings');
-      Zotlabs\Extend\Hook::unregister('feature_settings_post', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings_post');
+      Zotlabs\Extend\Hook::unregister('cart_addon_settings', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::addon_settings',1);
+      Zotlabs\Extend\Hook::unregister('cart_addon_settings_post', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::addon_settings_post',1);
       Zotlabs\Extend\Hook::unregister('cart_myshop_menufilter', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::myshop_menuitems');
       Zotlabs\Extend\Hook::unregister('cart_myshop_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemadmin');
       Zotlabs\Extend\Hook::unregister('cart_fulfill_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::fulfill_hzservices');
@@ -58,7 +59,7 @@ class Cart_hzservices {
       //cart_config_delitemtype("hzservices");
     }
 
-    static public function settings (&$s) {
+    static public function addon_settings (&$sc) {
       $id = local_channel();
       if (! $id)
         return;
@@ -68,35 +69,10 @@ class Cart_hzservices {
          return;
       }
       $enable_hzservices = get_pconfig ($id,'cart_hzservices','enable');
-      $sc = replace_macros(get_markup_template('field_checkbox.tpl'), array(
+      $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
                  '$field'	=> array('enable_cart_hzservices', t('Enable Hubzilla Services Module'),
                    (isset($enable_hzservices) ? intval($enable_hzservices) : 0),
                    '',array(t('No'),t('Yes')))));
-
-      $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-                 '$addon' 	=> array('cart-hzsvc',
-                   t('Cart - Hubzilla Services Addon'), '',
-                   t('Submit')),
-                 '$content'	=> $sc));
-
-    }
-
-    static public function settings_post () {
-      if(!local_channel())
-        return;
-
-      if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1 || !isset($_POST['enable_cart_hzservices'])) {
-        return;
-      }
-
-
-      $prev_enable = get_pconfig(local_channel(),'cart_hzservices','enable');
-      $enable_cart_hzservices = isset($_POST['enable_cart_hzservices']) ? intval($_POST['enable_cart_hzservices']) : 0;
-      set_pconfig( local_channel(), 'cart_hzservices', 'enable', $enable_cart_hzservices );
-
-      Cart_hzservices::unload();
-      Cart_hzservices::load();
-
 
     }
 
