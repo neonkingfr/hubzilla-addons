@@ -1227,6 +1227,7 @@ function cart_formatamount($amount) {
 function cart_settings_post(&$s) {
 	if(! local_channel())
 		return;
+
         $prev_enable = get_pconfig(local_channel(),'cart','enable');
 
 	set_pconfig( local_channel(), 'cart', 'enable', intval($_POST['enable_cart']) );
@@ -1236,16 +1237,17 @@ function cart_settings_post(&$s) {
 	set_pconfig( local_channel(), 'cart', 'enable_test_catalog', intval($_POST['enable_test_catalog'] ));
 	set_pconfig( local_channel(), 'cart', 'enable_manual_payments', intval($_POST['enable_manual_payments']) );
 
-  $curcurrency = get_pconfig(local_channel(),'cart','cart_currency');
-  $curcurrency = isset($curcurrency) ? $curcurrency : 'USD';
-  $currency = substr(preg_replace('[^0-9A-Z]','',$_POST["currency"]),0,3);
-  $currencylist=cart_getcurrencies();
-  $currency = isset($currencylist[$currency]) ? $currency : 'USD';
-  set_pconfig(local_channel(), 'cart','cart_currency', $currency);
+        $curcurrency = get_pconfig(local_channel(),'cart','cart_currency');
+        $curcurrency = isset($curcurrency) ? $curcurrency : 'USD';
+        $currency = substr(preg_replace('[^0-9A-Z]','',$_POST["currency"]),0,3);
+        $currencylist=cart_getcurrencies();
+        $currency = isset($currencylist[$currency]) ? $currency : 'USD';
+        set_pconfig(local_channel(), 'cart','cart_currency', $currency);
+            
+        call_hooks('cart_addon_settings_post');
 
-	cart_unload();
-	cart_load();
-
+        cart_unload();
+        cart_load();
 }
 
 function cart_plugin_admin_post(&$a,&$s) {
@@ -1308,13 +1310,14 @@ function cart_settings(&$s) {
          * @todo: Configuure payment options
          */
 
+        $moresettings = '';
+        call_hooks('cart_addon_settings',$moresettings);
+
 	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
 				     '$addon' 	=> array('cart-base',
 							 t('Cart - Base Settings'), '',
 							 t('Submit')),
-				     '$content'	=> $sc));
-        //return $s;
-
+				     '$content'	=> $sc . $moresettings));
 }
 
 function cart_plugin_admin(&$a,&$s) {

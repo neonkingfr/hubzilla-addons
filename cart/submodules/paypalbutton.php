@@ -47,9 +47,8 @@ class Cart_paypalbutton {
     }
 
     static public function load (){
-      Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/submodules/paypalbutton.php', 'Cart_paypalbutton::settings',1);
-      Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/submodules/paypalbutton.php', 'Cart_paypalbutton::settings_post',1);
-
+      Zotlabs\Extend\Hook::register('cart_addon_settings', 'addon/cart/submodules/paypalbutton.php', 'Cart_paypalbutton::addon_settings',1);
+      Zotlabs\Extend\Hook::register('cart_addon_settings_post', 'addon/cart/submodules/paypalbutton.php', 'Cart_paypalbutton::addon_settings_post',1);
       Zotlabs\Extend\Hook::register('cart_paymentopts','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::register');
       Zotlabs\Extend\Hook::register('cart_checkout_paypalbutton','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::checkout');
       Zotlabs\Extend\Hook::register('cart_post_paypalbutton_checkout_confirm','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::checkout_confirm');
@@ -65,8 +64,8 @@ class Cart_paypalbutton {
     }
 
     static public function unload () {
-      Zotlabs\Extend\Hook::unregister('feature_settings', 'addon/cart/submodules/paypalbutton.php', 'Cart_paypalbutton::settings');
-      Zotlabs\Extend\Hook::unregister('feature_settings_post', 'addon/cart/submodules/paypalbutton.php', 'Cart_paypalbutton::settings_post');
+      Zotlabs\Extend\Hook::unregister('cart_addon_settings', 'addon/cart/submodules/paypalbutton.php', 'Cart_paypalbutton::addon_settings');
+      Zotlabs\Extend\Hook::unregister('cart_addon_settings_post', 'addon/cart/submodules/paypalbutton.php', 'Cart_paypalbutton::addon_settings_post');
       Zotlabs\Extend\Hook::unregister('cart_paymentopts','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::register');
       Zotlabs\Extend\Hook::unregister('cart_checkout_paypalbutton','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::checkout');
       Zotlabs\Extend\Hook::unregister('cart_post_paypalbutton_checkout_confirm','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::checkout_confirm');
@@ -81,7 +80,7 @@ class Cart_paypalbutton {
 
     }
 
-    static public function settings (&$s) {
+    static public function addon_settings (&$sc) {
       $id = local_channel();
       if (! $id)
         return;
@@ -91,15 +90,17 @@ class Cart_paypalbutton {
          return;
       }
 
-
       $enable_paypalbutton = get_pconfig ($id,'cart','paypalbutton_enable');
-      $sc = replace_macros(get_markup_template('field_checkbox.tpl'), array(
-                 '$field'	=> array('enable_cart_paypalbutton', t('Enable Paypal Button Module'),
+      $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
+                 '$field'       => array('enable_cart_paypalbutton', t('Enable Paypal Button Module'),
                    (isset($enable_paypalbutton) ? $enable_paypalbutton : 0),
                    '',array(t('No'),t('Yes')))));
+
+      if (!$enable_paypalbutton) { return; }
+
       $paypalbutton_production = get_pconfig ($id,'cart','paypalbutton_production');
       $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-                 '$field'	=> array('paypalbutton_production', t('Use Production Key'),
+                 '$field'       => array('paypalbutton_production', t('Use Production Key'),
                    (isset($paypalbutton_production) ? $paypalbutton_production : 0),
                    '',array(t('No'),t('Yes')))));
 
@@ -130,35 +131,24 @@ class Cart_paypalbutton {
                    (isset($paypalbutton_productionsecret) ? $paypalbutton_productionsecret : ''),
                    '',''
                    )));
-                   /*
-     $paypalbutton_productionsecret = get_pconfig ($id,'cart','paypalbutton_currency');
-     $sc .= replace_macros(get_markup_template('field_input.tpl'),array(
-                  '$field'     => array ('paypalbutton_currency', t('Paypal Currency (See: https://developer.paypal.com/docs/classic/mass-pay/integration-guide/currency_codes/)'),
-                  (isset($paypalbutton_currency) ? $paypalbutton_currency : 'USD'),
-                  '',''
-                  )));
-                  */
-      $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-                 '$addon' 	=> array('cart-ppbutton',
-                   t('Cart - Paypal Addon'), '',
-                   t('Submit')),
-                 '$content'	=> $sc));
-
-
     }
 
-    static public function settings_post () {
+
+    static public function addon_settings_post () {
       if(!local_channel())
         return;
 
-      if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1 || !isset($_POST['enable_cart_paypalbutton'])) {
+      $prev_enable = get_pconfig(local_channel(),'cart','paypalbutton_enable');
+
+      if (!$prev_enable && (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1 || !isset($_POST['enable_cart_paypalbutton']))) {
         return;
       }
 
 
-      $prev_enable = get_pconfig(local_channel(),'cart','paypalbutton_enable');
       $enable_cart_paypalbutton = isset($_POST['enable_cart_paypalbutton']) ? intval($_POST['enable_cart_paypalbutton']) : 0;
       set_pconfig( local_channel(), 'cart', 'paypalbutton_enable', $enable_cart_paypalbutton );
+
+      if (!$prev_enable) { return; }
 
       $sandbox_client = isset($_POST['paypalbutton_sandboxclient']) ? $_POST['paypalbutton_sandboxclient'] : '';
       set_pconfig( local_channel(), 'cart', 'paypalbutton_sandboxclient', $sandbox_client);
@@ -170,11 +160,6 @@ class Cart_paypalbutton {
       set_pconfig( local_channel(), 'cart', 'paypalbutton_productionsecret', $production_secret);
       $paypalbutton_production = isset($_POST['paypalbutton_production']) ? intval($_POST['paypalbutton_production']) : 0;
       set_pconfig( local_channel(), 'cart', 'paypalbutton_production', $paypalbutton_production);
-      //$paypalbutton_productionsecret = get_pconfig ($id,'cart','paypalbutton_currency');
-      /*
-      $paypalbutton_currency = isset($_POST['paypalbutton_currency']) ? $_POST['paypalbutton_currency'] : 'USD';
-      set_pconfig( local_channel(), 'cart', 'paypalbutton_currency', $paypalbutton_currency);
-      */
 
 /*
   @TODO: Add paypal specific config $options

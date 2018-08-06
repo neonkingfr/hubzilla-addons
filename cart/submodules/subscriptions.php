@@ -16,8 +16,8 @@ class Cart_subscriptions {
     }
 
     static public function load (){
-      Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::settings',1);
-      Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::settings_post',1);
+      Zotlabs\Extend\Hook::register('addon_settings', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::addon_settings',1);
+      Zotlabs\Extend\Hook::register('addon_settings_post', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::addon_settings_post',1);
       //Zotlabs\Extend\Hook::register('cart_myshop_menufilter', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::myshop_menuitems',1,1000);
       Zotlabs\Extend\Hook::register('cart_myshop_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subscriptionadmin',1,1000);
       Zotlabs\Extend\Hook::register('cart_fulfill_subscription', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::item_fulfill',1,1000);
@@ -37,8 +37,8 @@ class Cart_subscriptions {
     }
 
     static public function unload () {
-      Zotlabs\Extend\Hook::unregister('feature_settings', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::settings');
-      Zotlabs\Extend\Hook::unregister('feature_settings_post', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::settings_post');
+      Zotlabs\Extend\Hook::unregister('addon_settings', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::addon_settings');
+      Zotlabs\Extend\Hook::unregister('addon_settings_post', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::addon_settings_post');
       //Zotlabs\Extend\Hook::unregister('cart_myshop_menufilter', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::myshop_menuitems');
       Zotlabs\Extend\Hook::unregister('cart_myshop_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subscriptionadminadmin');
       Zotlabs\Extend\Hook::unregister('cart_fulfill_subscription', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::item_fulfill');
@@ -145,7 +145,7 @@ class Cart_subscriptions {
     	}
     }
 
-    static public function settings (&$s) {
+    static public function addon_settings (&$sc) {
       $id = local_channel();
       if (! $id)
         return;
@@ -155,19 +155,14 @@ class Cart_subscriptions {
          return;
       }
       $enable_subscriptions = cart_getcartconfig ('subscriptions-enable');
-      $sc = replace_macros(get_markup_template('field_checkbox.tpl'), array(
+      $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
                  '$field'	=> array('enable_cart_subscriptions', t('Enable Subscription Management Module'),
                    (isset($enable_subscriptions) ? intval($enable_subscriptions) : 0),
                    '',array(t('No'),t('Yes')))));
 
-      $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-                 '$addon' 	=> array('cart-subscriptions',
-                   t('Cart - Subscription Management'), '',
-                   t('Submit')),
-                 '$content'	=> $sc));
     }
 
-    static public function settings_post () {
+    static public function addon_settings_post () {
       if(!local_channel())
         return;
 
