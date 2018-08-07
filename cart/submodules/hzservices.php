@@ -106,7 +106,7 @@ class Cart_hzservices {
   static public function filter_catalog_display(&$catalog) {
     $itemlist = Cart_hzservices::get_itemlist();
     foreach ($itemlist as $item) {
-      if (!isset($itemlist["item_active"])) {
+      if (!isset($item["item_active"])) {
         unset($catalog[$item["item_sku"]]);
       }
     }

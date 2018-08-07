@@ -70,15 +70,23 @@ class Cart_subscriptions {
     static public function dbCleanup (&$success) {
     	$dbverconfig = cart_getsysconfig("subscription-dbver");
 
-    	$dbver = $dbverconfig ? $dbverconfig : 0;
+    	$dbver = $dbverconfig ? intval($dbverconfig) : 0;
 
     	$dbsql[DBTYPE_MYSQL] = Array (
+           1 => Array (
+               "DROP TABLE IF EXISTS cart_subscriptions"
+           )
         );
       $dbsql[DBTYPE_POSTGRES] = Array (
+           1 => Array (
+               "DROP TABLE IF EXISTS cart_subscriptions"
+           )
         );
       $dbsql=$dbsql[ACTIVE_DBTYPE];
 
       $sql = $dbsql[$dbver];
+      logger("DBVER: ".$dbver,LOGGER_DEBUG);
+      if (!is_array($sql)) { return; }
     	foreach ($sql as $query) {
     		$r = q($query);
     		if (!$r) {

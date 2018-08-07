@@ -123,7 +123,7 @@ function cart_maybejson ($value,$options=0) {
 function cart_dbCleanup () {
 
 	$success=UPDATE_SUCCESS;
-	call_hooks("cart-dbcleanup",$success);
+	call_hooks("cart_dbcleanup",$success);
 	if ($success!=UPDATE_SUCCESS) {
 		notice(t("DB Cleanup Failure").EOL);
 		logger("DB Cleanup Failure in cart-dbcleanup hooks",LOGGER_NORMAL);
@@ -137,17 +137,17 @@ function cart_dbCleanup () {
 	      	"DROP TABLE IF EXISTS cart_orders",
 			    "DROP TABLE IF EXISTS cart_orderitems"
 	    )
-    );
-  $sqlstmts[DBTYPE_POSTGRES] = Array (
+        );
+        $sqlstmts[DBTYPE_POSTGRES] = Array (
 	   1 => Array (
 	     	"DROP TABLE IF EXISTS cart_orders",
 		    "DROP TABLE IF EXISTS cart_orderitems"
 	   )
 	);
-  $dbsql=$sqlstmts[ACTIVE_DBTYPE];
+        $dbsql=$sqlstmts[ACTIVE_DBTYPE];
 	foreach ($dbsql as $updatever=>$sql) {
-		if ($dbver > $updatever) {
-			continue;
+		if ($dbver < $updatever) {
+			break;
 		}
 	  foreach ($sql as $query) {
                   logger ('[cart] UNINSTALL db query: '.$query,LOGGER_DEBUG);
