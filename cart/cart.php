@@ -129,26 +129,23 @@ function cart_dbCleanup () {
 		logger("DB Cleanup Failure in cart-dbcleanup hooks",LOGGER_NORMAL);
 	}
 
-	$dbverconfig = cart_getsysconfig("dbver");
-	$dbver = $dbverconfig ? intval($dbverconfig) : 0;
 
 	$sqlstmts[DBTYPE_MYSQL] = Array (
 	    1 => Array (
-	      	"DROP TABLE IF EXISTS cart_orders",
-			    "DROP TABLE IF EXISTS cart_orderitems"
+		"DROP TABLE IF EXISTS cart_orders",
+		"DROP TABLE IF EXISTS cart_orderitems",
+		"DROP TABLE IF EXISTS cart_subscriptions"
 	    )
         );
         $sqlstmts[DBTYPE_POSTGRES] = Array (
 	   1 => Array (
 	     	"DROP TABLE IF EXISTS cart_orders",
-		    "DROP TABLE IF EXISTS cart_orderitems"
+		"DROP TABLE IF EXISTS cart_orderitems",
+		"DROP TABLE IF EXISTS cart_subscriptions"
 	   )
 	);
         $dbsql=$sqlstmts[ACTIVE_DBTYPE];
 	foreach ($dbsql as $updatever=>$sql) {
-		if ($dbver < $updatever) {
-			break;
-		}
 	  foreach ($sql as $query) {
                   logger ('[cart] UNINSTALL db query: '.$query,LOGGER_DEBUG);
 		  $r = q($query);
