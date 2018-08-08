@@ -76,6 +76,21 @@ class Cart_hzservices {
 
     }
 
+    static public function addon_settings_post () {
+      if(!local_channel())
+        return;
+
+      if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1) {
+        return;
+      }
+
+      $enable_cart_hzservices = isset($_POST['enable_cart_hzservices']) ? intval($_POST['enable_cart_hzservices']) : 0;
+      set_pconfig( local_channel(), 'cart_hzservices', 'enable', $enable_cart_hzservices );
+
+      Cart_hzservices::unload();
+      Cart_hzservices::load();
+    }
+
   static public function item_fulfill(&$orderitem) {
     // LOCK SKU from future edits.
     $skus=Cart_hzservices::get_itemlist();
