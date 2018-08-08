@@ -85,7 +85,7 @@ class Cart_manualcat {
       if(!local_channel())
         return;
 
-      if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1 || !isset($_POST['enable_cart_manualcat'])) {
+      if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1) {
         return;
       }
 
