@@ -404,7 +404,7 @@ class Cart_subscriptions {
 
     static public function subscriptionadmin_form($sku) {
       logger("subadmin_form: $sku",LOGGER_DEBUG);
-      $formelements="";
+      $formelements=[];
       $subinfo = Cart_subscriptions::get_subinfo($sku);
       $itemsku = isset($subinfo["item_sku"]) ? $subinfo["item_sku"] : null;
       $session_itemsku = isset($_SESSION["sub_item_sku"]) ? $_SESSION["sub_item_sku"] : null;
