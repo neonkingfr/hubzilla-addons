@@ -34,7 +34,7 @@ function redred_unload() {
 }
 
 function redred_jot_nets(&$a,&$b) {
-    if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream')))
+    if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
         return;
 
 	$redred_post = get_pconfig(local_channel(),'redred','post');
@@ -127,7 +127,7 @@ function redred_post_local(&$a,&$b) {
 	if($b['created'] != $b['edited'])
 		return;
 
-	if(! perm_is_allowed($b['uid'],'','view_stream'))
+	if(! perm_is_allowed($b['uid'],'','view_stream',false))
 		return;
 
 	if((local_channel()) && (local_channel() == $b['uid']) && (! $b['item_private'])) {
@@ -164,7 +164,7 @@ function redred_post_hook(&$a,&$b) {
 		return;
 
 
-	if(! perm_is_allowed($b['uid'],'','view_stream'))
+	if(! perm_is_allowed($b['uid'],'','view_stream',false))
 		return;
 
 

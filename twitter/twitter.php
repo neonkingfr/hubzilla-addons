@@ -92,6 +92,9 @@ function twitter_jot_nets(&$a,&$b) {
 	if(! local_channel())
 		return;
 
+	if(! perm_is_allowed(local_channel(),'','view_stream',false))
+		return;
+
 	$tw_post = get_pconfig(local_channel(),'twitter','post');
 	if(intval($tw_post) == 1) {
 		$tw_defpost = get_pconfig(local_channel(),'twitter','post_by_default');
@@ -571,7 +574,7 @@ function twitter_post_hook(&$a,&$b) {
     if((! is_item_normal($b)) || $b['item_private'] || ($b['created'] !== $b['edited']))
         return;
 
-    if(! perm_is_allowed($b['uid'],'','view_stream'))
+    if(! perm_is_allowed($b['uid'],'','view_stream',false))
         return;
 
     if(! strstr($b['postopts'],'twitter'))

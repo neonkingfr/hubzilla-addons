@@ -35,7 +35,7 @@ function wppost_unload () {
 
 function wppost_jot_nets(&$a,&$b) {
 
-    if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream')))
+    if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
         return;
 	
     $wp_post = get_pconfig(local_channel(),'wppost','post');
@@ -179,7 +179,7 @@ function wppost_send(&$a,&$b) {
     if((! is_item_normal($b)) || $b['item_private'])
         return;
 
-	if(! perm_is_allowed($b['uid'],'','view_stream'))
+	if(! perm_is_allowed($b['uid'],'','view_stream',false))
 		return;
 
     if(! strstr($b['postopts'],'wppost'))
@@ -328,7 +328,7 @@ function wppost_post_remote_end(&$a,&$b) {
 
 	// how about our stream permissions? 
 
-	if(! perm_is_allowed($b['uid'],'','view_stream'))
+	if(! perm_is_allowed($b['uid'],'','view_stream',false))
 		return;
 
 	// Now we have to get down and dirty. Was the parent shared with wordpress?

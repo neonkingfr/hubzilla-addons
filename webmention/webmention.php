@@ -54,7 +54,7 @@ function webmention_daemon(&$x) {
 	if($r[0]['item_private'])
 		return;
 
-	if(! perm_is_allowed($r[0]['uid'],'','view_stream'))
+	if(! perm_is_allowed($r[0]['uid'],'','view_stream',false))
 		return;
 
 	if($r[0]['term'] && is_array($r[0]['term'])) {

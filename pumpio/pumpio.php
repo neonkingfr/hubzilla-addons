@@ -153,7 +153,7 @@ function pumpio_connect($a) {
 }
 
 function pumpio_jot_nets(&$a,&$b) {
-	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream')))
+	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
 		return;
 
 	$pumpio_post = get_pconfig(local_channel(),'pumpio','post');
@@ -308,7 +308,7 @@ function pumpio_send(&$a,&$b) {
 	if((! is_item_normal($b)) || $b['item_private'] || ($b['created'] !== $b['edited']))
 		return;
 
-	if(! perm_is_allowed($b['uid'],'','view_stream'))
+	if(! perm_is_allowed($b['uid'],'','view_stream',false))
 		return;
 
 	if(! strstr($b['postopts'],'pumpio'))
