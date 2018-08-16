@@ -40,7 +40,8 @@ function pubcrawl_load() {
 		'import_author'              => 'pubcrawl_import_author',
 		'channel_protocols'          => 'pubcrawl_channel_protocols',
 		'federated_transports'       => 'pubcrawl_federated_transports',
-		'create_identity'            => 'pubcrawl_create_identity'
+		'create_identity'            => 'pubcrawl_create_identity',
+		'can_comment_on_post'        => 'pubcrawl_can_comment_on_post'
 	]);
 }
 
@@ -1171,3 +1172,14 @@ function pubcrawl_create_identity($b) {
 	}
 
 }
+
+function pubcrawl_can_comment_on_post(&$x) {
+	if(local_channel()) {
+		$c = App::get_channel();
+		$recips = get_iconfig($x['item'],'activitypub','recips',[]);
+		if($recips && (in_array(ACTIVITY_PUBLIC_INBOX,$recips) || in_array(channel_url($c),$recips))) {
+			$x['allowed'] = true;
+		}
+	}
+}
+
