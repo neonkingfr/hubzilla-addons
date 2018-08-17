@@ -108,7 +108,7 @@
 	var pswpElement = document.querySelectorAll('.pswp')[0];
 
 	// Initializes and opens PhotoSwipe
-	if(items) {
+	if(items.length) {
 		var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
 		gallery.init();
 	}
