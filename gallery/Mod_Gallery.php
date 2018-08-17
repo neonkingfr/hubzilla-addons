@@ -28,43 +28,14 @@ class Gallery extends \Zotlabs\Web\Controller {
 			\App::$page['htmlhead'] .= "<script> var profile_uid = " . ((\App::$data['channel']) ? \App::$data['channel']['channel_id'] : 0) . "; </script>" ;
 	
 		}
-	
+
 		return;
+
 	}
 
 	function post() {
-
-		$owner_uid = \App::$data['channel']['channel_id'];
-
-		$sql_extra = permissions_sql($owner_uid, get_observer_hash(), 'photo');
-
-		$unsafe = ((array_key_exists('unsafe', $_POST) && $_POST['unsafe']) ? 1 : 0);
-
-		$r = q("SELECT resource_id, width, height, description, display_path 
-			FROM photo WHERE uid = %d AND album = '%s' AND photo_usage = %d  
-			AND is_nsfw = %d  AND imgscale = 1 $sql_extra 
-			ORDER by created DESC",
-			intval($owner_uid),
-			dbesc($_POST['album']),
-			intval(PHOTO_NORMAL),
-			intval($unsafe)
-		);
-
-		$i = 0;
-		foreach($r as $rr) {
-			$title = (($rr['description']) ? '<strong>' . $rr['description'] . '</strong><br>' . $rr['display_path'] : $rr['display_path']);
-
-			$items[$i]['resource_id'] = $rr['resource_id'];
-			$items[$i]['src'] = z_root() . '/photo/' . $rr['resource_id'] . '-1';
-			$items[$i]['msrc'] = z_root() . '/photo/' . $rr['resource_id'] . '-3';
-			$items[$i]['w'] = $rr['width'];
-			$items[$i]['h'] = $rr['height'];
-			$items[$i]['title'] = $title;
-			$i++;
-		}
-
+		$items = get_album_items($_POST);
 		json_return_and_die($items);
-
 	}
 
 	function get() {
@@ -76,6 +47,21 @@ class Gallery extends \Zotlabs\Web\Controller {
 		head_add_css('/addon/gallery/lib/photoswipe/dist/default-skin/default-skin.css');
 
 		nav_set_selected('Gallery');
+
+		$json_album = '';
+
+		if(argc() > 2) {
+			$album_name = argv(2);
+
+			for ($i = 3; $i < argc(); $i++) {
+			    $album_name .= '/' . argv($i);
+			}
+
+			$arr['album'] = $album_name;
+
+			$album_items = get_album_items($arr);
+			$json_album = json_encode($album_items);
+		} 
 
 		$owner_uid = \App::$data['channel']['channel_id'];
 		$sql_extra = permissions_sql($owner_uid, get_observer_hash(), 'photo');
@@ -111,10 +97,45 @@ class Gallery extends \Zotlabs\Web\Controller {
 			'$title' => t('Gallery'),
 			'$albums' => $items,
 			'$nick' => \App::$data['channel']['channel_address'],
-			'$unsafe' => $unsafe
+			'$unsafe' => $unsafe,
+			'$json_album' => $json_album
 		]);
 
 		return $o;
 	}
+
+}
+
+function get_album_items($arr) {
+	$owner_uid = \App::$data['channel']['channel_id'];
+
+	$sql_extra = permissions_sql($owner_uid, get_observer_hash(), 'photo');
+
+	$unsafe = ((array_key_exists('unsafe', $arr) && $arr['unsafe']) ? 1 : 0);
+
+	$r = q("SELECT resource_id, width, height, description, display_path 
+		FROM photo WHERE uid = %d AND album = '%s' AND photo_usage = %d  
+		AND is_nsfw = %d  AND imgscale = 1 $sql_extra 
+		ORDER by created DESC",
+		intval($owner_uid),
+		dbesc($arr['album']),
+		intval(PHOTO_NORMAL),
+		intval($unsafe)
+	);
+
+	$i = 0;
+	foreach($r as $rr) {
+		$title = (($rr['description']) ? '<strong>' . $rr['description'] . '</strong><br>' . $rr['display_path'] : $rr['display_path']);
+
+		$items[$i]['resource_id'] = $rr['resource_id'];
+		$items[$i]['src'] = z_root() . '/photo/' . $rr['resource_id'] . '-1';
+		$items[$i]['msrc'] = z_root() . '/photo/' . $rr['resource_id'] . '-3';
+		$items[$i]['w'] = $rr['width'];
+		$items[$i]['h'] = $rr['height'];
+		$items[$i]['title'] = $title;
+		$i++;
+	}
+
+	return $items;
 
 }
