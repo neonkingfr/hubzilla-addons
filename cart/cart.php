@@ -3,9 +3,9 @@
 /**
  * Name: cart
  * Description: Core cart utilities for orders and payments
- * Version: 0.9
+ * Version: 0.9.0
  * Author: Matthew Dent <dentm42@dm42.net>
- * MinVersion: 2.8
+ * MinVersion: 3.6
  */
 
 /* Architecture notes:
@@ -23,8 +23,36 @@
 
 
 class Cart {
+  public static $cart_version="0.9.0";
   public static $seller;
   public static $buyer;
+
+  public static function check_min_version ($platform,$minver) {
+      switch ($platform) {
+          case 'hubzilla':
+              $curver = STD_VERSION;
+              break;
+          case 'cart':
+              $curver = Cart::$cart_version;
+              break;
+          default:
+              return false;
+    }
+
+    $checkver = explode ('.',$minver);
+    $ver = explode ('.',$curver);
+
+    $major = (intval($checkver[0]) <= intval($ver[0]));
+    $minor = (intval($checkver[1]) <= intval($ver[1]));
+    $patch = (intval($checkver[2]) <= intval($ver[2]));
+
+    if ($major && $minor && patch) {
+         return true;
+    } else {
+         return false;
+    }
+    
+  }
 
   public static function get_seller_id() {
         return (isset(\App::$profile["profile_uid"]) && \App::$profile["profile_uid"] != null) ? \App::$profile["profile_uid"] : Cart::$seller["channel_id"];
@@ -1128,7 +1156,9 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('cart_get_catalog','addon/cart/cart.php','cart_get_test_catalog',1,0);
 
         // WIDGET REGISTRATION
-        Zotlabs\Extend\Widget::register('addon/cart/widgets/cartbutton.php','cartbutton');
+        if (Cart::check_min_version ('hubzilla','3.7.1')) {
+                Zotlabs\Extend\Widget::register('addon/cart/widgets/cartbutton.php','cartbutton');
+        }
 
 	//$manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
 	//if ($manualpayments) {
@@ -1179,8 +1209,10 @@ function cart_unload(){
 	Zotlabs\Extend\Hook::unregister('cart_after_cancel','addon/cart/cart.php','cart_fulfillitem_markunfulfilled');
 	Zotlabs\Extend\Hook::unregister('cart_get_catalog','addon/cart/cart.php','cart_get_test_catalog');
 
-        // WIDGET DE-REGISTRATION
-        Zotlabs\Extend\Widget::unregister('addon/cart/widgets/cartbutton.php','cartbutton');
+        // WIDGET UNREGISTRATION
+        if (Cart::check_min_version ('hubzilla','3.7.1')) {
+                Zotlabs\Extend\Widget::unregister('addon/cart/widgets/cartbutton.php','cartbutton');
+        }
 
 	require_once("manual_payments.php");
 	cart_manualpayments_unload();
