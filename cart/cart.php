@@ -1095,6 +1095,7 @@ function cart_uninstall() {
 }
 
 function cart_load(){
+        // HOOK REGISTRATION
 	Zotlabs\Extend\Hook::register('construct_page', 'addon/cart/cart.php', 'cart_construct_page',1);
 	Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/cart.php', 'cart_settings',1,32000);
 	Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/cart.php', 'cart_settings_post',1,32000);
@@ -1125,6 +1126,9 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('cart_after_fulfill','addon/cart/cart.php','cart_fulfillitem_markfulfilled',1,31000);
 	Zotlabs\Extend\Hook::register('cart_after_cancel','addon/cart/cart.php','cart_cancelitem_unmarkfulfilled',1,31000);
 	Zotlabs\Extend\Hook::register('cart_get_catalog','addon/cart/cart.php','cart_get_test_catalog',1,0);
+
+        // WIDGET REGISTRATION
+        Zotlabs\Extend\Widget::register('addon/cart/widgets/cartbutton.php','cartbutton');
 
 	//$manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
 	//if ($manualpayments) {
@@ -1174,6 +1178,9 @@ function cart_unload(){
 	Zotlabs\Extend\Hook::unregister('cart_after_fulfill','addon/cart/cart.php','cart_fulfillitem_markfulfilled');
 	Zotlabs\Extend\Hook::unregister('cart_after_cancel','addon/cart/cart.php','cart_fulfillitem_markunfulfilled');
 	Zotlabs\Extend\Hook::unregister('cart_get_catalog','addon/cart/cart.php','cart_get_test_catalog');
+
+        // WIDGET DE-REGISTRATION
+        Zotlabs\Extend\Widget::unregister('addon/cart/widgets/cartbutton.php','cartbutton');
 
 	require_once("manual_payments.php");
 	cart_manualpayments_unload();
@@ -1381,7 +1388,6 @@ function cart_init() {
 function cart_post_add_item () {
 	//@TODO: Add output of errors someplace
 	$items=Array();
-
 	call_hooks('cart_get_catalog',$items);
 	$item_sku = preg_replace('[^0-9A-Za-z\-]','',$_POST["add"]);
 	$newitem = $items[$item_sku];
@@ -1390,6 +1396,7 @@ function cart_post_add_item () {
 
 	$hookdata=Array("content"=>'',"iteminfo"=>$newitem);
 	call_hooks('cart_do_additem',$hookdata);
+
 }
 
 function cart_post_update_item () {
@@ -1439,6 +1446,11 @@ function cart_post(&$a) {
 		}
 	}
 	call_hooks($formhook);
+
+        if($_GET['returnurl']) {
+            goaway(urldecode($_GET['returnurl']));
+        }
+
 	$base_url = ( isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']=='on' ? 'https' : 'http' ) . '://' .  $_SERVER['HTTP_HOST'];
 	$url = $base_url . $_SERVER["REQUEST_URI"];
 	goaway($url);
