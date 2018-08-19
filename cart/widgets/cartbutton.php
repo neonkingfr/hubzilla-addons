@@ -7,14 +7,10 @@ class Cartbutton {
         //function widget_cartbutton ($args) {
         function widget ($args) {
 	require_once("addon/cart/cart.php");
-        $channel = \App::get_channel();
-        if ($channel && $channel['channel_address']) {
-            $nick = $channel['channel_address'];
-        } else {
-            return '';
-        }
+        $owner_uid = \App::$profile_uid;
+        $nick = cart_getnick();
+        if (!$nick) { return ''; }
 
-                $owner_uid = \App::$profile_uid;
 
                 $orderhash = cart_getorderhash(false);
                 if (!isset($args["sku"])) {
