@@ -1232,9 +1232,9 @@ function cart_formatamount($amount) {
 }
 
 function cart_settings_post(&$s) {
-	if(! local_channel())
+	if(! local_channel()) {
 		return;
-
+        }
         $prev_enable = get_pconfig(local_channel(),'cart','enable');
 
 	set_pconfig( local_channel(), 'cart', 'enable', intval($_POST['enable_cart']) );
@@ -1270,14 +1270,12 @@ function cart_plugin_admin_post(&$s) {
 
 function cart_settings(&$s) {
 	$id = local_channel();
-	if (! $id)
+	if (! $id) {
 		return;
+        }
 
 	$enablecart = get_pconfig ($id,'cart','enable');
 
-        if (!$enablecart) {
-                return;
-        }
 	$sc = replace_macros(get_markup_template('field_checkbox.tpl'), array(
 				     '$field'	=> array('enable_cart', t('Enable Shopping Cart'),
 							 (isset($enablecart) ? $enablecart : 0),
