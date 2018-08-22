@@ -37,24 +37,7 @@ class Cart_subscriptions {
     }
 
     static public function unload () {
-      Zotlabs\Extend\Hook::unregister('addon_settings', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::addon_settings');
-      Zotlabs\Extend\Hook::unregister('addon_settings_post', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::addon_settings_post');
-      //Zotlabs\Extend\Hook::unregister('cart_myshop_menufilter', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::myshop_menuitems');
-      Zotlabs\Extend\Hook::unregister('cart_myshop_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subscriptionadminadmin');
-      Zotlabs\Extend\Hook::unregister('cart_fulfill_subscription', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::item_fulfill');
-      Zotlabs\Extend\Hook::unregister('cart_cancel_subscription', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::rollback_subscriptions');
-      Zotlabs\Extend\Hook::unregister('cart_get_catalog', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::get_catalog');
-      //Zotlabs\Extend\Hook::unregister('cart_filter_catalog_display', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::filter_catalog_display');
-      Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemedit', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_post');
-      //Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_activation_post');
-      //Zotlabs\Extend\Hook::unregister('cart_post_subscriptions_itemdeactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_deactivation_post');
-      Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_activation');
-      Zotlabs\Extend\Hook::unregister('cart_submodule_deactivation', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::module_deactivation');
-      Zotlabs\Extend\Hook::unregister('cart_post_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subedit_post');
-      Zotlabs\Extend\Hook::unregister('cart_dbcleanup', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbCleanup');
-      Zotlabs\Extend\Hook::unregister('cart_dbupgrade', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::dbUpgrade');
-      Zotlabs\Extend\Hook::unregister('itemedit_formextras', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::itemedit_formextras');
-      Zotlabs\Extend\Hook::unregister('cron', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::cron');
+      Zotlabs\Extend\Hook::unregister_by_file('addon/cart/submodules/subscriptions.php');
     }
 
     static public function module_activation (&$hookdata) {

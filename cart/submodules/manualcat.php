@@ -34,19 +34,7 @@ class Cart_manualcat {
     }
 
     static public function unload () {
-      Zotlabs\Extend\Hook::unregister('feature_settings', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::settings');
-      Zotlabs\Extend\Hook::unregister('feature_settings_post', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::settings_post');
-      Zotlabs\Extend\Hook::unregister('cart_myshop_menufilter', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::myshop_menuitems');
-      Zotlabs\Extend\Hook::unregister('cart_myshop_manualcat', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::itemadmin');
-      Zotlabs\Extend\Hook::unregister('cart_fulfill_manualcat', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::fulfill_manualcat');
-      Zotlabs\Extend\Hook::unregister('cart_cancel_manualcat', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::rollback_manualcat');
-      Zotlabs\Extend\Hook::unregister('cart_get_catalog', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::get_catalog');
-      Zotlabs\Extend\Hook::unregister('cart_filter_catalog_display', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::filter_catalog_display');
-      Zotlabs\Extend\Hook::unregister('cart_post_manualcat_itemedit', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::itemedit_post');
-      Zotlabs\Extend\Hook::unregister('cart_post_manualcat_itemactivation', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::itemedit_activation_post');
-      Zotlabs\Extend\Hook::unregister('cart_post_manualcat_itemdeactivation', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::itemedit_deactivation_post');
-      Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::module_activation');
-      Zotlabs\Extend\Hook::unregister('cart_order_before_additem_manualcat', 'addon/cart/submodule/manualcat.php', 'Cart_manualcat::filter_before_add');
+      Zotlabs\Extend\Hook::unregister_by_file('addon/cart/submodules/manualcat.php');
     }
 
     static public function module_activation (&$hookdata) {

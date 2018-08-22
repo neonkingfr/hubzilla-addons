@@ -74,9 +74,7 @@ function cart_paymentopts_register_manual (&$hookdata) {
 
 function cart_manualpayments_unload () {
 
-    Zotlabs\Extend\Hook::unregister('cart_paymentopts','addon/cart/manual_payments.php','cart_paymentopts_register_manual');
-    Zotlabs\Extend\Hook::unregister('cart_checkout_manual','addon/cart/manual_payments.php','cart_checkout_manual');
-    Zotlabs\Extend\Hook::unregister('cart_post_manual_checkout_confirm','addon/cart/manual_payments.php','cart_post_manual_checkout_confirm');
+    Zotlabs\Extend\Hook::unregister_by_file('addon/cart/manual_payments.php');
 
     }
 
