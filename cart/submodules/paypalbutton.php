@@ -64,18 +64,7 @@ class Cart_paypalbutton {
     }
 
     static public function unload () {
-      Zotlabs\Extend\Hook::unregister('cart_addon_settings', 'addon/cart/submodules/paypalbutton.php', 'Cart_paypalbutton::addon_settings');
-      Zotlabs\Extend\Hook::unregister('cart_addon_settings_post', 'addon/cart/submodules/paypalbutton.php', 'Cart_paypalbutton::addon_settings_post');
-      Zotlabs\Extend\Hook::unregister('cart_paymentopts','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::register');
-      Zotlabs\Extend\Hook::unregister('cart_checkout_paypalbutton','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::checkout');
-      Zotlabs\Extend\Hook::unregister('cart_post_paypalbutton_checkout_confirm','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::checkout_confirm');
-      Zotlabs\Extend\Hook::unregister('cart_post_paypalbutton_checkout_cancel','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::checkout_cancel');
-      Zotlabs\Extend\Hook::unregister('cart_post_custom_paypal_buttonhook','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::buttonhook');
-      Zotlabs\Extend\Hook::unregister('cart_post_custom_paypal_buttonhook_create','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::buttonhook_create');
-      Zotlabs\Extend\Hook::unregister('cart_post_custom_paypal_buttonhook_execute','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::buttonhook_execute');
-      Zotlabs\Extend\Hook::unregister('cart_paymentopts','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::register');
-      Zotlabs\Extend\Hook::unregister('cart_addons_myshop_order_display','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::admin_payment_display');
-      Zotlabs\Extend\Hook::register('cart_currency_filter','addon/cart/submodules/paypalbutton.php','Cart_paypalbutton::currency_filter');
+      Zotlabs\Extend\Hook::unregister_by_file('addon/cart/submodules/paypalbutton.php');
       //notice('UNLoaded submodule: paypalbutton'.EOL);
 
     }

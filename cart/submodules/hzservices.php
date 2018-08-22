@@ -35,19 +35,7 @@ class Cart_hzservices {
     }
 
     static public function unload () {
-      Zotlabs\Extend\Hook::unregister('cart_addon_settings', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::addon_settings',1);
-      Zotlabs\Extend\Hook::unregister('cart_addon_settings_post', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::addon_settings_post',1);
-      Zotlabs\Extend\Hook::unregister('cart_myshop_menufilter', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::myshop_menuitems');
-      Zotlabs\Extend\Hook::unregister('cart_myshop_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemadmin');
-      Zotlabs\Extend\Hook::unregister('cart_fulfill_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::fulfill_hzservices');
-      Zotlabs\Extend\Hook::unregister('cart_cancel_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::rollback_hzservices');
-      Zotlabs\Extend\Hook::unregister('cart_get_catalog', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::get_catalog');
-      Zotlabs\Extend\Hook::unregister('cart_filter_catalog_display', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::filter_catalog_display');
-      Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemedit', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_post');
-      Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_activation_post');
-      Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemdeactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_deactivation_post');
-      Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::module_activation');
-      Zotlabs\Extend\Hook::unregister('cart_order_before_additem_hzservices', 'addon/cart/submodule/hzservices.php', 'Cart_hzservices::filter_before_add');
+      Zotlabs\Extend\Hook::unregister_by_file('addon/cart/submodules/hzservices.php');
     }
 
     static public function module_activation (&$hookdata) {

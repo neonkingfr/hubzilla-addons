@@ -1178,36 +1178,7 @@ function cart_load(){
 }
 
 function cart_unload(){
-	Zotlabs\Extend\Hook::unregister('construct_page', 'addon/cart/cart.php', 'cart_construct_page');
-	Zotlabs\Extend\Hook::unregister('feature_settings', 'addon/cart/cart.php', 'cart_settings');
-	Zotlabs\Extend\Hook::unregister('feature_settings_post', 'addon/cart/cart.php', 'cart_settings_post');
-	Zotlabs\Extend\Hook::unregister('channel_apps', 'addon/cart/cart.php', 'cart_channel_apps');
-	Zotlabs\Extend\Hook::unregister('cart_do_additem','addon/cart/cart.php','cart_do_additem');
-	Zotlabs\Extend\Hook::unregister('cart_order_additem','addon/cart/cart.php','cart_additem_hook');
-	Zotlabs\Extend\Hook::unregister('cart_do_updateitem','addon/cart/cart.php','cart_do_updateitem');
-	Zotlabs\Extend\Hook::unregister('cart_order_updateitem','addon/cart/cart.php','cart_updateitem_hook');
-	Zotlabs\Extend\Hook::unregister('cart_order_before_updateitem','addon/cart/cart.php','cart_updateitem_qty_hook');
-	Zotlabs\Extend\Hook::unregister('cart_order_before_updateitem','addon/cart/cart.php','cart_updateitem_delsku_hook');
-	Zotlabs\Extend\Hook::unregister('cart_checkout','addon/cart/cart.php','cart_checkout_hook');
-	Zotlabs\Extend\Hook::unregister('cart_do_checkout','addon/cart/cart.php','cart_do_checkout');
-	Zotlabs\Extend\Hook::unregister('cart_orderpaid','addon/cart/cart.php','cart_orderpaid_hook');
-	Zotlabs\Extend\Hook::unregister('cart_do_orderpaid','addon/cart/cart.php','cart_do_orderpaid');
-	Zotlabs\Extend\Hook::unregister('cart_before_checkout','addon/cart/cart.php','cart_calc_totals');
-	Zotlabs\Extend\Hook::unregister('cart_calc_totals','addon/cart/cart.php','cart_calc_totals');
-	Zotlabs\Extend\Hook::unregister('cart_display_before','addon/cart/cart.php','cart_calc_totals');
-	Zotlabs\Extend\Hook::unregister('cart_display_before','addon/cart/cart.php','cart_display_before_addcheckoutlink');
-	Zotlabs\Extend\Hook::unregister('cart_display_before','addon/cart/cart.php','cart_display_before_formatcurrency');
-	Zotlabs\Extend\Hook::unregister('cart_display','addon/cart/cart.php','cart_display_applytemplate',1,31000);
-	Zotlabs\Extend\Hook::unregister('cart_mod_content','addon/cart/cart.php','cart_mod_content');
-	Zotlabs\Extend\Hook::unregister('cart_post_add_item','addon/cart/cart.php','cart_post_add_item');
-	Zotlabs\Extend\Hook::unregister('cart_post_update_item','addon/cart/cart.php','cart_post_update_item');
-	Zotlabs\Extend\Hook::unregister('cart_checkout_start','addon/cart/cart.php','cart_checkout_start');
-	Zotlabs\Extend\Hook::unregister('cart_post_checkout_choosepayment','addon/cart/cart.php','cart_post_choose_payment');
-	Zotlabs\Extend\Hook::unregister('cart_aside_filter','addon/cart/cart.php','cart_render_aside');
-	Zotlabs\Extend\Hook::unregister('cart_after_fulfill','addon/cart/cart.php','cart_after_fulfill_finishorder');
-	Zotlabs\Extend\Hook::unregister('cart_after_fulfill','addon/cart/cart.php','cart_fulfillitem_markfulfilled');
-	Zotlabs\Extend\Hook::unregister('cart_after_cancel','addon/cart/cart.php','cart_fulfillitem_markunfulfilled');
-	Zotlabs\Extend\Hook::unregister('cart_get_catalog','addon/cart/cart.php','cart_get_test_catalog');
+        Zotlabs\Extend\Hook::unregister_by_file('addon/cart/cart.php');
 
         // WIDGET UNREGISTRATION
         if (Cart::check_min_version ('hubzilla','3.7.1')) {
@@ -1303,6 +1274,10 @@ function cart_settings(&$s) {
 		return;
 
 	$enablecart = get_pconfig ($id,'cart','enable');
+
+        if (!$enablecart) {
+                return;
+        }
 	$sc = replace_macros(get_markup_template('field_checkbox.tpl'), array(
 				     '$field'	=> array('enable_cart', t('Enable Shopping Cart'),
 							 (isset($enablecart) ? $enablecart : 0),

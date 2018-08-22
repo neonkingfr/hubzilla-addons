@@ -19,21 +19,7 @@ function cart_myshop_load(){
 }
 
 function cart_myshop_unload(){
-	Zotlabs\Extend\Hook::unregister('cart_main_myshop','addon/cart/myshop.php','cart_myshop_main');
-	Zotlabs\Extend\Hook::unregister('cart_aside_filter','addon/cart/myshop.php','cart_myshop_aside');
-	Zotlabs\Extend\Hook::unregister('cart_myshop_order','addon/cart/myshop.php','cart_myshop_order');
-	Zotlabs\Extend\Hook::unregister('cart_post_myshop_item_fulfill','addon/cart/myshop.php','cart_myshop_item_fulfill');
-	Zotlabs\Extend\Hook::unregister('cart_post_myshop_item_cancel','addon/cart/myshop.php','cart_myshop_item_cancel',1,99);
-	Zotlabs\Extend\Hook::unregister('cart_post_myshop_clear_item_exception','addon/cart/myshop.php','cart_myshop_clear_item_exception');
-	Zotlabs\Extend\Hook::unregister('cart_post_myshop_add_itemnote','addon/cart/myshop.php','cart_myshop_add_itemnote');
-	Zotlabs\Extend\Hook::unregister('cart_post_myshop_add_ordernote','addon/cart/myshop.php','cart_myshop_add_ordernote');
-	Zotlabs\Extend\Hook::unregister('cart_myshop_allorders','addon/cart/myshop.php','cart_myshop_allorders');
-	Zotlabs\Extend\Hook::unregister('cart_myshop_openorders','addon/cart/myshop.php','cart_myshop_openorders');
-	Zotlabs\Extend\Hook::unregister('cart_myshop_closedorders','addon/cart/myshop.php','cart_myshop_closedorders');
-	Zotlabs\Extend\Hook::unregister('cart_post_myshop_order_markpaid','addon/cart/myshop.php','cart_myshop_order_markpaid');
-	Zotlabs\Extend\Hook::unregister('cart_orderpaid','addon/cart/myshop.php','cart_myshop_orderpaid_hook',1,10000);
-  Zotlabs\Extend\Hook::unregister('cart_after_fulfill','addon/cart/cart.php','cart_myshop_itemfulfilled_hook',1,30000);
-	Zotlabs\Extend\Hook::unregister('cart_after_cancel','addon/cart/cart.php','cart_myshop_cancelled_hook',1,30000);
+	Zotlabs\Extend\Hook::unregister_by_file('addon/cart/myshop.php');
 }
 
 function cart_myshop_main (&$pagecontent) {
