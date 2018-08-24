@@ -1296,31 +1296,31 @@ function cart_settings(&$s) {
 							 (isset($manualpayments) ? $manualpayments : 0),
 							 '',array(t('No'),t('Yes')))));
 
-        }
 
-				$currencylist=cart_getcurrencies();
-				$currency=get_pconfig(local_channel(), 'cart','cart_currency');
-				$saved_currency = isset($currencylist[$currency]) ? $currency : 'USD';
+	    $currencylist=cart_getcurrencies();
+	    $currency=get_pconfig(local_channel(), 'cart','cart_currency');
+	    $saved_currency = isset($currencylist[$currency]) ? $currency : 'USD';
 
-        $currencyoptions=Array();
+            $currencyoptions=Array();
 
-        foreach($currencylist as $c) {
-					$currencyoptions[$c["code"]]=$c["code"]." - ".$c["name"];
-				}
+            foreach($currencylist as $c) {
+		$currencyoptions[$c["code"]]=$c["code"]." - ".$c["name"];
+	    }
 
 				$sc .= replace_macros(get_markup_template('field_select.tpl'), array(
 					     '$field'	=> array('currency', t('Base Merchant Currency'),
 								  $saved_currency, '', $currencyoptions)));
-        /*
-         * @todo: Set payment options order
-         * @todo: Enable/Disable payment options
-         * $paymentopts = Array();
-         * call_hooks('cart_paymentopts',$paymentopts);
-         * @todo: Configuure payment options
-         */
+            /*
+             * @TODO: Set payment options order
+             * @TODO: Enable/Disable payment options
+             * $paymentopts = Array();
+             * call_hooks('cart_paymentopts',$paymentopts);
+             * @TODO: Configuure payment options
+             */
 
-        $moresettings = '';
-        call_hooks('cart_addon_settings',$moresettings);
+            $moresettings = '';
+            call_hooks('cart_addon_settings',$moresettings);
+        }
 
 	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
 				     '$addon' 	=> array('cart-base',

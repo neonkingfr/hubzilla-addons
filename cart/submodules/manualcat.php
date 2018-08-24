@@ -18,8 +18,8 @@ class Cart_manualcat {
     }
 
     static public function load (){
-      Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::settings',1);
-      Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::settings_post',1);
+      Zotlabs\Extend\Hook::register('cart_addon_settings', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::settings',1,1002);
+      Zotlabs\Extend\Hook::register('cart_addon_settings_post', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::settings_post',1,1002);
       Zotlabs\Extend\Hook::register('cart_myshop_menufilter', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::myshop_menuitems',1,1002);
       Zotlabs\Extend\Hook::register('cart_myshop_manualcat', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::itemadmin',1,1002);
       Zotlabs\Extend\Hook::register('cart_fulfill_manualcat', 'addon/cart/submodules/manualcat.php', 'Cart_manualcat::fulfill_manualcat',1,1002);
@@ -56,17 +56,10 @@ class Cart_manualcat {
          return;
       }
       $enable_manualcat = get_pconfig ($id,'cart_manualcat','enable');
-      $sc = replace_macros(get_markup_template('field_checkbox.tpl'), array(
+      $s .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
                  '$field'	=> array('enable_cart_manualcat', t('Enable Manual Cart Module'),
                    (isset($enable_manualcat) ? intval($enable_manualcat) : 0),
                    '',array(t('No'),t('Yes')))));
-
-      $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-                 '$addon' 	=> array('cart-manualcat',
-                   t('Cart - Physical Products Addon'), '',
-                   t('Submit')),
-                 '$content'	=> $sc));
-
     }
 
     static public function settings_post () {
@@ -79,7 +72,8 @@ class Cart_manualcat {
 
 
       $prev_enable = get_pconfig(local_channel(),'cart_manualcat','enable');
-      $enable_cart_manualcat = isset($_POST['enable_cart_manualcat']) ? intval($_POST['enable_cart_manualcat']) : 0;
+      $prev_enable = ($prev_enable) ? $prev_enable : 0;
+      $enable_cart_manualcat = isset($_POST['enable_cart_manualcat']) ? intval($_POST['enable_cart_manualcat']) : $prev_enable;
       set_pconfig( local_channel(), 'cart_manualcat', 'enable', $enable_cart_manualcat );
 
       Cart_manualcat::unload();
