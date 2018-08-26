@@ -80,6 +80,8 @@ function twitter_api_register($x) {
         api_register_func('api/1.1/statuses/home_timeline','api_statuses_home_timeline', true);
         api_register_func('api/1.1/statuses/friends_timeline','api_statuses_home_timeline', true);
         api_register_func('api/statuses/public_timeline','api_statuses_public_timeline', true);
+        api_register_func('api/1.1/statuses/networkpublic_timeline','api_statuses_networkpublic_timeline', true);
+        api_register_func('api/statuses/networkpublic_timeline','api_statuses_networkpublic_timeline', true);
         api_register_func('api/1.1/statuses/public_timeline','api_statuses_public_timeline', true);
         api_register_func('api/statuses/show','api_statuses_show', true);
         api_register_func('api/1.1/statuses/show','api_statuses_show', true);
@@ -88,8 +90,10 @@ function twitter_api_register($x) {
         api_register_func('api/statuses/destroy','api_statuses_destroy', true);
         api_register_func('api/1.1/statuses/destroy','api_statuses_destroy', true);
         api_register_func('api/statuses/mentions','api_statuses_mentions', true);
+        api_register_func('api/statuses/mentions_timeline','api_statuses_mentions', true);
         api_register_func('api/statuses/replies','api_statuses_mentions', true);
         api_register_func('api/1.1/statuses/mentions','api_statuses_mentions', true);
+        api_register_func('api/1.1/statuses/mentions_timeline','api_statuses_mentions', true);
         api_register_func('api/1.1/statuses/replies','api_statuses_mentions', true);
         api_register_func('api/statuses/user_timeline','api_statuses_user_timeline', true);
         api_register_func('api/1.1/statuses/user_timeline','api_statuses_user_timeline', true);
@@ -108,6 +112,7 @@ function twitter_api_register($x) {
         api_register_func('api/1.1/statuses/friends','api_statuses_friends',true);
         api_register_func('api/1.1/statuses/followers','api_statuses_followers',true);
         api_register_func('api/statusnet/config','api_statusnet_config',false);
+        api_register_func('api/1.1/statusnet/config','api_statusnet_config',false);
         api_register_func('api/friendica/config','api_statusnet_config',false);
         api_register_func('api/red/config','api_statusnet_config',false);
         api_register_func('api/z/1.0/config','api_statusnet_config',false);
@@ -796,6 +801,54 @@ function api_statuses_public_timeline( $type){
 
 	$user_info = api_get_user();
 
+
+	// params
+	$count = (x($_REQUEST,'count') ? $_REQUEST['count']   : 20);
+	$page  = (x($_REQUEST,'page')  ? $_REQUEST['page']-1  :  0);
+	if($page < 0)
+		$page=0;
+	$since_id = (x($_REQUEST,'since_id') ? $_REQUEST['since_id'] : 0);
+	$max_id = (x($_REQUEST,'max_id') ? $_REQUEST['max_id'] : 0);
+
+	$start = $page * $count;
+
+	//$include_entities = (x($_REQUEST,'include_entities')?$_REQUEST['include_entities']:false);
+
+	if ($max_id > 0)
+		$sql_extra = 'AND item.id <= '.intval($max_id);
+	require_once('include/security.php');
+	$item_normal = item_normal();
+
+	$r = q("select * from item where allow_cid = ''  and allow_gid = ''
+		and deny_cid  = ''  and deny_gid  = ''
+		and item_private = 0
+		$item_normal
+		and item_wall = 1
+		$sql_extra
+		AND id > %d group by mid
+		order by received desc LIMIT %d OFFSET %d ",
+		intval($since_id),
+		intval($count),
+		intval($start)
+	);
+
+	xchan_query($r,true);
+
+	$ret = api_format_items($r,$user_info);
+
+
+	$data = array('statuses' => $ret);
+
+	return  api_apply_template('timeline', $type, $data);
+}
+
+
+function api_statuses_networkpublic_timeline( $type){
+	if(api_user() === false)
+		return false;
+
+	$user_info = api_get_user();
+
 	$sys = get_sys_channel();
 
 	// params
@@ -1020,7 +1073,7 @@ function api_statuses_mentions( $type){
 
 	//$include_entities = (x($_REQUEST,'include_entities')?$_REQUEST['include_entities']:false);
 
-	$sql_extra .= " AND item_mentionsme = 1 ";
+	$sql_extra .= " AND ( author_xchan = '" . dbesc($user_info['guid']) . "' OR item_mentionsme = 1 ) ";
 	if($max_id > 0)
 		$sql_extra .= " AND item.id <= " . intval($max_id) . " ";
 
@@ -1037,6 +1090,7 @@ function api_statuses_mentions( $type){
 	);
 
 	xchan_query($r,true);
+
 
 	$ret = api_format_items($r,$user_info);
 
@@ -1267,19 +1321,20 @@ function api_format_items($r,$user_info,$type = 'json') {
 
 		localize_item($item);
 
-		$status_user = (($item['author_xchan']==$user_info['guid'])?$user_info: api_item_get_user($item));
+		$status_user = (($item['author_xchan'] === $user_info['guid']) ? $user_info: api_item_get_user($item));
 		if(array_key_exists('status',$status_user))
 			unset($status_user['status']);
 
 		if($item['parent'] != $item['id']) {
-			$r = q("select id from item where parent= %d and id < %d order by id desc limit 1",
+
+			$r = q("select * from item where parent = %d and id = %d order by id  limit 1",
 				intval($item['parent']), 
 				intval($item['id'])
 			);
 			if($r)
-				$in_reply_to_status_id = $r[0]['id'];
+				$in_reply_to_status_id = intval($r[0]['id']);
 			else
-				$in_reply_to_status_id = $item['parent'];
+				$in_reply_to_status_id = intval($item['parent']);
 
 			xchan_query($r,true);
 
