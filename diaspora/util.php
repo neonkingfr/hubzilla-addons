@@ -150,7 +150,7 @@ function diaspora_build_relay_tags() {
 			if(preg_match('|^a:[0-9]+:{.*}$|s',$rr['v'])) {
 				$x = unserialize($rr['v']);
 				if($x && is_array($x))
-					$alltags = array_unique(array_merge($alltags,$x));
+					$alltags = array_values(array_unique(array_merge($alltags,$x)));
 			}
 		}
 	}
