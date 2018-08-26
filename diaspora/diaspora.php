@@ -121,7 +121,7 @@ function diaspora_well_known(&$b) {
 		$arr = array(
 			'subscribe' => (($disabled) ? false : true),
 			'scope' => $scope,
-			'tags' => (($tags) ? $tags : [])
+			'tags' => (($tags) ? array_values($tags) : [])
 		);
 
 		header('Content-type: application/json');
