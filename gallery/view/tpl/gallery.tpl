@@ -85,11 +85,13 @@
 <script>
 	justifyPhotos('photo-albums');
 
+	var gallery = {};
+
 	// items array
 	var items = [];
 
-	{{if {{$json_album}}}}
-		var items = {{$json_album}};
+	{{if $json_album}}
+	var items = {{$json_album}};
 	{{/if}}
 
 	// define options
@@ -109,7 +111,7 @@
 
 	// Initializes and opens PhotoSwipe
 	if(items.length) {
-		var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
+		gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
 		gallery.init();
 	}
 
@@ -122,7 +124,7 @@
 			},
 			function(items) {
 				// Initializes and opens PhotoSwipe
-				var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
+				gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
 				gallery.init();
 			},
 			'json'
