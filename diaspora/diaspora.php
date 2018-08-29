@@ -1189,12 +1189,14 @@ function diaspora_bb_to_markdown_bb(&$x) {
 
 function diaspora_bb_to_markdown_mention_callback($match) {
 
-    $r = q("select xchan_addr from xchan where xchan_url = '%s'",
+    $r = q("select xchan_addr, xchan_url from xchan where xchan_url = '%s'",
         dbesc($match[2])
     );
 
-    if($r)
-        return '@{' . $r[0]['xchan_addr'] . '}';
+    if($r) {
+        $addr = (($r[0]['xchan_addr']) ? $r[0]['xchan_addr'] : $r[0]['xchan_url']);
+        return '@{' . $addr . '}';
+    }
 
     return '@' . $match[3];
 }
@@ -1202,12 +1204,14 @@ function diaspora_bb_to_markdown_mention_callback($match) {
 
 function diaspora_bb_to_markdown_fmention_callback($match) {
 
-    $r = q("select xchan_addr from xchan where xchan_url = '%s'",
+    $r = q("select xchan_addr, xchan_url from xchan where xchan_url = '%s'",
         dbesc($match[2])
     );
 
-    if($r)
-        return '!{' . $r[0]['xchan_addr'] . '}';
+    if($r) {
+        $addr = (($r[0]['xchan_addr']) ? $r[0]['xchan_addr'] : $r[0]['xchan_url']);
+        return '!{' . $addr . '}';
+    }
 
     return '!' . $match[3];
 }
