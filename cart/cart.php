@@ -46,7 +46,7 @@ class Cart {
     $minor = (intval($checkver[1]) <= intval($ver[1]));
     $patch = (intval($checkver[2]) <= intval($ver[2]));
 
-    if ($major && $minor && patch) {
+    if ($major && $minor && $patch) {
          return true;
     } else {
          return false;
@@ -162,14 +162,12 @@ function cart_dbCleanup () {
 	    1 => Array (
 		"DROP TABLE IF EXISTS cart_orders",
 		"DROP TABLE IF EXISTS cart_orderitems",
-		"DROP TABLE IF EXISTS cart_subscriptions"
 	    )
         );
         $sqlstmts[DBTYPE_POSTGRES] = Array (
 	   1 => Array (
 	     	"DROP TABLE IF EXISTS cart_orders",
 		"DROP TABLE IF EXISTS cart_orderitems",
-		"DROP TABLE IF EXISTS cart_subscriptions"
 	   )
 	);
         $dbsql=$sqlstmts[ACTIVE_DBTYPE];
