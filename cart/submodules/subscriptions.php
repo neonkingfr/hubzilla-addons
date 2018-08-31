@@ -16,8 +16,8 @@ class Cart_subscriptions {
     }
 
     static public function load (){
-      Zotlabs\Extend\Hook::register('addon_settings', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::addon_settings',1);
-      Zotlabs\Extend\Hook::register('addon_settings_post', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::addon_settings_post',1);
+      Zotlabs\Extend\Hook::register('cart_addon_settings', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::addon_settings',1);
+      Zotlabs\Extend\Hook::register('cart_addon_settings_post', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::addon_settings_post',1);
       //Zotlabs\Extend\Hook::register('cart_myshop_menufilter', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::myshop_menuitems',1,1000);
       Zotlabs\Extend\Hook::register('cart_myshop_subscriptions', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::subscriptionadmin',1,1000);
       Zotlabs\Extend\Hook::register('cart_fulfill_subscription', 'addon/cart/submodules/subscriptions.php', 'Cart_subscriptions::item_fulfill',1,1000);

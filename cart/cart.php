@@ -1068,6 +1068,7 @@ function cart_delsysconfig($param) {
 
 function cart_getcartconfig($param) {
         $id = (isset(\App::$profile["profile_uid"]) && \App::$profile["profile_uid"] != null) ? \App::$profile["profile_uid"] : Cart::$seller["channel_id"];
+        $id = ($id) ? $id : local_channel();
 	$cartconfig=cart_maybeunjson(get_pconfig($id,"cart",$param));
         return $cartconfig;
 }
