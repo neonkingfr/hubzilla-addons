@@ -1,0 +1,6 @@
+version: 1
+url: $baseurl/channelreputation
+requires: local_channel
+name: Channel Reputation
+photo: icon:line-chart
+categories: Networking
