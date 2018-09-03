@@ -1,5 +1,4 @@
 <!-- Modal -->
-<div class="modal fade" id="channelrepModal" tabindex="-1" role="dialog" aria-labelledby="channelrepModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -9,16 +8,16 @@
         </button>
       </div>
       <div class="modal-body">
-        <input type="hidden" id="channelrepSecurityToken" name="channelrepSecurityToken" value="{{$security_token}}">
+        <input type="hidden" id="channelrepSecurityToken" name="form_security_token" value="{{$security_token}}">
         <input type="hidden" id="channelrepId" name="channelrepId" value="{{$channelrepId}}">
-        <h5 class="modal-title" id="channelrePointsLabel">Points</h5>
-        <input type="text" id="channelrepPoints name="channelrepPoints" value="{{$pointssuggestion}}">
-        <button type="button" class="channelrepAdd" aria-hidden="true" onClick="channelrepPlus();">+</button>
-        <button type="button" class="channelrepSubtract" aria-hidden="true" onClick="channelrepMinus();">-</button>
+        <input type="hidden" id="channelrepUid" name="channelrepUid" value="{{$uid}}">
+        <h5 class="modal-title" id="channelrePointsLabel">Vote weight (Max: {{$maxpoints}})</h5>
+        <input type="text" id="channelrepPoints" name="channelrepPoints" value="{{$pointssuggestion}}">
+        <button type="button" class="channelrepAdd" aria-hidden="true" onClick="channelrepPlus();">Upvote</button>
+        <button type="button" class="channelrepSubtract" aria-hidden="true" onClick="channelrepMinus();">Downvote</button>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
-</div>

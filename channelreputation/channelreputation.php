@@ -13,12 +13,16 @@ function channelreputation_load() {
         Zotlabs\Extend\Hook::register('get_all_perms', 'addon/channelreputation/channelreputation.php', 'Channelreputation::get_perms_filter',1,5000); 
         Zotlabs\Extend\Hook::register('perm_is_allowed', 'addon/channelreputation/channelreputation.php', 'Channelreputation::perm_is_allowed',1,5000); 
         Zotlabs\Extend\Hook::register('can_comment_on_post', 'addon/channelreputation/channelreputation.php', 'Channelreputation::can_comment_on_post',1,5000); 
-        Zotlabs\Extend\Hook::register('channelrep_mod_post', 'addon/channelrepuation/channelreputation.php', 'Channelreputation::mod_post',1,5000);
-        Zotlabs\Extend\Hook::register('channelrep_mod_content', 'addon/channelrepuation/channelreputation.php', 'Channelreputation::mod_content',1,5000);
-        Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/channelrepuation/channelreputation.php', 'Channelreputation::feature_settings_post',1,5000);
-        Zotlabs\Extend\Hook::register('feature_settings', 'addon/channelrepuation/channelreputation.php', 'Channelreputation::feature_settings',1,5000);
+        Zotlabs\Extend\Hook::register('channelrep_mod_post', 'addon/channelreputation/channelreputation.php', 'Channelreputation::mod_post',1,5000);
+        Zotlabs\Extend\Hook::register('dropdown_extras', 'addon/channelreputation/channelreputation.php', 'Channelreputation::dropdown_extras',1,5000);
+        Zotlabs\Extend\Hook::register('channelrep_mod_content', 'addon/channelreputation/channelreputation.php', 'Channelreputation::mod_content',1,5000);
+        Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/channelreputation/channelreputation.php', 'Channelreputation::feature_settings_post',1,5000);
+        Zotlabs\Extend\Hook::register('feature_settings', 'addon/channelreputation/channelreputation.php', 'Channelreputation::feature_settings',1,5000);
         Zotlabs\Extend\Hook::register('channel_apps', 'addon/channelreputation/channelreputation.php', 'Channelreputation::channel_apps',1,5000);
+        Zotlabs\Extend\Hook::register('permissions_list', 'addon/channelreputation/channelreputation.php', 'Channelreputation::permissions_list',1,5000);
         Zotlabs\Extend\Hook::register('item_store', 'addon/channelreputation/channelreputation.php', 'Channelreputation::item_store',1,5000);
+        Zotlabs\Extend\Hook::register('page_header', 'addon/channelreputation/channelreputation.php', 'Channelreputation::page_header',1,5000);
+        Zotlabs\Extend\Hook::register('page_end', 'addon/channelreputation/channelreputation.php', 'Channelreputation::page_end',1,5000);
 
 }
 
@@ -65,6 +69,24 @@ class Channelreputation {
                           'moderate_by' => CHANNELREPUTATION_COMMUNITYMODERATION
                  );
 
+
+        public static function page_end(&$footer) {
+                $id = App::$profile_uid;
+                if (!$id) { return; }
+                $enable = get_pconfig ($id,'channelreputation','enable');
+                if (!$enable) { return; }
+                $footer .= '<div class="modal fade" id="channelrepModal" tabindex="-1" role="dialog" aria-labelledby="channelrepModalLabel" aria-hidden="true"></div>';
+        }
+
+        public static function page_header(&$header) {
+                $id = App::$profile_uid;
+                if (!$id) { return; }
+                $enable = get_pconfig ($id,'channelreputation','enable');
+                if (!$enable) { return; }
+               
+                $header .= '<link href="addon/channelreputation/view/css/channelreputation.css" rel="stylesheet">'; 
+                head_add_js('/addon/channelreputation/view/js/channelreputation.js');
+        }
 
         public static function feature_settings (&$s) {
 
@@ -144,24 +166,68 @@ class Channelreputation {
                 self::update_settings();
         }
 
+        public static function dropdown_extras (&$extras) {
+                $uid = App::$profile_uid ? App::$profile_uid : local_channel();
+                if (!$uid) {return;}
+                $settings = self::get_settings($uid);
+                $moderator_rep = self::get($uid,get_observer_hash());
+
+                if (floatval($moderator_rep['reputation']) < $settings['minimum_to_moderate'] &&
+                    !perm_is_allowed($uid,get_observer_hash(),'moderate_reputation')) {
+                        return;
+                }
+                $arr = $extras;
+                $item_id = $extras['item']['item_id'];
+                $arr['dropdown_extras'] .= '<a class="dropdown-item" href="#" onclick="channelrepShowModerateForm('.$item_id.'); return false;" title="Reputation"><i class="generic-icons-nav fa fa-fw fa-line-chart"></i> Score Reputation</a>';
+                $extras = $arr;
+        }
+
         public static function mod_post ($postvars) {
                 $success = true;
-
-                if ($success && get_form_security_token()) {
+                $observer = get_observer_hash();
+                if ($success && check_form_security_token()) {
                         $itemid = intval($postvars["channelrepId"]);
                         $points = floatval($postvars["channelrepPoints"]);
-                        $action = intval($postvars["action"]);
+                        $action = intval($postvars["channelrepAction"]);
+                        $uid = intval($postvars["uid"]);
 
-                        $points = $points * action;
-                        $observer = get_observer_hash();
-                        $r = q('select * from item where id = $itemid;');
-                        if ($r) {
-                            $item=$r[0];
-                            self::moderate($item["uid"],$observer_hash,$item["author_xchan"],$points);
-                        } else {
-                            $success=false;
+                        $points = $points * $action;
+
+                        $items = q('select * from item where id = %d',intval($itemid));
+                        if (!$items) {
+                                    $returnjson = self::maybejson(Array("Success"=>false));
+                                    return $returnjson;
+                        }
+                        $item = $items[0];
+                        if ($item['id'] == $itemid) {
+                            self::moderate($item["uid"],$observer,$item["author_xchan"],$points);
                         }
                 } else {
+                        if (argc() > 1) {
+                             $item = intval(argv(1));
+                             $uid = intval($postvars["uid"]);
+                             if (!$uid) {
+                                     return replace_macros(get_markup_template('channelrepModalerror.tpl','addon/channelreputation/'), $values);
+                             }
+                             
+                             $settings = self::get_settings($uid);
+
+                             $mod_reputation = self::get($uid,$observer);
+                             $modpoints = $mod_reputation['reputation'];
+                             $maxpoints = self::get_maxmodpoints($uid,$mod_reputation,perm_is_allowed($uid,$observer,'moderate_reputation'));
+
+                             $recommended = sprintf('%1$.3f',$maxpoints / 10);
+                             $maxpoints = sprintf('%1$.3f',$maxpoints);
+                             $values = Array(
+                                     'maxpoints'=>$maxpoints,
+                                     'security_token'=>get_form_security_token(),
+                                     'channelrepId'=>$item,
+                                     'pointssuggestion'=>$recommended,
+                                     'uid'=>$uid
+                             );
+                             return replace_macros(get_markup_template('channelrepModal.tpl','addon/channelreputation/'), $values);
+                             
+                        }
                         $success = false;
                 }
                 
@@ -226,6 +292,9 @@ class Channelreputation {
         }
 
         public static function update($uid,$channel_hash,$activity='',$points=0) {
+            $uid = local_channel();
+            $enable = get_pconfig ($uid,'channelreputation','enable');
+            if (!$enable) { return; }
             $settings = self::get_settings($uid);
             $reputation = self::get($uid,$channel_hash);
 
@@ -252,21 +321,31 @@ class Channelreputation {
                          $repdelta = $repdelta - $settings['comment_cost'];
                          break;
                     case 'moderate': // Moderate a post/comment
-                         $repdelta = $repdelta - $points;
+                         $repdelta = $repdelta - abs($points);
                          break;
                     case 'apply_moderation': // Apply moderation
                          $repdelta = $repdelta + $points;
                          break;
                     default:
             }
+
             $reputation['reputation'] = $reputation['reputation'] + $repdelta;
+            if ($reputation['reputation'] < $settings['minimum_reputation']) {
+                   $reputation['reputation'] = $settings['minimum_reputation'];
+            }
             $reputation['lastactivity'] = $now;
             self::save($uid,$channel_hash,$reputation);
 
         }
 
-        public static function permissions_filter(&$arr) {
-            $arr['moderate_channel'] = t('Can moderate posts and comments on my channel.');
+        public static function permissions_list(&$arr) {
+            $uid = local_channel();
+            $enable = get_pconfig ($uid,'channelreputation','enable');
+            if (!$enable) { return; }
+            $new = $arr;
+            $new['permissions']['moderate_reputation'] = t('Can moderate reputation on my channel.');
+            $arr = $new;
+            return;
         }
 
         public static function get_perms_filter(&$arr) {
@@ -305,7 +384,8 @@ class Channelreputation {
         }
 
         public static function perm_is_allowed(&$arr) {
-
+                $id = local_channel();
+                if (!$id) { return; }
                 $enable = get_pconfig ($id,'channelreputation','enable');
                 if (!$enable) { return; }
 
@@ -335,14 +415,12 @@ class Channelreputation {
         }
 
         public static function can_comment_on_post(&$arr) {
-
-                $enable = get_pconfig ($id,'channelreputation','enable');
+                $uid = $arr['channel_id'];
+                $enable = get_pconfig ($uid,'channelreputation','enable');
                 if (!$enable) { return; }
 
-                $uid = $arr['channel_id'];
                 $item = $arr['item'];
                 $oh = $arr['observer_hash'];
-
 
                 if ($uid != \App::$profile_uid && \App::$profile_uid!=0) { return; }
                 if ($item['author_xhash']==$oh) { return; }
@@ -352,21 +430,53 @@ class Channelreputation {
                 $arr['allowed'] = self::check_comment($uid,$reputation);
         }
 
+        public static function get_maxmodpoints($uid,$moderator_rep,$is_moderator=0) {
+            $settings = self::get_settings($uid);
+            $modrep = ($moderator_rep['reputation'] > 0) ? $moderator_rep['reputation'] : 0;
+        
+            if ($is_moderator) {
+
+                //Make sure moderators can always use at least $settings['moderators_modpoints'] per action.
+                
+                $maxpoints = ($modrep * $settings['max_moderation_factor']) + $settings['moderators_modpoints'];
+                $points = ($maxpoints > $modrep) ? ($modrep + $settings['moderators_modpoints']) : $maxpoints;
+
+            } else {
+                 if ($modrep < $settings['minimum_to_moderate']) {
+                     return 0;
+                 }
+
+                 $maxpoints = $moderator_rep['reputation'] * $settings['max_moderation_factor'];
+                 $points = ($modrep > $maxpoints) ? $maxpoints : $modrep;
+            }
+
+            return $points;
+
+        }
+
         public static function moderate($uid,$moderator_hash,$poster_hash,$points) {
+            $enable = get_pconfig ($uid,'channelreputation','enable');
+            if (!$enable) { return; }
             $settings = self::get_settings($uid);
             $poster_rep = self::get($uid,$poster_hash);
             $moderator_rep = self::get($uid,$moderator_hash);
 
-            if ($moderator_rep["reputation"] < $settings['minimum_to_moderate']) {
-                    return;
-            }
-            $maxpoints = $moderator_rep * $settings['max_moderation_factor'];
-
-            $points = ($points > $maxpoints) ? $maxpoints : $points;
+            $is_moderator = perm_is_allowed($uid,$moderator_hash,'moderate_reputation');
+            $maxpoints = self::get_maxmodpoints($uid,$moderator_rep,$is_moderator);
+            if ($maxpoints == 0) {
+            } 
 
             self::update($uid,$poster_hash,$activity='apply_moderation',$points);
-            self::update($uid,$poster_hash,$activity='moderate',$points);
-            
+
+            if ($is_moderator) {
+                    if ($points > $settings['moderators_modpoints']) {
+                             $points = $points - $settings['moderators_modpoints'];
+                             self::update($uid,$moderator_hash,$activity='moderate',$points);
+                    }
+            } else {
+                    self::update($uid,$moderator_hash,$activity='moderate',$points);
+            }
+                    return true;
         }
 
         public static function maybeunjson ($value) {
@@ -437,8 +547,18 @@ class Channelreputation {
          }
 
 }
+
+function channelreputation_post (&$a) {
+       $html = Channelreputation::mod_post($_POST);
+       echo $html;
+       killme();
+}
 global $Channelreputation;
+
+function channelreputation_module() {
+
+}
+
 if (!$Channelreputation instanceof Channelreputation) {
   $Channelreputation = new Channelreputation();
-//logger("NEW REP CLASS");
 }
