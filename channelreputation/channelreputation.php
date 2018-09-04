@@ -350,6 +350,8 @@ class Channelreputation {
 
         public static function get_perms_filter(&$arr) {
             $uid = $arr['channel_id'];
+            $enable = get_pconfig ($uid,'channelreputation','enable');
+            if (!$enable) { return; }
 
             if ($uid != \App::$profile_uid && \App::$profile_uid!=0) { return; }
 
