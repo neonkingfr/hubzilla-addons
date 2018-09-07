@@ -432,7 +432,9 @@ class Channelreputation {
 
                 $reputation = self::get($arr['channel_id'],$arr['observer_hash']);
 
-                $arr['allowed'] = self::check_comment($uid,$reputation);
+                if (! self::check_comment($uid,$reputation)) {
+                        $arr['allowed'] = 0;
+                }
         }
 
         public static function get_maxmodpoints($uid,$moderator_rep,$is_moderator=0) {
