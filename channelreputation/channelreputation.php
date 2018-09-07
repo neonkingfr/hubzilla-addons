@@ -272,6 +272,7 @@ class Channelreputation {
             if (isset(self::$reputation[$uid][$channel_hash])) {
                     return self::$reputation[$uid][$channel_hash];
             }
+            $settings = self::get_settings($uid);
             $setting = 'repof-'.$channel_hash;
             $reputation = get_pconfig($uid,'channelreputation',$setting);
             $reputation = self::maybeunjson($reputation);
@@ -292,7 +293,6 @@ class Channelreputation {
         }
 
         public static function update($uid,$channel_hash,$activity='',$points=0) {
-            $uid = local_channel();
             $enable = get_pconfig ($uid,'channelreputation','enable');
             if (!$enable) { return; }
             $settings = self::get_settings($uid);
@@ -307,10 +307,12 @@ class Channelreputation {
                 $repdelta = $timesince * ( $settings['hourly_post_recovery'] / 3600 );
             }
 
+            $pointsuntilmoderate = ($settings['minimum_to_moderate'] - $reputation['reputation'] + $repdelta);
             $timetomoderate = (($settings['minimum_to_moderate'] - $reputation['reputation'] + $repdelta) / ($settings['hourly_moderate_recovery'] / 3600 ));
 
             if ($timetopost < 0 && $timetomoderate > 0) {
-                $repdelta = $repdelta + (($timetomoderate - $timesince) * ($settings['hourly_moderate_recovery'] / 3600));
+                $moderate_recovery = ($timesince * ($settings['hourly_moderate_recovery'] / 3600));
+                $repdelta = $repdelta + ($timesince * ($settings['hourly_moderate_recovery'] / 3600));
             }
 
             switch ($activity) {
@@ -373,26 +375,28 @@ class Channelreputation {
         }
 
         public static function check_post($uid,$reputation) {
+            $settings = self::get_settings($uid);
             if ($reputation['reputation'] < $settings['minimum_to_post']) {
                  return false;
             }
+            return true;
         }
 
         public static function check_comment($uid,$reputation) {
+            $settings = self::get_settings($uid);
             if ($reputation['reputation'] < $settings['minimum_to_comment']) {
                  return false;
             }
+            return true;
 
         }
 
         public static function perm_is_allowed(&$arr) {
-                $id = local_channel();
-                if (!$id) { return; }
-                $enable = get_pconfig ($id,'channelreputation','enable');
-                if (!$enable) { return; }
 
                 $arrinfo = $arr;
                 $uid = $arrinfo['channel_id'];
+                $enable = get_pconfig ($uid,'channelreputation','enable');
+                if (!$enable) { return; }
                 if ($arrinfo['observer_hash'] == '') { return; }
                 if ($uid != \App::$profile_uid && \App::$profile_uid!=0) { return; }
                 if ($uid == local_channel()) { return; }
@@ -423,7 +427,6 @@ class Channelreputation {
 
                 $item = $arr['item'];
                 $oh = $arr['observer_hash'];
-
                 if ($uid != \App::$profile_uid && \App::$profile_uid!=0) { return; }
                 if ($item['author_xhash']==$oh) { return; }
 
