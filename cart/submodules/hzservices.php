@@ -627,6 +627,8 @@ class Cart_hzservices {
       notice ("Access Denied.".EOL);
       return;
     }
+
+    head_add_css("/addon/cart/submodules/view/css/hzservices.css");
     $seller_uid = Cart::get_seller_id();
 
     $skus = get_pconfig(local_channel(),'cart-hzservices','skus');
@@ -651,6 +653,7 @@ class Cart_hzservices {
     $formelements["itemdetails"].= replace_macros(get_markup_template('field_input.tpl'), array(
                 '$field'	=> array('item_price', t('Price'),
                 (isset($item["item_price"]) ? $item["item_price"] : "0.00"))));
+    $formelements["itemactivation"].= "<h3><u>Channel Commands</u></h3>\n";
     $formelements["itemactivation"].= replace_macros(get_markup_template('field_radio.tpl'), array(
    				     '$field'	=> array('cmd', t('Add buyer to privacy group'),
 							 "addtoprivacygroup","Add purchaser to the selected privacy group"
@@ -663,6 +666,7 @@ class Cart_hzservices {
 
     if (Cart_hzservices::is_admin_merchant()) {
         $formelements["itemactivation"].= "<div id=\"cart-admin-merchant-activation\">\n";
+        $formelements["itemactivation"].= "<h3><u>System Commands</u></h3>\n";
         $formelements["itemactivation"].= replace_macros(get_markup_template('field_radio.tpl'), array(
    				     '$field'	=> array('cmd', t('Set Service Class'),
 							 "setsvcclass","Set the service class of the user"
@@ -703,7 +707,8 @@ class Cart_hzservices {
     }
     if (isset($item["deactivate_commands"])) {
       if (Cart_hzservices::is_admin_merchant()) {
-        $formelements["itemdeactivation"].= "<div id=\"cart-admin-merchant-activation\">\n";
+        $formelements["itemdeactivation"].= "<div id=\"cart-admin-merchant-deactivation\">\n";
+        $formelements["itemdeactivation"].= "<h3><u>System Commands</u></h3>\n";
         $formelements["itemdeactivation"].= replace_macros(get_markup_template('field_radio.tpl'), array(
    				     '$field'	=> array('cmd', t('Set Service Class'),
 							 "setsvcclass","Set the service class of the user"
@@ -723,7 +728,7 @@ class Cart_hzservices {
             $cmdtext.=' <button class="btn btn-sm" type="submit" name="del" value="'.$command["cmdhash"].'"><i class="fa fa-trash fa-fw" aria-hidden="true"></i></button>';
             break;
           case "rmvconnection":
-            $cmdtext.="Remove buyer from connection.";
+            $cmdtext.="Remove buyer as connection.";
             $cmdtext.=' <button class="btn btn-sm" type="submit" name="del" value="'.$command["cmdhash"].'"><i class="fa fa-trash fa-fw" aria-hidden="true"></i></button>';
         }
         if (Cart_hzservices::is_admin_merchant()) {
