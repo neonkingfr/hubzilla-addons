@@ -1387,6 +1387,8 @@ function cart_init() {
 
     profile_load($nick);
 
+    //head_add_css("/addon/cart/view/css/cart.css");
+
 }
 
 function cart_post_add_item () {
