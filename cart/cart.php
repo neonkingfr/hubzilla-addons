@@ -1387,6 +1387,8 @@ function cart_init() {
 
     profile_load($nick);
 
+    //head_add_css("/addon/cart/view/css/cart.css");
+
 }
 
 function cart_post_add_item () {
@@ -1613,11 +1615,10 @@ function cart_pagecontent($a=null) {
 	}
 
 	$menu = '';
-
 	$templatevalues = Array("menu"=>$menu);
 	call_hooks('cart_mainmenu_filter',$templatevalues);
 
-  $template = get_markup_template('menu.tpl','addon/cart/');
+        $template = get_markup_template('menu.tpl','addon/cart/');
 	$page = replace_macros($template, $templatevalues);
 
   if ((argc() > 2)) {
@@ -1672,8 +1673,10 @@ function cart_render_aside (&$aside) {
 	$orderhash = cart_getorderhash(false);
 	$itemscount = cart_get_order_total_qty($orderhash);
 
+        $rendered .= "<li><a class='nav-link' href='/" . argv(0) . "/" . argv(1) . "/catalog'>Catalog</a></li>\n";
+
 	if($itemscount) {
-		$rendered .= "<li><a class='nav-link' href='".z_root() . '/cart/' . argv(1) . '/checkout/start'."'>Checkout (" . $itemscount . " items)</a></li>";
+		$rendered .= "<li><a class='nav-link' href='".z_root() . '/cart/' . argv(1) . '/checkout/start'."'>Checkout (" . $itemscount . " items)</a></li>\n";
 	}
 
 	$templatevalues['content'] = $rendered;

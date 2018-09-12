@@ -1,5 +1,8 @@
   <div id="cart-subscription-itemdetails-wrapper"><div class="panel panel-default">
-    <div id="subscriptiondetails" class=""><div id="cart-subscriptions-edititem-form-wrapper">
+    <div class="panel-heading"><div class="panel-title">
+      <h2><a data-toggle="collapse" data-parent="#cart-hzservices-edititem-wrapper" href="#subscriptiondetails">Item Subscriptions</a></h2>
+    </div></div>
+    <div id="subscriptiondetails" class="panel-collapse collapse"><div id="cart-subscriptions-edititem-form-wrapper">
       <form id="cart-subscriptions-edititem-form" method="post" action="{{$uri}}">
       <input type=hidden name="form_security_token" value="{{$security_token}}">
       <input type=hidden name="cart_posthook" value="subscriptions">
