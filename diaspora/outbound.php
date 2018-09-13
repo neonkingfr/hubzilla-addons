@@ -606,7 +606,7 @@ function diaspora_send_retraction($item,$owner,$contact,$public_batch = false) {
 		}
 	}
 	else {
-		$target_type = 'StatusMessage';
+		$target_type = 'Post';
 	}
 
 	$fields = [
