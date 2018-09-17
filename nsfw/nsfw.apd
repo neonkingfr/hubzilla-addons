@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/settings/nsfw
+requires: local_channel
+name: NSFW
+photo: icon:ban
+categories: Networking
+

@@ -1,6 +1,5 @@
 <?php
 
-
 /**
  * Name: NSFW
  * Description: Collapse posts with inappropriate content
@@ -9,20 +8,20 @@
  * Maintainer: Mike Macgirvin <mike@macgirvin.com> 
  */
 
-function nsfw_install() {
-	register_hook('prepare_body', 'addon/nsfw/nsfw.php', 'nsfw_prepare_body', 10);
-	register_hook('feature_settings', 'addon/nsfw/nsfw.php', 'nsfw_addon_settings');
-	register_hook('feature_settings_post', 'addon/nsfw/nsfw.php', 'nsfw_addon_settings_post');
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
 
+function nsfw_install() {
+	Hook::register('prepare_body', 'addon/nsfw/nsfw.php', 'nsfw_prepare_body', 10);
+	Route::register('addon/nsfw/Settings/Nsfw.php','settings/nsfw');
 }
 
 
 function nsfw_uninstall() {
-	unregister_hook('prepare_body', 'addon/nsfw/nsfw.php', 'nsfw_prepare_body');
-	unregister_hook('feature_settings', 'addon/nsfw/nsfw.php', 'nsfw_addon_settings');
-	unregister_hook('feature_settings_post', 'addon/nsfw/nsfw.php', 'nsfw_addon_settings_post');
-
+	Hook::unregister('prepare_body', 'addon/nsfw/nsfw.php', 'nsfw_prepare_body');
+	Route::unregister('addon/nsfw/Settings/Nsfw.php','settings/nsfw');
 }
+
 
 // This function isn't perfect and isn't trying to preserve the html structure - it's just a 
 // quick and dirty filter to pull out embedded photo blobs because 'nsfw' seems to come up 
@@ -57,58 +56,6 @@ function nsfw_extract_photos($body) {
 		return $body;
 
 	return $new_body;
-}
-
-
-
-
-function nsfw_addon_settings(&$a,&$s) {
-
-
-	if(! local_channel())
-		return;
-
-	/* Add our stylesheet to the page so we can make our settings look nice */
-
-	//head_add_css('/addon/nsfw/nsfw.css');
-
-	$enable_checked = (intval(get_pconfig(local_channel(),'nsfw','disable')) ? false : 1);
-	$words = get_pconfig(local_channel(),'nsfw','words');
-	if(! $words)
-		$words = 'nsfw,contentwarning,';
-	$sc .= '<div class="section-content-info-wrapper">';
-	$sc .= t('This plugin looks in posts for the words/text you specify below, and collapses any content containing those keywords so it is not displayed at inappropriate times, such as sexual innuendo that may be improper in a work setting. It is polite and recommended to tag any content containing nudity with #NSFW.  This filter can also match any other word/text you specify, and can thereby be used as a general purpose content filter.');
-	$sc .= '</div>';
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('nsfw-enable', t('Enable Content filter'), $enable_checked, '', array(t('No'),t('Yes'))),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-		'$field'	=> array('nsfw-words', t('Comma separated list of keywords to hide'), $words, t('Word, /regular-expression/, lang=xx, lang!=xx'))
-	));
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('nsfw', t('Not Safe For Work Settings'), t('General Purpose Content Filter'), t('Submit')),
-		'$content'	=> $sc
-	));
-
-	return;
-
-}
-
-function nsfw_addon_settings_post(&$a,&$b) {
-
-	if(! local_channel())
-		return;
-
-	if($_POST['nsfw-submit']) {
-		set_pconfig(local_channel(),'nsfw','words',trim($_POST['nsfw-words']));
-		$enable = ((x($_POST,'nsfw-enable')) ? intval($_POST['nsfw-enable']) : 0);
-		$disable = 1-$enable;
-		set_pconfig(local_channel(),'nsfw','disable', $disable);
-		info( t('NSFW Settings saved.') . EOL);
-	}
 }
 
 function nsfw_prepare_body(&$a,&$b) {
