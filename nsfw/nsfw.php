@@ -8,6 +8,8 @@
  * Maintainer: Mike Macgirvin <mike@macgirvin.com> 
  */
 
+
+use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 
