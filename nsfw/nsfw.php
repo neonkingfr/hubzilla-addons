@@ -58,25 +58,24 @@ function nsfw_extract_photos($body) {
 	return $new_body;
 }
 
-function nsfw_prepare_body(&$a,&$b) {
+function nsfw_prepare_body(&$b) {
 
 	$words = null;
 
-	if(get_pconfig(local_channel(),'nsfw','disable'))
-		return;
-
-	if(local_channel()) {
-		$words = get_pconfig(local_channel(),'nsfw','words');
+	if(local_channel() && Apps::addon_app_installed(local_channel(),'nsfw')) {
+		$words = get_pconfig(local_channel(),'nsfw','words',EMPTY_STR);
 	}
+	else {
+		$words = 'nsfw,contentwarning';
+	}
+
 	if($words) {
 		$arr = explode(',',$words);
 	}
-	else {
-		$arr = array('nsfw');
-	}
 
 	$found = false;
-	if(count($arr)) {
+
+	if($arr) {
 
 		$body = nsfw_extract_photos($b['html']);
 
