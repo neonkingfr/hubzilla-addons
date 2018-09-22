@@ -8,11 +8,11 @@
  * MinVersion: 3.7.1
  */
 
-function channelreputation_load() { 
-        Zotlabs\Extend\Hook::register('get_all_api_perms', 'addon/channelreputation/channelreputation.php', 'Channelreputation::get_perms_filter',1,5000); 
-        Zotlabs\Extend\Hook::register('get_all_perms', 'addon/channelreputation/channelreputation.php', 'Channelreputation::get_perms_filter',1,5000); 
-        Zotlabs\Extend\Hook::register('perm_is_allowed', 'addon/channelreputation/channelreputation.php', 'Channelreputation::perm_is_allowed',1,5000); 
-        Zotlabs\Extend\Hook::register('can_comment_on_post', 'addon/channelreputation/channelreputation.php', 'Channelreputation::can_comment_on_post',1,5000); 
+function channelreputation_load() {
+        Zotlabs\Extend\Hook::register('get_all_api_perms', 'addon/channelreputation/channelreputation.php', 'Channelreputation::get_perms_filter',1,5000);
+        Zotlabs\Extend\Hook::register('get_all_perms', 'addon/channelreputation/channelreputation.php', 'Channelreputation::get_perms_filter',1,5000);
+        Zotlabs\Extend\Hook::register('perm_is_allowed', 'addon/channelreputation/channelreputation.php', 'Channelreputation::perm_is_allowed',1,5000);
+        Zotlabs\Extend\Hook::register('can_comment_on_post', 'addon/channelreputation/channelreputation.php', 'Channelreputation::can_comment_on_post',1,5000);
         Zotlabs\Extend\Hook::register('channelrep_mod_post', 'addon/channelreputation/channelreputation.php', 'Channelreputation::mod_post',1,5000);
         Zotlabs\Extend\Hook::register('dropdown_extras', 'addon/channelreputation/channelreputation.php', 'Channelreputation::dropdown_extras',1,5000);
         Zotlabs\Extend\Hook::register('channelrep_mod_content', 'addon/channelreputation/channelreputation.php', 'Channelreputation::mod_content',1,5000);
@@ -26,8 +26,8 @@ function channelreputation_load() {
 
 }
 
-function channelreputation_unload() { 
-        Zotlabs\Extend\Hook::unregister_by_file('addon/channelreputation/channelreputation.php'); 
+function channelreputation_unload() {
+        Zotlabs\Extend\Hook::unregister_by_file('addon/channelreputation/channelreputation.php');
 }
 
 
@@ -51,7 +51,7 @@ class Channelreputation {
         public static $reputation = Array();
 
         public static $itemsseen = Array();
-        
+
         public static $settings = null;
         public static $default_settings = Array (
                           'starting_reputation' => 3, //Reputation automatically given to new members
@@ -83,8 +83,8 @@ class Channelreputation {
                 if (!$id) { return; }
                 $enable = get_pconfig ($id,'channelreputation','enable');
                 if (!$enable) { return; }
-               
-                $header .= '<link href="addon/channelreputation/view/css/channelreputation.css" rel="stylesheet">'; 
+
+                $header .= '<link href="addon/channelreputation/view/css/channelreputation.css" rel="stylesheet">';
                 head_add_js('/addon/channelreputation/view/js/channelreputation.js');
         }
 
@@ -152,7 +152,7 @@ class Channelreputation {
                 $settings = self::get_settings($id);
                 foreach ($settings as $setting=>$value) {
                         $postvar = 'channelrep_'.$setting;
-                        
+
                         if (isset($_POST[$postvar])) {
                             $newval = $_POST[$postvar];
                             $settings[$setting] = floatval($newval);
@@ -169,6 +169,8 @@ class Channelreputation {
         public static function dropdown_extras (&$extras) {
                 $uid = App::$profile_uid ? App::$profile_uid : local_channel();
                 if (!$uid) {return;}
+								$enable = get_pconfig ($uid,'channelreputation','enable');
+								if (!$enable) { return; }
                 $settings = self::get_settings($uid);
                 $moderator_rep = self::get($uid,get_observer_hash());
 
@@ -209,7 +211,7 @@ class Channelreputation {
                              if (!$uid) {
                                      return replace_macros(get_markup_template('channelrepModalerror.tpl','addon/channelreputation/'), $values);
                              }
-                             
+
                              $settings = self::get_settings($uid);
 
                              $mod_reputation = self::get($uid,$observer);
@@ -226,11 +228,11 @@ class Channelreputation {
                                      'uid'=>$uid
                              );
                              return replace_macros(get_markup_template('channelrepModal.tpl','addon/channelreputation/'), $values);
-                             
+
                         }
                         $success = false;
                 }
-                
+
                 $returnjson = self::maybejson(Array("Success"=>$success));
                 return $returnjson;
         }
@@ -243,17 +245,17 @@ class Channelreputation {
 
             $settings = self::maybejson(self::$settings[$channel]);
             set_pconfig($channel,'channelreputation','settings',$settings);
-            
+
         }
 
         public static function get_settings ($uid) {
-            if (is_array(self::$settings[$uid])) { 
-                    return self::$settings[$uid]; 
+            if (is_array(self::$settings[$uid])) {
+                    return self::$settings[$uid];
             }
 
             $allsettings = self::$settings;
 
-            $settings = get_pconfig ($uid,'channelreputation','settings'); 
+            $settings = get_pconfig ($uid,'channelreputation','settings');
             $settings = self::maybeunjson($settings);
             foreach (self::$default_settings as $setting=>$value) {
                 $allsettings[$uid][$setting] = (isset($settings[$setting])) ? $settings[$setting] : self::$default_settings[$setting];
@@ -279,7 +281,7 @@ class Channelreputation {
             if (!is_array($reputation) || !isset($reputation["reputation"])) {
                     $reputation = Array('reputation'=>$settings['starting_reputation'], 'lastactivity'=>time());
             }
-            
+
             self::$reputation[$uid][$channel_hash] = $reputation;
             return $reputation;
         }
@@ -440,11 +442,11 @@ class Channelreputation {
         public static function get_maxmodpoints($uid,$moderator_rep,$is_moderator=0) {
             $settings = self::get_settings($uid);
             $modrep = ($moderator_rep['reputation'] > 0) ? $moderator_rep['reputation'] : 0;
-        
+
             if ($is_moderator) {
 
                 //Make sure moderators can always use at least $settings['moderators_modpoints'] per action.
-                
+
                 $maxpoints = ($modrep * $settings['max_moderation_factor']) + $settings['moderators_modpoints'];
                 $points = ($maxpoints > $modrep) ? ($modrep + $settings['moderators_modpoints']) : $maxpoints;
 
@@ -471,7 +473,7 @@ class Channelreputation {
             $is_moderator = perm_is_allowed($uid,$moderator_hash,'moderate_reputation');
             $maxpoints = self::get_maxmodpoints($uid,$moderator_rep,$is_moderator);
             if ($maxpoints == 0) {
-            } 
+            }
 
             self::update($uid,$poster_hash,$activity='apply_moderation',$points);
 
@@ -514,7 +516,7 @@ class Channelreputation {
                 } else {
                     return null;
                 }
-            
+
                 if (is_array($value) || json_last_error() != JSON_ERROR_NONE) {
                             $encoded = json_encode($value,$options);
                     return ($encoded);
@@ -528,7 +530,7 @@ class Channelreputation {
          }
          public static function channel_apps(&$hookdata) {
                 $channelid = App::$profile['uid'];
-        
+
                 $hookdata['tabs'][] = [
                         'label' => t('Channel Reputation'),
                         'url'   => z_root() . '/channelreputaton/' . $hookdata['nickname'],
