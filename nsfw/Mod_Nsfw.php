@@ -1,11 +1,12 @@
 <?php
 
-namespace Zotlabs\Module\Settings;
+namespace Zotlabs\Module;
 
 use App;
 use Zotlabs\Lib\Apps;
+use Zotlabs\Web\Controller;
 
-class Nsfw {
+class Nsfw extends Controller {
 
 	function post() {
 		if(! local_channel())
@@ -14,12 +15,10 @@ class Nsfw {
 		if(! Apps::addon_app_installed(local_channel(),'nsfw'))
 			return;
 
-		check_form_security_token_redirectOnErr('/settings/nsfw', 'settings_nsfw');
+		check_form_security_token_redirectOnErr('nsfw', 'nsfw');
 
 		set_pconfig(local_channel(),'nsfw','words',trim($_POST['nsfw-words']));
-		$enable = ((x($_POST,'nsfw-enable')) ? intval($_POST['nsfw-enable']) : 0);
-		$disable = 1-$enable;
-		set_pconfig(local_channel(),'nsfw','disable', $disable);
+
 		info( t('NSFW Settings saved.') . EOL);
 	}
 
@@ -36,7 +35,6 @@ class Nsfw {
 			return $o;
 		}
 
-		$enable_checked = (intval(get_pconfig(local_channel(),'nsfw','disable')) ? false : 1);
 		$words = get_pconfig(local_channel(),'nsfw','words');
 
 		if(! $words)
@@ -55,9 +53,9 @@ class Nsfw {
 		$tpl = get_markup_template("settings_addon.tpl");
 
 		$o .= replace_macros($tpl, array(
-			'$action_url' => 'settings/nsfw',
-			'$form_security_token' => get_form_security_token("settings_nsfw"),
-			'$title' => t('NSFW Settings'),
+			'$action_url' => 'nsfw',
+			'$form_security_token' => get_form_security_token("nsfw"),
+			'$title' => t('NSFW'),
 			'$content'  => $content,
 			'$baseurl'   => z_root(),
 			'$submit'    => t('Submit'),
