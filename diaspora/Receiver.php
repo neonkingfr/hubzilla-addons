@@ -648,6 +648,13 @@ class Diaspora_Receiver {
 		$datarray['body'] = $newbody;
 		$datarray['app']  = 'Diaspora';
 
+		// Diaspora allows anybody to comment on public posts in theory
+		// In fact the comment will be rejected unless it is correctly signed
+
+		if($this->importer['system'] || $this->msg['public']) {
+			$datarray['comment_policy'] = 'network: diaspora';
+		}
+
 		$tgroup = tgroup_check($this->importer['channel_id'],$datarray);
 
 		if((! $this->importer['system']) && (! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'send_stream')) && (! $tgroup)) {
@@ -661,6 +668,8 @@ class Diaspora_Receiver {
 				return 202;
 			}
 		}
+
+
 
 
 
