@@ -91,7 +91,7 @@ class Channelreputation {
         }
 
         public static function feature_settings (&$s) {
-        	if(! Apps::addon_app_installed(local_channel(), 'cart')) {
+        	if(! Apps::addon_app_installed(local_channel(), 'channelreputation')) {
                 	return;
         	}
 
@@ -142,7 +142,7 @@ class Channelreputation {
         }
 
         public static function feature_settings_post () {
-        	if(! Apps::addon_app_installed(local_channel(), 'cart')) {
+        	if(! Apps::addon_app_installed(local_channel(), 'channelreputation')) {
                 	return;
         	}
 
