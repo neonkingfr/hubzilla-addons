@@ -1,5 +1,7 @@
 <?php
 
+use Zotlabs\Lib\Apps;
+
 /**
  * Name: cart
  * Description: Core cart utilities for orders and payments
@@ -1231,6 +1233,9 @@ function cart_formatamount($amount) {
 }
 
 function cart_settings_post(&$s) {
+	if(! Apps::addon_app_installed(local_channel(), 'cart')) {
+		return;
+	}
 	if(! local_channel()) {
 		return;
         }
@@ -1268,6 +1273,9 @@ function cart_plugin_admin_post(&$s) {
 }
 
 function cart_settings(&$s) {
+	if(! Apps::addon_app_installed(local_channel(), 'cart')) {
+		return;
+	}
 	$id = local_channel();
 	if (! $id) {
 		return;

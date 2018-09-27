@@ -8,6 +8,8 @@
  * MinVersion: 3.7.1
  */
 
+use Zotlabs\Lib\Apps;
+
 function channelreputation_load() {
         Zotlabs\Extend\Hook::register('get_all_api_perms', 'addon/channelreputation/channelreputation.php', 'Channelreputation::get_perms_filter',1,5000);
         Zotlabs\Extend\Hook::register('get_all_perms', 'addon/channelreputation/channelreputation.php', 'Channelreputation::get_perms_filter',1,5000);
@@ -89,6 +91,9 @@ class Channelreputation {
         }
 
         public static function feature_settings (&$s) {
+        	if(! Apps::addon_app_installed(local_channel(), 'channelreputation')) {
+                	return;
+        	}
 
                 $id = local_channel();
 
@@ -137,6 +142,10 @@ class Channelreputation {
         }
 
         public static function feature_settings_post () {
+        	if(! Apps::addon_app_installed(local_channel(), 'channelreputation')) {
+                	return;
+        	}
+
                 $id = local_channel();
                 if (! $id) {
                         return;

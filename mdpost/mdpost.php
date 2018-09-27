@@ -44,6 +44,7 @@ function mdpost_get_features(&$x) {
 		feature_level('markdown',2),          
 	];
 
+	$x['features']['composition'][] = t('Post Composition');
 	$x['features']['composition'][] = $entry;
 
 }
