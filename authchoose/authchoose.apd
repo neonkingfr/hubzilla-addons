@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/authchoose
+requires: local_channel
+name: Authchoose
+photo: icon:cog
+categories: Tools
+
