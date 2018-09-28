@@ -1,5 +1,7 @@
 <?php
 
+use Zotlabs\Lib\Apps;
+
 require_once('include/markdown.php');
 require_once('include/group.php');
 require_once('include/follow.php');
