@@ -20,6 +20,7 @@ function mdpost_post_content(&$x) {
 
 	if(! (local_channel() && local_channel() == intval($x['profile_uid'])))
 		return;
+
 	if($x['mimetype'] !== 'text/bbcode')
 		return;
 
@@ -40,11 +41,9 @@ function mdpost_get_features(&$x) {
 		t('Markdown'),                                                                      
 		t('Use markdown for editing posts'),                                                
 		false,                                                                              
-		get_config('feature_lock','markdown'),                                              
-		feature_level('markdown',2),          
+		get_config('feature_lock','markdown')
 	];
 
-	$x['features']['composition'][] = t('Post Composition');
-	$x['features']['composition'][] = $entry;
+	$x['features']['editor'][] = $entry;
 
 }
