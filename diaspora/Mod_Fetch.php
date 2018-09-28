@@ -61,7 +61,7 @@ class Fetch extends \Zotlabs\Web\Controller {
 			http_status_exit(404,'Not found');
 		}
 
-		if(! intval(get_pconfig($channel['channel_id'],'system','diaspora_allowed'))) {
+		if(! Apps::addon_app_installed($channel['channel_id'], 'diaspora')) {
 			http_status_exit(404,'Not found');
 		}
 

@@ -78,7 +78,7 @@ function diaspora_dispatch($importer,$msg) {
 		dbesc($url)
 	);
 
-	$allowed = (($importer['system']) ? 1 : get_pconfig($importer['channel_id'],'system','diaspora_allowed'));
+	$allowed = (($importer['system']) ? 1 : Apps::addon_app_installed($importer['channel_id'], 'diaspora'));
 
 	if(! intval($allowed)) {
 		logger('mod-diaspora: disallowed for channel ' . $importer['channel_name']);

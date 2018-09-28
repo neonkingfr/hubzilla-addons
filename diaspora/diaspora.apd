@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/diaspora
+requires: local_channel
+name: Diaspora Protocol
+photo: icon:diaspora
+categories: Networking
+
