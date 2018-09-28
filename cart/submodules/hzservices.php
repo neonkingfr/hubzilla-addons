@@ -214,7 +214,7 @@ class Cart_hzservices {
             $grps = array();
             $o = '';
 
-            $r = q("SELECT * FROM groups WHERE deleted = 0 AND uid = %d ORDER BY gname ASC",
+            $r = q("SELECT * FROM pgrp WHERE deleted = 0 AND uid = %d ORDER BY gname ASC",
                     intval($uid)
             );
             $grps[] = array('name' => '', 'hash' => '0', 'selected' => '');
@@ -545,7 +545,7 @@ class Cart_hzservices {
     $grps = array();
     $o = '';
 
-    $r = q("SELECT * FROM groups WHERE deleted = 0 AND uid = %d ORDER BY gname ASC",
+    $r = q("SELECT * FROM pgrp WHERE deleted = 0 AND uid = %d ORDER BY gname ASC",
         intval($uid)
     );
     $grps[] = array('name' => '', 'hash' => '0', 'selected' => '');
