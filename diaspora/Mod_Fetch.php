@@ -2,6 +2,8 @@
 
 namespace Zotlabs\Module;
 
+use Zotlabs\Lib\Apps;
+
 class Fetch extends \Zotlabs\Web\Controller {
 
 	function init() {

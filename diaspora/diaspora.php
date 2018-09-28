@@ -9,6 +9,8 @@
  * Maintainer: none
  */
 
+use Zotlabs\Lib\Apps;
+
 // use the new federation protocol
 define('DIASPORA_V2',1);
 

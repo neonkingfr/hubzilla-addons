@@ -1,5 +1,7 @@
 <?php
 
+use Zotlabs\Lib\Apps;
+
 require_once('addon/diaspora/Receiver.php');
 
 

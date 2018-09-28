@@ -1,5 +1,6 @@
 <?php
 
+use Zotlabs\Lib\Apps;
 
 function diaspora_prepare_outbound($msg,$owner,$contact,$owner_prvkey,$contact_pubkey,$public = false) {
 
