@@ -59,10 +59,8 @@ function import_diaspora_account($data) {
 
 	$channel_id = $c['channel']['channel_id'];
 
-
 	if(! Apps::addon_app_installed($channel_id, 'diaspora')) {
-		//FIXME: install the diaspora app here
-		notice( t('Diaspora Protocol App not installed.') . EOL);
+		Apps::app_install($channel_id, 'Diaspora Protocol');
 	}
 
 	// todo - add auto follow settings, (and strip exif in hubzilla)

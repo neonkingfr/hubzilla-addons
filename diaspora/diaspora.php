@@ -36,7 +36,7 @@ function diaspora_load() {
 		'follow_allow'                => 'diaspora_follow_allow',
 		'post_local'                  => 'diaspora_post_local',
 		'well_known'                  => 'diaspora_well_known',
-//		'create_identity'             => 'diaspora_create_identity',
+		'create_identity'             => 'diaspora_create_identity',
 		'profile_sidebar'             => 'diaspora_profile_sidebar',
 		'discover_channel_webfinger'  => 'diaspora_discover',
 		'import_author'               => 'diaspora_import_author',
@@ -855,15 +855,11 @@ function diaspora_post_local(&$item) {
 
 }
 
-/* FIXME: we need another solution for this to work with apps
-
 function diaspora_create_identity($b) {
 	if(get_config('system','diaspora_allowed')) {
-		set_pconfig($b,'system','diaspora_allowed','1');
+		Apps::app_install($b, 'Diaspora Protocol');
 	}
-
 }
-*/
 
 function diaspora_import_foreign_channel_data(&$data) {
 
