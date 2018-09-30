@@ -62,13 +62,10 @@ function nsfw_extract_photos($body) {
 
 function nsfw_prepare_body(&$b) {
 
-	$words = null;
+	$words = 'nsfw,contentwarning';
 
-	if(local_channel() && Apps::addon_app_installed(local_channel(),'nsfw')) {
-		$words = get_pconfig(local_channel(),'nsfw','words',EMPTY_STR);
-	}
-	else {
-		$words = 'nsfw,contentwarning';
+	if(local_channel()) {
+		$words = ((Apps::addon_app_installed(local_channel(),'nsfw')) ? get_pconfig(local_channel(),'nsfw','words',$words) : EMPTY_STR);
 	}
 
 	if($words) {
