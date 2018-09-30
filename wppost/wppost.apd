@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/wppost
+requires: local_channel
+name: Wordpress Post
+photo: icon:wordpress
+categories: Networking
+
