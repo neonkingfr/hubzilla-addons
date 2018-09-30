@@ -34,7 +34,7 @@ function wppost_unload () {
 }
 
 
-function wppost_jot_nets(&$a,&$b) {
+function wppost_jot_nets(&$b) {
 
 	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
 		return;
@@ -47,7 +47,7 @@ function wppost_jot_nets(&$a,&$b) {
 	}
 }
 
-function wppost_post_local(&$a,&$b) {
+function wppost_post_local(&$b) {
 
 	// This can probably be changed to allow editing by pointing to a different API endpoint
 
@@ -92,7 +92,7 @@ function wppost_dreport($dr,$update) {
 	);
 }
 
-function wppost_send(&$a,&$b) {
+function wppost_send(&$b) {
 
 	if((! is_item_normal($b)) || $b['item_private'])
 		return;
@@ -220,7 +220,7 @@ function wppost_send(&$a,&$b) {
 }
 
 
-function wppost_post_remote_end(&$a,&$b) {
+function wppost_post_remote_end(&$b) {
 
 	// We are only looking for public comments
 
@@ -346,7 +346,7 @@ function wppost_post_remote_end(&$a,&$b) {
 
 
 
-function wppost_drop_item(&$a,&$b) {
+function wppost_drop_item(&$b) {
 
 	$wp_enabled = Apps::addon_app_installed($b['item']['uid'], 'wppost');
 
