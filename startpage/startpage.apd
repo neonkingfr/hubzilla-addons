@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/startpage
+requires: local_channel
+name: Startpage
+photo: icon:play-circle-o
+categories: System
+

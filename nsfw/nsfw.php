@@ -15,13 +15,13 @@ use Zotlabs\Extend\Route;
 
 function nsfw_install() {
 	Hook::register('prepare_body', 'addon/nsfw/nsfw.php', 'nsfw_prepare_body', 10);
-	Route::register('addon/nsfw/Mod_Nsfw.php','nsfw');
+	Route::register('addon/nsfw/Mod_nsfw.php','nsfw');
 }
 
 
 function nsfw_uninstall() {
 	Hook::unregister('prepare_body', 'addon/nsfw/nsfw.php', 'nsfw_prepare_body');
-	Route::unregister('addon/nsfw/Mod_Nsfw.php','nsfw');
+	Route::unregister('addon/nsfw/Mod_nsfw.php','nsfw');
 }
 
 
