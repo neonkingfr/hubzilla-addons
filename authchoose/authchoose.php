@@ -13,12 +13,12 @@ use Zotlabs\Extend\Route;
 
 function authchoose_load() {
 	Hook::register('zid','addon/authchoose/authchoose.php','authchoose_zid');
-	Route::register('addon/authchoose/Mod_authchoose.php','authchoose');
+	Route::register('addon/authchoose/Mod_Authchoose.php','authchoose');
 }
 
 function authchoose_unload() {
 	Hook::unregister('zid','addon/authchoose/authchoose.php','authchoose_zid');
-	Route::unregister('addon/authchoose/Mod_authchoose.php','authchoose');
+	Route::unregister('addon/authchoose/Mod_Authchoose.php','authchoose');
 }
 
 function authchoose_zid(&$x) {

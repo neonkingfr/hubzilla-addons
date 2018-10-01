@@ -52,14 +52,14 @@ function diaspora_load() {
 		'channel_protocols'           => 'diaspora_channel_protocols'
 	]);
 
-	Zotlabs\Extend\Route::register('addon/diaspora/Mod_diaspora.php','diaspora');
+	Zotlabs\Extend\Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
 
 	diaspora_init_relay();
 }
 
 function diaspora_unload() {
 	Zotlabs\Extend\Hook::unregister_by_file('addon/diaspora/diaspora.php');
-	Zotlabs\Extend\Route::unregister('addon/diaspora/Mod_diaspora.php','diaspora');
+	Zotlabs\Extend\Route::unregister('addon/diaspora/Mod_Diaspora.php','diaspora');
 }
 
 

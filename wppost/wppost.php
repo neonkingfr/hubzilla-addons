@@ -21,7 +21,7 @@ function wppost_load () {
 	Hook::register('notifier_normal', 'addon/wppost/wppost.php', 'wppost_send');
 	Hook::register('jot_networks', 'addon/wppost/wppost.php', 'wppost_jot_nets');
 	Hook::register('drop_item', 'addon/wppost/wppost.php', 'wppost_drop_item');
-	Route::register('addon/wppost/Mod_wppost.php','wppost');
+	Route::register('addon/wppost/Mod_Wppost.php','wppost');
 }
 
 function wppost_unload () {
@@ -30,7 +30,7 @@ function wppost_unload () {
 	Hook::unregister('notifier_normal', 'addon/wppost/wppost.php', 'wppost_send');
 	Hook::unregister('jot_networks', 'addon/wppost/wppost.php', 'wppost_jot_nets');
 	Hook::unregister('drop_item', 'addon/wppost/wppost.php', 'wppost_drop_item');
-	Route::unregister('addon/wppost/Mod_wppost.php','wppost');
+	Route::unregister('addon/wppost/Mod_Wppost.php','wppost');
 }
 
 
