@@ -46,7 +46,7 @@ class Diaspora extends Controller {
 		if(! local_channel())
 			return;
 
-		$desc = t('The Diaspora protocol does not support location independence. Connections you make within that network may be unreachable from alternate channel locations.');
+		$desc = t('The diaspora protocol does not support location independence. Connections you make within that network may be unreachable from alternate channel locations.');
 
 		if(! Apps::addon_app_installed(local_channel(), 'diaspora')) {
 			//Do not display any associated widgets at this point

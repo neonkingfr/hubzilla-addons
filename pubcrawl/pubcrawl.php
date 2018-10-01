@@ -12,12 +12,14 @@
  * get communication flowing. 
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
+
 require_once('addon/pubcrawl/as.php');
 
-
-
 function pubcrawl_load() {
-	Zotlabs\Extend\Hook::register_array('addon/pubcrawl/pubcrawl.php', [
+	Hook::register_array('addon/pubcrawl/pubcrawl.php', [
 		'module_loaded'              => 'pubcrawl_load_module',
 		'webfinger'                  => 'pubcrawl_webfinger',
 		'channel_mod_init'           => 'pubcrawl_channel_mod_init',
@@ -43,16 +45,18 @@ function pubcrawl_load() {
 		'create_identity'            => 'pubcrawl_create_identity',
 		'can_comment_on_post'        => 'pubcrawl_can_comment_on_post'
 	]);
+	Route::register('addon/pubcrawl/Mod_Pubcrawl.php','pubcrawl');
 }
 
 function pubcrawl_unload() {
-	Zotlabs\Extend\Hook::unregister_by_file('addon/pubcrawl/pubcrawl.php');
+	Hook::unregister_by_file('addon/pubcrawl/pubcrawl.php');
+	Route::unregister('addon/pubcrawl/Mod_Pubcrawl.php','pubcrawl');
 }
 
 
 function pubcrawl_channel_protocols(&$b) {
 
-	if(intval(get_pconfig($b['channel_id'],'system','activitypub_allowed')))
+	if(Apps::addon_app_installed($b['channel_id'],'Activitypub Protocol'))
 		$b['protocols'][] = 'activitypub';
 
 }
@@ -67,7 +71,7 @@ function pubcrawl_follow_allow(&$b) {
 	if($b['xchan']['xchan_network'] !== 'activitypub')
 		return;
 
-	$allowed = get_pconfig($b['channel_id'],'system','activitypub_allowed');
+	$allowed = Apps::addon_app_installed($b['channel_id'],'Activitypub Protocol');
 	if($allowed === false)
 		$allowed = 1;
 	$b['allowed'] = $allowed;
@@ -77,7 +81,7 @@ function pubcrawl_follow_allow(&$b) {
 
 function pubcrawl_channel_links(&$b) {
 	$c = channelx_by_nick($b['channel_address']);
-	if($c && get_pconfig($c['channel_id'],'system','activitypub_allowed')) {
+	if($c && Apps::addon_app_installed($c['channel_id'],'Activitypub Protocol')) {
 		$b['channel_links'][] = [
 			'rel' => 'alternate',
 			'type' => 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
@@ -95,7 +99,7 @@ function pubcrawl_webfinger(&$b) {
 	if(! $b['channel'])
 		return;
 
-	if(! get_pconfig($b['channel']['channel_id'],'system','activitypub_allowed'))
+	if(Apps::addon_app_installed($b['channel']['channel_id'],'Activitypub Protocol'))
 		return;
 
 	$b['result']['properties']['http://purl.org/zot/federation'] .= ',activitypub';
@@ -114,7 +118,7 @@ function pubcrawl_webfinger(&$b) {
 
 function pubcrawl_personal_xrd(&$b) {
 
-	if(! intval(get_pconfig($b['user']['channel_id'],'system','activitypub_allowed')))
+	if(! Apps::addon_app_installed($b['user']['channel_id'],'Activitypub Protocol'))
 		return;
 
 	$s = '<Link rel="self" type="application/ld+json" href="' . z_root() . '/channel/' . $b['user']['channel_address'] . '" />';
@@ -365,7 +369,7 @@ function pubcrawl_channel_mod_init($x) {
 		if(! $chan)
 			http_status_exit(404, 'Not found');
 
-		if(! get_pconfig($chan['channel_id'],'system','activitypub_allowed'))
+		if(! Apps::addon_app_installed($chan['channel_id'],'Activitypub Protocol'))
 			http_status_exit(404, 'Not found');
 
 		$y = asencode_person($chan);
@@ -444,7 +448,7 @@ function pubcrawl_notifier_process(&$arr) {
 		
 	}
 
-	$allowed = get_pconfig($arr['channel']['channel_id'],'system','activitypub_allowed');
+	$allowed = Apps::addon_app_installed($arr['channel']['channel_id'],'Activitypub Protocol');
 
 	if(! intval($allowed)) {
 		logger('pubcrawl: disallowed for channel ' . $arr['channel']['channel_name']);
@@ -564,8 +568,7 @@ function pubcrawl_notifier_process(&$arr) {
 
 function pubcrawl_queue_message($msg,$sender,$recip,$message_id = '') {
 
-
-    $allowed = get_pconfig($sender['channel_id'],'system','activitypub_allowed',1);
+    $allowed = Apps::addon_app_installed($sender['channel_id'],'Activitypub Protocol');
 
     if(! intval($allowed)) {
         return false;
@@ -818,7 +821,9 @@ function pubcrawl_profile_mod_init($x) {
 		if(! $chan)
 			http_status_exit(404, 'Not found');
 
-		if(! get_pconfig($chan['channel_id'],'system','activitypub_allowed'))
+
+
+		if(! Apps::addon_app_installed($chan['channel_id'],'Activitypub Protocol'))
 			http_status_exit(404, 'Not found');
 
 		$p = asencode_person($chan);
@@ -1128,47 +1133,10 @@ function pubcrawl_queue_deliver(&$b) {
 	}
 }
 
-function pubcrawl_feature_settings_post(&$b) {
-
-	if($_POST['pubcrawl-submit']) {
-		set_pconfig(local_channel(),'system','activitypub_allowed',intval($_POST['activitypub_allowed']));
-		set_pconfig(local_channel(),'activitypub','downgrade_media', 1 - intval($_POST['activitypub_send_media']));
-		set_pconfig(local_channel(),'activitypub','include_groups',intval($_POST['include_groups']));		
-		info( t('ActivityPub Protocol Settings updated.') . EOL);
-	}
-}
-
-
-function pubcrawl_feature_settings(&$s) {
-
-	$ap_allowed = get_pconfig(local_channel(),'system','activitypub_allowed');
-
-	$sc = '<div>' . t('The ActivityPub protocol does not support location independence. Connections you make within that network may be unreachable from alternate channel locations.') . '</div><br>';
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('activitypub_allowed', t('Enable the ActivityPub protocol for this channel'), $ap_allowed, '', $yes_no),
-	));
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('include_groups', t('Deliver to ActivityPub recipients in privacy groups'), get_pconfig(local_channel(),'activitypub','include_groups'), t('May result in a large number of mentions and expose all the members of your privacy group'), $yes_no),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('activitypub_send_media', t('Send multi-media HTML articles'), 1 - intval(get_pconfig(local_channel(),'activitypub','downgrade_media',true)), t('Not supported by some microblog services such as Mastodon'), $yes_no),
-	));
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('pubcrawl', '<img src="addon/pubcrawl/activitypub.png" style="width:auto; height:1em; margin:-3px 5px 0px 0px;">' . t('ActivityPub Protocol Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
-
-	return;
-
-}
-
 function pubcrawl_create_identity($b) {
 
 	if(get_config('system','activitypub_allowed')) {
-		set_pconfig($b,'system','activitypub_allowed','1');
+		Apps::app_install($b, 'Activitypub Protocol');
 	}
 
 }
