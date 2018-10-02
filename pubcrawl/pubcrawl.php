@@ -34,8 +34,6 @@ function pubcrawl_load() {
 		'permissions_accept'         => 'pubcrawl_permissions_accept',
 		'connection_remove'          => 'pubcrawl_connection_remove',
 		'notifier_hub'               => 'pubcrawl_notifier_process',
-		'feature_settings_post'      => 'pubcrawl_feature_settings_post',
-		'feature_settings'           => 'pubcrawl_feature_settings',
 		'channel_links'              => 'pubcrawl_channel_links',
 		'personal_xrd'               => 'pubcrawl_personal_xrd',
 		'queue_deliver'              => 'pubcrawl_queue_deliver',
