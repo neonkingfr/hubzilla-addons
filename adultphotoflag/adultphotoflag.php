@@ -28,7 +28,7 @@ function adultphotoflag_get_features(&$a,&$x) {
 		feature_level('adult_photo_flagging',2),          
 	];
 
-	$x['features']['general'][] = $entry;
+	$x['features']['photos'][] = $entry;
 
 
 }
