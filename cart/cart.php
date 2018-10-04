@@ -1,6 +1,7 @@
 <?php
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Route;
 
 /**
  * Name: cart
@@ -1126,8 +1127,6 @@ function cart_uninstall() {
 function cart_load(){
         // HOOK REGISTRATION
 	Zotlabs\Extend\Hook::register('construct_page', 'addon/cart/cart.php', 'cart_construct_page',1);
-	Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/cart.php', 'cart_settings',1,32000);
-	Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/cart.php', 'cart_settings_post',1,32000);
 	Zotlabs\Extend\Hook::register('channel_apps', 'addon/cart/cart.php', 'cart_channel_apps');
 	Zotlabs\Extend\Hook::register('cart_do_additem','addon/cart/cart.php','cart_do_additem',1);
 	Zotlabs\Extend\Hook::register('cart_order_additem','addon/cart/cart.php','cart_additem_hook',1);
@@ -1155,6 +1154,7 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('cart_after_fulfill','addon/cart/cart.php','cart_fulfillitem_markfulfilled',1,31000);
 	Zotlabs\Extend\Hook::register('cart_after_cancel','addon/cart/cart.php','cart_cancelitem_unmarkfulfilled',1,31000);
 	Zotlabs\Extend\Hook::register('cart_get_catalog','addon/cart/cart.php','cart_get_test_catalog',1,0);
+	Route::register('addon/cart/Settings/Cart.php','settings/cart');
 
         // WIDGET REGISTRATION
         if (Cart::check_min_version ('hubzilla','3.7.1')) {
@@ -1185,6 +1185,8 @@ function cart_unload(){
         if (Cart::check_min_version ('hubzilla','3.7.1')) {
                 Zotlabs\Extend\Widget::unregister('addon/cart/widgets/cartbutton.php','cartbutton');
         }
+
+	Route::unregister('addon/cart/Settings/Cart.php','settings/cart');
 
 	require_once("manual_payments.php");
 	cart_manualpayments_unload();
@@ -1232,35 +1234,6 @@ function cart_formatamount($amount) {
 	return sprintf(cart_getcurrencyformat(),$amount);
 }
 
-function cart_settings_post(&$s) {
-	if(! Apps::addon_app_installed(local_channel(), 'cart')) {
-		return;
-	}
-	if(! local_channel()) {
-		return;
-        }
-        $prev_enable = get_pconfig(local_channel(),'cart','enable');
-
-	set_pconfig( local_channel(), 'cart', 'enable', intval($_POST['enable_cart']) );
-        if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != $prev_enable) {
-            return;
-        }
-	set_pconfig( local_channel(), 'cart', 'enable_test_catalog', intval($_POST['enable_test_catalog'] ));
-	set_pconfig( local_channel(), 'cart', 'enable_manual_payments', intval($_POST['enable_manual_payments']) );
-
-        $curcurrency = get_pconfig(local_channel(),'cart','cart_currency');
-        $curcurrency = isset($curcurrency) ? $curcurrency : 'USD';
-        $currency = substr(preg_replace('[^0-9A-Z]','',$_POST["currency"]),0,3);
-        $currencylist=cart_getcurrencies();
-        $currency = isset($currencylist[$currency]) ? $currency : 'USD';
-        set_pconfig(local_channel(), 'cart','cart_currency', $currency);
-            
-        call_hooks('cart_addon_settings_post');
-
-        cart_unload();
-        cart_load();
-}
-
 function cart_plugin_admin_post(&$s) {
 
   $prev_dropval = cart_getsysconfig("dropTablesOnUninstall");
@@ -1270,70 +1243,6 @@ function cart_plugin_admin_post(&$s) {
   if ($dropdbonuninstall != $prev_dropval) {
       cart_setsysconfig("dropTablesOnUninstall",$dropdbonuninstall);
   }
-}
-
-function cart_settings(&$s) {
-	if(! Apps::addon_app_installed(local_channel(), 'cart')) {
-		return;
-	}
-	$id = local_channel();
-	if (! $id) {
-		return;
-        }
-
-	$enablecart = get_pconfig ($id,'cart','enable');
-
-	$sc = replace_macros(get_markup_template('field_checkbox.tpl'), array(
-				     '$field'	=> array('enable_cart', t('Enable Shopping Cart'),
-							 (isset($enablecart) ? $enablecart : 0),
-							 '',array(t('No'),t('Yes')))));
-
-        if (isset($enablecart)  && $enablecart == 1) {
-	    $testcatalog = get_pconfig ($id,'cart','enable_test_catalog');
-	    $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-				     '$field'	=> array('enable_test_catalog', t('Enable Test Catalog'),
-							 (isset($testcatalog) ? $testcatalog : 0),
-							 '',array(t('No'),t('Yes')))));
-
-
-	    $manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
-
-	    $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-				     '$field'	=> array('enable_manual_payments', t('Enable Manual Payments'),
-							 (isset($manualpayments) ? $manualpayments : 0),
-							 '',array(t('No'),t('Yes')))));
-
-
-	    $currencylist=cart_getcurrencies();
-	    $currency=get_pconfig(local_channel(), 'cart','cart_currency');
-	    $saved_currency = isset($currencylist[$currency]) ? $currency : 'USD';
-
-            $currencyoptions=Array();
-
-            foreach($currencylist as $c) {
-		$currencyoptions[$c["code"]]=$c["code"]." - ".$c["name"];
-	    }
-
-				$sc .= replace_macros(get_markup_template('field_select.tpl'), array(
-					     '$field'	=> array('currency', t('Base Merchant Currency'),
-								  $saved_currency, '', $currencyoptions)));
-            /*
-             * @TODO: Set payment options order
-             * @TODO: Enable/Disable payment options
-             * $paymentopts = Array();
-             * call_hooks('cart_paymentopts',$paymentopts);
-             * @TODO: Configuure payment options
-             */
-
-            $moresettings = '';
-            call_hooks('cart_addon_settings',$moresettings);
-        }
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-				     '$addon' 	=> array('cart-base',
-							 t('Cart - Base Settings'), '',
-							 t('Submit')),
-				     '$content'	=> $sc . $moresettings));
 }
 
 function cart_plugin_admin(&$a,&$s) {
@@ -1356,7 +1265,7 @@ function cart_plugin_admin(&$a,&$s) {
 
 function cart_channel_apps(&$hookdata) {
 	$channelid = App::$profile['uid'];
-	$enablecart = get_pconfig ($channelid,'cart','enable');
+	$enablecart = Apps::addon_app_installed($channelid, 'cart');
 
 	if($enablecart) {
 		$hookdata['tabs'][] = [
@@ -1474,12 +1383,21 @@ function cart_post(&$a) {
 /* @todo: rework as filter
 */
 function cart_mod_content(&$arr) {
-  $arr['content'] = cart_pagecontent($a);
-  $aside = "";
-  call_hooks ('cart_aside_filter',$aside);
-  \App::$page['aside'] =  $aside;
-  $arr['replace'] = true;
-  return ;
+
+	if(! Apps::addon_app_installed(App::$profile['uid'], 'cart')) {
+		$arr['content'] = '<b>Cart App (Not Installed):</b><br>';
+		$arr['content'] .= t('Cart utilities for orders and payments');
+		return;
+	}
+
+	$arr['content'] = cart_pagecontent($a);
+
+	$aside = '';
+	call_hooks ('cart_aside_filter',$aside);
+	\App::$page['aside'] =  $aside;
+
+	$arr['replace'] = true;
+	return;
 }
 
 function cart_get_catalog($filtered=true) {
@@ -1510,14 +1428,6 @@ function cart_pagecontent($a=null) {
         $return_url = ltrim(parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH),"/");
         $_SESSION['return_url'] = $return_url;
         return login();
-    }
-
-    $channelid = App::$profile['uid'];
-
-    $enablecart = get_pconfig ($channelid,'cart','enable');
-    if(!isset($enablecart) || $enablecart==0) {
-        notice( t('Cart Not Enabled (profile: '.App::$profile['uid'].')') . EOL);
-        return;
     }
 
     $sellernick = argv(1);

@@ -52,7 +52,7 @@ class Nsfw extends Controller {
 
 		$tpl = get_markup_template("settings_addon.tpl");
 
-		$o .= replace_macros($tpl, array(
+		$o = replace_macros($tpl, array(
 			'$action_url' => 'nsfw',
 			'$form_security_token' => get_form_security_token("nsfw"),
 			'$title' => t('NSFW'),

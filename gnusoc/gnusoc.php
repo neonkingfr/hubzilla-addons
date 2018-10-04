@@ -93,7 +93,7 @@ function gnusoc_unload() {
 
 
 function gnusoc_app_destroy(&$a, &$b) {
-	if($b['app_deleted']) {
+	if(($b['app_plugin'] === 'gnusoc') && $b['app_deleted']) {
 
 		// plugin is now disabled, if it was enabled before, unsubscribe to all followed hubs
 		require_once('addon/pubsubhubbub/pubsubhubbub.php');
