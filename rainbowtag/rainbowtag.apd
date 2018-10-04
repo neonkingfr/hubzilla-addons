@@ -1,0 +1,6 @@
+version: 1
+url: $baseurl/rainbowtag
+requires: local_channel
+name: Rainbow Tag
+photo: icon:tag
+categories: Appearance
