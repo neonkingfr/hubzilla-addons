@@ -97,7 +97,7 @@ function pubcrawl_webfinger(&$b) {
 	if(! $b['channel'])
 		return;
 
-	if(Apps::addon_app_installed($b['channel']['channel_id'],'pubcrawl'))
+	if(! Apps::addon_app_installed($b['channel']['channel_id'],'pubcrawl'))
 		return;
 
 	$b['result']['properties']['http://purl.org/zot/federation'] .= ',activitypub';
