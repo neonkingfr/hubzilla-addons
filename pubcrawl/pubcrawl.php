@@ -54,7 +54,7 @@ function pubcrawl_unload() {
 
 function pubcrawl_channel_protocols(&$b) {
 
-	if(Apps::addon_app_installed($b['channel_id'],'Activitypub Protocol'))
+	if(Apps::addon_app_installed($b['channel_id'],'pubcrawl'))
 		$b['protocols'][] = 'activitypub';
 
 }
@@ -69,7 +69,7 @@ function pubcrawl_follow_allow(&$b) {
 	if($b['xchan']['xchan_network'] !== 'activitypub')
 		return;
 
-	$allowed = Apps::addon_app_installed($b['channel_id'],'Activitypub Protocol');
+	$allowed = Apps::addon_app_installed($b['channel_id'],'pubcrawl');
 	if($allowed === false)
 		$allowed = 1;
 	$b['allowed'] = $allowed;
@@ -79,7 +79,7 @@ function pubcrawl_follow_allow(&$b) {
 
 function pubcrawl_channel_links(&$b) {
 	$c = channelx_by_nick($b['channel_address']);
-	if($c && Apps::addon_app_installed($c['channel_id'],'Activitypub Protocol')) {
+	if($c && Apps::addon_app_installed($c['channel_id'],'pubcrawl')) {
 		$b['channel_links'][] = [
 			'rel' => 'alternate',
 			'type' => 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
@@ -97,7 +97,7 @@ function pubcrawl_webfinger(&$b) {
 	if(! $b['channel'])
 		return;
 
-	if(Apps::addon_app_installed($b['channel']['channel_id'],'Activitypub Protocol'))
+	if(Apps::addon_app_installed($b['channel']['channel_id'],'pubcrawl'))
 		return;
 
 	$b['result']['properties']['http://purl.org/zot/federation'] .= ',activitypub';
@@ -116,7 +116,7 @@ function pubcrawl_webfinger(&$b) {
 
 function pubcrawl_personal_xrd(&$b) {
 
-	if(! Apps::addon_app_installed($b['user']['channel_id'],'Activitypub Protocol'))
+	if(! Apps::addon_app_installed($b['user']['channel_id'],'pubcrawl'))
 		return;
 
 	$s = '<Link rel="self" type="application/ld+json" href="' . z_root() . '/channel/' . $b['user']['channel_address'] . '" />';
@@ -367,7 +367,7 @@ function pubcrawl_channel_mod_init($x) {
 		if(! $chan)
 			http_status_exit(404, 'Not found');
 
-		if(! Apps::addon_app_installed($chan['channel_id'],'Activitypub Protocol'))
+		if(! Apps::addon_app_installed($chan['channel_id'],'pubcrawl'))
 			http_status_exit(404, 'Not found');
 
 		$y = asencode_person($chan);
@@ -446,7 +446,7 @@ function pubcrawl_notifier_process(&$arr) {
 		
 	}
 
-	$allowed = Apps::addon_app_installed($arr['channel']['channel_id'],'Activitypub Protocol');
+	$allowed = Apps::addon_app_installed($arr['channel']['channel_id'],'pubcrawl');
 
 	if(! intval($allowed)) {
 		logger('pubcrawl: disallowed for channel ' . $arr['channel']['channel_name']);
@@ -566,7 +566,7 @@ function pubcrawl_notifier_process(&$arr) {
 
 function pubcrawl_queue_message($msg,$sender,$recip,$message_id = '') {
 
-    $allowed = Apps::addon_app_installed($sender['channel_id'],'Activitypub Protocol');
+    $allowed = Apps::addon_app_installed($sender['channel_id'],'pubcrawl');
 
     if(! intval($allowed)) {
         return false;
@@ -821,7 +821,7 @@ function pubcrawl_profile_mod_init($x) {
 
 
 
-		if(! Apps::addon_app_installed($chan['channel_id'],'Activitypub Protocol'))
+		if(! Apps::addon_app_installed($chan['channel_id'],'pubcrawl'))
 			http_status_exit(404, 'Not found');
 
 		$p = asencode_person($chan);
