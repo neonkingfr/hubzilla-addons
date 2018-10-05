@@ -309,6 +309,7 @@ function cart_dbUpgrade () {
 	}
         $response = UPDATE_SUCCESS;
         logger("CART: run db_upgrade hooks",LOGGER_DEBUG);
+	load_hooks();
         call_hooks("cart_dbupgrade",$response);
 	return $response;
 }
@@ -1176,6 +1177,7 @@ function cart_load(){
 		$moduleclass::load();
 	}
         call_hooks('cart_submodule_activation');
+	cart_dbupgrade();
 }
 
 function cart_unload(){
