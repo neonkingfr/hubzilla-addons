@@ -21,7 +21,7 @@ function initEditor(cb){
                 		resizeMaxWidth: 500,
                 		width: 350,
                 		height: 300,
-                		toolbar: 'bold,italic,underline,strike,superscript,subscript|code,quote|horizontalrule|cut,copy,paste|color|bulletlist,orderedlist|removeformat|maximize,source'
+                		toolbar: 'bold,italic,underline,strike,superscript,subscript|code,quote|horizontalrule|cut,copy,paste|hzsize,color|bulletlist,orderedlist|removeformat|maximize,source'
                 	});
                 	instance = sceditor.instance(texteditor);
                         instance.width($('#profile-jot-wrapper').width());

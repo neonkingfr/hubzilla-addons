@@ -1,6 +1,6 @@
 <?php
 /**
- * Name: Hubzilla Simplified Status Editor
+ * Name: Wysiwyg Status
  * Description: SCEditor implemented for simplified status editing on Hubzilla
  * Version: 0.5
  * Author: DM42.Net, LLC
@@ -8,6 +8,7 @@
  * MinVersion: 3.7.4
  */
 
+use Zotlabs\Lib\Apps;
 
 function hsse_load() {
 	Zotlabs\Extend\Hook::register('page_header', 'addon/hsse/hsse.php', 'Hsse::page_header',1,523);
@@ -23,6 +24,9 @@ function hsse_unload() {
 class Hsse {
 
 	public static function page_header(&$header) {
+		if(! Apps::addon_app_installed(local_channel(), 'hsse')) {
+			return;
+		}
 		head_add_js('/addon/hsse/sceditor/minified/sceditor.min.js');
 		head_add_js('/addon/hsse/sceditor/minified/icons/monocons.js');
 		head_add_js('/addon/hsse/sceditor/minified/formats/bbcode.js');
@@ -31,6 +35,9 @@ class Hsse {
 	}
 
 	public static function page_end(&$content) {
+		if(! Apps::addon_app_installed(local_channel(), 'hsse')) {
+			return;
+		}
 		$content .= "
 			<style>
                         code:before {
@@ -64,6 +71,9 @@ class Hsse {
 	}
 
 	public static function status_editor(&$hook_arr) {
+		if(! Apps::addon_app_installed(local_channel(), 'hsse')) {
+			return;
+		}
 
 		$valid_modules = ['Network','Rpost','Editpost'];
 		if (!in_array($hook_arr['module'],$valid_modules)) {
