@@ -70,7 +70,7 @@ class Superblock extends Controller {
 		stringify_array_elms($list,true);
 		$query_str = implode(',',$list);
 		if($query_str) {
-			$r = q("select * from xchan where xchan_hash in ( " . $query_str . " ) ");
+			$r = q("select * from xchan where xchan_hash in ( " . $query_str . " ) and xchan_hash != '' ");
 		}
 		else
 			$r = [];
