@@ -9,6 +9,8 @@
  * MinVersion: 2.8
  */
 
+use Zotlabs\Lib\Apps;
+
 class Cart_subscriptions {
 
     public function __construct() {
@@ -141,8 +143,7 @@ class Cart_subscriptions {
       if (! $id)
         return;
 
-      $enablecart = cart_getcartconfig ('enable');
-      if (!isset($enablecart) || $enablecart != 1) {
+      if (! Apps::addon_app_installed($id, 'cart')) {
          return;
       }
       $enable_subscriptions = cart_getcartconfig ('subscriptions-enable');
@@ -157,11 +158,12 @@ class Cart_subscriptions {
       if(!local_channel())
         return;
 
-      if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1 || !isset($_POST['enable_cart_subscriptions'])) {
+      if (! Apps::addon_app_installed(local_channel(), 'cart')) {
         return;
       }
 
       $prev_enable = cart_getcartconfig('subscriptions-enable');
+
       $enable_cart_subscriptions = isset($_POST['enable_cart_subscriptions']) ? intval($_POST['enable_cart_subscriptions']) : 0;
       cart_setcartconfig('subscriptions-enable', $enable_cart_subscriptions );
 

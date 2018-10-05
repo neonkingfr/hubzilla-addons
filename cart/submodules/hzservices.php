@@ -9,6 +9,8 @@
  * MinVersion: 2.8
  */
 
+use Zotlabs\Lib\Apps;
+
 class Cart_hzservices {
 
     public static $catalog=array();
@@ -52,8 +54,7 @@ class Cart_hzservices {
       if (! $id)
         return;
 
-      $enablecart = get_pconfig ($id,'cart','enable');
-      if (!isset($enablecart) || $enablecart != 1) {
+      if (! Apps::addon_app_installed($id, 'cart')) {
          return;
       }
       $enable_hzservices = get_pconfig ($id,'cart_hzservices','enable');
@@ -68,7 +69,7 @@ class Cart_hzservices {
       if(!local_channel())
         return;
 
-      if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1) {
+      if (! Apps::addon_app_installed(local_channel(), 'cart')) {
         return;
       }
 

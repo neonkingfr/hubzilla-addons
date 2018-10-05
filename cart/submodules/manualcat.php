@@ -9,6 +9,8 @@
  * MinVersion: 2.8
  */
 
+use Zotlabs\Lib\Apps;
+
 class Cart_manualcat {
 
     public static $catalog=array();
@@ -51,8 +53,7 @@ class Cart_manualcat {
       if (! $id)
         return;
 
-      $enablecart = get_pconfig ($id,'cart','enable');
-      if (!isset($enablecart) || $enablecart != 1) {
+      if (! Apps::addon_app_installed($id, 'cart')) {
          return;
       }
       $enable_manualcat = get_pconfig ($id,'cart_manualcat','enable');
@@ -66,14 +67,12 @@ class Cart_manualcat {
       if(!local_channel())
         return;
 
-      if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1) {
+      if (! Apps::addon_app_installed(local_channel(), 'cart')) {
         return;
       }
 
+      $enable_cart_manualcat = isset($_POST['enable_cart_manualcat']) ? intval($_POST['enable_cart_manualcat']) : 0;
 
-      $prev_enable = get_pconfig(local_channel(),'cart_manualcat','enable');
-      $prev_enable = ($prev_enable) ? $prev_enable : 0;
-      $enable_cart_manualcat = isset($_POST['enable_cart_manualcat']) ? intval($_POST['enable_cart_manualcat']) : $prev_enable;
       set_pconfig( local_channel(), 'cart_manualcat', 'enable', $enable_cart_manualcat );
 
       Cart_manualcat::unload();

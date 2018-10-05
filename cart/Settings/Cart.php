@@ -44,7 +44,7 @@ class Cart {
 			return;
 		}
 
-		if(! Apps::addon_app_installed(local_channel(), 'cart')) {
+		if(! Apps::addon_app_installed($id, 'cart')) {
 			return;
 		}
 

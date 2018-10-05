@@ -8,6 +8,8 @@
  * MinVersion: 2.8
  */
 
+use Zotlabs\Lib\Apps;
+
 class Cart_paypalbutton {
 
     public $bearertoken;
@@ -74,8 +76,7 @@ class Cart_paypalbutton {
       if (! $id)
         return;
 
-      $enablecart = get_pconfig ($id,'cart','enable');
-      if (!isset($enablecart) || $enablecart != 1) {
+      if (! Apps::addon_app_installed($id, 'cart')) {
          return;
       }
 
@@ -129,7 +130,7 @@ class Cart_paypalbutton {
 
       $prev_enable = get_pconfig(local_channel(),'cart','paypalbutton_enable');
 
-      if (!$prev_enable && (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1 || !isset($_POST['enable_cart_paypalbutton']))) {
+      if (!$prev_enable && (!Apps::addon_app_installed(local_channel(), 'cart') || !isset($_POST['enable_cart_paypalbutton']))) {
         return;
       }
 
