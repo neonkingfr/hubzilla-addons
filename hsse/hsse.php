@@ -2,7 +2,7 @@
 /**
  * Name: Wysiwyg Status
  * Description: SCEditor implemented for simplified status editing on Hubzilla
- * Version: 0.5
+ * Version: 1.0
  * Author: DM42.Net, LLC
  * Maintainer: devhubzilla@dm42.net
  * MinVersion: 3.7.4
