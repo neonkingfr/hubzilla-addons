@@ -15,7 +15,7 @@ class Pubcrawl extends Controller {
 		if(! local_channel())
 			return;
 
-		if(! Apps::addon_app_installed(local_channel(),'Activitypub Protocol'))
+		if(! Apps::addon_app_installed(local_channel(), 'pubcrawl'))
 			return;
 
 		check_form_security_token_redirectOnErr('pubcrawl', 'pubcrawl');
@@ -33,7 +33,7 @@ class Pubcrawl extends Controller {
 
 		$desc = t('The activitypub protocol does not support location independence. Connections you make within that network may be unreachable from alternate channel locations.');
 
-		if(! Apps::addon_app_installed(local_channel(), 'nsfw')) {
+		if(! Apps::addon_app_installed(local_channel(), 'pubcrawl')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
