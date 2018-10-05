@@ -9,16 +9,19 @@
  */
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
 
 function hsse_load() {
-	Zotlabs\Extend\Hook::register('page_header', 'addon/hsse/hsse.php', 'Hsse::page_header',1,523);
-	Zotlabs\Extend\Hook::register('page_content', 'addon/hsse/hsse.php', 'Hsse::page_content',1,523);
-	Zotlabs\Extend\Hook::register('page_end', 'addon/hsse/hsse.php', 'Hsse::page_end',1,523);
-	Zotlabs\Extend\Hook::register('status_editor', 'addon/hsse/hsse.php', 'Hsse::status_editor',1,523);
+	Hook::register('page_header', 'addon/hsse/hsse.php', 'Hsse::page_header',1,523);
+	Hook::register('page_content', 'addon/hsse/hsse.php', 'Hsse::page_content',1,523);
+	Hook::register('status_editor', 'addon/hsse/hsse.php', 'Hsse::status_editor',1,523);
+	Route::register('addon/hsse/Mod_Hsse.php','hsse');
 }
 
 function hsse_unload() {
 	Zotlabs\Extend\Hook::unregister_by_file('addon/hsse/hsse.php');
+	Route::unregister('addon/hsse/Mod_Hsse.php','hsse');
 }
 
 class Hsse {
@@ -32,42 +35,7 @@ class Hsse {
 		head_add_js('/addon/hsse/sceditor/minified/formats/bbcode.js');
 
 		head_add_css('/addon/hsse/sceditor/minified/themes/default.min.css');
-	}
-
-	public static function page_end(&$content) {
-		if(! Apps::addon_app_installed(local_channel(), 'hsse')) {
-			return;
-		}
-		$content .= "
-			<style>
-                        code:before {
-                                position: absolute;
-                                content: 'Code:';
-                                top: -1.35em;
-                                left: 0;
-                        }
-                        code {
-                                margin-top: 1.5em;
-                                position: relative;
-                                background: #eee;
-                                border: 1px solid #aaa;
-                                white-space: pre;
-                                padding: .25em;
-                                min-height: 1.25em;
-                        }
-                        code:before, code {
-                                display: block;
-                                text-align: left;
-                        }
-			</style>
-
-			<script>
-		        window.onresize= function () {
-                                if (!instance) return;
-                                instance.width($('#profile-jot-wrapper').width());
-                        };
-			</script>
-			";
+		head_add_css('/addon/hsse/view/css/theme_override.css');
 	}
 
 	public static function status_editor(&$hook_arr) {

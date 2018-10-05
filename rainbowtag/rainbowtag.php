@@ -15,12 +15,12 @@ use Zotlabs\Extend\Route;
 
 function rainbowtag_load() {
 	Hook::register('construct_page', 'addon/rainbowtag/rainbowtag.php', 'rainbowtag_construct_page');
-	Route::register('addon/rainbowtag/Mod_rainbowtag.php','rainbowtag');
+	Route::register('addon/rainbowtag/Mod_Rainbowtag.php','rainbowtag');
 }
 
 function rainbowtag_unload() {
 	Hook::unregister('construct_page', 'addon/rainbowtag/rainbowtag.php', 'rainbowtag_construct_page');
-	Route::unregister('addon/rainbowtag/Mod_rainbowtag.php','rainbowtag');
+	Route::unregister('addon/rainbowtag/Mod_Rainbowtag.php','rainbowtag');
 }
 
 function rainbowtag_construct_page(&$b) {
