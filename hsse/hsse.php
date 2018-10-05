@@ -5,7 +5,7 @@
  * Version: 0.5
  * Author: DM42.Net, LLC
  * Maintainer: devhubzilla@dm42.net
- * MinVersion: 3.6.0
+ * MinVersion: 3.7.4
  */
 
 
