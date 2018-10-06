@@ -326,51 +326,60 @@ class Cart_subscriptions {
       cart_updateitem_meta($master_itemid,$itemmeta,$master_order);
     }
 
-    static public function get_catalog(&$catalog) {
-      // 		"sku-1"=>Array("item_sku"=>"sku-1","item_desc"=>"Description Item 1","item_price"=>5.55),
-      $subskus = cart_maybeunjson(cart_getcartconfig("subskus"));
-      foreach ($subskus as $subsku) {
-        $subinfo = Cart_subscriptions::get_subinfo($subsku);
-        $active = isset($subinfo["item_active"]) ? $subinfo["item_active"] : false;
-        if ($active) {
-          $catalog[$subsku] = Array("item_sku"=>$subsku,
-            "item_desc"=>$subinfo["item_description"],
-            "item_price"=>$subinfo["item_price"],
-            "item_type"=>"subscription"
-          );
-        }
-      }
-    }
+	static public function get_catalog(&$catalog) {
+		// 		"sku-1"=>Array("item_sku"=>"sku-1","item_desc"=>"Description Item 1","item_price"=>5.55),
+		$subskus = cart_maybeunjson(cart_getcartconfig("subskus"));
+		if(is_array($subskus)) {
+			foreach ($subskus as $subsku) {
+				$subinfo = Cart_subscriptions::get_subinfo($subsku);
+				$active = isset($subinfo["item_active"]) ? $subinfo["item_active"] : false;
+				if ($active) {
+					$catalog[$subsku] = Array("item_sku"=>$subsku,
+						"item_desc"=>$subinfo["item_description"],
+						"item_price"=>$subinfo["item_price"],
+						"item_type"=>"subscription"
+					);
+				}
+			}
+		}
+	}
 
-    static public function itemedit_formextras(&$pagecontent) {
-       $sku = isset($_REQUEST["SKU"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_REQUEST["SKU"]) : null;
-       $formelements = "";
+	static public function itemedit_formextras(&$pagecontent) {
+		$sku = isset($_REQUEST["SKU"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_REQUEST["SKU"]) : null;
+		$formelements = "";
 
-      $subskus = cart_maybeunjson(cart_getcartconfig("subskus"));
-      $subscriptions = Array("new"=>"New");
-      foreach ($subskus as $subsku) {
-        $subinfo=Cart_subscriptions::get_subinfo($subsku);
-        if ($subinfo["item_sku"] == $sku) {
-          $subscriptions[$subsku] = $subinfo["item_description"]."(".$subinfo["interval"]." ".$subinfo["term"].")";
-          $subscriptions[$subsku] .= " (cost: ".$subinfo["item_price"].")";
-          if ($subinfo["item_active"]) {
-            $subscriptions[$subsku] .= " (active)";
-          } else {
-            $subscriptions[$subsku] .= " (inactive)";
-          }
-        }
-      }
+		$subskus = cart_maybeunjson(cart_getcartconfig("subskus"));
+		$subscriptions = Array("new"=>"New");
 
-        $formelements .= replace_macros(get_markup_template('field_select.tpl'), array(
-          "field" => Array ("SKU", t('Select Subscription to Edit'),
-          "new", "",
-          $subscriptions
-          )));
-        $uri=strtok($_SERVER["REQUEST_URI"],'?').'?SKU='.urlencode($sku);
+		if(is_array($subskus)) {
+			foreach ($subskus as $subsku) {
+				$subinfo=Cart_subscriptions::get_subinfo($subsku);
+				if ($subinfo["item_sku"] == $sku) {
+					$subscriptions[$subsku] = $subinfo["item_description"]."(".$subinfo["interval"]." ".$subinfo["term"].")";
+					$subscriptions[$subsku] .= " (cost: ".$subinfo["item_price"].")";
+					if ($subinfo["item_active"]) {
+						$subscriptions[$subsku] .= " (active)";
+					} else {
+						$subscriptions[$subsku] .= " (inactive)";
+					}
+				}
+			}
+		}
 
-       $macrosubstitutes=Array("security_token"=>get_form_security_token(),"sku"=>$sku,"formelements"=>$formelements,"submit"=>t("Edit Subscriptions"),"uri"=>$uri);
-       $pagecontent.=replace_macros(get_markup_template('subscription.itemedit_formextras.tpl','addon/cart/submodules/'), $macrosubstitutes);
-    }
+		$formelements .= replace_macros(get_markup_template('field_select.tpl'), array(
+			"field" => Array (
+				"SKU",
+				t('Select Subscription to Edit'),
+				"new",
+				"",
+				$subscriptions
+			)
+		));
+		$uri=strtok($_SERVER["REQUEST_URI"],'?').'?SKU='.urlencode($sku);
+
+		$macrosubstitutes=Array("security_token"=>get_form_security_token(),"sku"=>$sku,"formelements"=>$formelements,"submit"=>t("Edit Subscriptions"),"uri"=>$uri);
+		$pagecontent.=replace_macros(get_markup_template('subscription.itemedit_formextras.tpl','addon/cart/submodules/'), $macrosubstitutes);
+	}
 
     static public function subscriptionadmin(&$pagecontent) {
 
