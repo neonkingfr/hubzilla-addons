@@ -18,29 +18,24 @@ function initEditor(cb){
                 		format: 'bbcode',
                 		style: 'addon/hsse/sceditor/minified/themes/content/default.min.css',
                 		id: 'sceditor-001',
-                		resizeMaxWidth: 500,
-                		width: 350,
                 		height: 300,
                 		toolbar: 'bold,italic,underline,strike,superscript,subscript|code,quote|horizontalrule|cut,copy,paste|hzsize,color|bulletlist,orderedlist|removeformat|maximize,source'
                 	});
                 	instance = sceditor.instance(texteditor);
-                        instance.width($('#profile-jot-wrapper').width());
 			instance.val($('#profile-jot-text').val());
                 	instance.blur(function () {
                         	instance.updateOriginal(true);
                 	});
 
-
-
 			$("#profile-jot-text").addClass('jot-expanded');
 			{{if $bbco_autocomplete}}
-			$("#profile-jot-text").bbco_autocomplete('{{$bbco_autocomplete}}'); // autocomplete bbcode
+			$("#sceditor-001 textarea").bbco_autocomplete('{{$bbco_autocomplete}}'); // autocomplete bbcode
 			{{/if}}
 			{{if $editor_autocomplete}}
 			if(typeof channelId === 'undefined')
-				$("#profile-jot-text").editor_autocomplete(baseurl+"/acl");
+				$("#sceditor-001 textarea").editor_autocomplete(baseurl+"/acl");
 			else
-				$("#profile-jot-text").editor_autocomplete(baseurl+"/acl",[channelId]); // Also gives suggestions from current channel's connections
+				$("#sceditor-001 textarea").editor_autocomplete(baseurl+"/acl",[channelId]); // Also gives suggestions from current channel's connections
 			{{/if}}
 			editor = true;
 			if (typeof cb!="undefined") cb();
