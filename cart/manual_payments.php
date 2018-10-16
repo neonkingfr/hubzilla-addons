@@ -11,9 +11,39 @@ function cart_post_manual_checkout_confirm () {
 	$order = cart_loadorder($orderhash);
 	cart_do_checkout ($order);
 	cart_do_checkout_after ($order);
-	//cart_do_fulfill ($order); //No auto fulfillment on manual payments.
+	call_hooks("cart_calc_totals_filter",$order);
+
+	if (intval($order["order_meta"]["totals"]["OrderTotal"]) == 0) {
+	        cart_do_checkout ($order);
+        	cart_do_checkout_after ($order);
+        	$hookinfo=Array("order"=>$order);
+        	cart_do_orderpaid ($hookinfo);
+		cart_manual_fulfill_order ($order); //No auto fulfillment on manual payments.
+	}
+
 	goaway(z_root() . '/cart/' . argv(1) . '/order/' . $orderhash);
 }
+
+function cart_manual_fulfill_order(&$hookdata) {
+      $orderhash=$hookdata["order_hash"];
+      //logger("[cart-ppbutton] - FULFILLORDER: ".print_r($orderhash,true),LOGGER_DEBUG);
+      foreach ($hookdata["items"] as $item) {
+        //logger("[cart-ppbutton] - Fulfill: ".print_r($item,true),LOGGER_DATA);
+        if (!$item["item_fulfilled"]) {
+          $itemtofulfill=Array('order_hash'=>$orderhash,'id'=>$item["id"]);
+          //logger("[cart-ppbutton] FULFILL ITEM: ".print_r($itemtofulfill,true),LOGGER_DATA);
+          cart_do_fulfillitem ($itemtofulfill);
+          if (isset($itemtofulfill["error"])) {
+              $hookdata["errors"][]=$itemtofulfill["error"];
+              $item_meta=cart_getitem_meta ($item["id"],$orderhash);
+              $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Auto Fulfillment Error: ".$itemtofulfill["error"];
+              cart_updateitem_meta($item["id"],$item_meta,$orderhash);
+          }
+        }
+      }
+      return;
+    }
+
 
 function cart_checkout_complete (&$hookdata) {
 
