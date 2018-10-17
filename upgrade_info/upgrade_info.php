@@ -44,7 +44,7 @@ function upgrade_info_construct_page(&$b){
 	$content[] = t('To improve usability, we have converted some features into installable stand-alone apps.');
 	$content[] = t('Please visit the $Projectname');
 	$content[] = '<a href="apps/available">' . t('app store') . '</a>';
-	$content[] = t('and install eventual missing apps.');
+	$content[] = t('and install possibly missing apps.');
 
 	$tpl = get_markup_template('upgrade_info.tpl', 'addon/upgrade_info');
 
