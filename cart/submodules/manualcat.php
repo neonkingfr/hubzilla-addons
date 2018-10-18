@@ -111,7 +111,7 @@ class Cart_manualcat {
     $itemlist = Cart_manualcat::get_itemlist();
     foreach ($itemlist as $item) {
       $skudata=Cart_manualcat::get_item($item);
-      if (!isset($skudata["item_active"])) {
+      if (!isset($skudata["item_active"]) || $skudata["item_active"] == 0 ) {
         unset($catalog[$item]);
       }
     }
