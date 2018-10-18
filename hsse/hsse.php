@@ -123,7 +123,7 @@ class Hsse {
 		
 		$feature_auto_save_draft = ((feature_enabled($x['profile_uid'], 'auto_save_draft')) ? "true" : "false");
 		
-		$tpl = get_markup_template('hsse-header.tpl','/addon/hsse/');
+		$tpl = get_markup_template('hsse-header.tpl','addon/hsse/');
 	
 		App::$page['htmlhead'] .= replace_macros($tpl, array(
 			'$baseurl' => z_root(),
@@ -148,7 +148,7 @@ class Hsse {
 			'$reset' => $reset
 		));
 	
-		$tpl = get_markup_template('hsse.tpl','/addon/hsse/');
+		$tpl = get_markup_template('hsse.tpl','addon/hsse/');
 	
 		$preview = t('Preview');
 		if(x($x, 'hide_preview'))
