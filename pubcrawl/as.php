@@ -443,8 +443,7 @@ function asencode_activity($i) {
 	if($i['item_private']) {
 		if($reply) {
 			if($i['author_xchan'] == $i['owner_xchan']) {
-				$m = as_map_acl($i,true);
-				$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
+				$ret['to'] = as_map_acl($i);
 			}
 			else {
 				if($is_directmessage) {
@@ -454,6 +453,7 @@ function asencode_activity($i) {
 						'name' => '@' . $reply_addr
 					];
 					$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
+					$ret['to'] = [ $reply_url ];
 				}
 				else {
 					$ret['to'] = [ $reply_url ];
@@ -461,8 +461,7 @@ function asencode_activity($i) {
 			}
 		}
 		else {
-			$m = as_map_acl($i,true);
-			$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
+			$ret['to'] = as_map_acl($i);
 		}
 	}
 	else {
