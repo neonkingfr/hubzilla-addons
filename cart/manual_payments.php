@@ -11,9 +11,39 @@ function cart_post_manual_checkout_confirm () {
 	$order = cart_loadorder($orderhash);
 	cart_do_checkout ($order);
 	cart_do_checkout_after ($order);
-	//cart_do_fulfill ($order); //No auto fulfillment on manual payments.
+	call_hooks("cart_calc_totals_filter",$order);
+
+	if (intval($order["order_meta"]["totals"]["OrderTotal"]) == 0) {
+	        cart_do_checkout ($order);
+        	cart_do_checkout_after ($order);
+        	$hookinfo=Array("order"=>$order);
+        	cart_do_orderpaid ($hookinfo);
+		cart_manual_fulfill_order ($order); //No auto fulfillment on manual payments.
+	}
+
 	goaway(z_root() . '/cart/' . argv(1) . '/order/' . $orderhash);
 }
+
+function cart_manual_fulfill_order(&$hookdata) {
+      $orderhash=$hookdata["order_hash"];
+      //logger("[cart-ppbutton] - FULFILLORDER: ".print_r($orderhash,true),LOGGER_DEBUG);
+      foreach ($hookdata["items"] as $item) {
+        //logger("[cart-ppbutton] - Fulfill: ".print_r($item,true),LOGGER_DATA);
+        if (!$item["item_fulfilled"]) {
+          $itemtofulfill=Array('order_hash'=>$orderhash,'id'=>$item["id"]);
+          //logger("[cart-ppbutton] FULFILL ITEM: ".print_r($itemtofulfill,true),LOGGER_DATA);
+          cart_do_fulfillitem ($itemtofulfill);
+          if (isset($itemtofulfill["error"])) {
+              $hookdata["errors"][]=$itemtofulfill["error"];
+              $item_meta=cart_getitem_meta ($item["id"],$orderhash);
+              $item_meta["notes"][]=date("Y-m-d h:i:sa T - ")."Auto Fulfillment Error: ".$itemtofulfill["error"];
+              cart_updateitem_meta($item["id"],$item_meta,$orderhash);
+          }
+        }
+      }
+      return;
+    }
+
 
 function cart_checkout_complete (&$hookdata) {
 
@@ -23,7 +53,8 @@ function cart_checkout_manual (&$hookdata) {
 
         $page_uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
 	$nick = App::$profile['channel_address'];
-	$manualpayments = get_pconfig($page_uid,'cart','enable_manual_payments');
+	//$manualpayments = get_pconfig($page_uid,'cart','enable_manual_payments');
+        $manualpayments = cart_getcartconfig("enable_manual_payments");
 	$manualpayments = isset($manualpayments) ? $manualpayments : false;
 
 	if (!$manualpayments) {
@@ -65,7 +96,6 @@ function cart_paymentopts_register_manual (&$hookdata) {
 
 	$manualpayments = get_pconfig(App::$profile['uid'],'cart','enable_manual_payments');
 	$manualpayments = isset($manualpayments) ? $manualpayments : false;
-        logger ("[cart] MANUAL PAYMENTS ($nick , ".$id.") ? ".print_r($manual_payments,true));
 	if ($manualpayments) {
 		$hookdata["manual"]=Array('title'=>'Manual Payment','html'=>"<b>Pay by Check, Money Order, or other manual payment method</b>");
 	}
@@ -74,9 +104,7 @@ function cart_paymentopts_register_manual (&$hookdata) {
 
 function cart_manualpayments_unload () {
 
-    Zotlabs\Extend\Hook::unregister('cart_paymentopts','addon/cart/manual_payments.php','cart_paymentopts_register_manual');
-    Zotlabs\Extend\Hook::unregister('cart_checkout_manual','addon/cart/manual_payments.php','cart_checkout_manual');
-    Zotlabs\Extend\Hook::unregister('cart_post_manual_checkout_confirm','addon/cart/manual_payments.php','cart_post_manual_checkout_confirm');
+    Zotlabs\Extend\Hook::unregister_by_file('addon/cart/manual_payments.php');
 
     }
 

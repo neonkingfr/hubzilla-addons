@@ -9,6 +9,8 @@
  * Maintainer: none
  */
 
+use Zotlabs\Lib\Apps;
+
 // use the new federation protocol
 define('DIASPORA_V2',1);
 
@@ -32,8 +34,6 @@ function diaspora_load() {
 		'permissions_update'          => 'diaspora_permissions_update',
 		'module_loaded'               => 'diaspora_load_module',
 		'follow_allow'                => 'diaspora_follow_allow',
-		'feature_settings_post'       => 'diaspora_feature_settings_post',
-		'feature_settings'            => 'diaspora_feature_settings',
 		'post_local'                  => 'diaspora_post_local',
 		'well_known'                  => 'diaspora_well_known',
 		'create_identity'             => 'diaspora_create_identity',
@@ -52,11 +52,14 @@ function diaspora_load() {
 		'channel_protocols'           => 'diaspora_channel_protocols'
 	]);
 
+	Zotlabs\Extend\Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
+
 	diaspora_init_relay();
 }
 
 function diaspora_unload() {
 	Zotlabs\Extend\Hook::unregister_by_file('addon/diaspora/diaspora.php');
+	Zotlabs\Extend\Route::unregister('addon/diaspora/Mod_Diaspora.php','diaspora');
 }
 
 
@@ -134,14 +137,14 @@ function diaspora_well_known(&$b) {
 
 function diaspora_channel_protocols(&$b) {
 
-	if(intval(get_pconfig($b['channel_id'],'system','diaspora_allowed')))
+	if(Apps::addon_app_installed($b['channel_id'], 'diaspora'))
 		$b['protocols'][] = 'diaspora';
 
 }
 
 function diaspora_personal_xrd(&$b) {
 
-	if(! intval(get_pconfig($b['user']['channel_id'],'system','diaspora_allowed')))
+	if(! Apps::addon_app_installed($b['user']['channel_id'], 'diaspora'))
 		return;
 
 	$dspr = replace_macros(get_markup_template('xrd_diaspora.tpl','addon/diaspora'),
@@ -162,7 +165,7 @@ function diaspora_webfinger(&$b) {
 	if(! $b['channel'])
 		return;
 
-	if(! intval(get_pconfig($b['channel']['channel_id'],'system','diaspora_allowed')))
+	if(! Apps::addon_app_installed($b['channel']['channel_id'], 'diaspora'))
 		return;
 
 	$b['result']['links'][] = [ 
@@ -280,7 +283,7 @@ function diaspora_process_outbound(&$arr) {
 		}
 	}
 
-	$allowed = get_pconfig($arr['channel']['channel_id'],'system','diaspora_allowed');
+	$allowed = Apps::addon_app_installed($arr['channel']['channel_id'], 'diaspora');
 
 	if(! intval($allowed)) {
 		logger('mod-diaspora: disallowed for channel ' . $arr['channel']['channel_name']);
@@ -454,7 +457,7 @@ function diaspora_process_outbound(&$arr) {
 			return;
 		}
 		elseif($arr['top_level_post']) {
-			if(perm_is_allowed($arr['channel']['channel_id'],'','view_stream')) {
+			if(perm_is_allowed($arr['channel']['channel_id'],'','view_stream',false)) {
 				logger('delivery: diaspora status: ' . $loc);
 				$qi = diaspora_send_status($target_item,$arr['channel'],$contact,true);
 				if($qi) {
@@ -492,7 +495,7 @@ function diaspora_process_outbound(&$arr) {
 function diaspora_queue($owner,$contact,$slap,$public_batch,$message_id = '') {
 
 
-	$allowed = get_pconfig($owner['channel_id'],'system','diaspora_allowed',1);
+	$allowed = Apps::addon_app_installed($owner['channel_id'], 'diaspora');
 
 	if(! intval($allowed)) {
 		return false;
@@ -547,7 +550,8 @@ function diaspora_follow_allow(&$b) {
 	if($b['xchan']['xchan_network'] !== 'diaspora' && $b['xchan']['xchan_network'] !== 'friendica-over-diaspora')
 		return;
 
-	$allowed = get_pconfig($b['channel_id'],'system','diaspora_allowed');
+	$allowed = Apps::addon_app_installed($b['channel_id'], 'diaspora');
+
 	if($allowed === false)
 		$allowed = 1;
 	$b['allowed'] = $allowed;
@@ -760,84 +764,6 @@ function diaspora_discover(&$b) {
 	}
 }
 
-
-function diaspora_feature_settings_post(&$b) {
-
-	if($_POST['diaspora-submit']) {
-		set_pconfig(local_channel(),'system','diaspora_allowed',intval($_POST['dspr_allowed']));
-		set_pconfig(local_channel(),'system','diaspora_public_comments',intval($_POST['dspr_pubcomment']));
-		set_pconfig(local_channel(),'system','prevent_tag_hijacking',intval($_POST['dspr_hijack']));
-		set_pconfig(local_channel(),'diaspora','sign_unsigned',intval($_POST['dspr_sign']));
-
-		$followed = $_POST['dspr_followed'];
-		$ntags = array();
-		if($followed) {
-			$tags = explode(',', $followed);
-			foreach($tags as $t) {
-				$t = trim($t);
-				if($t)
-					$ntags[] = $t;
-			}
-		}
-		set_pconfig(local_channel(),'diaspora','followed_tags',$ntags);
-
-		if(plugin_is_installed('statistics'))
-			diaspora_build_relay_tags();
-		
-		info( t('Diaspora Protocol Settings updated.') . EOL);
-	}
-}
-
-
-function diaspora_feature_settings(&$s) {
-
-	diaspora_init_relay();
-
-	$dspr_allowed = get_pconfig(local_channel(),'system','diaspora_allowed');
-	$pubcomments  = get_pconfig(local_channel(),'system','diaspora_public_comments',1);
-	$hijacking    = get_pconfig(local_channel(),'system','prevent_tag_hijacking');
-	$signing      = get_pconfig(local_channel(),'diaspora','sign_unsigned');
-	$followed     = get_pconfig(local_channel(),'diaspora','followed_tags');
-	if(is_array($followed))
-		$hashtags = implode(',',$followed);
-	else
-		$hashtags = '';
-
-	$sc = '<div>' . t('The Diaspora protocol does not support location independence. Connections you make within that network may be unreachable from alternate channel locations.') . '</div><br>';
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('dspr_allowed', t('Enable the Diaspora protocol for this channel'), $dspr_allowed, '', $yes_no),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('dspr_pubcomment', t('Allow any Diaspora member to comment on your public posts'), $pubcomments, '', $yes_no),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('dspr_hijack', t('Prevent your hashtags from being redirected to other sites'), $hijacking, '', $yes_no),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('dspr_sign', t('Sign and forward posts and comments with no existing Diaspora signature'), $signing, '', $yes_no),
-	));
-
-	if(plugin_is_installed('statistics')) {
-		$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-			'$field'	=> array('dspr_followed', t('Followed hashtags (comma separated, do not include the #)'), $hashtags, '')
-		));
-	}
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('diaspora', '<img src="addon/diaspora/diaspora.png" style="width:auto; height:1em; margin:-3px 5px 0px 0px;">' . t('Diaspora Protocol Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
-
-	return;
-
-}
-
-
-
 function diaspora_post_local(&$item) {
 
 	require_once('include/markdown.php');
@@ -930,13 +856,10 @@ function diaspora_post_local(&$item) {
 
 }
 
-
 function diaspora_create_identity($b) {
-
 	if(get_config('system','diaspora_allowed')) {
-		set_pconfig($b,'system','diaspora_allowed','1');
+		Apps::app_install($b, 'Diaspora Protocol');
 	}
-
 }
 
 function diaspora_import_foreign_channel_data(&$data) {
@@ -953,8 +876,8 @@ function diaspora_profile_sidebar(&$x) {
 
 	$profile = $x['profile'];
 
-    if(! intval(get_pconfig($profile['channel_id'],'system','diaspora_allowed')))
-        return;
+	if(! Apps::addon_app_installed($profile['channel_id'], 'diaspora'))
+		return;
 
 	$firstname = ((strpos($profile['channel_name'],' '))
 		? trim(substr($profile['channel_name'],0,strpos($profile['channel_name'],' '))) : $profile['channel_name']);
@@ -1231,7 +1154,7 @@ function diaspora_service_plink(&$b) {
 
 function diaspora_can_comment_on_post(&$b) {
 	if(local_channel() && strpos($b['item']['comment_policy'],'diaspora') !== false) {
-		$b['allowed'] = get_pconfig(local_channel(),'system','diaspora_allowed');
+		$b['allowed'] = Apps::addon_app_installed(local_channel(), 'diaspora');
 	}
 }
 

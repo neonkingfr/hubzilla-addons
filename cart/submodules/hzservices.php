@@ -9,6 +9,8 @@
  * MinVersion: 2.8
  */
 
+use Zotlabs\Lib\Apps;
+
 class Cart_hzservices {
 
     public static $catalog=array();
@@ -18,38 +20,28 @@ class Cart_hzservices {
     }
 
     static public function load (){
-      Zotlabs\Extend\Hook::register('feature_settings', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings',1);
-      Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings_post',1);
-      Zotlabs\Extend\Hook::register('cart_myshop_menufilter', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::myshop_menuitems',1,1000);
-      Zotlabs\Extend\Hook::register('cart_myshop_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemadmin',1,1000);
-      Zotlabs\Extend\Hook::register('cart_fulfill_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::fulfill_hzservices',1,1000);
-      Zotlabs\Extend\Hook::register('cart_cancel_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::rollback_hzservices',1,1000);
-      Zotlabs\Extend\Hook::register('cart_get_catalog', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::get_catalog',1,1000);
-      Zotlabs\Extend\Hook::register('cart_filter_catalog_display', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::filter_catalog_display',1,1000);
-      Zotlabs\Extend\Hook::register('cart_post_hzservices_itemedit', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_post',1,1000);
-      Zotlabs\Extend\Hook::register('cart_post_hzservices_itemactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_activation_post',1,1000);
-      Zotlabs\Extend\Hook::register('cart_post_hzservices_itemdeactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_deactivation_post',1,1000);
-      Zotlabs\Extend\Hook::register('cart_submodule_activation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::module_activation',1,1000);
-      Zotlabs\Extend\Hook::register('cart_order_before_additem_hzservices', 'addon/cart/submodule/hzservices.php', 'Cart_hzservices::filter_before_add',1,1);
+      Zotlabs\Extend\Hook::register('cart_addon_settings', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::addon_settings',1);
+      Zotlabs\Extend\Hook::register('cart_addon_settings_post', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::addon_settings_post',1);
+      
+      Zotlabs\Extend\Hook::register('cart_myshop_menufilter', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::myshop_menuitems',1,1001);
+      Zotlabs\Extend\Hook::register('cart_myshop_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemadmin',1,1001);
+      Zotlabs\Extend\Hook::register('cart_fulfill_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::fulfill_hzservices',1,1001);
+      Zotlabs\Extend\Hook::register('cart_cancel_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::rollback_hzservices',1,1001);
+      Zotlabs\Extend\Hook::register('cart_get_catalog', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::get_catalog',1,1001);
+      Zotlabs\Extend\Hook::register('cart_filter_catalog_display', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::filter_catalog_display',1,1001);
+      Zotlabs\Extend\Hook::register('cart_post_hzservices_itemedit', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_post',1,1001);
+      Zotlabs\Extend\Hook::register('cart_post_hzservices_itemactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_activation_post',1,1001);
+      Zotlabs\Extend\Hook::register('cart_post_hzservices_itemdeactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_deactivation_post',1,1001);
+      Zotlabs\Extend\Hook::register('cart_submodule_activation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::module_activation',1,1001);
+      Zotlabs\Extend\Hook::register('cart_order_before_additem_hzservices', 'addon/cart/submodule/hzservices.php', 'Cart_hzservices::filter_before_add',1,1001);
     }
 
     static public function unload () {
-      Zotlabs\Extend\Hook::unregister('feature_settings', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings');
-      Zotlabs\Extend\Hook::unregister('feature_settings_post', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::settings_post');
-      Zotlabs\Extend\Hook::unregister('cart_myshop_menufilter', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::myshop_menuitems');
-      Zotlabs\Extend\Hook::unregister('cart_myshop_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemadmin');
-      Zotlabs\Extend\Hook::unregister('cart_fulfill_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::fulfill_hzservices');
-      Zotlabs\Extend\Hook::unregister('cart_cancel_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::rollback_hzservices');
-      Zotlabs\Extend\Hook::unregister('cart_get_catalog', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::get_catalog');
-      Zotlabs\Extend\Hook::unregister('cart_filter_catalog_display', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::filter_catalog_display');
-      Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemedit', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_post');
-      Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_activation_post');
-      Zotlabs\Extend\Hook::unregister('cart_post_hzservices_itemdeactivation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemedit_deactivation_post');
-      Zotlabs\Extend\Hook::unregister('cart_submodule_activation', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::module_activation');
-      Zotlabs\Extend\Hook::unregister('cart_order_before_additem_hzservices', 'addon/cart/submodule/hzservices.php', 'Cart_hzservices::filter_before_add');
+      Zotlabs\Extend\Hook::unregister_by_file('addon/cart/submodules/hzservices.php');
     }
 
     static public function module_activation (&$hookdata) {
+      logger("MODULE ACTIVATION: hzservices",LOGGER_DEBUG);
       cart_config_additemtype("hzservices");
     }
 
@@ -57,46 +49,35 @@ class Cart_hzservices {
       //cart_config_delitemtype("hzservices");
     }
 
-    static public function settings (&$s) {
+    static public function addon_settings (&$sc) {
       $id = local_channel();
       if (! $id)
         return;
 
-      $enablecart = get_pconfig ($id,'cart','enable');
-      if (!isset($enablecart) || $enablecart != 1) {
+      if (! Apps::addon_app_installed($id, 'cart')) {
          return;
       }
       $enable_hzservices = get_pconfig ($id,'cart_hzservices','enable');
-      $sc = replace_macros(get_markup_template('field_checkbox.tpl'), array(
+      $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
                  '$field'	=> array('enable_cart_hzservices', t('Enable Hubzilla Services Module'),
                    (isset($enable_hzservices) ? intval($enable_hzservices) : 0),
                    '',array(t('No'),t('Yes')))));
 
-      $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-                 '$addon' 	=> array('cart-hzsvc',
-                   t('Cart - Hubzilla Services Addon'), '',
-                   t('Submit')),
-                 '$content'	=> $sc));
-
     }
 
-    static public function settings_post () {
+    static public function addon_settings_post () {
       if(!local_channel())
         return;
 
-      if (!isset($_POST['enable_cart']) || $_POST['enable_cart'] != 1 || !isset($_POST['enable_cart_hzservices'])) {
+      if (! Apps::addon_app_installed(local_channel(), 'cart')) {
         return;
       }
 
-
-      $prev_enable = get_pconfig(local_channel(),'cart_hzservices','enable');
       $enable_cart_hzservices = isset($_POST['enable_cart_hzservices']) ? intval($_POST['enable_cart_hzservices']) : 0;
       set_pconfig( local_channel(), 'cart_hzservices', 'enable', $enable_cart_hzservices );
 
       Cart_hzservices::unload();
       Cart_hzservices::load();
-
-
     }
 
   static public function item_fulfill(&$orderitem) {
@@ -109,10 +90,11 @@ class Cart_hzservices {
   static public function get_catalog(&$catalog) {
     if (count(Cart_hzservices::$catalog) > 0) return Cart_hzservices::$catalog;
     // 		"sku-1"=>Array("item_sku"=>"sku-1","item_desc"=>"Description Item 1","item_price"=>5.55),
+    logger("HZServices - get catalog",LOGGER_DEBUG);
     $itemlist = Cart_hzservices::get_itemlist();
     foreach ($itemlist as $item) {
-      $active = isset($item["item_active"]) ? $item["item_active"] : false;
-      if ($active) {
+      //$active = isset($item["item_active"]) ? $item["item_active"] : false;
+      //if ($active) {
         $catalog[$item["item_sku"]] = Array("item_sku"=>$item["item_sku"],
           "item_desc"=>$item["item_description"],
           "item_price"=>$item["item_price"],
@@ -121,7 +103,15 @@ class Cart_hzservices {
           "item_deactivate_commands"=>$item["deactivate_commands"],
           "locked"=>false
         );
+      //}
+    }
+  }
 
+  static public function filter_catalog_display(&$catalog) {
+    $itemlist = Cart_hzservices::get_itemlist();
+    foreach ($itemlist as $item) {
+      if (!isset($item["item_active"]) || $item["item_active"] == 0) {
+        unset($catalog[$item["item_sku"]]);
       }
     }
   }
@@ -134,14 +124,14 @@ class Cart_hzservices {
 
   static public function get_itemlist() {
     //$skus = get_pconfig(local_channel(),'cart-hzservices','skus');
-    $skus = get_pconfig(\App::$profile['profile_uid'],'cart-hzservices','skus');
+    $skus = get_pconfig(Cart::get_seller_id(),'cart-hzservices','skus');
     $skus = $skus ? cart_maybeunjson($skus) : Array();
     return $skus;
   }
 
   static public function save_itemlist($itemlist) {
     $items=cart_maybejson($itemlist);
-    set_pconfig(\App::$profile['profile_uid'],'cart-hzservices','skus',$items);
+    set_pconfig(Cart::get_seller_id(),'cart-hzservices','skus',$items);
   }
 
   static public function itemadmin(&$pagecontent) {
@@ -155,6 +145,7 @@ class Cart_hzservices {
     $sku = isset($_REQUEST["SKU"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_REQUEST["SKU"]) : null;
     if ($sku) {
       $pagecontent=Cart_hzservices::itemedit_form($sku);
+      call_hooks('itemedit_formextras',$pagecontent);
       return;
     }
 
@@ -224,7 +215,7 @@ class Cart_hzservices {
             $grps = array();
             $o = '';
 
-            $r = q("SELECT * FROM groups WHERE deleted = 0 AND uid = %d ORDER BY gname ASC",
+            $r = q("SELECT * FROM pgrp WHERE deleted = 0 AND uid = %d ORDER BY gname ASC",
                     intval($uid)
             );
             $grps[] = array('name' => '', 'hash' => '0', 'selected' => '');
@@ -414,6 +405,7 @@ class Cart_hzservices {
     $item= isset ($skus[$sku]) ? $skus[$sku] : null;
 
     $commandlist = $item["activate_commands"];
+
     foreach ($commandlist as $command) {
       switch ($command["cmd"]) {
         case "addtoprivacygroup":
@@ -472,7 +464,7 @@ class Cart_hzservices {
   static public function rollback_hzservices(&$calldata) {
     $orderhash=$calldata["item"]["order_hash"];
     $order=cart_loadorder($orderhash);
-    
+
     $seller_hash=$order["seller_channel"];
     $seller_chaninfo = channelx_by_hash($seller_hash);
     $seller_address = $seller_chaninfo["xchan_address"];
@@ -480,12 +472,11 @@ class Cart_hzservices {
     $buyer_xchan = $order["buyer_xchan"];
     $buyer_channel = xchan_fetch(Array("hash"=>$buyer_xchan));
 
-    $skus=get_pconfig(App::$profile['uid'],'cart-hzservices','skus');
+    $skus=get_pconfig(Cart::$seller["channel_id"],'cart-hzservices','skus');
     $skus = $skus ? cart_maybeunjson($skus) : Array();
     $itemsku = $calldata["item"]["item_sku"];
     $itemid = $calldata["item"]["id"];
     $sku = $skus[$itemsku];
-
     foreach ($sku["deactivate_commands"] as $command) {
       switch ($command["cmd"]) {
         case "rmvfromprivacygroup":
@@ -512,7 +503,7 @@ class Cart_hzservices {
              continue;
           }
 
-          $removed=contact_remove(local_channel(), $cn[0]['abook_id']);
+          $removed=contact_remove(Cart::get_seller_id(), $cn[0]['abook_id']);
           build_sync_packet($seller_uid,
             array('abook' => array(array(
                   'abook_xchan' => $cn[0]['abook_xchan'],
@@ -555,7 +546,7 @@ class Cart_hzservices {
     $grps = array();
     $o = '';
 
-    $r = q("SELECT * FROM groups WHERE deleted = 0 AND uid = %d ORDER BY gname ASC",
+    $r = q("SELECT * FROM pgrp WHERE deleted = 0 AND uid = %d ORDER BY gname ASC",
         intval($uid)
     );
     $grps[] = array('name' => '', 'hash' => '0', 'selected' => '');
@@ -637,7 +628,9 @@ class Cart_hzservices {
       notice ("Access Denied.".EOL);
       return;
     }
-    $seller_uid = \App::$profile['profile_uid'];
+
+    head_add_css("/addon/cart/submodules/view/css/hzservices.css");
+    $seller_uid = Cart::get_seller_id();
 
     $skus = get_pconfig(local_channel(),'cart-hzservices','skus');
     $items = $skus ? cart_maybeunjson($skus) : Array();
@@ -661,6 +654,7 @@ class Cart_hzservices {
     $formelements["itemdetails"].= replace_macros(get_markup_template('field_input.tpl'), array(
                 '$field'	=> array('item_price', t('Price'),
                 (isset($item["item_price"]) ? $item["item_price"] : "0.00"))));
+    $formelements["itemactivation"].= "<h3><u>Channel Commands</u></h3>\n";
     $formelements["itemactivation"].= replace_macros(get_markup_template('field_radio.tpl'), array(
    				     '$field'	=> array('cmd', t('Add buyer to privacy group'),
 							 "addtoprivacygroup","Add purchaser to the selected privacy group"
@@ -673,6 +667,7 @@ class Cart_hzservices {
 
     if (Cart_hzservices::is_admin_merchant()) {
         $formelements["itemactivation"].= "<div id=\"cart-admin-merchant-activation\">\n";
+        $formelements["itemactivation"].= "<h3><u>System Commands</u></h3>\n";
         $formelements["itemactivation"].= replace_macros(get_markup_template('field_radio.tpl'), array(
    				     '$field'	=> array('cmd', t('Set Service Class'),
 							 "setsvcclass","Set the service class of the user"
@@ -713,7 +708,8 @@ class Cart_hzservices {
     }
     if (isset($item["deactivate_commands"])) {
       if (Cart_hzservices::is_admin_merchant()) {
-        $formelements["itemdeactivation"].= "<div id=\"cart-admin-merchant-activation\">\n";
+        $formelements["itemdeactivation"].= "<div id=\"cart-admin-merchant-deactivation\">\n";
+        $formelements["itemdeactivation"].= "<h3><u>System Commands</u></h3>\n";
         $formelements["itemdeactivation"].= replace_macros(get_markup_template('field_radio.tpl'), array(
    				     '$field'	=> array('cmd', t('Set Service Class'),
 							 "setsvcclass","Set the service class of the user"
@@ -727,13 +723,13 @@ class Cart_hzservices {
         $cmdtext="";
         switch($command["cmd"]) {
           case "rmvfromprivacygroup":
-            $cmdtext.="Add buyer to privacy group: ";
+            $cmdtext.="Remove buyer from privacy group: ";
             $grouprec=group_rec_byhash($seller_uid,$command["params"]["group"]);
             $cmdtext.=$grouprec["gname"];
             $cmdtext.=' <button class="btn btn-sm" type="submit" name="del" value="'.$command["cmdhash"].'"><i class="fa fa-trash fa-fw" aria-hidden="true"></i></button>';
             break;
           case "rmvconnection":
-            $cmdtext.="Add buyer as connection.";
+            $cmdtext.="Remove buyer as connection.";
             $cmdtext.=' <button class="btn btn-sm" type="submit" name="del" value="'.$command["cmdhash"].'"><i class="fa fa-trash fa-fw" aria-hidden="true"></i></button>';
         }
         if (Cart_hzservices::is_admin_merchant()) {

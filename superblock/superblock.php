@@ -3,7 +3,7 @@
 
 /**
  * Name: superblock
- * Description: block people
+ * Description: block channels
  * Version: 2.0
  * Author: Mike Macgirvin
  * Maintainer: Mike Macgirvin <mike@macgirvin.com> 
@@ -16,11 +16,11 @@
  *
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Route;
 
 function superblock_load() {
 
-	register_hook('feature_settings', 'addon/superblock/superblock.php', 'superblock_addon_settings');
-	register_hook('feature_settings_post', 'addon/superblock/superblock.php', 'superblock_addon_settings_post');
 	register_hook('conversation_start', 'addon/superblock/superblock.php', 'superblock_conversation_start');
 	register_hook('thread_author_menu', 'addon/superblock/superblock.php', 'superblock_item_photo_menu');
 	register_hook('enotify_store', 'addon/superblock/superblock.php', 'superblock_enotify_store');
@@ -30,14 +30,13 @@ function superblock_load() {
 	register_hook('stream_item', 'addon/superblock/superblock.php', 'superblock_stream_item');
 	register_hook('post_mail', 'addon/superblock/superblock.php', 'superblock_post_mail');
 	register_hook('activity_widget', 'addon/superblock/superblock.php', 'superblock_activity_widget');
+	Route::register('addon/superblock/Mod_Superblock.php','superblock');
 
 }
 
 
 function superblock_unload() {
 
-	unregister_hook('feature_settings', 'addon/superblock/superblock.php', 'superblock_addon_settings');
-	unregister_hook('feature_settings_post', 'addon/superblock/superblock.php', 'superblock_addon_settings_post');
 	unregister_hook('conversation_start', 'addon/superblock/superblock.php', 'superblock_conversation_start');
 	unregister_hook('thread_author_menu', 'addon/superblock/superblock.php', 'superblock_item_photo_menu');
 	unregister_hook('enotify_store', 'addon/superblock/superblock.php', 'superblock_enotify_store');
@@ -47,6 +46,7 @@ function superblock_unload() {
 	unregister_hook('stream_item', 'addon/superblock/superblock.php', 'superblock_stream_item');
 	unregister_hook('post_mail', 'addon/superblock/superblock.php', 'superblock_post_mail');
 	unregister_hook('activity_widget', 'addon/superblock/superblock.php', 'superblock_activity_widget');
+	Route::unregister('addon/superblock/Mod_Superblock.php','superblock');
 
 }
 
@@ -80,60 +80,11 @@ class Superblock {
 
 }
 
-
-
-
-
-function superblock_addon_settings(&$a,&$s) {
-
-	if(! local_channel())
-		return;
-
-	$cnf = get_pconfig(local_channel(),'system','blocked');
-	if(! $cnf)
-		$cnf = '';
-
-	$list = explode(',',$cnf);
-	stringify_array_elms($list,true);
-	$query_str = implode(',',$list);
-	if($query_str) {
-		$r = q("select * from xchan where xchan_hash in ( " . $query_str . " ) ");
-	}
-	else
-		$r = [];
-
-	if($r) {
-		for($x = 0; $x < count($r); $x ++) {
-			$r[$x]['encoded_hash'] = urlencode($r[$x]['xchan_hash']);
-		}
-	}
-
-	$sc = replace_macros(get_markup_template('superblock_list.tpl','addon/superblock'), [
-		'$blocked' => t('Currently blocked'),
-		'$entries' => $r,
-		'$nothing' => (($r) ? '' : t('No channels currently blocked')),
-		'$token' => get_form_security_token('superblock'),
-		'$remove' => t('Remove')
-	]);
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('superblock', t('Superblock Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
-
-	return;
-
-}
-
-function superblock_addon_settings_post(&$a,&$b) {
-
-	if(! local_channel())
-		return;
-
-}
-
 function superblock_stream_item(&$a,&$b) {
 	if(! local_channel())
+		return;
+
+	if(! Apps::addon_app_installed(local_channel(), 'superblock'))
 		return;
 
 	$sb = new Superblock(local_channel());
@@ -165,6 +116,9 @@ function superblock_stream_item(&$a,&$b) {
 
 function superblock_item_store(&$a,&$b) {
 
+	if(! Apps::addon_app_installed($b['uid'], 'superblock'))
+		return;
+
 	if(! $b['item_wall'])
 		return;
 
@@ -185,6 +139,9 @@ function superblock_item_store(&$a,&$b) {
 
 function superblock_post_mail(&$a,&$b) {
 
+	if(! Apps::addon_app_installed($b['channel_id'], 'superblock'))
+		return;
+
 	$sb = new Superblock($b['channel_id']);
 
 	$found = false;
@@ -204,6 +161,9 @@ function superblock_post_mail(&$a,&$b) {
 
 
 function superblock_enotify_store(&$a,&$b) {
+
+	if(! Apps::addon_app_installed($b['uid'], 'superblock'))
+		return;
 
 	$sb = new Superblock($b['uid']);
 
@@ -226,6 +186,8 @@ function superblock_enotify_store(&$a,&$b) {
 
 function superblock_api_format_items(&$a,&$b) {
 
+	if(! Apps::addon_app_installed($b['api_user'], 'superblock'))
+		return;
 
 	$sb = new Superblock($b['api_user']);
 	$ret = [];
@@ -253,6 +215,8 @@ function superblock_directory_item(&$a,&$b) {
 	if(! local_channel())
 		return;
 
+	if(! Apps::addon_app_installed(local_channel(), 'superblock'))
+		return;
 
 	$sb = new Superblock(local_channel());
 
@@ -271,6 +235,9 @@ function superblock_directory_item(&$a,&$b) {
 function superblock_activity_widget(&$a,&$b) {
 
 	if(! local_channel())
+		return;
+
+	if(! Apps::addon_app_installed(local_channel(), 'superblock'))
 		return;
 
 	$sb = new Superblock(local_channel());
@@ -292,6 +259,9 @@ function superblock_activity_widget(&$a,&$b) {
 function superblock_conversation_start(&$a,&$b) {
 
 	if(! local_channel())
+		return;
+
+	if(! Apps::addon_app_installed(local_channel(), 'superblock'))
 		return;
 
 	$words = get_pconfig(local_channel(),'system','blocked');
@@ -321,6 +291,9 @@ function superblock_item_photo_menu(&$a,&$b) {
 	if(! local_channel())
 		return;
 
+	if(! Apps::addon_app_installed(local_channel(), 'superblock'))
+		return;
+
 	$blocked = false;
 	$author = $b['item']['author_xchan'];
 	$item = $b['item']['id'];
@@ -341,61 +314,10 @@ function superblock_item_photo_menu(&$a,&$b) {
 		return;
 
 	$b['menu'][] = [           
-			'menu' => 'superblock',
-            'title' => t('Block Completely'),
-            'icon' => 'fw',
-            'action' => 'superblockBlock(\'' . $author . '\',' . $item . '); return false;',
-            'href' => '#'
+		'menu' => 'superblock',
+		'title' => t('Block Completely'),
+		'icon' => 'fw',
+		'action' => 'superblockBlock(\'' . $author . '\',' . $item . '); return false;',
+		'href' => '#'
 	];
-}
-
-function superblock_module() {}
-
-
-function superblock_init(&$a) {
-
-	if(! local_channel())
-		return;
-
-	$words = get_pconfig(local_channel(),'system','blocked');
-
-	if(array_key_exists('block',$_GET) && $_GET['block']) {
-		$r = q("select id from item where id = %d and author_xchan = '%s' limit 1",
-			intval($_GET['item']),
-			dbesc($_GET['block'])
-		);
-		if($r) {
-			if(strlen($words))
-				$words .= ',';
-			$words .= trim($_GET['block']);
-		}
-	}
-
-	if(array_key_exists('unblock',$_GET) && $_GET['unblock']) {
-		if(check_form_security_token('superblock','sectok')) {
-			$newlist = [];
-			$list = explode(',',$words);
-			if($list) {
-				foreach($list as $li) {
-					if($li !== $_GET['unblock']) {
-						$newlist[] = $li;
-					}
-				}
-			}
-
-			$words = implode(',',$newlist);
-		}
-	}
-
-
-	set_pconfig(local_channel(),'system','blocked',$words);
-	build_sync_packet();
-
-	info( t('superblock settings updated') . EOL );
-
-	if($_GET['unblock'])
-		goaway(z_root() . '/settings/featured');
-
-
-	killme();
 }

@@ -131,7 +131,7 @@ function statusnet_unload() {
 
 function statusnet_jot_nets(&$a,&$b) {
 
-	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream'))) 
+	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false))) 
 		return;
 
 	$statusnet_post = get_pconfig(local_channel(),'statusnet','post');
@@ -633,7 +633,7 @@ function statusnet_post_hook(&$a,&$b) {
 		return;
 	}
 
-	if(! perm_is_allowed($b['uid'],'','view_stream')) {
+	if(! perm_is_allowed($b['uid'],'','view_stream',false)) {
 		logger('permissions prevent crossposting.',LOGGER_DEBUG);
 		return;
 	}

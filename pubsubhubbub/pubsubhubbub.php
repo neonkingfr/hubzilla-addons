@@ -333,7 +333,7 @@ function pubsubhubbub_init(&$a) {
 			http_status_exit(404);
 		}
 
-		if(! perm_is_allowed($owner['channel_id'],'','view_stream')) {
+		if(! perm_is_allowed($owner['channel_id'],'','view_stream',false)) {
 			logger('pubsubhubbub: local channel ' . $nick .
 				   'has chosen to hide wall, ignoring.');
 			http_status_exit(403);

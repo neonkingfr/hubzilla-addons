@@ -7,12 +7,12 @@
  */
 
 function mdpost_load() {
-	\Zotlabs\Extend\Hook::Register('post_content','addon/mdpost/mdpost.php','mdpost_post_content');
-	\Zotlabs\Extend\Hook::Register('get_features','addon/mdpost/mdpost.php','mdpost_get_features');
+	\Zotlabs\Extend\Hook::register('post_content','addon/mdpost/mdpost.php','mdpost_post_content');
+	\Zotlabs\Extend\Hook::register('get_features','addon/mdpost/mdpost.php','mdpost_get_features');
 }
 function mdpost_unload() {
-	\Zotlabs\Extend\Hook::Unregister('post_content','addon/mdpost/mdpost.php','mdpost_post_content');
-	\Zotlabs\Extend\Hook::UnRegister('get_features','addon/mdpost/mdpost.php','mdpost_get_features');
+	\Zotlabs\Extend\Hook::unregister('post_content','addon/mdpost/mdpost.php','mdpost_post_content');
+	\Zotlabs\Extend\Hook::unregister('get_features','addon/mdpost/mdpost.php','mdpost_get_features');
 }
 
 
@@ -20,6 +20,7 @@ function mdpost_post_content(&$x) {
 
 	if(! (local_channel() && local_channel() == intval($x['profile_uid'])))
 		return;
+
 	if($x['mimetype'] !== 'text/bbcode')
 		return;
 
@@ -40,10 +41,9 @@ function mdpost_get_features(&$x) {
 		t('Markdown'),                                                                      
 		t('Use markdown for editing posts'),                                                
 		false,                                                                              
-		get_config('feature_lock','markdown'),                                              
-		feature_level('markdown',2),          
+		get_config('feature_lock','markdown')
 	];
 
-	$x['features']['composition'][] = $entry;
+	$x['features']['editor'][] = $entry;
 
 }

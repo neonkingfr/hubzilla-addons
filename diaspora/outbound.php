@@ -1,5 +1,6 @@
 <?php
 
+use Zotlabs\Lib\Apps;
 
 function diaspora_prepare_outbound($msg,$owner,$contact,$owner_prvkey,$contact_pubkey,$public = false) {
 
@@ -207,9 +208,7 @@ EOT;
 
 function diaspora_share($owner,$contact) {
 
-	$allowed = get_pconfig($owner['channel_id'],'system','diaspora_allowed');
-	if($allowed === false)
-		$allowed = 1;
+	$allowed = Apps::addon_app_installed($owner['channel_id'], 'diaspora');
 
 	if(! intval($allowed)) {
 		logger('diaspora_share: disallowed for channel ' . $owner['channel_name']);
@@ -606,7 +605,7 @@ function diaspora_send_retraction($item,$owner,$contact,$public_batch = false) {
 		}
 	}
 	else {
-		$target_type = 'StatusMessage';
+		$target_type = 'Post';
 	}
 
 	$fields = [

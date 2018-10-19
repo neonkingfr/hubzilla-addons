@@ -80,11 +80,42 @@
 
 </div>
 
+
+
 <script>
 	justifyPhotos('photo-albums');
 
-	$(document).on('click', '.init-gallery', function() {
+	var gallery = {};
 
+	// items array
+	var items = [];
+
+	{{if $json_album}}
+	var items = {{$json_album}};
+	{{/if}}
+
+	// define options
+	var options = {
+		index: 0, // start at first slide
+		preload: [1, 3],
+		shareButtons: [
+			{ id: 'conv_link', label: 'View conversation', url: 'photos/{{$nick}}/image/\{\{raw_image_url\}\}' },
+			{ id: 'download', label: 'Download fullsize image', url: 'photo/\{\{raw_image_url\}\}', download: true }
+		],
+		getImageURLForShare: function( shareButtonData ) {
+			return gallery.currItem.resource_id;
+		}
+	};
+
+	var pswpElement = document.querySelectorAll('.pswp')[0];
+
+	// Initializes and opens PhotoSwipe
+	if(items.length) {
+		gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
+		gallery.init();
+	}
+
+	$(document).on('click', '.init-gallery', function() {
 		$.post(
 			'gallery/{{$nick}}',
 			{
@@ -92,31 +123,11 @@
 				'unsafe' : {{$unsafe}}
 			},
 			function(items) {
-
-				var pswpElement = document.querySelectorAll('.pswp')[0];
-
-				// items array
-				//var items = data;
-
-				// define options
-				var options = {
-					index: 0, // start at first slide
-					preload: [1, 3],
-					shareButtons: [
-						{ id: 'conv_link', label: 'View conversation', url: 'photos/{{$nick}}/image/\{\{raw_image_url\}\}' },
-						{ id: 'download', label: 'Download fullsize image', url: 'photo/\{\{raw_image_url\}\}', download: true }
-					],
-					getImageURLForShare: function( shareButtonData ) {
-						return gallery.currItem.resource_id;
-					}
-				};
-
 				// Initializes and opens PhotoSwipe
-				var gallery = new PhotoSwipe( pswpElement, PhotoSwipeUI_Default, items, options);
+				gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
 				gallery.init();
 			},
 			'json'
 		);
-
 	});
 </script>

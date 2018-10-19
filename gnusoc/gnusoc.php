@@ -9,6 +9,9 @@
  * Maintainer: none
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
 
 require_once('include/crypto.php');
 require_once('include/items.php');
@@ -31,18 +34,16 @@ function gnusoc_install() {
 function gnusoc_load() {
 	register_hook('module_loaded', 'addon/gnusoc/gnusoc.php', 'gnusoc_load_module');
 	register_hook('webfinger', 'addon/gnusoc/gnusoc.php', 'gnusoc_webfinger');
-	Zotlabs\Extend\Hook::register('discover_channel_webfinger', 'addon/gnusoc/gnusoc.php', 'gnusoc_discover_channel_webfinger',0,(-5));
+	Hook::register('discover_channel_webfinger', 'addon/gnusoc/gnusoc.php', 'gnusoc_discover_channel_webfinger',0,(-5));
 	register_hook('personal_xrd', 'addon/gnusoc/gnusoc.php', 'gnusoc_personal_xrd');
 	register_hook('follow_allow', 'addon/gnusoc/gnusoc.php', 'gnusoc_follow_allow');
-	register_hook('feature_settings_post', 'addon/gnusoc/gnusoc.php', 'gnusoc_feature_settings_post');
 	register_hook('federated_transports', 'addon/gnusoc/gnusoc.php', 'gnusoc_federated_transports');
-	register_hook('feature_settings', 'addon/gnusoc/gnusoc.php', 'gnusoc_feature_settings');
 	register_hook('follow', 'addon/gnusoc/gnusoc.php', 'gnusoc_follow_local');
 	register_hook('create_identity', 'addon/gnusoc/gnusoc.php', 'gnusoc_create_identity');
 	register_hook('accept_follow', 'addon/gnusoc/gnusoc.php', 'gnusoc_follow_local');
 	register_hook('permissions_create', 'addon/gnusoc/gnusoc.php', 'gnusoc_permissions_create');
 	register_hook('queue_deliver', 'addon/gnusoc/gnusoc.php', 'gnusoc_queue_deliver');
-    register_hook('notifier_process','addon/gnusoc/gnusoc.php','gnusoc_notifier_process');
+	register_hook('notifier_process','addon/gnusoc/gnusoc.php','gnusoc_notifier_process');
 	register_hook('follow_from_feed','addon/gnusoc/gnusoc.php','gnusoc_follow_from_feed');
 	register_hook('atom_entry','addon/gnusoc/gnusoc.php','gnusoc_atom_entry');
 	register_hook('import_author','addon/gnusoc/gnusoc.php','gnusoc_import_author');
@@ -52,6 +53,8 @@ function gnusoc_load() {
 	register_hook('can_comment_on_post','addon/gnusoc/gnusoc.php','gnusoc_can_comment_on_post');
 	register_hook('connection_remove','addon/gnusoc/gnusoc.php','gnusoc_connection_remove');
 	register_hook('channel_protocols','addon/gnusoc/gnusoc.php','gnusoc_channel_protocols');
+	register_hook('app_destroy','addon/gnusoc/gnusoc.php','gnusoc_app_destroy');
+	Route::register('addon/gnusoc/Mod_Gnusoc.php','gnusoc');
 
 //	register_hook('notifier_hub', 'addon/gnusoc/gnusoc.php', 'gnusoc_process_outbound');
 //	register_hook('permissions_update', 'addon/gnusoc/gnusoc.php', 'gnusoc_permissions_update');
@@ -73,7 +76,7 @@ function gnusoc_unload() {
 	unregister_hook('accept_follow', 'addon/gnusoc/gnusoc.php', 'gnusoc_follow_local');
 	unregister_hook('permissions_create', 'addon/gnusoc/gnusoc.php', 'gnusoc_permissions_create');
 	unregister_hook('queue_deliver', 'addon/gnusoc/gnusoc.php', 'gnusoc_queue_deliver');
-    unregister_hook('notifier_process','addon/gnusoc/gnusoc.php','gnusoc_notifier_process');
+	unregister_hook('notifier_process','addon/gnusoc/gnusoc.php','gnusoc_notifier_process');
 	unregister_hook('follow_from_feed','addon/gnusoc/gnusoc.php','gnusoc_follow_from_feed');
 	unregister_hook('atom_entry','addon/gnusoc/gnusoc.php','gnusoc_atom_entry');
 	unregister_hook('import_author','addon/gnusoc/gnusoc.php','gnusoc_import_author');
@@ -83,11 +86,38 @@ function gnusoc_unload() {
 	unregister_hook('can_comment_on_post','addon/gnusoc/gnusoc.php','gnusoc_can_comment_on_post');
 	unregister_hook('connection_remove','addon/gnusoc/gnusoc.php','gnusoc_connection_remove');
 	unregister_hook('channel_protocols','addon/gnusoc/gnusoc.php','gnusoc_channel_protocols');
+	unregister_hook('app_destroy','addon/gnusoc/gnusoc.php','gnusoc_app_destroy');
+	Route::unregister('addon/gnusoc/Mod_Gnusoc.php','gnusoc');
 
 }
 
 
+function gnusoc_app_destroy(&$a, &$b) {
+	if(($b['app_plugin'] === 'gnusoc') && $b['app_deleted']) {
 
+		// plugin is now disabled, if it was enabled before, unsubscribe to all followed hubs
+		require_once('addon/pubsubhubbub/pubsubhubbub.php');
+
+		$channel = channelx_by_n($b['app_channel']);
+
+		$r = q("select * from abook left join xchan on abook_xchan = xchan_hash where abook_channel = %d and xchan_network = 'gnusoc' ",
+			intval($b['app_channel'])
+		);
+
+		if($r) {
+			foreach($r as $rv) {
+				$hubs = get_xconfig($rv['xchan_hash'],'system','push_hubs');
+				if($hubs) {
+					foreach($hubs as $hub) {
+						// TODO: This should probably be moved to a background task.
+						// It can take very long to delete the app otherwise.
+						pubsubhubbub_subscribe($hub,$channel,$rv,'','subscribe');
+					}
+				}
+			}
+		}
+	}
+}
 
 function gnusoc_load_module(&$a, &$b) {
 	if($b['module'] === 'salmon') {
@@ -98,7 +128,7 @@ function gnusoc_load_module(&$a, &$b) {
 
 function gnusoc_channel_protocols($a,&$b) {
 
-	if(intval(get_pconfig($b['channel_id'],'system','gnusoc_allowed')))
+	if(Apps::addon_app_installed($b['channel_id'], 'gnusoc'))
 		$b['protocols'][] = 'ostatus';
 
 }
@@ -114,7 +144,7 @@ function gnusoc_webfinger(&$a,&$b) {
 	if(! $b['channel'])
 		return;
 	
-	if(! get_pconfig($b['channel']['channel_id'],'system','gnusoc_allowed'))
+	if(! Apps::addon_app_installed($b['channel']['channel_id'], 'gnusoc'))
 		return;
 
 	$b['result']['properties']['http://purl.org/zot/federation'] .= ',ostatus';
@@ -126,7 +156,7 @@ function gnusoc_webfinger(&$a,&$b) {
 
 function gnusoc_personal_xrd(&$a,&$b) {
 
-	if(! get_pconfig($b['user']['channel_id'],'system','gnusoc_allowed'))
+	if(! Apps::addon_app_installed($b['user']['channel_id'], 'gnusoc'))
 		return;
 
 	$b['xml'] = str_replace('</XRD>',
@@ -140,7 +170,7 @@ function gnusoc_follow_allow(&$a, &$b) {
 	if($b['xchan']['xchan_network'] !== 'gnusoc')
 		return;
 
-	$allowed = get_pconfig($b['channel_id'],'system','gnusoc_allowed',1);
+	$allowed = Apps::addon_app_installed($b['channel_id'], 'gnusoc');
 	$b['allowed'] = $allowed;
 	$b['singleton'] = 1;  // this network does not support channel clones
 }
@@ -183,7 +213,7 @@ function gnusoc_cron_daily($a,&$b) {
 			$channel = channelx_by_n($rv['abook_channel']);
 			if($channel) {
 
-				if(! get_pconfig($channel['channel_id'],'system','gnusoc_allowed'))
+				if(! Apps::addon_app_installed($channel['channel_id'], 'gnusoc'))
 					continue;
 
 				$hubs = get_xconfig($rv['abook_xchan'],'system','push_hubs');
@@ -196,8 +226,6 @@ function gnusoc_cron_daily($a,&$b) {
 		}
 	}
 }
-
-
 
 function gnusoc_connection_remove(&$a,&$b) {
 		  
@@ -224,68 +252,11 @@ function gnusoc_connection_remove(&$a,&$b) {
 
 }
 
-
-function gnusoc_feature_settings_post(&$a,&$b) {
-
-	if($_POST['gnusoc-submit']) {
-		$was_enabled = get_pconfig(local_channel(),'system','gnusoc_allowed');
-
-		set_pconfig(local_channel(),'system','gnusoc_allowed',intval($_POST['gnusoc_allowed']));
-
-		if($was_enabled && (! intval($_POST['gnusoc_allowed']))) {
-
-			// plugin is now disabled, if it was enabled before, unsubscribe to all followed hubs
-
-			require_once('addon/pubsubhubbub/pubsubhubbub.php');
-
-			$channel = channelx_by_n(local_channel());
-
-			$r = q("select * from abook left join xchan on abook_xchan = xchan_hash where abook_channel = %d and xchan_network = 'gnusoc' ",
-				intval(local_channel())
-			);
-			if($r) {
-				foreach($r as $rv) {
-					$hubs = get_xconfig($rv['xchan_hash'],'system','push_hubs');
-					if($hubs) {
-						foreach($hubs as $hub) {
-							pubsubhubbub_subscribe($hub,$channel,$rv,'','unsubscribe');
-						}
-					}
-				}
-			}
-		}
-
-		info( t('GNU-Social Protocol Settings updated.') . EOL);
-	}
-}
-
-
 function gnusoc_create_identity($a,$b) {
 
 	if(get_config('system','gnusoc_allowed')) {
-		set_pconfig($b,'system','gnusoc_allowed','1');
+		Apps::app_install($b, 'GNU-Social Protocol');
 	}
-
-}
-
-
-function gnusoc_feature_settings(&$a,&$s) {
-	$gnusoc_allowed = get_pconfig(local_channel(),'system','gnusoc_allowed');
-	if($gnusoc_allowed === false)
-		$gnus_allowed = get_config('gnusoc','allowed');	
-
-	$sc = '<div>' . t('The GNU-Social protocol does not support location independence. Connections you make within that network may be unreachable from alternate channel locations.') . '</div><br>';
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('gnusoc_allowed', t('Enable the GNU-Social protocol for this channel'), $gnusoc_allowed, '', $yes_no),
-	));
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('gnusoc', '<img src="addon/gnusoc/gnusoc-32.png" style="width:auto; height:1em; margin:-3px 5px 0px 0px;">' . t('GNU-Social Protocol Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
-
-	return;
 
 }
 
@@ -546,7 +517,7 @@ function gnusoc_notifier_process(&$a,&$b) {
 
     $channel = $b['channel'];
 
-	if(! perm_is_allowed($channel['channel_id'],'','view_stream'))
+	if(! perm_is_allowed($channel['channel_id'],'','view_stream',false))
 		return;
 
 	// $b['recipients'][0] should point to the top level post owner
@@ -642,7 +613,7 @@ function gnusoc_follow_from_feed(&$a,&$b) {
 	if($b['caught'])
 		return;
 
-	if(! get_pconfig($importer['channel_id'],'system','gnusoc_allowed'))
+	if(! Apps::addon_app_installed($importer['channel_id'], 'gnusoc'))
 		return;
 
 	$b['caught'] = true;

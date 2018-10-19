@@ -2320,7 +2320,7 @@ class Diaspora_Receiver {
 			intval($this->importer['channel_id'])
 		);
 
-		$r = q("update group_member set xchan = '%s' where xchan = '%s' and uid = %d",
+		$r = q("update pgrp_member set xchan = '%s' where xchan = '%s' and uid = %d",
 			dbesc($new_contact['xchan_hash']),
 			dbesc($contact['xchan_hash']),
 			intval($this->importer['channel_id'])

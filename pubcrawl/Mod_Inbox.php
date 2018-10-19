@@ -6,6 +6,8 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 	function post() {
 
+		logger('Inbox: ' . \App::$query_string);
+
 		$sys_disabled = false;
 
 		if(get_config('system','disable_discover_tab') || get_config('system','disable_activitypub_discover_tab')) {
@@ -80,13 +82,21 @@ class Inbox extends \Zotlabs\Web\Controller {
 			}
 			else {
 
-				// deliver to anybody following $AS->actor
+				// Pleroma sends follow activities to the publicInbox and therefore requires special handling.
 
-				$channels = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network = 'activitypub' and xchan_hash = '%s' ) and channel_removed = 0 ",
-					dbesc($observer_hash)
-				);
+				if($AS->type === 'Follow' && $AS->obj && $AS->obj['type'] === 'Person') {
+					$channels = q("SELECT * from channel where channel_address = '%s' and channel_removed = 0 ",
+						dbesc(basename($AS->obj['id']))
+					);
+				}
+				else {
+					// deliver to anybody following $AS->actor
+
+					$channels = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network = 'activitypub' and xchan_hash = '%s' ) and channel_removed = 0 ",
+						dbesc($observer_hash)
+					);
+				}
 			}
-
 			if($channels === false)
 				$channels = [];
 
@@ -124,14 +134,14 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 			switch($AS->type) {
 				case 'Follow':
-					if($AS->obj & $AS->obj['type'] === 'Person') {
+					if($AS->obj && $AS->obj['type'] === 'Person') {
 						// do follow activity
 						as_follow($channel,$AS);
 						continue;
 					}
 					break;
 				case 'Accept':
-					if($AS->obj & $AS->obj['type'] === 'Follow') {
+					if($AS->obj && $AS->obj['type'] === 'Follow') {
 						// do follow activity
 						as_follow($channel,$AS);
 						continue;
@@ -158,7 +168,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 					as_like_action($channel,$observer_hash,$AS);
 					continue;
 				case 'Undo':
-					if($AS->obj & $AS->obj['type'] === 'Follow') {
+					if($AS->obj && $AS->obj['type'] === 'Follow') {
 						// do unfollow activity
 						as_unfollow($channel,$AS);
 						continue;

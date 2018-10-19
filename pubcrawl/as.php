@@ -443,8 +443,7 @@ function asencode_activity($i) {
 	if($i['item_private']) {
 		if($reply) {
 			if($i['author_xchan'] == $i['owner_xchan']) {
-				$m = as_map_acl($i,true);
-				$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
+				$ret['to'] = as_map_acl($i);
 			}
 			else {
 				if($is_directmessage) {
@@ -454,6 +453,7 @@ function asencode_activity($i) {
 						'name' => '@' . $reply_addr
 					];
 					$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
+					$ret['to'] = [ $reply_url ];
 				}
 				else {
 					$ret['to'] = [ $reply_url ];
@@ -461,8 +461,7 @@ function asencode_activity($i) {
 			}
 		}
 		else {
-			$m = as_map_acl($i,true);
-			$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
+			$ret['to'] = as_map_acl($i);
 		}
 	}
 	else {
@@ -723,12 +722,15 @@ function as_follow($channel,$act) {
 	$person_obj = $act->actor;
 
 	if($act->type === 'Follow') {
+		if($act->obj['id'] !== channel_url($channel)) {
+			return;
+		}
 		$their_follow_id  = $act->id;
 	}
 	elseif($act->type === 'Accept') {
 		$my_follow_id = z_root() . '/follow/' . $contact['id'];
 	}
-	
+
 	if(is_array($person_obj)) {
 
 		// store their xchan and hubloc
@@ -1088,7 +1090,7 @@ function as_actor_store($url,$person_obj) {
 
 function as_create_action($channel,$observer_hash,$act) {
 
-	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video' ])) {
+	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video', 'Image', 'Event' ])) {
 		as_create_note($channel,$observer_hash,$act);
 	}
 
@@ -1106,7 +1108,7 @@ function as_announce_action($channel,$observer_hash,$act) {
 
 function as_like_action($channel,$observer_hash,$act) {
 
-	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video' ])) {
+	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video', 'Image', 'Event', 'Profile' ])) {
 		as_like_note($channel,$observer_hash,$act);
 	}
 
@@ -1626,10 +1628,36 @@ function as_bb_content($content,$field) {
 function as_get_content($act) {
 
 	$content = [];
+	$event = null;
+
+	if($act['type'] === 'Event') {
+		$adjust = false;
+		$event = [];
+		$event['event_hash'] = $act['id'];
+		if(array_key_exists('startTime',$act) && strpos($act['startTime'],-1,1) === 'Z') {
+			$adjust = true;
+			$event['adjust'] = 1;
+			$event['dtstart'] = datetime_convert('UTC','UTC',$event['startTime'] . (($adjust) ? '' : 'Z')); 
+		}
+		if(array_key_exists('endTime',$act)) {
+			$event['dtend'] = datetime_convert('UTC','UTC',$event['endTime'] . (($adjust) ? '' : 'Z')); 
+ 		}
+		else {
+			$event['nofinish'] = true;
+		}
+	}
 
 	foreach([ 'name', 'summary', 'content' ] as $a) {
 		if(($x = as_get_textfield($act,$a)) !== false) {
 			$content[$a] = $x;
+		}
+	}
+
+	if($event) {
+		$event['summary'] = $content['summary'];
+		$event['description'] = $content['content'];
+		if($event['summary'] && $event['dtstart']) {
+			$content['event'] = $event;
 		}
 	}
 

@@ -9,29 +9,26 @@
  * Maintainer: Mike Macgirvin <mike@macgirvin.com>
  */
 
-
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
 
 function rainbowtag_load() {
-	register_hook('construct_page', 'addon/rainbowtag/rainbowtag.php', 'rainbowtag_construct_page');
-	register_hook('feature_settings', 'addon/rainbowtag/rainbowtag.php', 'rainbowtag_addon_settings');
-	register_hook('feature_settings_post', 'addon/rainbowtag/rainbowtag.php', 'rainbowtag_addon_settings_post');
-
+	Hook::register('construct_page', 'addon/rainbowtag/rainbowtag.php', 'rainbowtag_construct_page');
+	Route::register('addon/rainbowtag/Mod_Rainbowtag.php','rainbowtag');
 }
 
 function rainbowtag_unload() {
-	unregister_hook('construct_page', 'addon/rainbowtag/rainbowtag.php', 'rainbowtag_construct_page');
-	unregister_hook('feature_settings', 'addon/rainbowtag/rainbowtag.php', 'rainbowtag_addon_settings');
-	unregister_hook('feature_settings_post', 'addon/rainbowtag/rainbowtag.php', 'rainbowtag_addon_settings_post');
-
+	Hook::unregister('construct_page', 'addon/rainbowtag/rainbowtag.php', 'rainbowtag_construct_page');
+	Route::unregister('addon/rainbowtag/Mod_Rainbowtag.php','rainbowtag');
 }
 
-
-
-function rainbowtag_construct_page(&$a,&$b) {
+function rainbowtag_construct_page(&$b) {
 
 	if(! App::$profile_uid)
 		return;
-	if(! intval(get_pconfig(App::$profile_uid,'rainbowtag','enable')))
+
+	if(! Apps::addon_app_installed(App::$profile_uid,'rainbowtag'))
 		return;
 
 	$c = get_pconfig(App::$profile_uid,'rainbowtag','colors');
@@ -63,41 +60,4 @@ function rainbowtag_construct_page(&$a,&$b) {
 
 	App::$page['htmlhead'] .= $o;
 
-}
-
-function rainbowtag_addon_settings(&$a,&$s) {
-
-
-	if(! local_channel())
-		return;
-
-	/* Add our stylesheet to the page so we can make our settings look nice */
-
-	//head_add_css('/addon/rainbowtag/rainbowtag.css');
-
-	$enable_checked = (intval(get_pconfig(local_channel(),'rainbowtag','enable')) ? 1 : false);
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('rainbowtag-enable', t('Enable Rainbowtag'), $enable_checked, '', array(t('No'),t('Yes'))),
-	));
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('rainbowtag', t('Rainbowtag Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
-
-	return;
-
-}
-
-function rainbowtag_addon_settings_post(&$a,&$b) {
-
-	if(! local_channel())
-		return;
-
-	if($_POST['rainbowtag-submit']) {
-		$enable = ((x($_POST,'rainbowtag-enable')) ? intval($_POST['rainbowtag-enable']) : 0);
-		set_pconfig(local_channel(),'rainbowtag','enable', $enable);
-		info( t('Rainbowtag Settings saved.') . EOL);
-	}
 }

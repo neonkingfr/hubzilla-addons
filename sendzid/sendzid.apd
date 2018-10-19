@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/sendzid
+requires: local_channel
+name: Send ZID
+photo: icon:send-o
+categories: System
+

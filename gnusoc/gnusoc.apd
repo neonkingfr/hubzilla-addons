@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/gnusoc
+requires: local_channel
+name: GNU-Social Protocol
+photo: icon:gnu-social
+categories: Networking
+

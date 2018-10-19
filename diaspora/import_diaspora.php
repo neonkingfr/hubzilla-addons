@@ -1,5 +1,7 @@
 <?php
 
+use Zotlabs\Lib\Apps;
+
 require_once('include/markdown.php');
 require_once('include/group.php');
 require_once('include/follow.php');
@@ -57,9 +59,9 @@ function import_diaspora_account($data) {
 
 	$channel_id = $c['channel']['channel_id'];
 
-	// Hubzilla only: Turn on the Diaspora protocol so that follow requests will be sent.
-
-	set_pconfig($channel_id,'system','diaspora_allowed','1');
+	if(! Apps::addon_app_installed($channel_id, 'diaspora')) {
+		Apps::app_install($channel_id, 'Diaspora Protocol');
+	}
 
 	// todo - add auto follow settings, (and strip exif in hubzilla)
 

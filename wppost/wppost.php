@@ -8,129 +8,46 @@
  * Maintainer: Mike Macgirvin <mike@macgirvin.com>
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
+
 require_once('include/permissions.php');
 require_once('library/IXR_Library.php');
 
-
 function wppost_load () {
-	register_hook('post_local',              'addon/wppost/wppost.php', 'wppost_post_local');
-	register_hook('post_remote_end',         'addon/wppost/wppost.php', 'wppost_post_remote_end');
-	register_hook('notifier_normal',         'addon/wppost/wppost.php', 'wppost_send');
-	register_hook('jot_networks',            'addon/wppost/wppost.php', 'wppost_jot_nets');
-	register_hook('feature_settings',        'addon/wppost/wppost.php', 'wppost_settings');
-	register_hook('feature_settings_post',   'addon/wppost/wppost.php', 'wppost_settings_post');
-	register_hook('drop_item',               'addon/wppost/wppost.php', 'wppost_drop_item');	
+	Hook::register('post_local', 'addon/wppost/wppost.php', 'wppost_post_local');
+	Hook::register('post_remote_end', 'addon/wppost/wppost.php', 'wppost_post_remote_end');
+	Hook::register('notifier_normal', 'addon/wppost/wppost.php', 'wppost_send');
+	Hook::register('jot_networks', 'addon/wppost/wppost.php', 'wppost_jot_nets');
+	Hook::register('drop_item', 'addon/wppost/wppost.php', 'wppost_drop_item');
+	Route::register('addon/wppost/Mod_Wppost.php','wppost');
 }
 
 function wppost_unload () {
-	unregister_hook('post_local',            'addon/wppost/wppost.php', 'wppost_post_local');
-	unregister_hook('post_remote_end',       'addon/wppost/wppost.php', 'wppost_post_remote_end');
-    unregister_hook('notifier_normal',       'addon/wppost/wppost.php', 'wppost_send');
-    unregister_hook('jot_networks',          'addon/wppost/wppost.php', 'wppost_jot_nets');
-    unregister_hook('feature_settings',      'addon/wppost/wppost.php', 'wppost_settings');
-    unregister_hook('feature_settings_post', 'addon/wppost/wppost.php', 'wppost_settings_post');
-    unregister_hook('drop_item',             'addon/wppost/wppost.php', 'wppost_drop_item');
+	Hook::unregister('post_local', 'addon/wppost/wppost.php', 'wppost_post_local');
+	Hook::unregister('post_remote_end', 'addon/wppost/wppost.php', 'wppost_post_remote_end');
+	Hook::unregister('notifier_normal', 'addon/wppost/wppost.php', 'wppost_send');
+	Hook::unregister('jot_networks', 'addon/wppost/wppost.php', 'wppost_jot_nets');
+	Hook::unregister('drop_item', 'addon/wppost/wppost.php', 'wppost_drop_item');
+	Route::unregister('addon/wppost/Mod_Wppost.php','wppost');
 }
 
 
-function wppost_jot_nets(&$a,&$b) {
+function wppost_jot_nets(&$b) {
 
-    if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream')))
-        return;
-	
-    $wp_post = get_pconfig(local_channel(),'wppost','post');
-    if(intval($wp_post) == 1) {
-        $wp_defpost = get_pconfig(local_channel(),'wppost','post_by_default');
-        $selected = ((intval($wp_defpost) == 1) ? ' checked="checked" ' : '');
-        $b .= '<div class="profile-jot-net"><input type="checkbox" name="wppost_enable" ' . $selected . ' value="1" /> <img src="addon/wppost/wordpress-logo.png" /> ' . t('Post to WordPress') . '</div>';
-    }
-}
-
-
-function wppost_settings(&$a,&$s) {
-
-	if(! local_channel())
+	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
 		return;
-
-	/* Add our stylesheet to the page so we can make our settings look nice */
-
-	//head_add_css('/addon/wppost/wppost.css');
-
-	/* Get the current state of our config variables */
-
-	$enabled = get_pconfig(local_channel(),'wppost','post');
-
-	$checked = (($enabled) ? 1 : false);
-
-	$fwd_enabled = get_pconfig(local_channel(), 'wppost','forward_comments');
-
-	$fwd_checked = (($fwd_enabled) ? 1 : false);
-
-	$def_enabled = get_pconfig(local_channel(),'wppost','post_by_default');
-
-	$def_checked = (($def_enabled) ? 1 : false);
-
-	$wp_username = get_pconfig(local_channel(), 'wppost', 'wp_username');
-	$wp_password = z_unobscure(get_pconfig(local_channel(), 'wppost', 'wp_password'));
-	$wp_blog = get_pconfig(local_channel(), 'wppost', 'wp_blog');
-	$wp_blogid = get_pconfig(local_channel(), 'wppost', 'wp_blogid');
-
-
-	/* Add some HTML to the existing form */
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('wppost', t('Enable WordPress Post Plugin'), $checked, '', array(t('No'),t('Yes'))),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-		'$field'	=> array('wp_username', t('WordPress username'), $wp_username, '')
-	));
-
-	$sc .= replace_macros(get_markup_template('field_password.tpl'), array(
-		'$field'	=> array('wp_password', t('WordPress password'), $wp_password, '')
-	));
-
-	$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-		'$field'	=> array('wp_blog', t('WordPress API URL'), $wp_blog, 
-					 t('Typically https://your-blog.tld/xmlrpc.php'))
-	));
-	$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-		'$field'	=> array('wp_blogid', t('WordPress blogid'), $wp_blogid, 
-					 t('For multi-user sites such as wordpress.com, otherwise leave blank'))
-	));
-
-
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('wp_bydefault', t('Post to WordPress by default'), $def_checked, '', array(t('No'),t('Yes'))),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('wp_forward_comments', t('Forward comments (requires hubzilla_wp plugin)'), $fwd_checked, '', array(t('No'),t('Yes'))),
-	));
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('wppost', '<img src="addon/wppost/wordpress-logo.png" style="width:auto; height:1em; margin:-3px 5px 0px 0px;">' . t('WordPress Post Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
-
-}
-
-
-function wppost_settings_post(&$a,&$b) {
-	if(x($_POST,'wppost-submit')) {
-		set_pconfig(local_channel(),'wppost','post',intval($_POST['wppost']));
-		set_pconfig(local_channel(),'wppost','post_by_default',intval($_POST['wp_bydefault']));
-		set_pconfig(local_channel(),'wppost','wp_blogid',intval($_POST['wp_blogid']));
-		set_pconfig(local_channel(),'wppost','wp_username',trim($_POST['wp_username']));
-		set_pconfig(local_channel(),'wppost','wp_password',z_obscure(trim($_POST['wp_password'])));
-		set_pconfig(local_channel(),'wppost','wp_blog',trim($_POST['wp_blog']));
-		set_pconfig(local_channel(),'wppost','forward_comments',trim($_POST['wp_forward_comments']));
-		info( t('Wordpress Settings saved.') . EOL);
+	
+	$wp_post = Apps::addon_app_installed(local_channel(), 'wppost');
+	if($wp_post) {
+		$wp_defpost = get_pconfig(local_channel(),'wppost','post_by_default');
+		$selected = ((intval($wp_defpost) == 1) ? ' checked="checked" ' : '');
+		$b .= '<div class="profile-jot-net"><input type="checkbox" name="wppost_enable" ' . $selected . ' value="1" /> <img src="addon/wppost/wordpress-logo.png" /> ' . t('Post to WordPress') . '</div>';
 	}
 }
 
-function wppost_post_local(&$a,&$b) {
+function wppost_post_local(&$b) {
 
 	// This can probably be changed to allow editing by pointing to a different API endpoint
 
@@ -143,19 +60,20 @@ function wppost_post_local(&$a,&$b) {
 	if($b['item_private'] || $b['parent'])
 		return;
 
-    $wp_post   = intval(get_pconfig(local_channel(),'wppost','post'));
+	$wp_post = Apps::addon_app_installed(local_channel(), 'wppost');
 
 	$wp_enable = (($wp_post && x($_REQUEST,'wppost_enable')) ? intval($_REQUEST['wppost_enable']) : 0);
 
 	if($_REQUEST['api_source'] && intval(get_pconfig(local_channel(),'wppost','post_by_default')))
 		$wp_enable = 1;
 
-    if(! $wp_enable)
-       return;
+	if(! $wp_enable)
+		return;
 
-    if(strlen($b['postopts']))
-       $b['postopts'] .= ',';
-     $b['postopts'] .= 'wppost';
+	if(strlen($b['postopts']))
+		$b['postopts'] .= ',';
+
+	$b['postopts'] .= 'wppost';
 }
 
 function wppost_dreport($dr,$update) {
@@ -174,21 +92,21 @@ function wppost_dreport($dr,$update) {
 	);
 }
 
-function wppost_send(&$a,&$b) {
+function wppost_send(&$b) {
 
-    if((! is_item_normal($b)) || $b['item_private'])
-        return;
-
-	if(! perm_is_allowed($b['uid'],'','view_stream'))
+	if((! is_item_normal($b)) || $b['item_private'])
 		return;
 
-    if(! strstr($b['postopts'],'wppost'))
-        return;
+	if(! perm_is_allowed($b['uid'],'','view_stream',false))
+		return;
+
+	if(! strstr($b['postopts'],'wppost'))
+		return;
 
 	$edited = (($b['created'] !== $b['edited']) ? true : false);
 		
-    if($b['parent'] != $b['id'])
-        return;
+	if($b['parent'] != $b['id'])
+		return;
 
 	logger('Wordpress xpost invoked', LOGGER_DEBUG);
 
@@ -302,7 +220,7 @@ function wppost_send(&$a,&$b) {
 }
 
 
-function wppost_post_remote_end(&$a,&$b) {
+function wppost_post_remote_end(&$b) {
 
 	// We are only looking for public comments
 
@@ -311,24 +229,24 @@ function wppost_post_remote_end(&$a,&$b) {
 	if($b['mid'] === $b['parent_mid'])
 		return;
 
-    if((! is_item_normal($b)) || $b['item_private'])
-        return;
+	if((! is_item_normal($b)) || $b['item_private'])
+		return;
 
 	// Does the post owner have this plugin installed?
 
-    $wp_post   = intval(get_pconfig($b['uid'],'wppost','post'));
+	$wp_post   = Apps::addon_app_installed($b['uid'], 'wppost');
 	if(! $wp_post)
 		return;
 
 	// Are we allowed to forward comments?
 
-    $wp_forward_comments = intval(get_pconfig($b['uid'],'wppost','forward_comments'));
+	$wp_forward_comments = intval(get_pconfig($b['uid'],'wppost','forward_comments'));
 	if(! $wp_forward_comments)
 		return;
 
 	// how about our stream permissions? 
 
-	if(! perm_is_allowed($b['uid'],'','view_stream'))
+	if(! perm_is_allowed($b['uid'],'','view_stream',false))
 		return;
 
 	// Now we have to get down and dirty. Was the parent shared with wordpress?
@@ -428,9 +346,10 @@ function wppost_post_remote_end(&$a,&$b) {
 
 
 
-function wppost_drop_item(&$a,&$b) {
+function wppost_drop_item(&$b) {
 
-    $wp_enabled = get_pconfig($b['item']['uid'],'wppost','post');
+	$wp_enabled = Apps::addon_app_installed($b['item']['uid'], 'wppost');
+
 	if(! $wp_enabled)
 		return;
 

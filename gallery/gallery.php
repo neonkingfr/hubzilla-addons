@@ -9,18 +9,22 @@
  * Maintainer: Mario
  */
 
+use App;
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+
 require_once('addon/gallery/Mod_Gallery.php');
 
 function gallery_module() {}
 
 function gallery_load() {
-	Zotlabs\Extend\Hook::register('load_pdl', 'addon/gallery/gallery.php', 'gallery_load_pdl');
-	Zotlabs\Extend\Hook::register('channel_apps', 'addon/gallery/gallery.php', 'gallery_channel_apps');
+	Hook::register('load_pdl', 'addon/gallery/gallery.php', 'gallery_load_pdl');
+	Hook::register('channel_apps', 'addon/gallery/gallery.php', 'gallery_channel_apps');
 }
 
 function gallery_unload() {
-	Zotlabs\Extend\Hook::unregister('load_pdl', 'addon/gallery/gallery.php', 'gallery_load_pdl');
-	Zotlabs\Extend\Hook::unregister('channel_apps', 'addon/gallery/gallery.php', 'gallery_channel_apps');
+	Hook::unregister('load_pdl', 'addon/gallery/gallery.php', 'gallery_load_pdl');
+	Hook::unregister('channel_apps', 'addon/gallery/gallery.php', 'gallery_channel_apps');
 }
 
 function gallery_load_pdl(&$b) {
@@ -38,13 +42,15 @@ function gallery_load_pdl(&$b) {
 }
 
 function gallery_channel_apps(&$b) {
-	$b['tabs'][] = [
-		'label' => t('Gallery'),
-		'url'   => z_root() . '/gallery/' . $b['nickname'],
-		'sel'   => ((argv(0) == 'gallery') ? 'active' : ''),
-		'title' => t('Photo Gallery'),
-		'id'    => 'gallery-tab',
-		'icon'  => 'image'
-	];
+	if(Apps::system_app_installed(App::$profile_uid, 'Gallery')) {
+		$b['tabs'][] = [
+			'label' => t('Gallery'),
+			'url'   => z_root() . '/gallery/' . $b['nickname'],
+			'sel'   => ((argv(0) == 'gallery') ? 'active' : ''),
+			'title' => t('Photo Gallery'),
+			'id'    => 'gallery-tab',
+			'icon'  => 'image'
+		];
+	}
 }
 
