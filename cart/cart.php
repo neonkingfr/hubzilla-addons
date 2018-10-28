@@ -1312,6 +1312,9 @@ function cart_init() {
 
 function cart_post_add_item () {
 	//@TODO: Add output of errors someplace
+	if (!get_observer_hash()) {
+		return;
+	}
 	$items=Array();
 	call_hooks('cart_get_catalog',$items);
 	$item_sku = preg_replace('[^0-9A-Za-z\-]','',$_POST["add"]);
