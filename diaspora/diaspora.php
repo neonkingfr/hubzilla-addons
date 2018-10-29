@@ -263,7 +263,6 @@ function diaspora_process_outbound(&$arr) {
 //	logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
 
 
-	// allow this to be set per message
 
 	// allow this to be set per message
 
