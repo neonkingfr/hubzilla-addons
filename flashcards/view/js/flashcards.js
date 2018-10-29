@@ -1616,6 +1616,7 @@ function uploadBox() {
 				remoteBox.setContent(data['box']);
 				importBox(remoteBox);
                 box.content.lastShared = Date.now();
+                loadStartPage();
                 setShareButton();
 			}
 		} else {
