@@ -75,9 +75,6 @@ function std_embeds_html2bb_video(&$x) {
 	$s = preg_replace('#<iframe[^>](.*?)https?://player.vimeo.com/video/([0-9]+)(.*?)</iframe>#ism',
 			'[embed]https://player.vimeo.com/video/$2[/embed]', $s);
 
-	$s = preg_replace('#<iframe[^>](.*?)(https?:)?//www.dailymotion.com/embed/video/([a-z0-9]+)(.*?)</iframe>#ism',
-			'[embed]https://www.dailymotion.com/video/$3[/embed]', $s);
-
 	$x['string'] = $s;
 
 }
@@ -94,8 +91,6 @@ function std_embeds_bb_translate_video(&$x) {
 			if((stristr($mtch[1],'youtube')) || (stristr($mtch[1],'youtu.be')))
 				$s = str_replace($mtch[0],'[embed]' . $mtch[1] . '[/embed]',$s);
 			elseif(stristr($mtch[1],'vimeo'))
-				$s = str_replace($mtch[0],'[embed]' . $mtch[1] . '[/embed]',$s);
-			if((stristr($mtch[1],'dailymotion')) || (stristr($mtch[1],'dai.ly')))
 				$s = str_replace($mtch[0],'[embed]' . $mtch[1] . '[/embed]',$s);
 		}
 	}
@@ -145,10 +140,6 @@ function std_embeds_markdown_to_bb(&$s) {
 	$s = bb_tag_preg_replace("/\[url\=?(.*?)\]https?:\/\/vimeo.com\/([0-9]+)(.*?)\[\/url\]/ism",'[embed]https://vimeo.com/$2[/embed]','url',$s);
 	$s = bb_tag_preg_replace("/\[url\=https?:\/\/vimeo.com\/([0-9]+)\](.*?)\[\/url\]/ism",'[embed]https://vimeo.com/$1[/embed]','url',$s);
 
-	$s = bb_tag_preg_replace("/\[url\=?(.*?)\]https?:\/\/dai.ly\/([a-z0-9]+)\[\/url\]/ism",'[embed]https://dai.ly/$2[/embed]','url',$s);
-	$s = bb_tag_preg_replace("/\[url\=https?:\/\/dai.ly\/([a-z0-9]+)\].*?\[\/url\]/ism",'[embed]https://www.dai.ly/$1[/embed]','url',$s);
 
-	$s = bb_tag_preg_replace("/\[url\=?(.*?)\]https?:\/\/www.dailymotion.com\/([a-z0-9]+)(.*?)\[\/url\]/ism",'[embed]https://www.dailymotion.com/video/$2[/embed]','url',$s);
-	$s = bb_tag_preg_replace("/\[url\=https?:\/\/www.dailymotion.com\/([a-z0-9]+)(.*?)\].*?\[\/url\]/ism",'[embed]https://www.dailymotion.com/video/$1[/embed]','url',$s);
 
 }
