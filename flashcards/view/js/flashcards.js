@@ -675,7 +675,7 @@ class Box {
 		}
 		var remotePublicMetaDataWins = false;
 		var remotePrivateMetaDataWins = false;
-		var keysPublic = ['title', 'description', 'lastEditor', 'lastChangedPublicMetaData', 'lastShared'];
+		var keysPublic = ['title', 'description', 'lastEditor', 'lastChangedPublicMetaData'];
 		if(this.content.lastChangedPublicMetaData !== boxRemote.content.lastChangedPublicMetaData) {
 			var i;
 			for(i = 0; i < keysPublic.length; i++) {
@@ -1596,6 +1596,7 @@ function uploadBox() {
 			logger.log("Successfully uploaded box " + box.content.title + " on server. Status: " + data['status']);
 			var box_id = data['resource_id'];
 			var box_public_id = data['resource_public_id'];
+			box.content.lastShared = data['box']['lastShared'];
 			var cardIDsReveived = data['cardIDsReceived'];
             logger.log('local boxID = "' + box.content.boxID + '", remote boxID = "' + box_id + '", cards received = "' + cardIDsReveived + '"');
 			if(box.content.boxID.length < 1 && box_id.length > 0) {
@@ -1615,7 +1616,6 @@ function uploadBox() {
 				var remoteBox = new Box();
 				remoteBox.setContent(data['box']);
 				importBox(remoteBox);
-                box.content.lastShared = Date.now();
                 loadStartPage();
                 setShareButton();
 			}

@@ -347,9 +347,8 @@ class Flashcards extends \Zotlabs\Web\Controller {
         $boxes = $this->flashcards_merge($boxLocalMergedOwner, $boxRemote);
         $boxToWrite = $boxes['boxLocal'];
         $boxToSend = $boxes['boxRemote'];
-        
-//        $boxes = $this->flashcards_merge($boxLocalMergedOwner, $boxLocal);
-//        $boxToSend = $boxes['boxRemote'];
+
+        $boxToWrite['lastShared'] = $boxToSend['lastShared'] = round(microtime(true) * 1000);
         
         // store box of observer
         $boxDir->getChild($filename)->put(json_encode($boxToWrite));
@@ -490,6 +489,8 @@ class Flashcards extends \Zotlabs\Web\Controller {
         $boxes = $this->flashcards_merge($boxLocalMergedWithImportsAndLocal, $boxRemote);
         $boxToWrite = $boxes['boxLocal'];
         $boxToSend = $boxes['boxRemote'];
+
+        $boxToWrite['lastShared'] = $boxToSend['lastShared'] = round(microtime(true) * 1000);
         
         $boxesDir->getChild($box_id . '.json')->put(json_encode($boxToWrite));
         json_return_and_die(array('status' => true, 'box' => $boxToSend, 'resource_id' => $box_id, 'cardIDsReceived' => $cardIDsReceived));
@@ -688,20 +689,20 @@ class Flashcards extends \Zotlabs\Web\Controller {
      */
     function flashcards_merge($boxLocal, $boxRemote, $is_private = true) {
         if($is_private) {
-            if($boxLocal['boxID'] !== $boxRemote['boxID']) {
+            if($boxLocal['boxID'] != $boxRemote['boxID']) {
                 unset($boxRemote['cards']);
                 return array('boxLocal' => $boxLocal, 'boxRemote' => $boxRemote);
             }
         }
         else {
-            if($boxLocal['boxPublicID'] !== $boxRemote['boxPublicID']) {
+            if($boxLocal['boxPublicID'] != $boxRemote['boxPublicID']) {
                 unset($boxRemote['cards']);
                 return array('boxLocal' => $boxLocal, 'boxRemote' => $boxRemote);
             }
         }
         $keysPublic = array('title', 'description', 'lastEditor', 'lastChangedPublicMetaData', 'lastShared');
         $keysPrivate = array('cardsDecks', 'cardsDeckWaitExponent', 'cardsRepetitionsPerDeck', 'private_sortColumn', 'private_sortReverse', 'private_filter', 'private_visibleColumns', 'private_switch_learn_direction', 'private_switch_learn_all', 'lastChangedPrivateMetaData');
-        if($boxLocal['lastChangedPublicMetaData'] !== $boxRemote['lastChangedPublicMetaData']) {
+        if($boxLocal['lastChangedPublicMetaData'] != $boxRemote['lastChangedPublicMetaData']) {
             if($boxLocal['lastChangedPublicMetaData'] > $boxRemote['lastChangedPublicMetaData']) {
                 foreach ($keysPublic as &$key) {
                     $boxRemote[$key] = $boxLocal[$key];
@@ -713,7 +714,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
             }
         }
         if($is_private) {
-            if($boxLocal['lastChangedPrivateMetaData'] !== $boxRemote['lastChangedPrivateMetaData']) {
+            if($boxLocal['lastChangedPrivateMetaData'] != $boxRemote['lastChangedPrivateMetaData']) {
                 if($boxLocal['lastChangedPrivateMetaData'] > $boxRemote['lastChangedPrivateMetaData']) {
                     foreach ($keysPrivate as &$key) {
                         $boxRemote[$key] = $boxLocal[$key];
@@ -738,10 +739,10 @@ class Flashcards extends \Zotlabs\Web\Controller {
         foreach ($cardsRemote as &$cardRemote) {
             $isInDB = false;
             foreach ($cardsDB as &$cardDB) {
-                if($cardRemote['content'][0] === $cardDB['content'][0]) {
+                if($cardRemote['content'][0] == $cardDB['content'][0]) {
                     $isInDB = true;
                     $isRemoteChanged = false;
-                    if($cardDB['content'][5] !== $cardRemote['content'][5]) {
+                    if($cardDB['content'][5] != $cardRemote['content'][5]) {
                         if($cardDB['content'][5] > $cardRemote['content'][5]) {
                             for ($i = 1; $i < 6; $i++) {
                                 $cardRemote['content'][$i] = $cardDB['content'][$i];
@@ -754,7 +755,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
                         }
                     }
                     if($is_private) {
-                        if($cardDB['content'][9] !== $cardRemote['content'][9]) {
+                        if($cardDB['content'][9] != $cardRemote['content'][9]) {
                             if($cardDB['content'][9] > $cardRemote['content'][9]) {
                                 for ($i = 6; $i < 10; $i++) {
                                     $cardRemote['content'][$i] = $cardDB['content'][$i];
@@ -788,7 +789,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
         foreach ($cardsDB as &$cardDB) {
             $isInRemote = false;
             foreach ($cardsRemote as &$cardRemote) {
-                if($cardRemote[0] === $cardDB[0]) {
+                if($cardRemote[0] == $cardDB[0]) {
                     $isInRemote = true;
                     break;
                 }
