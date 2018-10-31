@@ -2810,6 +2810,8 @@ function loadBox() {
  * Check local storage for a box
  * - If found load the box
  * - If not found look for a boxID in the URL and try to load
+ * 
+ * this is a stupid test
  */
 $(document).ready(function() {	
 	// Logging on/off
