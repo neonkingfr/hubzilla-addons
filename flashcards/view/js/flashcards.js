@@ -1056,6 +1056,7 @@ function conductGUIelements(action) {
 	if(action === 'list-boxes') {
 		$("#flashcards_navbar_brand").html("Your Cloud Boxes");
 		$("#button_flashcards_save_box").hide();
+		$("#button_flashcards_learn_play").hide();
 		$("#button_share_box").hide();
 		$('#panel_box_attributes').collapse("hide");
 		$("#panel_flashcards_cards_actions").hide();
@@ -1858,13 +1859,6 @@ function loadCloudBoxes() {
 function createBoxList(boxes) {
     var html = '';
 	html += '<div class="container-fluid">';
-//	html += '<div class="row">';
-//	html += '<div class="col-sm-12">';
-//	html += '   <button class="btn nav-item ml-auto" id="button_flashcards_list_close">';
-//	html += '       <i class="fa fa-window-close"></i> Close';
-//	html += '   </button>';
-//	html += '</div>';
-//	html += '</div>';
     // list
     var i;
     for(i = 0; i < boxes.length; i++) {
@@ -1880,21 +1874,18 @@ function createBoxList(boxes) {
 		description = description.replace(/\n/g, '<br>');
         html += '<div class="row">';
         html += '   <div class="col-sm-12">';
-        html += '       <br><h3><i class="fa fa-plus" data-toggle="collapse" href="#panel_list_box_' + i + '" role="button" aria-expanded="false" aria-controls="panel_list_box_1"></i>';
-        html += '       <a href="' + postUrl + '/' + cloudBox["boxID"] + '" name="load_box">' + cloudBox["title"] + '</a></h3>';
+        html += '       <br><h3><a href="' + postUrl + '/' + cloudBox["boxID"] + '" name="load_box">' + cloudBox["title"] + '</a></h3>';
         html += '   </div>';
         html += '</div>';
-        html += '<div class="row panel-collapse collapse" id="panel_list_box_' + i + '" >';
-        html += '   <div class="col-sm-12">';
-        html += '       <b>Description:</b><br>';
-        html += '       ' + description + '';
-        html += '       <br><b>Size: </b>' + cloudBox["size"] + '';
+        html += '<div class="col-sm-12">';
+        html += '   <b>Description:</b><br>';
+        html += '   ' + description + '';
+        html += '   <br><b>Size: </b>' + cloudBox["size"] + '';
         if(cloudBox["boxID"] !== box.content.boxID) {
             html += '       &nbsp;<b>Delete box: </b>&nbsp;';
             html += '       <i class="fa fa-trash" id="link_delete_box" boxid="' + cloudBox["boxID"] + '" title_box_delete="' + cloudBox["title"] + '"></i>';            
         }
-        html += '   </div>';
-        html += '</div>';        
+        html += '</div>'; 
     }
     html += '</div>';
     $("#panel_cloud_boxes_1").html(html);
