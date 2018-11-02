@@ -87,9 +87,9 @@ class Flashcards extends \Zotlabs\Web\Controller {
 
         if(! local_channel()) {
         
-            logger('not a local channel = ');
+            logger('not a local channel');
             
-            return;
+//            return;
         }
 	
         $owner_uid = \App::$profile_uid;
