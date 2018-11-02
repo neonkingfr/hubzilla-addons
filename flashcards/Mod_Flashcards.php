@@ -10,18 +10,22 @@ class Flashcards extends \Zotlabs\Web\Controller {
 
     function init() {
         // Determine which channel's flashcards to display to the observer
+        logger('Enter init()');
         $nick = null;
         if (argc() > 1) {
             $nick = argv(1); // if the channel name is in the URL, use that
         }
+        logger('nick = ' . $nick);
         if (!$nick && local_channel()) { // if no channel name was provided, assume the current logged in channel
             $channel = \App::get_channel();
+            logger('No nick but local channel - channel = ' . $channel);
             if ($channel && $channel['channel_address']) {
                 $nick = $channel['channel_address'];
                 goaway(z_root() . '/flashcards/' . $nick);
             }
         }
         if (!$nick) {
+            logger('No nick and no local channel');
             notice(t('Profile Unavailable.') . EOL);
             goaway(z_root());
         }
@@ -36,6 +40,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
         head_add_css('/addon/flashcards/view/css/flashcards.css');
 
         if (observer_prohibited(true)) {
+            logger('observer prohibited');
             return login();
         }
 
@@ -46,22 +51,29 @@ class Flashcards extends \Zotlabs\Web\Controller {
         $ownerProfile = \App::$profile_uid; // TODO Delete
 
         if (!$ownerProfile) {
+            logger('no owner profil');
             return $text;
         }
 
         if(! Apps::addon_app_installed($ownerProfile,'flashcards')) { 
+            logger('owner profil has not addon installed');
             return $text;
         }
 
         if (!perm_is_allowed($ownerProfile, get_observer_hash(), 'view_storage')) {
+            logger('permission view_storage denied for observer hash = ' . get_observer_hash());
             notice(t('Permission denied.') . EOL);
             return;
         }
         
-	$observer = \App::get_observer();
+        $observer = \App::get_observer();
         $editor = $observer['xchan_addr'];
+        
+        logger('observer/editor = ' . $editor);
 
         $ownerChannel = channelx_by_n($ownerProfile);
+        
+        logger('owner channel = ' . $ownerChannel);
 		
         $is_owner = $this->isOwner();
 
@@ -75,7 +87,10 @@ class Flashcards extends \Zotlabs\Web\Controller {
 
     function post() {
 
-	if(! local_channel()) {
+        if(! local_channel()) {
+        
+            logger('not a local channel = ');
+            
             return;
         }
 	
@@ -99,6 +114,9 @@ class Flashcards extends \Zotlabs\Web\Controller {
         // - deny the permissions for the observer
         // - delete the flashcards of the observer
         if (!perm_is_allowed($owner_uid, $ob_hash, 'view_storage')) {
+        
+            logger('permission view_storage denied');
+            
             notice(t('Permission denied.') . EOL);
             json_return_and_die(array('status' => false, 'errormsg' => t('Permission denied.') . EOL));
         }
@@ -136,6 +154,8 @@ class Flashcards extends \Zotlabs\Web\Controller {
         $observer_uid = local_channel();
 
         $is_owner = ($observer_uid && $observer_uid == $owner_uid);
+        
+        logger('observer is owner ? ' . $is_owner);
         
         return $is_owner;
     }
