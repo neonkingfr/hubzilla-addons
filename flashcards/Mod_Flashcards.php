@@ -7,6 +7,11 @@ use Zotlabs\Web\Controller;
 use Zotlabs\Storage;
 
 class Flashcards extends \Zotlabs\Web\Controller {
+    
+    private $boxesDir;
+    private $is_owner;
+    private $owner;
+    private $observer;
 
     function init() {
         // Determine which channel's flashcards to display to the observer
@@ -48,97 +53,62 @@ class Flashcards extends \Zotlabs\Web\Controller {
 
         $text = '<div class="section-content-info-wrapper">' . $desc . '</div>';
         
-        $ownerProfile = \App::$profile_uid; // TODO Delete
-
-        if (!$ownerProfile) {
-            logger('no owner profil');
+        $status = $this->permChecks();
+        
+        if(! $status['status']) {
+            notice($status['errormsg'] . EOL);
             return $text;
         }
-
-        if(! Apps::addon_app_installed($ownerProfile,'flashcards')) { 
-            logger('owner profil has not addon installed');
-            return $text;
-        }
-
-        if (!perm_is_allowed($ownerProfile, get_observer_hash(), 'view_storage')) {
-            logger('permission view_storage denied for observer hash = ' . get_observer_hash());
-            notice(t('Permission denied.') . EOL);
-            return;
-        }
-        
-        $observer = \App::get_observer();
-        $editor = $observer['xchan_addr'];
-        
-        logger('observer/editor = ' . $editor);
-
-        $ownerChannel = channelx_by_n($ownerProfile);
-		
-        $is_owner = $this->isOwner();
 
         $o = replace_macros(get_markup_template('flashcards.tpl','addon/flashcards'),array(
-                '$post_url' => 'flashcards/' . $ownerChannel['channel_address'],
-                '$is_owner' => $is_owner,
-                '$flashcards_editor' => $editor
+                '$post_url' => 'flashcards/' . $this->owner['channel_address'],
+                '$is_owner' => $this->is_owner,
+                '$flashcards_editor' => $this->observer['xchan_addr']
         ));
+        
         return $o;
     }
 
     function post() {
-
-        if(! local_channel()) {
         
-            logger('not a local channel');
-            
-//            return;
+        $status = $this->permChecks();
+        
+        if(! $status['status']) {
+            notice($status['errormsg'] . EOL);
+            json_return_and_die(array('status' => false, 'errormsg' => $status['errormsg'] . EOL));
         }
-	
-        $owner_uid = \App::$profile_uid;
-
-        $is_owner = $this->isOwner();
-        
-        $owner = channelx_by_n($owner_uid);        
-        $observer = \App::get_observer();
-
-        $ob_hash = (($observer) ? $observer['xchan_hash'] : '');
         
         // If an observer is allowed to view flashcards of the owner then
         // he can automatically use these flashcards. The addon will create a
-        // copy for the observer where he can
+        // copy for the observer. Using this copy he will be able to
         // - edit the cards
         // - reshare the edits
         // - store his learning progress.
-        // The observer will never own his copy (and learning progress).
+        // The observer will never own his copy (including learning progress).
         // At every time the owner can
         // - deny the permissions for the observer
         // - delete the flashcards of the observer
-        if (!perm_is_allowed($owner_uid, $ob_hash, 'view_storage')) {
         
-            logger('permission view_storage denied');
-            
-            notice(t('Permission denied.') . EOL);
-            json_return_and_die(array('status' => false, 'errormsg' => t('Permission denied.') . EOL));
-        }
-        
-        $boxesDir = $this->getAddonDir($owner);
+        $this->getAddonDir();
         
         if (argc() > 2) {
             switch (argv(2)) {
                 case 'upload':
                     // API: /flashcards/nick/upload
                     // Creates or merges a box
-                    $this->writeBox($boxesDir, $is_owner, $owner, $observer);
+                    $this->writeBox();
                 case 'download':
                     // API: /flashcards/nick/download
                     // Downloads a box specified by param "box_id"
-                    $this->sendBox($boxesDir, $is_owner, $owner, $observer);
+                    $this->sendBox();
                 case 'list':
                     // API: /flashcards/nick/list
                     // List all boxes owned by the channel
-                    $this->listBoxes($boxesDir, $owner);
+                    $this->listBoxes();
                 case 'delete':
                     // API: /flashcards/nick/delete
                     // Deletes a box specified by param "box_id"
-                    $this->deleteBox($boxesDir, $is_owner, $owner, $observer);
+                    $this->deleteBox();
                 default:
                     break;
             }
@@ -146,29 +116,52 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
     }
     
-    private function isOwner() {
+    private function permChecks() {
 
+        if (observer_prohibited(true)) {
+            return array('status' => false, 'errormsg' => 'observer prohibited');
+        }
+        
         $owner_uid = \App::$profile_uid;
-        $observer_uid = local_channel();
 
-        $is_owner = ($observer_uid && $observer_uid == $owner_uid);
+        if (!$owner_uid) {
+            return array('status' => false, 'errormsg' => 'No owner profil');
+        }
+
+        if(! Apps::addon_app_installed($owner_uid,'flashcards')) { 
+            return array('status' => false, 'errormsg' => 'Owner profil has not addon installed');
+        }
+
+        if (!perm_is_allowed($owner_uid, get_observer_hash(), 'view_storage')) {
+            return array('status' => false, 'errormsg' => 'Permission view storage denied');
+        }
         
-        logger('observer is owner ? ' . $is_owner);
+        $this->owner = channelx_by_n($owner_uid);        
+        $this->observer = \App::get_observer();
         
-        return $is_owner;
+        logger('observer = ' . $this->observer['xchan_addr'] . ', owner = ' . $this->owner['xchan_addr']);
+        
+        $this->is_owner = ($this->observer['xchan_hash'] && $this->observer['xchan_hash'] == $this->owner['xchan_hash']);
+        if($this->is_owner) {
+            logger('observer = owner');
+        } else {
+            logger('observer != owner');
+        }
+        
+        return array('status' => true);
     }
 
-    private function listBoxes($boxesDir, $owner) {
+    private function listBoxes() {
         
         logger('+++ list boxes ... +++');
         
-        $this->recoverBoxes($boxesDir, $owner);
+        $this->recoverBoxes();
         
         $boxes = [];
         
         try {
             logger('getting files/dir for flashcards...');
-            $children = $boxesDir->getChildren();
+            $children = $this->boxesDir->getChildren();
         } catch (\Exception $e) {
             logger('permission denied');
             notice(t('Permission denied.') . EOL);
@@ -178,7 +171,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
             if ($child instanceof \Zotlabs\Storage\File) {
                 if($child->getContentType() === strtolower('application/json')) {
                     logger('found json file = '. $child->getName());
-                    $box = $this->readBox($boxesDir, $child->getName());
+                    $box = $this->readBox($this->boxesDir, $child->getName());
                     unset($box['cards']);
                     array_push($boxes, $box);
                 }
@@ -194,13 +187,13 @@ class Flashcards extends \Zotlabs\Web\Controller {
         json_return_and_die(array('status' => true, 'boxes' => $boxes));
     }
 
-    private function recoverBoxes($boxesDir, $channel) {
+    private function recoverBoxes() {
         
-        if(! $this->isOwner()) {
+        if(! $this->is_owner) {
             return;
         }
         
-        $recoverDir = $this->getRecoverDir($boxesDir, $channel);
+        $recoverDir = $this->getRecoverDir();
         
         $children = $recoverDir->getChildren();
         foreach($children as $child) {
@@ -208,7 +201,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
                 if($child->getContentType() === strtolower('application/json')) {
                     $fname = $child->getName();
                     logger('found recover file = ' . $fname);
-                    if($boxesDir->childExists($fname)) {
+                    if($this->boxesDir->childExists($fname)) {
                         logger('file exists already');
                         notice('Recovery failed. File "' . $fname . '" exist.');
                     } else {
@@ -216,7 +209,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
                         $hash = random_string(15);
                         $box["boxID"] = $hash;
                         $box["boxPublicID"] = $hash;
-                        $boxesDir->createFile($hash . '.json', json_encode($box));
+                        $this->boxesDir->createFile($hash . '.json', json_encode($box));
                         logger('created file name of box = ' . $hash . '.json');
                         info('Box was recovered.');
                     }
@@ -229,7 +222,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
        
     }
 
-    private function sendBox($boxesDir, $is_owner, $owner, $observer) {    
+    private function sendBox() {    
         
         logger('+++ send box ... +++');
         
@@ -238,18 +231,18 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
             logger('user requested box id = ' . $box_id);
         
-            $box = $this->readBox($boxesDir, $box_id . '.json');
+            $box = $this->readBox($this->boxesDir, $box_id . '.json');
             if(! $box) {
         
                 logger('box not found, box id = ' . $box_id);
                 
                 json_return_and_die(array('status' => false, 'errormsg' => 'No box found or no permissions for ' . $box_id));
             }
-            if($is_owner) {
+            if($this->is_owner) {
         
                 logger('owner requested box id = ' . $box_id);
             
-                $box = $this->importSharedBoxes($boxesDir, $owner, $box);
+                $box = $this->importSharedBoxes($box);
                 json_return_and_die(
                         array(
                             'status' => true,
@@ -257,23 +250,23 @@ class Flashcards extends \Zotlabs\Web\Controller {
                             'resource_public_id' => $box["boxPublicID"],
                             'resource_id' => $box["boxID"]));
             }
-            $this->sendBoxObserver($boxesDir, $box, $owner, $observer);
+            $this->sendBoxObserver($box);
         }
     }
     
-    private function sendBoxObserver($boxesDir, $box, $owner, $observer) {
+    private function sendBoxObserver($box) {
         
         $box_id = $box['boxID'];
         
         logger('observer requested box id = ' . $box_id);
         
-        $boxDir = $this->createDirBoxObserver($boxesDir, $box_id, $owner);
+        $boxDirObserver = $this->createDirBoxObserver($box_id);
         
-        $box_name = $this->getBoxNameObserver($observer);
+        $box_name = $this->getBoxNameObserver();
         
         $filename = $box_name . '.json';
         
-        if(! $boxDir->childExists($filename)) {
+        if(! $boxDirObserver->childExists($filename)) {
             $cards = $box['cards'];
             if($cards) {            
                 foreach ($cards as &$card) {
@@ -285,45 +278,44 @@ class Flashcards extends \Zotlabs\Web\Controller {
             }
             $hash = random_string(15);
             $box["boxID"] = $hash;
-            $boxDir->createFile($filename, json_encode($box));
+            $boxDirObserver->createFile($filename, json_encode($box));
             info('Box was copied box for you');
             logger('box created (copied) for observer, box id = ' . $box_id);
         }
         
-        $boxObserver = $this->readBox($boxDir, $filename);
-         
+        $boxObserver = $this->readBox($boxDirObserver, $filename);         
         
         logger('merge owner box into observer box, box id = ' . $box_id);
         
-        $boxObserver = $this->mergeOwnerBoxIntoObserverBox($boxesDir, $boxObserver);
+        $boxObserver = $this->mergeOwnerBoxIntoObserverBox($boxObserver);
         
         json_return_and_die(
                 array(
                     'status' => true,
                     'box' => $boxObserver,
-                    'resource_public_id' => $box["boxPublicID"],
-                    'resource_id' => $box["boxID"]));
+                    'resource_public_id' => $boxObserver["boxPublicID"],
+                    'resource_id' => $boxObserver["boxID"]));
         
     }
     
-    private function createDirBoxObserver($boxesDir, $box_id, $owner) {
+    private function createDirBoxObserver($box_id) {
         
         logger('create dir for observer, box id = ' . $box_id);
         
-        if(! $boxesDir->childExists($box_id)) {
-            $boxesDir->createDirectory($box_id);
+        if(! $this->boxesDir->childExists($box_id)) {
+            $this->boxesDir->createDirectory($box_id);
         }
 
-        $boxDir = new \Zotlabs\Storage\Directory('/'. $owner['channel_address'] . '/flashcards/' . $box_id, $this->createAuth($owner));
-        if(! $boxDir) {
-            json_return_and_die(array('message' => 'Directory for box can not be created.', 'success' => false));
+        $boxDirObserver = new \Zotlabs\Storage\Directory('/'. $this->owner['channel_address'] . '/flashcards/' . $box_id, $this->createAuth());
+        if(! $boxDirObserver) {
+            json_return_and_die(array('message' => 'Directory for observer box can not be created.', 'success' => false));
         }
         
-        return $boxDir;
+        return $boxDirObserver;
         
     }
     
-    private function writeBox($boxesDir, $is_owner, $owner, $observer) {
+    private function writeBox() {
         
         logger('+++ write box ... +++');
         
@@ -344,35 +336,43 @@ class Flashcards extends \Zotlabs\Web\Controller {
             }
         }
         
-        if($is_owner) {
+        if($this->is_owner) {
 
             if(strlen($box_id) > 0) {
                 
                 $filename = $box_id . '.json';
-                if(! $boxesDir->childExists($filename)) {
+                if(! $this->boxesDir->childExists($filename)) {
         
                     logger('box has to be created for owner, box id = ' . $box_id);
                     
-                    $boxesDir->createFile($filename, $boxRemote);
+                    $this->boxesDir->createFile($filename, $boxRemote);
+
+                    $boxRemote['lastShared'] = round(microtime(true) * 1000);
+                    unset($boxRemote['cards']);
+                
+                    json_return_and_die(array('status' => true, 'box' => $boxRemote, 'resource_id' => $box_id, 'cardIDsReceived' => $cardIDsReceived));
+                    
                 } else {
         
                     logger('locla box has to be merged with remote box for owner, box id = ' . $box_id);
                     
-                    $this->mergeBox($boxesDir, $box_id, $boxRemote, $cardIDsReceived, $owner);
-                }
-                
-                json_return_and_die(array('status' => true, 'resource_id' => $box_id, 'cardIDsReceived' => $cardIDsReceived));
+                    $this->mergeBox($box_id, $boxRemote, $cardIDsReceived);
+                    
+                }               
                 
             } else {
                 
                 $hash = random_string(15);
                 $boxRemote["boxID"] = $hash;
                 $boxRemote["boxPublicID"] = $hash;
-                $boxesDir->createFile($hash . '.json', json_encode($boxRemote));
+                $this->boxesDir->createFile($hash . '.json', json_encode($boxRemote));
         
                 logger('box is unknow and has to be created for owner, stored as = ' . $hash . '.json');
+
+                $boxRemote['lastShared'] = round(microtime(true) * 1000);
+                unset($boxRemote['cards']);
                 
-                json_return_and_die(array('status' => true, 'resource_id' => $hash, 'resource_public_id' => $hash, 'cardIDsReceived' => $cardIDsReceived));     
+                json_return_and_die(array('status' => true, 'box' => $boxRemote, 'resource_id' => $hash, 'resource_public_id' => $hash, 'cardIDsReceived' => $cardIDsReceived));     
                 
             }
             
@@ -380,18 +380,18 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
             logger('jump to write box for observer');
             
-            $this->writeBoxObserver($boxesDir, $boxRemote, $cardIDsReceived, $owner, $observer);
+            $this->writeBoxObserver($boxRemote, $cardIDsReceived);
             
         }
         
     }
     
-    private function writeBoxObserver($boxesDir, $boxRemote, $cardIDsReceived, $owner, $observer) {
+    private function writeBoxObserver($boxRemote, $cardIDsReceived) {
         
         $box_id = $boxRemote["boxID"];
         $box_public_id = $boxRemote["boxPublicID"];
         
-        if(! $boxesDir->childExists($box_public_id)) {
+        if(! $this->boxesDir->childExists($box_public_id)) {
         
             logger('no box dir found. Might be deleted by owner, public box id = ' . $box_public_id);
             
@@ -399,11 +399,11 @@ class Flashcards extends \Zotlabs\Web\Controller {
             json_return_and_die(array('status' => false, 'errormsg' => 'No box dir found. Might be deleted by owner.'));
         }
 
-        $boxDir = new \Zotlabs\Storage\Directory('/'. $owner['channel_address'] . '/flashcards/' . $box_public_id, $this->createAuth($owner));
-
-        $filename = $this->getBoxNameObserver($observer) . '.json';
+        $filename = $this->getBoxNameObserver() . '.json';
         
-        if(! $boxDir->childExists($filename)) {
+        $boxDirObserver = $this->createDirBoxObserver($box_public_id);
+        
+        if(! $boxDirObserver->childExists($filename)) {
         
             logger('no box dir found. Might be deleted by owner, public box id = ' . $filename);
             
@@ -411,47 +411,47 @@ class Flashcards extends \Zotlabs\Web\Controller {
             json_return_and_die(array('status' => false, 'errormsg' => 'No box found. Might be delete by owner.'));
         }        
         
-        $boxLocal = $this->readBox($boxDir, $filename);
+        $boxLocalObserver = $this->readBox($boxDirObserver, $filename);
         
         logger('merge local owner box into local observer box = ' . $filename);
         
-        $boxLocalMergedOwner = $this->mergeOwnerBoxIntoObserverBox($boxesDir, $boxLocal);
+        $boxLocalObserverMergedWithOwner = $this->mergeOwnerBoxIntoObserverBox($boxLocalObserver);
         
         logger('merge local local observer box with remote box');
         
-        $boxes = $this->flashcards_merge($boxLocalMergedOwner, $boxRemote);
+        $boxes = $this->flashcards_merge($boxLocalObserverMergedWithOwner, $boxRemote);
         $boxToWrite = $boxes['boxLocal'];
         $boxToSend = $boxes['boxRemote'];
 
         $boxToWrite['lastShared'] = $boxToSend['lastShared'] = round(microtime(true) * 1000);
         
         // store box of observer
-        $boxDir->getChild($filename)->put(json_encode($boxToWrite));
+        $boxDirObserver->getChild($filename)->put(json_encode($boxToWrite));
         
         // write box of observer to dir "share" where the owner can merge it
-        $this->shareObserverBoxLocally($boxesDir, $boxToWrite, $owner);
+        $this->shareObserverBoxLocally($boxToWrite);
         
         json_return_and_die(array('status' => true, 'box' => $boxToSend, 'resource_id' => $box_id, 'cardIDsReceived' => $cardIDsReceived));
         
     }
     
-    private function mergeOwnerBoxIntoObserverBox($boxesDir, $boxObserver) {
+    private function mergeOwnerBoxIntoObserverBox($boxObserver) {
         
         $box_public_id = $boxObserver["boxPublicID"];
         $filename = $box_public_id . '.json';
         
-        $boxOwner = $this->readBox($boxesDir, $filename);
+        $boxOwner = $this->readBox($this->boxesDir, $filename);
         if(! $boxOwner) {
             notice('Box of owner not found on server'); // This should never happen. Anyway.
             return $boxObserver;
         }
         
-        $boxes = $this->flashcards_merge($boxOwner, $boxObserver, false);
+        $boxes = $this->flashcards_merge($boxObserver, $boxOwner, false);
         
         return $boxes['boxLocal'];
     }
     
-    private function shareObserverBoxLocally($boxesDir, $boxObserver, $owner) {
+    private function shareObserverBoxLocally($boxObserver) {
         
         $cards = $boxObserver['cards'];
         $cardPublic = array();
@@ -466,7 +466,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
         }
         $boxObserver['cards'] = $cardPublic;
         
-        $shareDir = $this->getShareDir($boxesDir, $owner);
+        $shareDir = $this->getShareDir();
         
         $filename = $this->getShareFileName($boxObserver);
         
@@ -477,11 +477,11 @@ class Flashcards extends \Zotlabs\Web\Controller {
         }
     }
     
-    private function importSharedBoxes($boxesDir, $owner, $box) {
+    private function importSharedBoxes($box) {
         
         $boxId = $box['boxID'];
         
-        $shareDir = $this->getShareDir($boxesDir, $owner);
+        $shareDir = $this->getShareDir();
         
         $boxes = [];
         
@@ -512,14 +512,14 @@ class Flashcards extends \Zotlabs\Web\Controller {
         return $filename;
     }
     
-    private function getBoxNameObserver($observer) {
-        $ob_hash = $observer['xchan_hash'];
+    private function getBoxNameObserver() {
+        $ob_hash = $this->observer['xchan_hash'];
         $box_name = substr($ob_hash, 0, 15);
         return $box_name;
     }
     
-    private function readBox($boxesDir, $filename) {
-        $boxFileExists = $boxesDir->childExists($filename);
+    private function readBox($dir, $filename) {
+        $boxFileExists = $dir->childExists($filename);
         if(! $boxFileExists) {
             logger('file does not exist in boxes dir, file = '. $filename);
             return false;
@@ -527,7 +527,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
         logger('read box and convert from file = '. $filename);
         
-        $JSONstream = $boxesDir->getChild($filename)->get();
+        $JSONstream = $dir->getChild($filename)->get();
         $contents = stream_get_contents($JSONstream);
         $box = json_decode($contents, true);
         fclose($JSONstream);
@@ -536,15 +536,15 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
     }
 
-    private function mergeBox($boxesDir, $box_id, $boxRemote, $cardIDsReceived, $owner) {
+    private function mergeBox($box_id, $boxRemote, $cardIDsReceived) {
         
-        $boxLocal = $this->readBox($boxesDir, $box_id . '.json');
+        $boxLocal = $this->readBox($this->boxesDir, $box_id . '.json');
         if(! $boxLocal) {
             json_return_and_die(array('status' => false, 'resource_id' => $box_id, 'errormsg' => 'Box not found on server'));
         }
         
         // Another user might have changed the box
-        $boxLocalWithImports = $this->importSharedBoxes($boxesDir, $owner, $boxLocal);
+        $boxLocalWithImports = $this->importSharedBoxes($boxLocal);
         
         // The same user might have changed the box meanwhile from a different device
         $boxes = $this->flashcards_merge($boxLocalWithImports, $boxLocal);
@@ -559,12 +559,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
         logger('store and send box id = ' . $box_id);
         
-        $boxesDir->getChild($box_id . '.json')->put(json_encode($boxToWrite));
+        $this->boxesDir->getChild($box_id . '.json')->put(json_encode($boxToWrite));
         json_return_and_die(array('status' => true, 'box' => $boxToSend, 'resource_id' => $box_id, 'cardIDsReceived' => $cardIDsReceived));
         
     }
     
-    private function deleteBox($boxesDir, $is_owner, $owner, $observer) {
+    private function deleteBox() {
         
         logger('+++ delete box ... +++');
         
@@ -573,23 +573,23 @@ class Flashcards extends \Zotlabs\Web\Controller {
             return;
         }
         
-        if(!$is_owner) {
-            $this->deleteBoxObserver($boxesDir, $boxID, $owner, $observer);
+        if(!$this->is_owner) {
+            $this->deleteBoxObserver($boxID);
         }
         
         $filename = $boxID . '.json';
         
-        if($boxesDir->childExists($filename)) {      
+        if($this->boxesDir->childExists($filename)) {      
             
             // delete box itself
-            $boxesDir->getChild($filename)->delete();
+            $this->boxesDir->getChild($filename)->delete();
             // delete directory of box for the observers and their boxes too
-            if($boxesDir->childExists($boxID)) {
-                $boxesDir->getChild($boxID)->delete();
+            if($this->boxesDir->childExists($boxID)) {
+                $this->boxesDir->getChild($boxID)->delete();
             }
 
             // delete boxes in "share" directory
-            $shareDir = $this->getShareDir($boxesDir, $owner);
+            $shareDir = $this->getShareDir();
             $children = $shareDir->getChildren();
             foreach($children as $child) {
                 if ($child instanceof \Zotlabs\Storage\File) {
@@ -612,51 +612,53 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
     }
     
-    private function deleteBoxObserver($boxesDir, $box_id, $owner, $observer) {
+    private function deleteBoxObserver($box_id) {
         
-        if(! $boxesDir->childExists($box_id)) {
+        if(! $this->boxesDir->childExists($box_id)) {
             notice('No box dir found. Might be delete by owner.');
             json_return_and_die(array('status' => true));
         }
 
-        $boxDir = new \Zotlabs\Storage\Directory('/'. $owner['channel_address'] . '/flashcards/' . $box_id, $this->createAuth($owner));
-
         $filename = $this->getBoxNameObserver($observer) . '.json';
         
-        if($boxDir->childExists($filename)) {      
-            $boxDir->getChild($filename)->delete();
+        $boxDirObserver = $this->createDirBoxObserver($box_id);
+        
+        if($boxDirObserver->childExists($filename)) {      
+            $boxDirObserver->getChild($filename)->delete();
             json_return_and_die(array('status' => true));
         }
         
+        json_return_and_die(array('status' => false, 'errormsg' => 'No observer box found. Might be delete by owner.'));
+        
     }
     
-    private function createAuth($channel) { 
+    private function createAuth() { 
         
         // copied/adapted from Cloud.php
 		$auth = new \Zotlabs\Storage\BasicAuth();
 
-        $auth->setCurrentUser($channel['channel_address']);
-        $auth->channel_id = $channel['channel_id'];
-        $auth->channel_hash = $channel['channel_hash'];
-        $auth->channel_account_id = $channel['channel_account_id'];
-        if($channel['channel_timezone']) {
-            $auth->setTimezone($channel['channel_timezone']);
+        $auth->setCurrentUser($this->owner['channel_address']);
+        $auth->channel_id = $this->owner['channel_id'];
+        $auth->channel_hash = $this->owner['channel_hash'];
+        $auth->channel_account_id = $this->owner['channel_account_id'];
+        if($this->owner['channel_timezone']) {
+            $auth->setTimezone($this->owner['channel_timezone']);
         }
         // this is not true but reflects that no files are owned by the observer
-        $auth->observer = $channel['channel_hash'];
+        $auth->observer = $this->owner['channel_hash'];
         
         return $auth;
     }
     
-    private function getShareDir($boxesDir, $channel) {
+    private function getShareDir() {
         
-        $auth = $this->createAuth($channel);
+        $auth = $this->createAuth();
         
-        if(! $boxesDir->childExists('share')) {
-            $boxesDir->createDirectory('share');
+        if(! $this->boxesDir->childExists('share')) {
+            $this->boxesDir->createDirectory('share');
         }
         
-        $channelAddress = $channel['channel_address'];
+        $channelAddress = $this->owner['channel_address'];
         
         $shareDir = new \Zotlabs\Storage\Directory('/'. $channelAddress . '/flashcards/share', $auth);
         
@@ -667,15 +669,15 @@ class Flashcards extends \Zotlabs\Web\Controller {
         return $shareDir;
     }
     
-    private function getRecoverDir($boxesDir, $channel) {
+    private function getRecoverDir() {
         
-        $auth = $this->createAuth($channel);
+        $auth = $this->createAuth();
         
-        if(! $boxesDir->childExists('recover')) {
-            $boxesDir->createDirectory('recover');
+        if(! $this->boxesDir->childExists('recover')) {
+            $this->boxesDir->createDirectory('recover');
         }
         
-        $channelAddress = $channel['channel_address'];
+        $channelAddress = $this->owner['channel_address'];
         
         $recoverDir = new \Zotlabs\Storage\Directory('/'. $channelAddress . '/flashcards/recover', $auth);
         
@@ -686,13 +688,13 @@ class Flashcards extends \Zotlabs\Web\Controller {
         return $recoverDir;
     }
     
-    private function getAddonDir($channel) {
+    private function getAddonDir() {
         
-        $auth = $this->createAuth($channel);
+        $auth = $this->createAuth($this->owner);
         
         $rootDirectory = new \Zotlabs\Storage\Directory('/', $auth);
         
-        $channelAddress = $channel['channel_address'];
+        $channelAddress = $this->owner['channel_address'];
         
         if(! $rootDirectory->childExists($channelAddress)) {
             json_return_and_die(array('message' => 'No cloud directory.', 'success' => false));
@@ -703,12 +705,11 @@ class Flashcards extends \Zotlabs\Web\Controller {
             $channelDir->createDirectory('flashcards');
         }
         
-        $boxesDir = new \Zotlabs\Storage\Directory('/'. $channelAddress . '/flashcards', $auth);
-        if(! $boxesDir) {
+        $this->boxesDir = new \Zotlabs\Storage\Directory('/'. $channelAddress . '/flashcards', $auth);
+        if(! $this->boxesDir) {
             json_return_and_die(array('message' => 'Directory flashcards is missing.', 'success' => false));
         }
         
-        return $boxesDir;
     }
 
     /*

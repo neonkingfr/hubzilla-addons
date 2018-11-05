@@ -1673,11 +1673,6 @@ function downLoadBoxForURL() {
 			remoteBox.setContent(data['box']);
             remoteBox.removeAllUploadMarkers();
 			importBox(remoteBox);
-            
-//            logger.log(data['boxACL']);
-//            $("#flashcards-acl-modal").html(data['boxACL']).show();
-            
-//			redirectToAppRoot();
 		} else {
             logger.log("Error downloading box: " + data['errormsg']);
             loadCloudBoxes(); // TODO: Show list of boxes of "New box"
@@ -1706,8 +1701,8 @@ function importBox(importBox) {
 	} else {
 		logger.log('ID of remote box is different from local one. Do not merge the boxes. Instead: Import the remote box and display it...');
 		box = importBox;
-		loadStartPage();
 	}
+	loadStartPage();
 	box.store();
 }
 
