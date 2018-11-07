@@ -439,7 +439,7 @@ function asencode_activity($i) {
 					'href' => $reply_url,
 					'name' => '@' . $reply_addr
 				];
-				$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
+				$ret['tag'] = (($ret['object']['tag']) ? array_merge($ret['object']['tag'],$m) : $m);
 			}
 
 			$ret['to'] = [ $reply_url ];
