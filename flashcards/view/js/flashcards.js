@@ -1543,8 +1543,10 @@ $(document).on("click", "#button_delete_box", function() {
 	var boxid_delete = $($(this)).attr("boxid");
 	// $('a[href$="' + link_box_delete + '"]').hide();
 	$('#delete_box_modal').modal('hide');
+    animate_on();
 	logger.log('Sending request to delete box id: ' + boxid_delete + '...');
 	$.post(postUrl + "/delete", {boxID: boxid_delete} , function(data) {
+        animate_off();
 		if (data['status']) {
 			logger.log("Successfully deleted box " + boxid_delete + " on server. Status: " + data['status']);
             loadCloudBoxes()
@@ -1556,6 +1558,14 @@ $(document).on("click", "#button_delete_box", function() {
 	},
 	'json');
 });
+
+function animate_on() {
+    $('#button_share_box').find('.fa').addClass("fa-spin").addClass("fa-fw");
+}
+
+function animate_off() {
+    $('#button_share_box').find('.fa').removeClass("fa-spin").removeClass("fa-fw");
+}
 
 $(document).on("click", "#button_share_box", function() {
 	logger.log('clicked button share box');
@@ -1571,13 +1581,13 @@ function uploadBox() {
 		return;
 	}
     
-//    var contact_allow = acl.allow_cid;
 	var boxUpload = box.getContentToUpload();
 	logger.log('Sending request to upload a box: ' + boxUpload.content.title + '...');
     
-//	$.post("flashcards/a/upload", {box: boxUpload.content, contact_allow: contact_allow} , function(data) {
+    animate_on();
 
 	$.post(postUrl + "/upload", {box: boxUpload.content} , function(data) {
+        animate_off();
 		if (data['status']) {
 			logger.log("Successfully uploaded box " + box.content.title + " on server. Status: " + data['status']);
 			var box_id = data['resource_id'];
@@ -1648,8 +1658,10 @@ function downLoadBoxForURL() {
         logger.log("Do not download a box for the URL. Why? The URL path (" + path + ") was splitted by slashes. The fourth part does not exist. It should be the box ID.");
 		return false;
 	}
+    animate_on();
 	logger.log('Sending request to download a box: ' + box_id + '...');
 	$.post(postUrl + "/download/", {boxID: box_id} , function(data) {
+        animate_off();
 		if (data['status']) {
 			logger.log("Successfully downloaded box " + box_id + " on server. Status: " + data['status']);
 			// Merge the remote changes.
@@ -1807,8 +1819,10 @@ $(document).on("click", "#flashcards_show_boxes", function() {
 });
 
 function loadCloudBoxes() {
+    animate_on();
 	logger.log('Sending request to download a list of cloud boxes...');
 	$.post(postUrl + '/list/', '' , function(data) {
+        animate_off();
 		if (data['status']) {
             logger.log("Donwnload of boxes successfull. Status: " + data['status']);
 			$("#panel_flashcards_cards").hide();

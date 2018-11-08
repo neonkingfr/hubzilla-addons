@@ -5,7 +5,7 @@
 			<div class="dropdown-menu">
 				<a class="dropdown-item" id="flashcards_new_box">New Box</a>
 				<a class="dropdown-item" id="flashcards_edit_box">Edit Box</a>
-				<a class="dropdown-item" id="flashcards_show_boxes">Cloud Boxes</a>
+				<a class="dropdown-item" id="flashcards_show_boxes">List Boxes</a>
 				<div class="dropdown-divider"></div>
 				<a class="dropdown-item disabled" href="#">Search</a>
 			</div>
