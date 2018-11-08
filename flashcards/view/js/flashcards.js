@@ -889,14 +889,10 @@ var sortByColumn = 0;
 var sortReversOrder = false;
 var timezoneOffsetMilliseconds = 0;
 
-var isDownloadButton = true;
-
 function setShareButton() {
-    isDownloadButton = true;
 	$("#button_share_box").css({ 'color': '' });
 	if(box.hasChanges()) {
 		$("#button_share_box").css({ 'color': 'red' });
-        isDownloadButton = false;
 	}
 	var counter = 0;
     if(box.content.cards) {
@@ -914,13 +910,7 @@ function setShareButton() {
 		logger.log('Share button: ' + counter + ' card with changes');
 		$("#button_share_box_counter").html('<sup>' + counter + '</sup>');
 		$("#button_share_box").css({ 'color': 'red' });
-        isDownloadButton = false;
 	}
-    if(isDownloadButton) {
-        $('#button_share_box').find('.fa').removeClass("fa-cloud-upload").addClass("fa-cloud-download");
-    } else {
-        $('#button_share_box').find('.fa').removeClass("fa-cloud-download").addClass("fa-cloud-upload");
-    }
 	$("#button_share_box").show();
 }
 
@@ -1569,12 +1559,7 @@ $(document).on("click", "#button_delete_box", function() {
 
 $(document).on("click", "#button_share_box", function() {
 	logger.log('clicked button share box');
-    if(isDownloadButton) {
-        uploadBox();
-//        downLoadBoxForURL();
-    } else {
-        uploadBox();
-    }
+    uploadBox();
 });
 
 function uploadBox() {
