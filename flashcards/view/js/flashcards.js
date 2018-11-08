@@ -1862,7 +1862,11 @@ function createBoxList(boxes) {
         html += '   ' + description + '';
         html += '   <br><b>Size: </b>' + cloudBox["size"] + '';
         if(cloudBox["boxID"] !== box.content.boxID) {
-            html += '       &nbsp;<b>Delete box: </b>&nbsp;';
+            if(is_owner) {
+                html += '       &nbsp;<b>Delete box: </b>&nbsp;';
+            } else  {
+                html += '       &nbsp;<b>Delete learn results: </b>&nbsp;';
+            }
             html += '       <i class="fa fa-trash" id="link_delete_box" boxid="' + cloudBox["boxID"] + '" title_box_delete="' + cloudBox["title"] + '"></i>';            
         }
         html += '</div>'; 
