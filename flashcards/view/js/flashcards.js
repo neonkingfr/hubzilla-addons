@@ -889,14 +889,10 @@ var sortByColumn = 0;
 var sortReversOrder = false;
 var timezoneOffsetMilliseconds = 0;
 
-var isDownloadButton = true;
-
 function setShareButton() {
-    isDownloadButton = true;
 	$("#button_share_box").css({ 'color': '' });
 	if(box.hasChanges()) {
 		$("#button_share_box").css({ 'color': 'red' });
-        isDownloadButton = false;
 	}
 	var counter = 0;
     if(box.content.cards) {
@@ -914,13 +910,7 @@ function setShareButton() {
 		logger.log('Share button: ' + counter + ' card with changes');
 		$("#button_share_box_counter").html('<sup>' + counter + '</sup>');
 		$("#button_share_box").css({ 'color': 'red' });
-        isDownloadButton = false;
 	}
-    if(isDownloadButton) {
-        $('#button_share_box').find('.fa').removeClass("fa-cloud-upload").addClass("fa-cloud-download");
-    } else {
-        $('#button_share_box').find('.fa').removeClass("fa-cloud-download").addClass("fa-cloud-upload");
-    }
 	$("#button_share_box").show();
 }
 
@@ -1553,8 +1543,10 @@ $(document).on("click", "#button_delete_box", function() {
 	var boxid_delete = $($(this)).attr("boxid");
 	// $('a[href$="' + link_box_delete + '"]').hide();
 	$('#delete_box_modal').modal('hide');
+    animate_on();
 	logger.log('Sending request to delete box id: ' + boxid_delete + '...');
 	$.post(postUrl + "/delete", {boxID: boxid_delete} , function(data) {
+        animate_off();
 		if (data['status']) {
 			logger.log("Successfully deleted box " + boxid_delete + " on server. Status: " + data['status']);
             loadCloudBoxes()
@@ -1567,14 +1559,17 @@ $(document).on("click", "#button_delete_box", function() {
 	'json');
 });
 
+function animate_on() {
+    $('#button_share_box').find('.fa').addClass("fa-spin").addClass("fa-fw");
+}
+
+function animate_off() {
+    $('#button_share_box').find('.fa').removeClass("fa-spin").removeClass("fa-fw");
+}
+
 $(document).on("click", "#button_share_box", function() {
 	logger.log('clicked button share box');
-    if(isDownloadButton) {
-        uploadBox();
-//        downLoadBoxForURL();
-    } else {
-        uploadBox();
-    }
+    uploadBox();
 });
 
 function uploadBox() {
@@ -1586,13 +1581,13 @@ function uploadBox() {
 		return;
 	}
     
-//    var contact_allow = acl.allow_cid;
 	var boxUpload = box.getContentToUpload();
 	logger.log('Sending request to upload a box: ' + boxUpload.content.title + '...');
     
-//	$.post("flashcards/a/upload", {box: boxUpload.content, contact_allow: contact_allow} , function(data) {
+    animate_on();
 
 	$.post(postUrl + "/upload", {box: boxUpload.content} , function(data) {
+        animate_off();
 		if (data['status']) {
 			logger.log("Successfully uploaded box " + box.content.title + " on server. Status: " + data['status']);
 			var box_id = data['resource_id'];
@@ -1663,8 +1658,10 @@ function downLoadBoxForURL() {
         logger.log("Do not download a box for the URL. Why? The URL path (" + path + ") was splitted by slashes. The fourth part does not exist. It should be the box ID.");
 		return false;
 	}
+    animate_on();
 	logger.log('Sending request to download a box: ' + box_id + '...');
 	$.post(postUrl + "/download/", {boxID: box_id} , function(data) {
+        animate_off();
 		if (data['status']) {
 			logger.log("Successfully downloaded box " + box_id + " on server. Status: " + data['status']);
 			// Merge the remote changes.
@@ -1822,8 +1819,10 @@ $(document).on("click", "#flashcards_show_boxes", function() {
 });
 
 function loadCloudBoxes() {
+    animate_on();
 	logger.log('Sending request to download a list of cloud boxes...');
 	$.post(postUrl + '/list/', '' , function(data) {
+        animate_off();
 		if (data['status']) {
             logger.log("Donwnload of boxes successfull. Status: " + data['status']);
 			$("#panel_flashcards_cards").hide();
@@ -1877,7 +1876,11 @@ function createBoxList(boxes) {
         html += '   ' + description + '';
         html += '   <br><b>Size: </b>' + cloudBox["size"] + '';
         if(cloudBox["boxID"] !== box.content.boxID) {
-            html += '       &nbsp;<b>Delete box: </b>&nbsp;';
+            if(is_owner) {
+                html += '       &nbsp;<b>Delete box: </b>&nbsp;';
+            } else  {
+                html += '       &nbsp;<b>Delete learn results: </b>&nbsp;';
+            }
             html += '       <i class="fa fa-trash" id="link_delete_box" boxid="' + cloudBox["boxID"] + '" title_box_delete="' + cloudBox["title"] + '"></i>';            
         }
         html += '</div>'; 
