@@ -14,13 +14,13 @@ use Zotlabs\Extend\Route;
 
 function startpage_load() {
 	Hook::register('home_init', 'addon/startpage/startpage.php', 'startpage_home_init');
-	Route::register('addon/nsfw/Mod_Startpage.php','startpage');
+	Route::register('addon/startpage/Mod_Startpage.php','startpage');
 }
 
 
 function startpage_unload() {
 	Hook::unregister('home_init', 'addon/startpage/startpage.php', 'startpage_home_init');
-	Route::register('addon/startpage/Mod_Startpage.php','startpage');
+	Route::unregister('addon/startpage/Mod_Startpage.php','startpage');
 }
 
 function startpage_home_init(&$b) {
