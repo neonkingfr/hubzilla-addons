@@ -1020,7 +1020,7 @@ function as_actor_store($url,$person_obj) {
 			dbesc(escape_tags($name)),
 			dbesc(escape_tags($pubkey)),
 			dbesc('activitypub'),
-			dbesc(datetime_convert()),
+			dbescdate(datetime_convert()),
 			dbesc($url)
 		);
 	}
