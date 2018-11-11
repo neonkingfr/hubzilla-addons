@@ -445,7 +445,8 @@ function asencode_activity($i) {
 			$ret['to'] = [ $reply_url ];
 		}
 		else {
-			$ret['to'] = as_map_acl($i);
+			$ret['to'] = []; //this is important for pleroma
+			$ret['cc'] = as_map_acl($i);
 		}
 	}
 	else {
@@ -467,19 +468,19 @@ function asencode_activity($i) {
 			$ret['to'][] = ACTIVITY_PUBLIC_INBOX;
 			$ret['cc'][] = $followers_url;
 		}
+	}
 
-		$mentions = as_map_mentions($i);
-		if(count($mentions)) {
-			$ret['cc'] = array_merge($ret['cc'], $mentions);
-		}
+	$mentions = as_map_mentions($i);
+	if(count($mentions)) {
+		$ret['to'] = (($ret['to']) ? array_merge($ret['to'],$mentions) : $mentions);
 	}
 
 	if(in_array($ret['object']['type'], [ 'Note', 'Article' ])) {
-		if($ret['to'])
+		if(isset($ret['to']))
 			$ret['object']['to'] = $ret['to'];
-		if($ret['cc'])
+		if(isset($ret['cc']))
 			$ret['object']['cc'] = $ret['cc'];
-		if($ret['tag'])
+		if(isset($ret['tag']))
 			$ret['object']['tag'] = $ret['tag'];
 	}
 
