@@ -533,7 +533,7 @@ function diaspora_queue($owner,$contact,$slap,$public_batch,$message_id = '') {
 			dbesc($dest_url),
 			dbesc($dest_url),
 			dbesc('queued'),
-			dbesc(datetime_convert()),
+			dbescdate(datetime_convert()),
 			dbesc($owner['channel_hash']),
 			dbesc($hash)
 		);
@@ -708,7 +708,7 @@ function diaspora_discover(&$b) {
 			$r = q("update xchan set xchan_name = '%s', xchan_network = '%s', xchan_name_date = '%s', xchan_pubkey = '%s' where xchan_hash = '%s'",
 				dbesc($vcard['fn']),
 				dbesc($network),
-				dbesc(datetime_convert()),
+				dbescdate(datetime_convert()),
 				dbesc($pubkey),
 				dbesc($addr)
 			);
@@ -750,7 +750,7 @@ function diaspora_discover(&$b) {
 
 		$photos = import_xchan_photo($vcard['photo'],$addr);
 		$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
-			dbesc(datetime_convert()),
+			dbescdate(datetime_convert()),
 			dbesc($photos[0]),
 			dbesc($photos[1]),
 			dbesc($photos[2]),
@@ -1184,13 +1184,13 @@ function diaspora_queue_deliver(&$b) {
 			logger('deliver: queue post success to ' . $outq['outq_posturl'], LOGGER_DEBUG);
 			if($base) {
 				q("update site set site_update = '%s', site_dead = 0 where site_url = '%s' ",
-					dbesc(datetime_convert()),
+					dbescdate(datetime_convert()),
 					dbesc($base)
 				);
 			}
 			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s'",
 				dbesc('accepted for delivery'),
-				dbesc(datetime_convert()),
+				dbescdate(datetime_convert()),
 				dbesc($outq['outq_hash'])
 			);
 			remove_queue_item($outq['outq_hash']);
