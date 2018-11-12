@@ -41,6 +41,7 @@ function superblock_unload() {
 	unregister_hook('conversation_start', 'addon/superblock/superblock.php', 'superblock_conversation_start');
 	unregister_hook('thread_author_menu', 'addon/superblock/superblock.php', 'superblock_item_photo_menu');
 	unregister_hook('enotify_store', 'addon/superblock/superblock.php', 'superblock_enotify_store');
+	unregister_hook('enotify_format', 'addon/superblock/superblock.php', 'superblock_enotify_format');
 	unregister_hook('item_store', 'addon/superblock/superblock.php', 'superblock_item_store');
 	unregister_hook('directory_item', 'addon/superblock/superblock.php', 'superblock_directory_item');
 	unregister_hook('api_format_items', 'addon/superblock/superblock.php', 'superblock_api_format_items');
