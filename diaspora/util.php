@@ -259,7 +259,7 @@ function diaspora_build_status($item,$owner) {
 
 		$arr = [
 			'author'     => $myaddr,
-			'guid'       => $item['mid'],
+			'guid'       => $item['uuid'],
 			'created_at' => $created_at,
 		];
 
@@ -301,7 +301,7 @@ function diaspora_build_status($item,$owner) {
 				[
 					'$root_handle' => xmlify($ret['root_handle']),
 					'$root_guid' => $ret['root_guid'],
-					'$guid' => $item['mid'],
+					'$guid' => $item['uuid'],
 					'$handle' => xmlify($myaddr),
 					'$public' => $public,
 					'$created' => $created,
@@ -313,7 +313,7 @@ function diaspora_build_status($item,$owner) {
 			$msg = replace_macros(get_markup_template('diaspora_post.tpl','addon/diaspora'),
 				[
 					'$body' => xmlify($body),
-					'$guid' => $item['mid'],
+					'$guid' => $item['uuid'],
 					'$poll' => $poll,
 					'$handle' => xmlify($myaddr),
 					'$public' => $public,

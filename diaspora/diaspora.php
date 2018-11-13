@@ -783,7 +783,7 @@ function diaspora_post_local(&$item) {
 			if(activity_match($item['obj_type'], [ ACTIVITY_OBJ_NOTE, ACTIVITY_OBJ_ACTIVITY, ACTIVITY_OBJ_COMMENT ])) {
 				$meta = [
 					'positive'        => (($item['verb'] === ACTIVITY_LIKE) ? 'true' : 'false'),
-					'guid'            => $item['mid'],
+					'guid'            => $item['uuid'],
 				];
 				if(defined('DIASPORA_V2')) {
 					$meta['author']      = $handle;
@@ -811,7 +811,7 @@ function diaspora_post_local(&$item) {
 					if($ev && $ev['hash'] && defined('DIASPORA_V2')) {
 						$meta = [
 							'author' => $handle,
-							'guid'   => $item['mid'],
+							'guid'   => $item['uuid'],
 							'parent_guid' => $ev['hash'],
 							'status'      => $status
 						];

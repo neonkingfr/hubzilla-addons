@@ -212,7 +212,7 @@ class Diaspora_Receiver {
 		$orig_id = null;
 
 
-		$r = q("SELECT id, edited FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT id, edited FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($guid)
 		);
@@ -410,6 +410,8 @@ class Diaspora_Receiver {
 		$datarray['uid'] = $this->importer['channel_id'];
 
 		$datarray['verb'] = ACTIVITY_POST;
+		$datarray['uuid'] = $guid;
+
 		$datarray['mid'] = $datarray['parent_mid'] = $guid;
 
 		if($updated) {
@@ -500,7 +502,7 @@ class Diaspora_Receiver {
 		if(! $contact)
 			return;
 
-		$r = q("SELECT id FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT id FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($guid)
 		);
@@ -638,7 +640,7 @@ class Diaspora_Receiver {
 		$plink = service_plink($contact,$guid);
 		$datarray['aid'] = $this->importer['channel_account_id'];
 		$datarray['uid'] = $this->importer['channel_id'];
-		$datarray['mid'] = $datarray['parent_mid'] = $guid;
+		$datarray['uuid'] = $datarray['mid'] = $datarray['parent_mid'] = $guid;
 		$datarray['changed'] = $datarray['created'] = $datarray['edited'] = datetime_convert('UTC','UTC',$created);
 		$datarray['item_private'] = $private;
 		$datarray['plink'] = $plink;
@@ -726,7 +728,7 @@ class Diaspora_Receiver {
 			$contact = find_diaspora_person_by_handle($this->msg['author']);
 
 
-		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($parent_guid)
 		);
@@ -750,7 +752,7 @@ class Diaspora_Receiver {
 		$editing = false;
 		$orig_id = null;
 
-		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($guid)
 		);
@@ -925,7 +927,7 @@ class Diaspora_Receiver {
 		$datarray['aid'] = $this->importer['channel_account_id'];
 		$datarray['uid'] = $this->importer['channel_id'];
 		$datarray['verb'] = ACTIVITY_POST;
-		$datarray['mid'] = $guid;
+		$datarray['mid'] = $datarray['uuid'] = $guid;
 		$datarray['parent_mid'] = $parent_item['mid'];
 		$datarray['thr_parent'] = $thr_parent;
 
@@ -1367,7 +1369,7 @@ class Diaspora_Receiver {
 			return 202;
 		}
 
-		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($status_message_guid)
 		);
@@ -1429,7 +1431,7 @@ class Diaspora_Receiver {
 			return 202;
 		}
 
-		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($parent_guid)
 		);
@@ -1447,7 +1449,7 @@ class Diaspora_Receiver {
 			return;
 		}
 
-		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($guid)
 		);
@@ -1571,6 +1573,7 @@ class Diaspora_Receiver {
 
 		$arr['uid'] = $this->importer['channel_id'];
 		$arr['aid'] = $this->importer['channel_account_id'];
+		$arr['uuid'] = $guid;
 		$arr['mid'] = $guid;
 		
 		$arr['parent_mid'] = $parent_item['mid'];
@@ -1641,7 +1644,7 @@ class Diaspora_Receiver {
 			contact_remove($this->importer['channel_id'],$contact['abook_id']);
 		}
 		elseif(($type === 'Post') || ($type === 'StatusMessage') || ($type === 'Comment') || ($type === 'Like')) {
-			$r = q("select * from item where mid = '%s' and uid = %d limit 1",
+			$r = q("select * from item where uuid = '%s' and uid = %d limit 1",
 				dbesc($guid),
 				intval($this->importer['channel_id'])
 			);
@@ -1656,7 +1659,7 @@ class Diaspora_Receiver {
 
 					// If we are the conversation owner, propagate the delete elsewhere
 
-					$p = q("select * from item where mid = '%s' and uid = %d",
+					$p = q("select * from item where uuid = '%s' and uid = %d",
 						dbesc($r[0]['parent_mid']),
 						intval($this->importer['channel_id'])
 					);
@@ -1736,7 +1739,7 @@ class Diaspora_Receiver {
 		}
 
 		if($type === 'StatusMessage' || $type === 'Comment' || $type === 'Like') {
-			$r = q("select * from item where mid = '%s' and uid = %d limit 1",
+			$r = q("select * from item where uuid = '%s' and uid = %d limit 1",
 				dbesc($guid),
 				intval($this->importer['channel_id'])
 			);
@@ -2118,7 +2121,7 @@ class Diaspora_Receiver {
 
 		$arr['uid'] = $this->importer['channel_id'];
 		$arr['aid'] = $this->importer['channel_account_id'];
-		$arr['mid'] = $guid;
+		$arr['mid'] = $arr['uuid'] = $guid;
 		
 		$arr['parent_mid'] = $parent_item['mid'];
 

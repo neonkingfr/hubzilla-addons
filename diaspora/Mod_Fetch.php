@@ -16,7 +16,7 @@ class Fetch extends \Zotlabs\Web\Controller {
 
 	
 		// Fetch the item
-		$item = q("SELECT * from item where mid = '%s' and item_private = 0 and mid = parent_mid limit 1",
+		$item = q("SELECT * from item where uuid = '%s' and item_private = 0 and mid = parent_mid limit 1",
 			dbesc($guid)
 		);
 		if(! $item) {
