@@ -82,10 +82,11 @@ function wppost_dreport($dr,$update) {
 	if(get_config('system','disable_dreport'))
 		return;
 
-	q("insert into dreport ( dreport_mid, dreport_site, dreport_recip, dreport_result, dreport_time, dreport_xchan ) values ( '%s', '%s','%s','%s','%s','%s' ) ",
+	q("insert into dreport ( dreport_mid, dreport_site, dreport_recip, dreport_name, dreport_result, dreport_time, dreport_xchan ) values ( '%s', '%s','%s','%s','%s','%s','%s' ) ",
 		dbesc($xx['message_id']),
 		dbesc($xx['location']),
 		dbesc($xx['recipient']),
+		dbesc($xx['name']),
 		dbesc($xx['status']),
 		dbesc(datetime_convert($xx['date'])),
 		dbesc($xx['sender'])

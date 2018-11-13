@@ -183,10 +183,11 @@ function push_notifier_process(&$a,&$b) {
 			&& (! $b['target_item']['item_deleted']) && (! get_config('system','disable_dreport'))) {
 			$m = parse_url($rr['callback_url']);
 			if($m) {
-				q("insert into dreport ( dreport_mid, dreport_site, dreport_recip, dreport_result, dreport_time, dreport_xchan, dreport_queue ) values ( '%s','%s','%s','%s','%s','%s','%s' ) ",
+				q("insert into dreport ( dreport_mid, dreport_site, dreport_recip, dreport_name, dreport_result, dreport_time, dreport_xchan, dreport_queue ) values ( '%s','%s','%s','%s','%s','%s','%s','%s', ) ",
 					dbesc($b['target_item']['mid']),
 					dbesc($m['host']),
 					dbesc($rr['callback_url']),
+					dbesc(EMPTY_STR),
 					dbesc('queued'),
 					dbesc(datetime_convert()),
 					dbesc($channel['channel_hash']),
