@@ -15,30 +15,12 @@ use Zotlabs\Extend\Hook;
 
 require_once('addon/gallery/Mod_Gallery.php');
 
-function gallery_module() {}
-
 function gallery_load() {
-	Hook::register('load_pdl', 'addon/gallery/gallery.php', 'gallery_load_pdl');
 	Hook::register('channel_apps', 'addon/gallery/gallery.php', 'gallery_channel_apps');
 }
 
 function gallery_unload() {
-	Hook::unregister('load_pdl', 'addon/gallery/gallery.php', 'gallery_load_pdl');
 	Hook::unregister('channel_apps', 'addon/gallery/gallery.php', 'gallery_channel_apps');
-}
-
-function gallery_load_pdl(&$b) {
-	if ($b['module'] === 'gallery') {
-		$b['layout'] = '
-			[region=aside]
-			[widget=vcard][/widget]
-			[/region]
-			[region=right_aside]
-			[widget=notifications][/widget]
-			[widget=newmember][/widget]
-			[/region]
-		';
-	}
 }
 
 function gallery_channel_apps(&$b) {

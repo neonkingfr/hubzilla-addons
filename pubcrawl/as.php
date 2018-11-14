@@ -385,32 +385,6 @@ function asencode_activity($i) {
 		}
 	}
 
-	if($i['id'] != $i['parent']) {
-		$ret['inReplyTo'] = ((strpos($i['parent_mid'],'http') === 0) ? $i['parent_mid'] : z_root() . '/item/' . urlencode($i['parent_mid']));
-		$reply = true;
-
-		if($i['item_private']) {
-			$d = q("select xchan_url, xchan_addr, xchan_name from item left join xchan on xchan_hash = author_xchan where id = %d limit 1",
-				intval($i['parent'])
-			);
-			if($d) {
-				$is_directmessage = false;
-				$recips = get_iconfig($i['parent'], 'activitypub', 'recips');
-
-				if(in_array($i['author']['xchan_url'], $recips['to'])) {
-					$reply_url = $d[0]['xchan_url'];
-					$is_directmessage = true;
-				}
-				else {
-					$reply_url = z_root() . '/followers/' . substr($i['author']['xchan_addr'],0,strpos($i['author']['xchan_addr'],'@'));
-				}
-
-				$reply_addr = (($d[0]['xchan_addr']) ? $d[0]['xchan_addr'] : $d[0]['xchan_name']);
-			}
-		}
-
-	}
-
 	$actor = asencode_person($i['author']);
 	if($actor)
 		$ret['actor'] = $actor;
@@ -440,57 +414,73 @@ function asencode_activity($i) {
 			return [];
 	}
 
+	if($i['id'] != $i['parent']) {
+		$reply = true;
+		$ret['inReplyTo'] = ((strpos($i['parent_mid'],'http') === 0) ? $i['parent_mid'] : z_root() . '/item/' . urlencode($i['parent_mid']));
+		$recips = get_iconfig($i['parent'], 'activitypub', 'recips');
+	}
+
+	if($i['author_xchan'] == $i['owner_xchan'])
+		$item_owner = true;
+
+	$followers_url = z_root() . '/followers/' . substr($i['author']['xchan_addr'],0,strpos($i['author']['xchan_addr'],'@'));
+
 	if($i['item_private']) {
-		if($reply) {
-			if($i['author_xchan'] == $i['owner_xchan']) {
-				$ret['to'] = as_map_acl($i);
+		if($reply && ! $item_owner) {
+
+			$dm = ((in_array($i['author']['xchan_url'], $recips['to'])) ? true : false);
+
+			$reply_url = (($dm) ? $i['owner']['xchan_url'] : $followers_url);
+			$reply_addr = (($i['owner']['xchan_addr']) ? $i['owner']['xchan_addr'] : $i['owner']['xchan_name']);
+
+			if($dm) {
+				$m = [
+					'type' => 'Mention',
+					'href' => $reply_url,
+					'name' => '@' . $reply_addr
+				];
+				$ret['tag'] = (($ret['object']['tag']) ? array_merge($ret['object']['tag'],$m) : $m);
 			}
-			else {
-				if($is_directmessage) {
-					$m = [
-						'type' => 'Mention',
-						'href' => $reply_url,
-						'name' => '@' . $reply_addr
-					];
-					$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
-					$ret['to'] = [ $reply_url ];
-				}
-				else {
-					$ret['to'] = [ $reply_url ];
-				}
-			}
+
+			$ret['to'] = [ $reply_url ];
 		}
 		else {
-			$ret['to'] = as_map_acl($i);
+			$ret['to'] = []; //this is important for pleroma
+			$ret['cc'] = as_map_acl($i);
 		}
 	}
 	else {
 		if($reply) {
-			$ret['to'] = [ z_root() . '/followers/' . substr($i['author']['xchan_addr'],0,strpos($i['author']['xchan_addr'],'@')) ];
-			$ret['cc'] = [ ACTIVITY_PUBLIC_INBOX ];
+			$ret['to'][] = $i['owner']['xchan_url'];
+
+			if(in_array(ACTIVITY_PUBLIC_INBOX, $recips['to'])) {
+				//visible in public timelines
+				$ret['to'][] = ACTIVITY_PUBLIC_INBOX;
+				$ret['cc'][] = $followers_url;
+			}
+			else {
+				//not visible in public timelines
+				$ret['to'][] = $followers_url;
+				$ret['cc'][] = ACTIVITY_PUBLIC_INBOX;
+			}
 		}
 		else {
-			$ret['to'] = [ ACTIVITY_PUBLIC_INBOX ];
-			$ret['cc'] = [ z_root() . '/followers/' . substr($i['author']['xchan_addr'],0,strpos($i['author']['xchan_addr'],'@')) ];
+			$ret['to'][] = ACTIVITY_PUBLIC_INBOX;
+			$ret['cc'][] = $followers_url;
 		}
 	}
 
 	$mentions = as_map_mentions($i);
-	if(count($mentions) > 0) {
-		if(! $ret['cc']) {
-			$ret['cc'] = $mentions;
-		}
-		else {
-			$ret['cc'] = array_merge($ret['cc'], $mentions);
-		}
+	if(count($mentions)) {
+		$ret['to'] = (($ret['to']) ? array_merge($ret['to'],$mentions) : $mentions);
 	}
-	
+
 	if(in_array($ret['object']['type'], [ 'Note', 'Article' ])) {
-		if($ret['to'])
+		if(isset($ret['to']))
 			$ret['object']['to'] = $ret['to'];
-		if($ret['cc'])
+		if(isset($ret['cc']))
 			$ret['object']['cc'] = $ret['cc'];
-		if($ret['tag'])
+		if(isset($ret['tag']))
 			$ret['object']['tag'] = $ret['tag'];
 	}
 
@@ -526,12 +516,7 @@ function as_map_acl($i,$mentions = false) {
 		if(! $x)
 			return;
 
-		$strict = (($mentions) ? true : get_config('activitypub','compliance'));
-
-		$sql_extra = (($strict) ? " and xchan_network = 'activitypub' " : '');
-
-		$details = q("select xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") $sql_extra");
-
+		$details = q("select xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") and xchan_network = 'activitypub'");
 		if($details) {
 			foreach($details as $d) {
 				if($mentions) {
@@ -1036,7 +1021,7 @@ function as_actor_store($url,$person_obj) {
 			dbesc(escape_tags($name)),
 			dbesc(escape_tags($pubkey)),
 			dbesc('activitypub'),
-			dbesc(datetime_convert()),
+			dbescdate(datetime_convert()),
 			dbesc($url)
 		);
 	}
@@ -1077,7 +1062,7 @@ function as_actor_store($url,$person_obj) {
 
 	$photos = import_xchan_photo($icon,$url);
 	$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
-		dbescdate(datetime_convert('UTC','UTC',$arr['photo_updated'])),
+		dbescdate(datetime_convert()),
 		dbesc($photos[0]),
 		dbesc($photos[1]),
 		dbesc($photos[2]),

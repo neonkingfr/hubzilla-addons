@@ -4,7 +4,7 @@
 				<title>{{$pagetitle}}</title>
 				<link href="/addon/rendezvous/view/css/jquery-ui.css" rel='stylesheet' type='text/css'>
 				<link href="/addon/rendezvous/view/css/rendezvous.css?v=0.1.0" rel='stylesheet' type='text/css'>
-				<link href="/library/bootstrap/css/bootstrap.min.css?v=1.13.3" rel='stylesheet' type='text/css'>
+				<link href="/vendor/twbs/bootstrap/dist/css/bootstrap.min.css?v=4.1.3" rel='stylesheet' type='text/css'>
 				<link href="/library/fork-awesome/css/fork-awesome.min.css?v=3.3.3" rel="stylesheet" type="text/css" media="screen">
 				
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">

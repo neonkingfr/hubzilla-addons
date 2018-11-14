@@ -24,6 +24,7 @@ function superblock_load() {
 	register_hook('conversation_start', 'addon/superblock/superblock.php', 'superblock_conversation_start');
 	register_hook('thread_author_menu', 'addon/superblock/superblock.php', 'superblock_item_photo_menu');
 	register_hook('enotify_store', 'addon/superblock/superblock.php', 'superblock_enotify_store');
+	register_hook('enotify_format', 'addon/superblock/superblock.php', 'superblock_enotify_format');
 	register_hook('item_store', 'addon/superblock/superblock.php', 'superblock_item_store');
 	register_hook('directory_item', 'addon/superblock/superblock.php', 'superblock_directory_item');
 	register_hook('api_format_items', 'addon/superblock/superblock.php', 'superblock_api_format_items');
@@ -40,6 +41,7 @@ function superblock_unload() {
 	unregister_hook('conversation_start', 'addon/superblock/superblock.php', 'superblock_conversation_start');
 	unregister_hook('thread_author_menu', 'addon/superblock/superblock.php', 'superblock_item_photo_menu');
 	unregister_hook('enotify_store', 'addon/superblock/superblock.php', 'superblock_enotify_store');
+	unregister_hook('enotify_format', 'addon/superblock/superblock.php', 'superblock_enotify_format');
 	unregister_hook('item_store', 'addon/superblock/superblock.php', 'superblock_item_store');
 	unregister_hook('directory_item', 'addon/superblock/superblock.php', 'superblock_directory_item');
 	unregister_hook('api_format_items', 'addon/superblock/superblock.php', 'superblock_api_format_items');
@@ -183,6 +185,23 @@ function superblock_enotify_store(&$a,&$b) {
 		$b['abort'] = true;
 	}
 }
+
+
+function superblock_enotify_format(&$b) {
+
+	$sb = new Superblock($b['uid']);
+
+	$found = false;
+
+	if($sb->match($b['hash']))
+		$found = true;
+
+	if($found) {
+		$b['display'] = false;
+	}
+}
+
+
 
 function superblock_api_format_items(&$a,&$b) {
 

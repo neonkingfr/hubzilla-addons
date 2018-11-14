@@ -1806,7 +1806,7 @@ class Diaspora_Receiver {
 		}
 		$image_url = unxmlify($this->xmlbase['image_url']);
 		$birthday = unxmlify($this->xmlbase['birthday']);
-
+		$edited = datetime_convert('UTC','UTC',$this->xmlbase['edited_at']);
 
 		$handle_parts = explode("@", $diaspora_handle);
 		if($name === '') {
@@ -1818,8 +1818,25 @@ class Diaspora_Receiver {
 		}
 
 		require_once('include/photo/photo_driver.php');
-
-		$images = import_xchan_photo($image_url,$contact['xchan_hash']);
+		
+		if($edited > $contact['xchan_photo_date']) {
+		    $images = import_xchan_photo($image_url,$contact['xchan_hash']);
+		    $newimg = true;
+		} else {
+		    $images = array($contact['xchan_photo_l'],$contact['xchan_photo_m'],$contact['xchan_photo_s'],$contact['xchan_photo_mimetype']);
+		    $newimg = false;
+		}
+		
+		$r = q("update xchan set xchan_name = '%s', xchan_name_date = '%s', xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
+		    dbesc($name),
+		    dbesc(($name != $contact['xchan_name'] ? $edited : $contact['xchan_name_date'])),
+		    dbesc(($newimg ? $edited : $contact['xchan_photo_date'])),
+		    dbesc($images[0]),
+		    dbesc($images[1]),
+		    dbesc($images[2]),
+		    dbesc($images[3]),
+		    dbesc($contact['xchan_hash'])
+		);
 	
 		// Somebody is sending us birthday arrays.
 		
@@ -1848,17 +1865,6 @@ class Diaspora_Receiver {
 
 		//		if(substr($birthday,5) === substr($contact['bd'],5))
 		//			$birthday = $contact['bd'];
-
-		$r = q("update xchan set xchan_name = '%s', xchan_name_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s' ",
-			dbesc($name),
-			dbesc(datetime_convert()),
-			dbesc($images[0]),
-			dbesc($images[1]),
-			dbesc($images[2]),
-			dbesc($images[3]),
-			dbesc(datetime_convert()),
-			intval($contact['xchan_hash'])
-		); 
 
 		return;
 
@@ -2306,15 +2312,15 @@ class Diaspora_Receiver {
 		if(substr($birthday,5) === substr($new_contact['bd'],5))
 			$birthday = $new_contact['bd'];
 
-		$r = q("update xchan set xchan_name = '%s', xchan_name_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s' ",
+		$r = q("update xchan set xchan_name = '%s', xchan_name_date = '%s', xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
 			dbesc($name),
+			dbesc(datetime_convert()),
 			dbesc(datetime_convert()),
 			dbesc($images[0]),
 			dbesc($images[1]),
 			dbesc($images[2]),
 			dbesc($images[3]),
-			dbesc(datetime_convert()),
-			intval($new_contact['xchan_hash'])
+			dbesc($new_contact['xchan_hash'])
 		); 
 
 		$r = q("update abook set abook_xchan = '%s' where abook_xchan = '%s' and abook_channel = %d",
