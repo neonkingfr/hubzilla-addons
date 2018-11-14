@@ -5,7 +5,7 @@
 			<div class="dropdown-menu">
 				<a class="dropdown-item" id="flashcards_new_box">New Box</a>
 				<a class="dropdown-item" id="flashcards_edit_box">Edit Box</a>
-				<a class="dropdown-item" id="flashcards_show_boxes">Cloud Boxes</a>
+				<a class="dropdown-item" id="flashcards_show_boxes">List Boxes</a>
 				<div class="dropdown-divider"></div>
 				<a class="dropdown-item disabled" href="#">Search</a>
 			</div>
@@ -17,7 +17,7 @@
 			<button class="btn flashcards_nav" id="button_flashcards_learn_play"><i class="fa fa-play fa-lg"></i> <sup><span id="span_flashcards_cards_due"></span></sup></button>
 		</div>
 		<button class="btn btn-default nav-pill ml-auto" id="button_share_box">
-			<i class="fa fa-cloud-upload fa-lg"></i>
+			<i class="fa fa-refresh fa-lg"></i>
 			<span id="button_share_box_counter"></span>
 		</button>
 		<button class="btn btn-default nav-pill ml-auto" id="button_flashcards_list_close" style="display: none;">

@@ -6,12 +6,14 @@ Your learning progress will be kept private.
 
 <img src="/addon/flashcards/view/img/leitner-system.png" align="center" width="70%">
 
-## Two Scenarios to use the Addon...  
+### Two Scenarios to use the Addon...  
 
-In both cases serveral learners can share a box of flashcards, for example "English-Italian".
+- a centralised school like version where the "school" owns the flashcards
+- a decentralised version where every learner owns his own copy
 
-- Every user can edit cards of "English-Italian". The changes are synchronized between learners so every learners sees the same version of "English-Italian".
-- If a user has cloned his account to different hubs the flashcards are synchronized automatically from hub to hub (clone to clone).
+In both cases serveral learners can share a box of flashcards, lets say to learn "English-Italian".
+
+Every learner can edit and add cards for "English-Italian". The changes are shared between the learners.
 
 ###  Scenario 1: Students use Flashcards of a School
 
@@ -53,7 +55,7 @@ Anna creates a new box of flashcards "English-Italian". The URL could be somethi
 
 Bob wants to learn "English-Italian" from Anna. Bob opens his own addon at https://bob.org/flashcards/bob and imports "English-Italian" from Anna using the URL https://anna.org/flashcards/anna/xy12tlsel89q81o .
 
-Both will see the same content if one of them changes or adds cards. The syncronization is done automatically - this time from hub to hub.
+Both are able to changes or adds cards. The syncronization is done automatically - this time from hub to hub.
 
 #### Permissions and Technically
 
@@ -63,4 +65,4 @@ If Bob imports "English-Italian" his hub will receive a copy from Annas hub. Bob
 
 Anna CAN NOT withdraw the permissions for Bob (on Bobs hub) or delete the flashcards of Bob.
 
-Both Anna and Bob can switch off the synchronization from hub to hub.
+Both Anna and Bob can switch off the synchronization from hub to hub. Bob may decide to not merge changes from each other.
