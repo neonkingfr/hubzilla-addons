@@ -439,13 +439,14 @@ function asencode_activity($i) {
 					'href' => $reply_url,
 					'name' => '@' . $reply_addr
 				];
-				$ret['tag'] = (($ret['tag']) ? array_merge($ret['tag'],$m) : $m);
+				$ret['tag'] = (($ret['object']['tag']) ? array_merge($ret['object']['tag'],$m) : $m);
 			}
 
 			$ret['to'] = [ $reply_url ];
 		}
 		else {
-			$ret['to'] = as_map_acl($i);
+			$ret['to'] = []; //this is important for pleroma
+			$ret['cc'] = as_map_acl($i);
 		}
 	}
 	else {
@@ -467,19 +468,19 @@ function asencode_activity($i) {
 			$ret['to'][] = ACTIVITY_PUBLIC_INBOX;
 			$ret['cc'][] = $followers_url;
 		}
+	}
 
-		$mentions = as_map_mentions($i);
-		if(count($mentions)) {
-			$ret['cc'] = array_merge($ret['cc'], $mentions);
-		}
+	$mentions = as_map_mentions($i);
+	if(count($mentions)) {
+		$ret['to'] = (($ret['to']) ? array_merge($ret['to'],$mentions) : $mentions);
 	}
 
 	if(in_array($ret['object']['type'], [ 'Note', 'Article' ])) {
-		if($ret['to'])
+		if(isset($ret['to']))
 			$ret['object']['to'] = $ret['to'];
-		if($ret['cc'])
+		if(isset($ret['cc']))
 			$ret['object']['cc'] = $ret['cc'];
-		if($ret['tag'])
+		if(isset($ret['tag']))
 			$ret['object']['tag'] = $ret['tag'];
 	}
 
@@ -1020,7 +1021,7 @@ function as_actor_store($url,$person_obj) {
 			dbesc(escape_tags($name)),
 			dbesc(escape_tags($pubkey)),
 			dbesc('activitypub'),
-			dbesc(datetime_convert()),
+			dbescdate(datetime_convert()),
 			dbesc($url)
 		);
 	}
@@ -1061,7 +1062,7 @@ function as_actor_store($url,$person_obj) {
 
 	$photos = import_xchan_photo($icon,$url);
 	$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
-		dbescdate(datetime_convert('UTC','UTC',$arr['photo_updated'])),
+		dbescdate(datetime_convert()),
 		dbesc($photos[0]),
 		dbesc($photos[1]),
 		dbesc($photos[2]),

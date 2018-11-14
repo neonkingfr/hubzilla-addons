@@ -597,7 +597,7 @@ function diaspora_send_retraction($item,$owner,$contact,$public_batch = false) {
 
 
 	if( $item['mid'] !== $item['parent_mid'] ) {
-		if(($item['verb'] === ACTIVITY_LIKE || $item['verb'] === ACTIVITY_DISLIKE) && ($item['obj_type'] === ACTIVITY_TYPE_POST || $item['obj_type'] === ACTIVITY_TYPE_COMMENT)) {
+		if(($item['verb'] === ACTIVITY_LIKE || $item['verb'] === ACTIVITY_DISLIKE) && ($item['obj_type'] === ACTIVITY_POST || $item['obj_type'] === ACTIVITY_OBJ_COMMENT)) {
 			$target_type = 'Like';
 		}
 		else {
