@@ -9,7 +9,6 @@
  * Maintainer: Mario
  */
 
-use App;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 
