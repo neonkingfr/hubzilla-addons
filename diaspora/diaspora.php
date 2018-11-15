@@ -773,6 +773,31 @@ function diaspora_post_local(&$item) {
 
 	$meta = null;
 
+	// fetch the parent or parents
+
+	$p = q("select * from item where mid = '%s' and uid = %d limit 1",
+		dbesc($item['parent_mid']),
+		intval($item['uid'])
+	);
+	if(! $p) {
+		return;
+	}
+
+	$parent = $p[0];
+
+	if($item['parent_mid'] !== $item['thr_parent']) {
+		$t = q("select * from item where mid = '%s' and uid = %d limit 1",
+			dbesc($item['thr_parent']),
+			intval($item['uid'])
+		);
+		if(! $t) {
+			return;
+		}
+		$thr_parent = $t[0];
+	}	
+
+
+
 	$author = channelx_by_hash($item['author_xchan']);
 	if($author) {
 
@@ -788,12 +813,12 @@ function diaspora_post_local(&$item) {
 				if(defined('DIASPORA_V2')) {
 					$meta['author']      = $handle;
 					$meta['parent_type'] = (($item['thr_parent'] === $item['parent_mid']) ? 'Post' : 'Comment');
-					$meta['parent_guid'] = $item['thr_parent'];
+					$meta['parent_guid'] = (($item['thr_parent'] === $item['parent_mid']) ? $parent['uuid'] : $thr_parent['uuid']);
 				}
 				else {
 					$meta['diaspora_handle'] = $handle;
 					$meta['target_type']     = 'Post';
-					$meta['parent_guid']     = $item['parent_mid'];
+					$meta['parent_guid']     = $parent['uuid'];
 				}
 			}
 		}
@@ -810,8 +835,8 @@ function diaspora_post_local(&$item) {
 					$ev = bbtoevent($rawobj);
 					if($ev && $ev['hash'] && defined('DIASPORA_V2')) {
 						$meta = [
-							'author' => $handle,
-							'guid'   => $item['uuid'],
+							'author'      => $handle,
+							'guid'        => $item['uuid'],
 							'parent_guid' => $ev['hash'],
 							'status'      => $status
 						];
@@ -823,8 +848,8 @@ function diaspora_post_local(&$item) {
 			$body = bb_to_markdown($item['body'], [ 'diaspora' ]);
 
 			$meta = [
-				'guid'            => $item['mid'],
-				'parent_guid'     => $item['parent_mid'],
+				'guid'            => $item['uuid'],
+				'parent_guid'     => $parent['uuid'],
 				'text'            => $body
 			];
 
