@@ -941,6 +941,7 @@ function as_actor_store($url,$person_obj) {
 	if(! is_array($person_obj))
 		return;
 
+    $icon = '';
 	$name = $person_obj['name'];
 	if(! $name)
 		$name = $person_obj['preferredUsername'];
@@ -1056,9 +1057,6 @@ function as_actor_store($url,$person_obj) {
 			]
 		);
 	}
-
-	if(! $icon)
-		$icon = z_root() . '/' . get_default_profile_photo(300);
 
 	$photos = import_xchan_photo($icon,$url);
 	$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
