@@ -538,11 +538,9 @@ class Channelreputation {
                 notice("No content");
          }
          public static function channel_apps(&$hookdata) {
-                $channelid = App::$profile['uid'];
-
                 $hookdata['tabs'][] = [
                         'label' => t('Channel Reputation'),
-                        'url'   => z_root() . '/channelreputaton/' . $hookdata['nickname'],
+                        'url'   => z_root() . '/channelreputation/' . $hookdata['nickname'],
                         'sel'   => ((argv(0) == 'channelreputation') ? 'active' : ''),
                         'title' => t('Channel Reputation'),
                         'id'    => 'channelrep-tab',
