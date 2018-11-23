@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/statusnet
+requires: local_channel
+name: GNU-Social Connector
+photo: icon:gnu-social
+categories: Networking
+
