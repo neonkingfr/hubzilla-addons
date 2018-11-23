@@ -15,6 +15,7 @@
 use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
+use Zotlabs\Lib\ActivityStreams;
 
 require_once('addon/pubcrawl/as.php');
 
@@ -183,10 +184,10 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	// Now find the actor and see if there is something we can follow	
 
 	$person_obj = null;
-	if(in_array($AS->type, [ 'Person', 'Group', 'Profile' ])) {
+	if(in_array($AS->type, [ 'Application', 'Group', 'Organization', 'Person', 'Service' ])) {
 		$person_obj = $AS->data;
 	}
-	elseif($AS->obj && ( in_array($AS->obj['type'], [ 'Person', 'Group', 'Profile' ] ))) {
+	elseif($AS->obj && ( in_array($AS->obj['type'], [ 'Application', 'Group', 'Organization', 'Person', 'Service' ] ))) {
 		$person_obj = $AS->obj;
 	}
 	else {
