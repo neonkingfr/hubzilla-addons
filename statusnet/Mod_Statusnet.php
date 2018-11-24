@@ -143,7 +143,7 @@ class Statusnet extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>GNU-Social Connector App (Not Installed):</b><br>';
+			$o = '<b>Hubzilla Crosspost Connector App (Not Installed):</b><br>';
 			$o .= t('Relay public postings to a connected GNU social account (formerly StatusNet)');
 			return $o;
 		}
@@ -300,7 +300,7 @@ class Statusnet extends Controller {
 		$o = replace_macros($tpl, array(
 			'$action_url' => 'statusnet',
 			'$form_security_token' => get_form_security_token("statusnet"),
-			'$title' => t('GNU-Social Connector'),
+			'$title' => t('GNU-Social Crosspost Connector'),
 			'$content'  => $sc,
 			'$baseurl'   => z_root(),
 			'$submit'    => t('Submit'),

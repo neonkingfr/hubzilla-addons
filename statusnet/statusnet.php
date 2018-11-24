@@ -133,17 +133,16 @@ function statusnet_unload() {
 }
 
 function statusnet_jot_nets(&$a,&$b) {
-
-	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false))) 
+	if(! Apps::addon_app_installed(local_channel(), 'statusnet'))
 		return;
 
-	if(! Apps::addon_app_installed(local_channel(), 'statusnet'))
+	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false))) 
 		return;
 
 	$statusnet_defpost = get_pconfig(local_channel(),'statusnet','post_by_default');
 	$selected = ((intval($statusnet_defpost) == 1) ? ' checked="checked" ' : '');
 	$b .= '<div class="profile-jot-net"><input type="checkbox" name="statusnet_enable"' . $selected . ' value="1" /> ' 
-		. '<img src="addon/statusnet/gnusocial.png" /> ' . t('Post to GNU social') . '</div>';
+		. '<i class="fa fa-fw fa-gnu-social"></i> ' . t('Post to GNU social') . '</div>';
 }
 
 function statusnet_post_local(&$a,&$b) {
