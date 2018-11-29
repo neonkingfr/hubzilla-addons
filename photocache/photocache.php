@@ -39,12 +39,13 @@ function photocache_unload() {
  */
 function photocache_mode(&$v) {
 
-	$v['on'] = photocache_mode_key('on');
-	$v['age'] = photocache_mode_key('age');
-	$v['minres'] = photocache_mode_key('minres');
-	$v['grid'] = photocache_mode_key('grid');
-	$v['exp'] = photocache_mode_key('exp');
-	$v['leak'] = photocache_mode_key('leak');
+	if(! photocache_mode_key('on')) {
+		$v['age'] = ($v['age'] ? $v['age'] : photocache_mode_key('age'));
+		$v['minres'] = ($v['minres'] ? $v['minres'] : photocache_mode_key('minres'));
+		$v['grid'] = ($v['grid'] ? $v['grid'] : photocache_mode_key('grid'));
+		$v['exp'] = ($v['exp'] ? $v['exp'] : photocache_mode_key('exp'));
+		$v['leak'] = ($v['leak'] ? $v['leak'] : photocache_mode_key('leak'));
+	}
 }
 
 
@@ -171,6 +172,7 @@ function photocache_url(&$cache = array()) {
 
 	$cache_mode = array();
 	photocache_mode($cache_mode);
+	$cache_mode['on'] = photocache_mode_key('on');
 	
 	logger('info: processing ' . $cache['url'] . ' for ' . $cache['uid'] . ', caching is ' . ($cache_mode['on'] ? 'on' : 'off'), LOGGER_DEBUG);
 	
