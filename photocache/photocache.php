@@ -39,12 +39,12 @@ function photocache_unload() {
  */
 function photocache_mode(&$v) {
 
-	if(! photocache_mode_key('on')) {
-		$v['age'] = ($v['age'] ? $v['age'] : photocache_mode_key('age'));
-		$v['minres'] = ($v['minres'] ? $v['minres'] : photocache_mode_key('minres'));
-		$v['grid'] = ($v['grid'] ? $v['grid'] : photocache_mode_key('grid'));
-		$v['exp'] = ($v['exp'] ? $v['exp'] : photocache_mode_key('exp'));
-		$v['leak'] = ($v['leak'] ? $v['leak'] : photocache_mode_key('leak'));
+	if(photocache_mode_key('on')) {
+		$v['age'] = (isset($v['age']) ? $v['age'] : photocache_mode_key('age'));
+		$v['minres'] = (isset($v['minres']) ? $v['minres'] : photocache_mode_key('minres'));
+		$v['grid'] = (isset($v['grid']) ? $v['grid'] : photocache_mode_key('grid'));
+		$v['exp'] = (isset($v['exp']) ? $v['exp'] : photocache_mode_key('exp'));
+		$v['leak'] = (isset($v['leak']) ? $v['leak'] : photocache_mode_key('leak'));
 	}
 }
 
