@@ -99,6 +99,8 @@ function photocache_ret($msg) {
  */	
 function photocache_isgrid($url) {
 	
+	if(strpos($url, z_root()) === 0)
+		return true;
 	if(photocache_mode_key('grid'))
 		return false;
 	$r = q("SELECT * FROM hubloc WHERE hubloc_host = '%s' AND hubloc_network LIKE '%s' LIMIT 1",
