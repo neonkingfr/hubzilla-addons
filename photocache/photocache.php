@@ -238,9 +238,6 @@ function photocache_url(&$cache = array()) {
 			$expires = strtotime($hdrs['expires']);
 			if($expires - 60 < time())
 				return $cache['status'] = photocache_ret('fetched item expired ' . $hdrs['expires']);
-			$maxexp = time() + 86400 * get_config('system','default_expire_days', 30);
-			if($expires > $maxexp)
-				$expires = $maxexp;
 		}
 	
 		$cc = '';
@@ -256,6 +253,11 @@ function photocache_url(&$cache = array()) {
 			else
 				$ttl = (preg_match('/max-age=(\d+)/i', $cc, $o) ? intval($o[1]) : $cache_mode['age']);
 			$expires = time() + $ttl;
+		}
+		else {
+			$maxexp = time() + 86400 * get_config('system','default_expire_days', 30);
+			if($expires > $maxexp)
+				$expires = $maxexp;
 		}
 	
 		$newimg = false;
