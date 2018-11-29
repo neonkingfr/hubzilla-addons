@@ -225,7 +225,7 @@ function photocache_url(&$cache = array()) {
 		$i = z_fetch_url($cache['url'], true, 0, ($r ? array('headers' => array("If-Modified-Since: " . gmdate("D, d M Y H:i:s", strtotime($r[0]['edited'] . "Z")) . " GMT")) : array()));
 	
 		if((! $i['success']) && $i['return_code'] != 304)
-			return $cache['status'] = photocache_ret($origurl . ' photo could not be fetched (HTTP code ' . $i['return_code'] . ')');
+			return $cache['status'] = photocache_ret('photo could not be fetched (HTTP code ' . $i['return_code'] . ')');
 	
 		$hdrs = array();
 		$h = explode("\n", $i['header']);
