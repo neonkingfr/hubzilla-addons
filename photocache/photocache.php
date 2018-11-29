@@ -163,8 +163,7 @@ function photocache_exists($hash) {
  */
 function photocache_url(&$cache = array()) {
 
-	$uid = (isset($cache['uid']) ? $cache['uid'] : local_channel());
-	if(! get_pconfig($uid, 'photocache', 'cache_enable', false))
+	if(! get_pconfig($cache['uid'], 'photocache', 'cache_enable', false))
 		return $cache['status'] = photocache_ret('caching for this channel is disabled');
 
 	if(photocache_isgrid($cache['url']))
@@ -173,19 +172,19 @@ function photocache_url(&$cache = array()) {
 	$cache_mode = array();
 	photocache_mode($cache_mode);
 	
-	logger('info: processing ' . $cache['url'] . ' for ' . $uid . ', caching is ' . ($cache_mode['on'] ? 'on' : 'off'), LOGGER_DEBUG);
+	logger('info: processing ' . $cache['url'] . ' for ' . $cache['uid'] . ', caching is ' . ($cache_mode['on'] ? 'on' : 'off'), LOGGER_DEBUG);
 	
 	if(empty($cache['url']))
 		return $cache['status'] = photocache_ret('URL is empty');
 	
-	$x = channelx_by_n($uid);
+	$x = channelx_by_n($cache['uid']);
 	if(! $x)
-		return $cache['status'] = photocache_ret('invalid channel ID received ' . $uid);
+		return $cache['status'] = photocache_ret('invalid channel ID received ' . $cache['uid']);
 
 	require_once('include/photo/photo_driver.php');
 	
 	$hash = photocache_hash(preg_replace('|^http(s)?://|','',$cache['url']));
-	$resource_id = photocache_hash($uid . $hash);
+	$resource_id = photocache_hash($cache['uid'] . $hash);
 	$r = photocache_exists($hash);
 	if($r) {
 		$width = $r[0]['width'];
@@ -193,7 +192,7 @@ function photocache_url(&$cache = array()) {
 		$res = $r[0]['imgscale'];
 		
 		$k = q("SELECT * FROM photo WHERE uid = %d AND xchan = '%s' AND photo_usage = %d LIMIT 1",
-			intval($uid),
+			intval($cache['uid']),
 			dbesc($hash),
 			intval(PHOTO_CACHE)
 		);
@@ -203,7 +202,7 @@ function photocache_url(&$cache = array()) {
 			$ph = photo_factory('');
 			$p = array (
 				'aid' => $x['channel_account_id'],
-				'uid' => $uid, 
+				'uid' => $cache['uid'], 
 				'xchan' => $hash,
 				'resource_id' => $resource_id,
 				'created' => $r[0]['created'],
@@ -221,7 +220,7 @@ function photocache_url(&$cache = array()) {
 				'display_path' => $r[0]['display_path']
 			);
 			if(! $ph->save($p, true))
-				return $cache['status'] = photocache_ret('could not duplicate cached URL ' . $cache['url'] . ' for ' . $uid);
+				return $cache['status'] = photocache_ret('could not duplicate cached URL ' . $cache['url'] . ' for ' . $cache['uid']);
 		}
 		$fetch = boolval(strtotime($r[0]['expires']) - 60 < time());
 	}
@@ -305,7 +304,7 @@ function photocache_url(&$cache = array()) {
 		// Cache save procedure
 		if($cache_mode['on']) {
 			$p = array(
-				'uid' => $uid,
+				'uid' => $cache['uid'],
 				'aid' => $x['channel_account_id'],
 				'created' => datetime_convert(),
 				'xchan' => $hash,
@@ -363,5 +362,5 @@ function photocache_url(&$cache = array()) {
 	$cache['height'] = $height;
 	$cache['res'] = $res;
 
-	logger('info: ' . $cache['url'] . ' (res: ' . $res . '; width: ' . $width . '; height: ' . $height . ') is ' . ($r ? 'cached as ' . $resource_id . ' for ' . $uid : 'not cached'), LOGGER_DEBUG);
+	logger('info: ' . $cache['url'] . ' (res: ' . $res . '; width: ' . $width . '; height: ' . $height . ') is ' . ($r ? 'cached as ' . $resource_id . ' for ' . $cache['uid'] : 'not cached'), LOGGER_DEBUG);
 }
