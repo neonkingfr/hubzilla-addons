@@ -83,9 +83,9 @@ function photocache_mode_key($key) {
  * @return boolean false
  *
  */	
-function photocache_err($msg) {
+function photocache_ret($msg) {
 	
-	logger('error: ' . $msg, LOGGER_DEBUG);
+	logger($msg, LOGGER_DEBUG);
 	return false;
 }
 
@@ -158,7 +158,7 @@ function photocache_exists($hash) {
 function photocache_url(&$cache) {
 
 	if(photocache_isgrid($cache['url']))
-		return $cache['status'] = photocache_err('caching for the Grid is disabled');
+		return $cache['status'] = photocache_ret('caching for the Grid is disabled');
 
 	$cache_mode = array();
 	photocache_mode($cache_mode);
@@ -166,11 +166,11 @@ function photocache_url(&$cache) {
 	logger('info: processing ' . $cache['url'] . ' for ' . $cache['uid'] . ', caching is ' . ($cache_mode['on'] ? 'on' : 'off'), LOGGER_DEBUG);
 	
 	if(empty($cache['url']))
-		return $cache['status'] = photocache_err('URL is empty');
+		return $cache['status'] = photocache_ret('URL is empty');
 	
 	$x = channelx_by_n($cache['uid']);
 	if(! $x)
-		return $cache['status'] = photocache_err('invalid channel ID received ' . $cache['uid']);
+		return $cache['status'] = photocache_ret('invalid channel ID received ' . $cache['uid']);
 
 	require_once('include/photo/photo_driver.php');
 	
@@ -211,7 +211,7 @@ function photocache_url(&$cache) {
 				'display_path' => $r[0]['display_path']
 			);
 			if(! $ph->save($p, true))
-				return $cache['status'] = photocache_err('could not duplicate cached URL ' . $cache['url'] . ' for ' . $cache['uid']);
+				return $cache['status'] = photocache_ret('could not duplicate cached URL ' . $cache['url'] . ' for ' . $cache['uid']);
 		}
 		$fetch = boolval(strtotime($r[0]['expires']) - 60 < time());
 	}
@@ -223,7 +223,7 @@ function photocache_url(&$cache) {
 		$i = z_fetch_url($cache['url'], true, 0, ($r ? array('headers' => array("If-Modified-Since: " . gmdate("D, d M Y H:i:s", strtotime($r[0]['edited'] . "Z")) . " GMT")) : array()));
 	
 		if((! $i['success']) && $i['return_code'] != 304)
-			return $cache['status'] = photocache_err($origurl . ' photo could not be fetched (HTTP code ' . $i['return_code'] . ')');
+			return $cache['status'] = photocache_ret($origurl . ' photo could not be fetched (HTTP code ' . $i['return_code'] . ')');
 	
 		$hdrs = array();
 		$h = explode("\n", $i['header']);
@@ -235,7 +235,7 @@ function photocache_url(&$cache) {
 		if(array_key_exists('expires', $hdrs)) {
 			$expires = strtotime($hdrs['expires']);
 			if($expires - 60 < time())
-				return $cache['status'] = photocache_err('fetched item expired ' . $hdrs['expires']);
+				return $cache['status'] = photocache_ret('fetched item expired ' . $hdrs['expires']);
 			$maxexp = time() + 86400 * get_config('system','default_expire_days', 30);
 			if($expires > $maxexp)
 				$expires = $maxexp;
@@ -245,7 +245,7 @@ function photocache_url(&$cache) {
 		if(array_key_exists('cache-control', $hdrs))
 			$cc = $hdrs['cache-control'];
 		if(strpos($cc, 'no-store'))
-			return $cache['status'] = photocache_err('caching prohibited by remote host directive ' . $cc);
+			return $cache['status'] = photocache_ret('caching prohibited by remote host directive ' . $cc);
 		if(strpos($cc, 'no-cache'))
 			$expires = time() + 60;
 		if(! isset($expires)){
@@ -262,12 +262,12 @@ function photocache_url(&$cache) {
 			// New data (HTTP 200)
 			$type = guess_image_type($cache['url'], $i['header']);
 			if(strpos($type, 'image') === false)
-				return $cache['status'] = photocache_err('wrong image type detected ' . $type);
+				return $cache['status'] = photocache_ret('wrong image type detected ' . $type);
 
 			$ph = photo_factory($i['body'], $type);
 		
 			if(! is_object($ph))
-				return $cache['status'] = photocache_err('photo processing failure');
+				return $cache['status'] = photocache_ret('photo processing failure');
 		
 			if($ph->is_valid()) {
 				$orig_width = $ph->getWidth();
@@ -320,11 +320,11 @@ function photocache_url(&$cache) {
 				$p['os_syspath'] = $os_path;
 				if(! is_dir($path))
 					if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
-						return $cache['status'] = photocache_err('could not create path ' . $path);
+						return $cache['status'] = photocache_ret('could not create path ' . $path);
 				if(! $ph->saveImage($os_path))
-					return $cache['status'] = photocache_err('could not save file ' . $os_path);
+					return $cache['status'] = photocache_ret('could not save file ' . $os_path);
 				if(! $ph->save($p))
-					return $cache['status'] = photocache_err('could not save data to database');
+					return $cache['status'] = photocache_ret('could not save data to database');
 				$r = true;
 			}
 			
@@ -340,7 +340,7 @@ function photocache_url(&$cache) {
 					dbesc($hash)
 				);
 				if(! $r)
-					return $cache['status'] = photocache_err('could not update data in database');
+					return $cache['status'] = photocache_ret('could not update data in database');
 			}
 		}
 	}
