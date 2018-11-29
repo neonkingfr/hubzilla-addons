@@ -157,10 +157,10 @@ function photocache_exists($hash) {
  * * 'res' => int resolution code 
  *
  */
-function photocache_url(&$cache) {
+function photocache_url(&$cache = array()) {
 
 	if(photocache_isgrid($cache['url']))
-		return $cache['status'] = photocache_ret('caching for the Grid is disabled');
+		return $cache['status'] = photocache_ret('caching is disabled for this host');
 
 	$cache_mode = array();
 	photocache_mode($cache_mode);
