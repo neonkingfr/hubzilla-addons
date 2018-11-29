@@ -277,10 +277,10 @@ function photocache_url(&$cache = array()) {
 				$res = PHOTO_RES_ORIG;
 			
 				if(($orig_width > 1024 || $orig_height > 1024) && $cache_mode['on']) {
-					$ph->scaleImage(1024);
+					if($ph->scaleImage(1024))
+						$res = PHOTO_RES_1024;
 					$width = $ph->getWidth();
 					$height = $ph->getHeight();
-					$res = PHOTO_RES_1024;
 					logger('photo resized: ' . $orig_width . '->' . $width . 'w ' . $orig_height . '->' . $height . 'h' . ' match: ' . $mtch[0], LOGGER_DEBUG);
 				}
 				else {
