@@ -254,11 +254,10 @@ function photocache_url(&$cache = array()) {
 				$ttl = (preg_match('/max-age=(\d+)/i', $cc, $o) ? intval($o[1]) : $cache_mode['age']);
 			$expires = time() + $ttl;
 		}
-		else {
-			$maxexp = time() + 86400 * get_config('system','default_expire_days', 30);
-			if($expires > $maxexp)
-				$expires = $maxexp;
-		}
+
+		$maxexp = time() + 86400 * get_config('system','default_expire_days', 30);
+		if($expires > $maxexp)
+			$expires = $maxexp;
 	
 		$newimg = false;
 
