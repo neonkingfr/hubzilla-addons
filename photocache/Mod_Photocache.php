@@ -82,7 +82,7 @@ class Photocache extends Controller {
 				'cache_enable', 
 				t('Enable Photo Cache for this channel'), 
 				$switch, 
-				t('Current cache policy is defined by hub adminstrator'), 
+				t('Current cache policy is defined by hub adminstrator.'), 
 				array(t('No'),t('Yes'))
 			),
 		));
@@ -97,7 +97,7 @@ class Photocache extends Controller {
 					'cache_minres', 
 					t('Minimum image resolution for caching'), 
 					$cache_minres, 
-					t('In pixels. Not greater than 1024 or 0 to use system defaults')
+					t('In pixels. 0 will be replaced with system default, maximal value is 1024.')
 				),
 			));	
 		}
