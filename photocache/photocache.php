@@ -134,14 +134,16 @@ function photocache_hash($str, $alg = 'sha256') {
  * @brief Checks by hash if this item already cached
  *
  * @param string $hash
+ * @param int $uid
  * @return mixed array() | bool false on error
  *
  */
-function photocache_exists($hash) {
+function photocache_exists($hash, $uid) {
 	
-	$r = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d LIMIT 1",
+	$r = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND uid = %d LIMIT 1",
 		dbesc($hash),
-		intval(PHOTO_CACHE)
+		intval(PHOTO_CACHE),
+		intval($uid)
 	);
 	return ($r ? $r : false);
 }
@@ -187,51 +189,53 @@ function photocache_url(&$cache = array()) {
 	
 	$hash = photocache_hash(preg_replace('|^http(s)?://|','',$cache['url']));
 	$resource_id = photocache_hash($cache['uid'] . $hash);
-	$r = photocache_exists($hash);
-	if($r) {
-		$width = $r[0]['width'];
-		$height = $r[0]['height'];
-		$res = $r[0]['imgscale'];
-		
-		$k = q("SELECT * FROM photo WHERE uid = %d AND xchan = '%s' AND photo_usage = %d LIMIT 1",
-			intval($cache['uid']),
+	$r = photocache_exists($hash, $cache['uid']);
+	if(! $r) {
+
+		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d LIMIT 1",
 			dbesc($hash),
 			intval(PHOTO_CACHE)
 		);
-		
-		// Duplicate cached item for current user
-		if(! $k) {
+		// Duplicate cached item for current user if found
+		if($k) {
+			$width = $k[0]['width'];
+			$height = $k[0]['height'];
+			$res = $k[0]['imgscale'];
+			
 			$ph = photo_factory('');
 			$p = array (
 				'aid' => $x['channel_account_id'],
 				'uid' => $cache['uid'], 
 				'xchan' => $hash,
 				'resource_id' => $resource_id,
-				'created' => $r[0]['created'],
-				'edited' => $r[0]['edited'],
-				'expires' => $r[0]['expires'],
-				'filename' => $r[0]['filename'],
-				'mimetype' => $r[0]['mimetype'],
+				'created' => $k[0]['created'],
+				'edited' => $k[0]['edited'],
+				'expires' => $k[0]['expires'],
+				'filename' => $k[0]['filename'],
+				'mimetype' => $k[0]['mimetype'],
 				'height' => $height,
 				'width' => $width,
-				'filesize' => $r[0]['filesize'],
-				'os_syspath' => $r[0]['content'],
+				'filesize' => $k[0]['filesize'],
+				'os_syspath' => $k[0]['content'],
 				'os_storage' => 1,
 				'imgscale' => $res,
 				'photo_usage' => PHOTO_CACHE,
-				'display_path' => $r[0]['display_path']
+				'display_path' => $k[0]['display_path']
 			);
 			if(! $ph->save($p, true))
 				return $cache['status'] = photocache_ret('could not duplicate cached URL ' . $cache['url'] . ' for ' . $cache['uid']);
+			
+			$fetch = boolval(strtotime($k[0]['expires']) - 60 < time());
 		}
-		$fetch = boolval(strtotime($r[0]['expires']) - 60 < time());
+		else
+			$fetch = true;
 	}
 	else
-		$fetch = true;
+		$fetch = false;
 	
 	if($fetch) {
 		// Get data from remote server
-		$i = z_fetch_url($cache['url'], true, 0, ($r ? array('headers' => array("If-Modified-Since: " . gmdate("D, d M Y H:i:s", strtotime($r[0]['edited'] . "Z")) . " GMT")) : array()));
+		$i = z_fetch_url($cache['url'], true, 0, ($r ? array('headers' => array("If-Modified-Since: " . gmdate("D, d M Y H:i:s", strtotime($k[0]['edited'] . "Z")) . " GMT")) : array()));
 	
 		if((! $i['success']) && $i['return_code'] != 304)
 			return $cache['status'] = photocache_ret('photo could not be fetched (HTTP code ' . $i['return_code'] . ')');
@@ -347,7 +351,7 @@ function photocache_url(&$cache = array()) {
 					dbescdate($p['expires']),
 					intval($height),
 					intval($width),
-					intval(($newimg ? strlen($ph->imageString()) : $r[0]['filesize'])),
+					intval(($newimg ? strlen($ph->imageString()) : $k[0]['filesize'])),
 					intval($res),
 					dbesc($hash)
 				);
