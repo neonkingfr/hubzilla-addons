@@ -89,9 +89,7 @@ class Photocache extends Controller {
 		
 		if($switch != 0) {
 			$cache_minres = get_pconfig(local_channel(),'photocache','cache_minres', 0);
-			if($cache_minres == 0)
-				$cache_minres = get_config('system','photo_cache_minres', 1024);
-		
+	
 			$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
 				'$field' => array(
 					'cache_minres', 
