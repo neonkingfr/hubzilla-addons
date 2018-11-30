@@ -92,7 +92,7 @@ class Photocache extends Controller {
 			$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
 				'$field' => array(
 					'cache_minres', 
-					t('Minimum image resolution for caching'), 
+					t('Minimal photo size for caching'), 
 					get_pconfig(local_channel(),'photocache','cache_minres', 0), 
 					t('In pixels. 0 will be replaced with system default, from 1 up to 1024 (large images will be scaled to this value).')
 				),
