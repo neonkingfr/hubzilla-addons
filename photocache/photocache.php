@@ -16,6 +16,7 @@ function photocache_load() {
 
 	Hook::register('cache_mode_hook', 'addon/photocache/photocache.php', 'photocache_mode');
 	Hook::register('cache_url_hook', 'addon/photocache/photocache.php', 'photocache_url');
+	Hook::register('cache_body_hook', 'addon/photocache/photocache.php', 'photocache_body');
 	Route::register('addon/photocache/Mod_Photocache.php', 'photocache');
 	logger('Photo Cache is loaded');
 }
@@ -25,6 +26,7 @@ function photocache_unload() {
 
 	Hook::unregister('cache_mode_hook', 'addon/photocache/photocache.php', 'photocache_mode');
 	Hook::unregister('cache_url_hook', 'addon/photocache/photocache.php', 'photocache_url');
+	Hook::unregister('cache_body_hook', 'addon/photocache/photocache.php', 'photocache_body');
 	Route::unregister('addon/photocache/Mod_Photocache.php', 'photocache');
 	logger('Photo Cache is unloaded');
 }
@@ -150,6 +152,37 @@ function photocache_exists($hash, $uid) {
 
 
 /*
+ * @brief Proceed message and replace URL for cached photos
+ *
+ * @param array $s
+ * * 'body' => string
+ * * 'uid' => int
+ * @return array $s 
+ *
+ */
+ function photocache_body(&$s) {
+	 
+	if(! photocache_mode_key('on'))
+		 return;
+	 
+	$matches = null;
+	$cnt = preg_match_all("/\<img(.+?)src=[\"|'](https?\:.*?)[\"|'](.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
+	if($cnt) {
+		foreach ($matches as $match) {
+			logger('uid: ' . $uid . '; url: ' . $match[2], LOGGER_DEBUG);
+			$cache = array(
+				'url' => $match[2],
+				'uid' => $s['uid']
+			);
+			photocache_url($cache);
+			logger('cache status: ' . intval($cache['status']) .'; cached as: ' . ($cache['cached'] ? $cache['hash'] : '-'), LOGGER_DEBUG);
+			if($cache['cached'])
+				$s['body'] = str_replace($match[2], z_root() . '/photo/' . $cache['hash'] . '-' . $cache['res'], $s['body']);
+		}
+	}
+ }
+
+/*
  * @brief Fetch or renew item using its URL
  *
  * @param array $cache 
@@ -230,12 +263,16 @@ function photocache_url(&$cache = array()) {
 		else
 			$fetch = true;
 	}
-	else
+	else {
+		$width = $r[0]['width'];
+		$height = $r[0]['height'];
+		$res = $r[0]['imgscale'];		
 		$fetch = false;
+	}
 	
 	if($fetch) {
 		// Get data from remote server
-		$i = z_fetch_url($cache['url'], true, 0, ($r ? array('headers' => array("If-Modified-Since: " . gmdate("D, d M Y H:i:s", strtotime($k[0]['edited'] . "Z")) . " GMT")) : array()));
+		$i = z_fetch_url($cache['url'], true, 0, ($k ? array('headers' => array("If-Modified-Since: " . gmdate("D, d M Y H:i:s", strtotime($k[0]['edited'] . "Z")) . " GMT")) : array()));
 	
 		if((! $i['success']) && $i['return_code'] != 304)
 			return $cache['status'] = photocache_ret('photo could not be fetched (HTTP code ' . $i['return_code'] . ')');
@@ -243,8 +280,8 @@ function photocache_url(&$cache = array()) {
 		$hdrs = array();
 		$h = explode("\n", $i['header']);
 		foreach ($h as $l) {
-			list($k,$v) = array_map("trim", explode(":", trim($l), 2));
-			$hdrs[strtolower($k)] = $v;
+			list($t,$v) = array_map("trim", explode(":", trim($l), 2));
+			$hdrs[strtolower($t)] = $v;
 		}
 	
 		if(array_key_exists('expires', $hdrs)) {
@@ -344,7 +381,7 @@ function photocache_url(&$cache = array()) {
 				$r = true;
 			}
 			
-			if($r || $i['return_code'] == 304) {
+			if($k || $i['return_code'] == 304) {
 				// Update all links on any change
 				$r = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d, filesize =%d, imgscale = %d WHERE xchan = '%s'",
 					dbescdate(($p['edited'] ? $p['edited'] : datetime_convert())),
