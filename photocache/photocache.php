@@ -338,7 +338,7 @@ function photocache_url(&$cache = array()) {
 					$height = $orig_height;
 				}
 			
-				$minres = get_pconfig($cache['uid'], 'photocache', 'cache_enable', $cache_mode['minres'])
+				$minres = get_pconfig($cache['uid'], 'photocache', 'cache_minres', $cache_mode['minres']);
 			
 				if($orig_width > $minres || $orig_height > $minres)
 					$newimg = true;	
