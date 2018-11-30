@@ -337,11 +337,13 @@ function photocache_url(&$cache = array()) {
 					$width = $orig_width;
 					$height = $orig_height;
 				}
-			
-				$minres = get_pconfig($cache['uid'], 'photocache', 'cache_minres', $cache_mode['minres']);
+
+				$minres = intval(get_pconfig($cache['uid'], 'photocache', 'cache_minres'));
+				if($minres == 0)
+					$minres = $cache_mode['minres'];
 			
 				if($orig_width > $minres || $orig_height > $minres)
-					$newimg = true;	
+					$newimg = true;
 			}
 		}
 
