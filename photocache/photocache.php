@@ -207,9 +207,8 @@ function photocache_url(&$cache = array()) {
 
 	$cache_mode = array();
 	photocache_mode($cache_mode);
-	$cache_mode['on'] = photocache_mode_key('on');
 	
-	logger('info: processing ' . $cache['url'] . ' for ' . $cache['uid'] . ', caching is ' . ($cache_mode['on'] ? 'on' : 'off'), LOGGER_DEBUG);
+	logger('info: processing ' . $cache['url'] . ' for ' . $cache['uid'], LOGGER_DEBUG);
 	
 	if(empty($cache['url']))
 		return $cache['status'] = photocache_ret('URL is empty');
@@ -327,7 +326,7 @@ function photocache_url(&$cache = array()) {
 				$orig_height = $ph->getHeight();
 				$res = PHOTO_RES_ORIG;
 			
-				if(($orig_width > 1024 || $orig_height > 1024) && $cache_mode['on']) {
+				if($orig_width > 1024 || $orig_height > 1024) {
 					if($ph->scaleImage(1024))
 						$res = PHOTO_RES_1024;
 					$width = $ph->getWidth();
@@ -345,56 +344,54 @@ function photocache_url(&$cache = array()) {
 		}
 
 		// Cache save procedure
-		if($cache_mode['on']) {
-			$p = array(
-				'uid' => $cache['uid'],
-				'aid' => $x['channel_account_id'],
-				'created' => datetime_convert(),
-				'xchan' => $hash,
-				'resource_id' => $resource_id,
-				'filename' => substr(parse_url($cache['url'], PHP_URL_PATH), 1),
-				'width' => $width,
-				'height' => $height,
-				'imgscale' => $res,
-				'photo_usage' => PHOTO_CACHE,
-				'os_storage' => 1,
-				'display_path' => $cache['url'],
-				'expires' => gmdate('Y-m-d H:i:s', $expires)
-			);
+		$p = array(
+			'uid' => $cache['uid'],
+			'aid' => $x['channel_account_id'],
+			'created' => datetime_convert(),
+			'xchan' => $hash,
+			'resource_id' => $resource_id,
+			'filename' => substr(parse_url($cache['url'], PHP_URL_PATH), 1),
+			'width' => $width,
+			'height' => $height,
+			'imgscale' => $res,
+			'photo_usage' => PHOTO_CACHE,
+			'os_storage' => 1,
+			'display_path' => $cache['url'],
+			'expires' => gmdate('Y-m-d H:i:s', $expires)
+		);
 
-			if(array_key_exists('last-modified', $hdrs))
-				$p['edited'] = gmdate('Y-m-d H:i:s', strtotime($hdrs['last-modified']));
+		if(array_key_exists('last-modified', $hdrs))
+			$p['edited'] = gmdate('Y-m-d H:i:s', strtotime($hdrs['last-modified']));
+		
+		// Save image to disk storage and into database
+		if($newimg) {
+			// If new
+			$path = 'store/[data]/[cache]/' .  substr($hash,0,2) . '/' . substr($hash,2,2);
+			$os_path = $path . '/' . $hash;
+			$p['os_syspath'] = $os_path;
+			if(! is_dir($path))
+				if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
+					return $cache['status'] = photocache_ret('could not create path ' . $path);
+			if(! $ph->saveImage($os_path))
+				return $cache['status'] = photocache_ret('could not save file ' . $os_path);
+			if(! $ph->save($p))
+				return $cache['status'] = photocache_ret('could not save data to database');
+			$r = true;
+		}
 			
-			// Save image to disk storage and into database
-			if($newimg) {
-				// If new
-				$path = 'store/[data]/[cache]/' .  substr($hash,0,2) . '/' . substr($hash,2,2);
-				$os_path = $path . '/' . $hash;
-				$p['os_syspath'] = $os_path;
-				if(! is_dir($path))
-					if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
-						return $cache['status'] = photocache_ret('could not create path ' . $path);
-				if(! $ph->saveImage($os_path))
-					return $cache['status'] = photocache_ret('could not save file ' . $os_path);
-				if(! $ph->save($p))
-					return $cache['status'] = photocache_ret('could not save data to database');
-				$r = true;
-			}
-			
-			if($k || $i['return_code'] == 304) {
-				// Update all links on any change
-				$r = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d, filesize =%d, imgscale = %d WHERE xchan = '%s'",
-					dbescdate(($p['edited'] ? $p['edited'] : datetime_convert())),
-					dbescdate($p['expires']),
-					intval($height),
-					intval($width),
-					intval(($newimg ? strlen($ph->imageString()) : $k[0]['filesize'])),
-					intval($res),
-					dbesc($hash)
-				);
-				if(! $r)
-					return $cache['status'] = photocache_ret('could not update data in database');
-			}
+		if($k || $i['return_code'] == 304) {
+			// Update all links on any change
+			$r = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d, filesize =%d, imgscale = %d WHERE xchan = '%s'",
+				dbescdate(($p['edited'] ? $p['edited'] : datetime_convert())),
+				dbescdate($p['expires']),
+				intval($height),
+				intval($width),
+				intval(($newimg ? strlen($ph->imageString()) : $k[0]['filesize'])),
+				intval($res),
+				dbesc($hash)
+			);
+			if(! $r)
+				return $cache['status'] = photocache_ret('could not update data in database');
 		}
 	}
 	
