@@ -44,8 +44,13 @@ class Photocache extends Controller {
 				intval(local_channel())
 			);
 		}
+		
+		$minres = intval($_POST['cache_minres']);
+		if($minres > 1024)
+			$minres = 1024;
 
 		set_pconfig(local_channel(), 'photocache', 'cache_enable', $switch);
+		set_pconfig(local_channel(), 'photocache', 'cache_minres', $minres);
 
 		info(t('Photo Cache settings saved.') . EOL);
 	}
@@ -69,16 +74,33 @@ class Photocache extends Controller {
 		}
 		
 		$sc = '<div class="section-content-info-wrapper">' . $desc . '</div><br>';
+		
+		$switch = get_pconfig(local_channel(),'photocache','cache_enable', 0);
 
 		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
 			'$field' => array(
 				'cache_enable', 
 				t('Enable Photo Cache for this channel'), 
-				get_pconfig(local_channel(),'photocache','cache_enable'), 
+				$switch, 
 				t('Current cache policy is defined by hub adminstrator'), 
 				array(t('No'),t('Yes'))
 			),
 		));
+		
+		if($switch != 0) {
+			$cache_minres = get_pconfig(local_channel(),'photocache','cache_minres', 0);
+			if($cache_minres == 0)
+				$cache_minres = get_config('system','photo_cache_minres', 1024);
+		
+			$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
+				'$field' => array(
+					'cache_minres', 
+					t('Minimum image resolution for caching'), 
+					$cache_minres, 
+					t('In pixels. Not greater than 1024 or 0 to use system defaults')
+				),
+			));	
+		}
 
 		$tpl = get_markup_template("settings_addon.tpl");
 
