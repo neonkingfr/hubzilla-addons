@@ -164,7 +164,10 @@ function photocache_exists($hash, $uid) {
 	 
 	if(! photocache_mode_key('on'))
 		 return;
-	 
+
+	if(! get_pconfig($s['uid'], 'photocache', 'cache_enable', false))
+		return $cache['status'] = photocache_ret('caching for channel ' . $s['uid'] . ' is disabled');
+	
 	$matches = null;
 	$cnt = preg_match_all("/\<img(.+?)src=[\"|'](https?\:.*?)[\"|'](.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
 	if($cnt) {
@@ -198,9 +201,6 @@ function photocache_exists($hash, $uid) {
  *
  */
 function photocache_url(&$cache = array()) {
-
-	if(! get_pconfig($cache['uid'], 'photocache', 'cache_enable', false))
-		return $cache['status'] = photocache_ret('caching for this channel is disabled');
 
 	if(photocache_isgrid($cache['url']))
 		return $cache['status'] = photocache_ret('caching for this host is disabled');
