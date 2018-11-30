@@ -97,7 +97,7 @@ class Photocache extends Controller {
 					'cache_minres', 
 					t('Minimum image resolution for caching'), 
 					$cache_minres, 
-					t('In pixels. 0 will be replaced with system default, maximal value is 1024.')
+					t('In pixels. 0 will be replaced with system default, from 1 up to 1024 (large images will be scaled to this value).')
 				),
 			));	
 		}
