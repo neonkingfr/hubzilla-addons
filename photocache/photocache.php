@@ -201,6 +201,9 @@ function photocache_exists($hash, $uid) {
  *
  */
 function photocache_url(&$cache = array()) {
+    
+	if(! get_pconfig($cache['uid'], 'photocache', 'cache_enable', false))
+		return $cache['status'] = photocache_ret('caching for channel ' . $s['uid'] . ' is disabled');
 
 	if(photocache_isgrid($cache['url']))
 		return $cache['status'] = photocache_ret('caching for this host is disabled');
