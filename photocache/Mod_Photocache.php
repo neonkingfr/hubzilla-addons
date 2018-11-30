@@ -15,10 +15,37 @@ class Photocache extends Controller {
 
 		if(! Apps::addon_app_installed(local_channel(),'photocache'))
 			return;
-
+		
 		check_form_security_token_redirectOnErr('photocache', 'photocache');
 
-		set_pconfig(local_channel(), 'photocache', 'cache_enable', intval($_POST['cache_enable']));
+		$switch = intval($_POST['cache_enable']);
+		
+		if(! $switch) {
+			$r = q("SELECT xchan, content, COUNT(*) AS qty FROM photo WHERE xchan IN 
+				(SELECT DISTINCT xchan FROM photo WHERE photo_usage = %d AND uid = %d) 
+				GROUP BY xchan, content",
+				intval(PHOTO_CACHE),
+				intval(local_channel())
+			);
+			if($r) {
+				foreach($r as $rr) {
+					$file = dbunescbin($rr['content']);
+					if($rr['qty'] == 1 && $file) {
+						if(is_file($file)) {
+							@unlink($file);
+							logger('deleted cached photo file ' . $file, LOGGER_DEBUG);
+						}
+					}
+				}
+			}
+	
+			$r = q("DELETE FROM photo WHERE photo_usage = %d AND uid = %d",
+				intval(PHOTO_CACHE),
+				intval(local_channel())
+			);
+		}
+
+		set_pconfig(local_channel(), 'photocache', 'cache_enable', $switch);
 
 		info(t('Photo Cache settings saved.') . EOL);
 	}
