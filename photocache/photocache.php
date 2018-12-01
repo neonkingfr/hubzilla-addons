@@ -345,8 +345,7 @@ function photocache_url(&$cache = array()) {
 				if($minres == 0)
 					$minres = $cache_mode['minres'];
 			
-				if($orig_width > $minres || $orig_height > $minres)
-					$newimg = true;
+                $newimg = ($orig_width > $minres || $orig_height > $minres);
 			}
 		}
 
