@@ -172,6 +172,8 @@ function photocache_exists($hash, $uid) {
 	$cnt = preg_match_all("/\<img(.+?)src=[\"|'](https?\:.*?)[\"|'](.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
 	if($cnt) {
 		foreach ($matches as $match) {
+			if(strpos($match[2], z_root()) === 0)
+				continue;
 			logger('uid: ' . $s['uid'] . '; url: ' . $match[2], LOGGER_DEBUG);
 			$cache = array(
 				'url' => $match[2],
