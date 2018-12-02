@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.1 
+ * Version: 0.1.1
  * Author: Max Kostikov
  * Maintainer: max@kostikov.co
  * MinVersion: 3.9.5
@@ -163,10 +163,10 @@ function photocache_exists($hash, $uid) {
  function photocache_body(&$s) {
 	 
 	if(! photocache_mode_key('on'))
-        return;
+		 return;
 
-	if(! get_pconfig($s['uid'], 'photocache', 'cache_enable', false))
-	    return;
+	if(! Apps::addon_app_installed($s['uid'],'photocache'))
+		return;
 	
 	$matches = null;
 	$cnt = preg_match_all("/\<img(.+?)src=[\"|'](https?\:.*?)[\"|'](.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
@@ -203,9 +203,9 @@ function photocache_exists($hash, $uid) {
  *
  */
 function photocache_url(&$cache = array()) {
-    
-	if(! get_pconfig($cache['uid'], 'photocache', 'cache_enable', false))
-		return $cache['status'] = photocache_ret('caching for channel ' . $s['uid'] . ' is disabled');
+	
+	if(! Apps::addon_app_installed($cache['uid'],'photocache'))
+		return $cache['status'] = photocache_ret('caching for channel ' . $cache['uid'] . ' is disabled');
 
 	if(photocache_isgrid($cache['url']))
 		return $cache['status'] = photocache_ret('caching for this host is disabled');
@@ -347,7 +347,7 @@ function photocache_url(&$cache = array()) {
 				if($minres == 0)
 					$minres = $cache_mode['minres'];
 			
-                $newimg = ($orig_width > $minres || $orig_height > $minres);
+				$newimg = ($orig_width > $minres || $orig_height > $minres);
 			}
 		}
 
