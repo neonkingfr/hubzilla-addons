@@ -161,9 +161,12 @@ function photocache_exists($hash, $uid) {
  *
  */
  function photocache_body(&$s) {
+     
+    if(! $s['uid'])
+		return;
 	 
 	if(! photocache_mode_key('on'))
-		 return;
+	    return;
 
 	if(! Apps::addon_app_installed($s['uid'],'photocache'))
 		return;
