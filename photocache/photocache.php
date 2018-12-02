@@ -163,10 +163,10 @@ function photocache_exists($hash, $uid) {
  function photocache_body(&$s) {
 	 
 	if(! photocache_mode_key('on'))
-		 return;
+        return;
 
 	if(! get_pconfig($s['uid'], 'photocache', 'cache_enable', false))
-		return $cache['status'] = photocache_ret('caching for channel ' . $s['uid'] . ' is disabled');
+	    return;
 	
 	$matches = null;
 	$cnt = preg_match_all("/\<img(.+?)src=[\"|'](https?\:.*?)[\"|'](.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
