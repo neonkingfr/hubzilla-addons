@@ -236,7 +236,7 @@ function photocache_url(&$cache = array()) {
 	
 	logger('info: processing ' . $cache['resid'] . ' (' . $r['display_path'] .') for ' . $cache['uid'], LOGGER_DEBUG);
 
-	if($r['filesize'] == 0) {
+	if(empty($r['mimetype'])) {
 		// If new resource id
 		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND filesize > %d LIMIT 1",
 			dbesc($r['xchan']),
@@ -332,7 +332,7 @@ function photocache_url(&$cache = array()) {
 				if($minres == 0)
 					$minres = $cache_mode['minres'];
 	
-				$newimg = ($orig_width > $minres || $orig_height > $minres);
+				$newimg = ($orig_width >= $minres || $orig_height >= $minres);
 				
 				$r['width'] = $ph->getWidth();
 				$r['height'] = $ph->getHeight();
