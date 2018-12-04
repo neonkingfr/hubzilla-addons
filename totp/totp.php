@@ -109,7 +109,7 @@ function totp_settings(&$a, &$s) {
 	$sc .= "<br/>QR code provided for your convenience:";
 	$sc .= "<p><img id=\"id_totp_qrcode\" src=\"$qr_url\" alt=\"QR code\"/></p>";
 	$sc .= "<div>";
-	$sc .= "<input title=\"enter TOTP code from your device\" type=\"text\" style=\"width: 16em\" id=\"id_totp_test\"/>";
+	$sc .= "<input title=\"enter TOTP code from your device\" type=\"text\" style=\"width: 16em\" id=\"id_totp_test\" onfocus=\"this.value='';document.getElementById('id_totp_testres').innerHTML=''\"/>";
 	$sc .= " <input type=\"button\" value=\"Test\" onclick=\"$.post('totp',{'test':'1', 'code':document.getElementById('id_totp_test').value},function(data){document.getElementById('id_totp_testres').innerHTML = (data['match'] == '1' ? 'Pass!' : 'Fail')})\"/>";
 	$sc .= " <b><span id=\"id_totp_testres\"></span></b>";
 	$sc .= "</div>";
