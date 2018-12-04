@@ -8,7 +8,7 @@ Hubzilla Photo Cache
 Enable image caching. 0 - off (default), 1 - on.
 
 **system.photo_cache_minres**
-Mininal image resolution for caching. 0 - if image was resized (default 1024px), N - minimum size of any dimension in px.
+Mininal image resolution for caching. 0 - if image was resized (default 1024), N - minimum size of any dimension in px.
 
 **system.photo_cache_grid**
 Enable image caching for the Grid. 0 - off (cache off Grid only), 1 - on.
