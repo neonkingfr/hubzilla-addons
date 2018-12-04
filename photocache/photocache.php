@@ -359,7 +359,7 @@ function photocache_url(&$cache = array()) {
 		}
 
 		// Update all links on any change
-		if($ph->is_valid() || $i['return_code'] == 304) {
+		if(isset($minres) || $i['return_code'] == 304) {
 			$r['filesize'] = ($newimg ? $r['filesize'] : 0);
 			$x = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d, mimetype = '%s', filesize = %d, filename = '%s', content = '%s' WHERE xchan = '%s' AND photo_usage = %d",
 				dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
