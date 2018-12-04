@@ -63,6 +63,15 @@ function totp_post() {
 				)
 			);
 		}
+	if (isset($_POST['test'])) {
+		require_once("library/totp.php");
+		$ref = intval($_POST['code']);
+		$totp = new TOTP("channels.gnatter.org", "Gnatter Channels",
+				$account['account_email'],
+				$account['account_2fa_secret'], 30, 6);
+		$code = $totp->authcode($totp->timestamp());
+		json_return_and_die(array("match" => ($code == $ref ? "1" : "0")));
+		}
 	}
 
 function totp_construct_page(&$a, &$b){
@@ -99,7 +108,12 @@ function totp_settings(&$a, &$s) {
 	$sc .= "<br/>Be sure to save it somewhere in case you lose or replace your mobile device.";
 	$sc .= "<br/>QR code provided for your convenience:";
 	$sc .= "<p><img id=\"id_totp_qrcode\" src=\"$qr_url\" alt=\"QR code\"/></p>";
-	$sc .= "<input type=\"button\" value=\"Generate New Secret\" onclick=\"$.post('totp',{'secret':'1'},function(data){document.getElementById('id_totp_secret').innerHTML=data['secret'];document.getElementById('id_totp_qrcode').src=data['pngurl']; document.getElementById('id_totp_remind').style.display='block'})\"/>";
+	$sc .= "<div>";
+	$sc .= "<input title=\"enter TOTP code from your device\" type=\"text\" style=\"width: 16em\" id=\"id_totp_test\"/>";
+	$sc .= " <input type=\"button\" value=\"Test\" onclick=\"$.post('totp',{'test':'1', 'code':document.getElementById('id_totp_test').value},function(data){document.getElementById('id_totp_testres').innerHTML = (data['match'] == '1' ? 'Pass!' : 'Fail')})\"/>";
+	$sc .= " <b><span id=\"id_totp_testres\"></span></b>";
+	$sc .= "</div>";
+	$sc .= "<div><input type=\"button\" style=\"width: 16em; margin-top: 3px\" value=\"Generate New Secret\" onclick=\"$.post('totp',{'secret':'1'},function(data){document.getElementById('id_totp_secret').innerHTML=data['secret'];document.getElementById('id_totp_qrcode').src=data['pngurl']; document.getElementById('id_totp_remind').style.display='block'})\"/></div>";
 	$sc .= "<div id=\"id_totp_remind\" style=\"display:none\">Record your new TOTP secret and rescan the QR code above.</div>";
 	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'),
 			array(
