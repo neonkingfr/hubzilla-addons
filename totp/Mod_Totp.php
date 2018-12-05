@@ -4,6 +4,8 @@ namespace Zotlabs\Module;
 
 class TOTPController extends \Zotlabs\Web\Controller {
 	function get() {
+		$account = \App::get_account();
+		if (!$account) goaway(z_root());
 		$o .= replace_macros(get_markup_template('totp.tpl','addon/totp'),
 			[
 			'$header' => t('TOTP Two-Step Verification'),
@@ -17,9 +19,10 @@ class TOTPController extends \Zotlabs\Web\Controller {
 		}
 	function post() {
 		# AJAX POST handler
-		if (!local_channel()) return;
+		if (!local_channel())
+			json_return_and_die(array("status" => false));
 		$account = \App::get_account();
-		if (!$account) return;
+		if (!$account) json_return_and_die(array("status" => false));
 		$id = intval($account['account_id']);
 		if (isset($_POST['active'])) {
 			$active = intval($_POST['active']);
@@ -49,7 +52,7 @@ class TOTPController extends \Zotlabs\Web\Controller {
 			$code = $totp->authcode($totp->timestamp());
 			json_return_and_die(array("match" => ($code == $ref ? "1" : "0")));
 			}
-		json_return_and_die(array("ret" => "123"));
+		json_return_and_die(array("status" => false));
 		}
 	}
 ?>
