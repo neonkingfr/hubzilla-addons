@@ -13,6 +13,8 @@
 <script type="text/javascript">
 var totp_success_msg = '{{$success}}';
 var totp_fail_msg = '{{$fail}}';
+var totp_maxfails_msg = '{{$maxfails}}';
+var try_countdown = 3;
 $(window).on("load", function() {
 	totp_clear();
 	});
@@ -31,8 +33,15 @@ function totp_verify() {
 				report.innerHTML = "<b>" + totp_success_msg + "</b>";
 				}
 			else {
-				report.innerHTML = totp_fail_msg;
-				totp_clear();
+				try_countdown -= 1;
+				if (try_countdown < 1) {
+					report.innerHTML = totp_maxfails_msg;
+					window.location = "/logout";
+					}
+				else {
+					report.innerHTML = totp_fail_msg;
+					totp_clear();
+					}
 				}
 			});
 	}
