@@ -5,7 +5,7 @@
 
 <form action="totp" method="post">
 	<div style="margin: auto; margin-top: 1em; width: 18em">
-	<input type="text" class="form-control" style="float: left; width: 8em" name="totp-code" id="totp-code"/>
+	<input type="text" class="form-control" style="float: left; width: 8em" id="totp-code"/>
 	<input type="button" style="margin-left: 1em; float: left" value={{$submit}} onclick="totp_verify()"/>
 	<div style="clear: left"></div>
 	<div id="feedback" style="margin-top: 4px; text-align: center"></div>
@@ -15,6 +15,9 @@
 <script type="text/javascript">
 var totp_success_msg = '{{$success}}';
 var totp_fail_msg = '{{$fail}}';
+$(window).on("load", function() {
+	totp_clear();
+	});
 function totp_clear() {
 	var box = document.getElementById("totp-code");
 	box.value = "";
@@ -35,5 +38,4 @@ function totp_verify() {
 				}
 			});
 	}
-totp_clear();
 </script>
