@@ -258,6 +258,8 @@ function photocache_url(&$cache = array()) {
 			logger('info: duplicate ' . $cache['resid'] . ' data from cache for ' . $k[0]['uid'], LOGGER_DEBUG);
 		}
 	}
+	else
+		$r['os_syspath'] = dbunescbin($r['content']);
 	
 	$exp = strtotime($r['expires']);
 	$url = (($exp - 60 < time()) ? htmlspecialchars_decode($r['display_path']) : '');
@@ -336,7 +338,6 @@ function photocache_url(&$cache = array()) {
 				
 				$r['width'] = $ph->getWidth();
 				$r['height'] = $ph->getHeight();
-				$r['filesize'] = strlen($ph->imageString());
 			}
 		}
 		
@@ -347,6 +348,7 @@ function photocache_url(&$cache = array()) {
 			$path = 'store/[data]/[cache]/' .  substr($r['xchan'],0,2) . '/' . substr($r['xchan'],2,2);
 			$os_path = $path . '/' . $r['xchan'];
 			$r['os_syspath'] = $os_path;
+			$r['filesize'] = strlen($ph->imageString());
 			if(! is_dir($path))
 				if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
 					return $cache['status'] = photocache_ret('could not create path ' . $path);
@@ -360,7 +362,6 @@ function photocache_url(&$cache = array()) {
 
 		// Update all links on any change
 		if(isset($minres) || $i['return_code'] == 304) {
-			$r['filesize'] = ($newimg ? $r['filesize'] : 0);
 			$x = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d, mimetype = '%s', filesize = %d, filename = '%s', content = '%s' WHERE xchan = '%s' AND photo_usage = %d",
 				dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
 				dbescdate($r['expires']),
@@ -369,7 +370,7 @@ function photocache_url(&$cache = array()) {
 				dbesc($r['mimetype']),
 				intval($r['filesize']),
 				dbesc($r['filename']),
-				dbesc(($newimg ? $r['os_syspath'] : '')),
+				dbesc($r['os_syspath']),
 				dbesc($r['xchan']),
 				intval(PHOTO_CACHE)
 			);
