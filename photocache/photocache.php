@@ -255,6 +255,7 @@ function photocache_url(&$cache = array()) {
 			$ph = photo_factory('');
 			if(! $ph->save($r, true))
 				return $cache['status'] = photocache_ret('could not duplicate cached URL ' . $cache['url'] . ' for ' . $cache['uid']);
+			$r['filesize'] = $k[0]['filesize'];
 			logger('info: duplicate ' . $cache['resid'] . ' data from cache for ' . $k[0]['uid'], LOGGER_DEBUG);
 		}
 	}
