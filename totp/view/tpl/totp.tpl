@@ -13,6 +13,8 @@
 </form>
 </div>
 <script type="text/javascript">
+var totp_success_msg = '{{$success}}';
+var totp_fail_msg = '{{$fail}}';
 function totp_clear() {
 	var box = document.getElementById("totp-code");
 	box.value = "";
@@ -25,10 +27,10 @@ function totp_verify() {
 			var report = document.getElementById("feedback");
 			var box = document.getElementById("totp-code");
 			if (resp['match'] == "1") {
-				report.innerHTML = "<b>Success!</b>";
+				report.innerHTML = "<b>" + totp_success_msg + "</b>";
 				}
 			else {
-				report.innerHTML = "Invalid code, please try again.";
+				report.innerHTML = totp_fail_msg;
 				totp_clear();
 				}
 			});
