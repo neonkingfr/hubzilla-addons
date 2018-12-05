@@ -18,6 +18,10 @@ function totp_load() {
 		'totp_settings');
 	register_hook('feature_settings_post', 'addon/totp/totp.php',
 		'totp_settings_post');
+	register_hook('logged_in', 'addon/totp/totp.php',
+		'totp_logged_in');
+	Zotlabs\Extend\Hook::register('module_loaded',
+		'addon/totp/totp.php','totp_module_loaded');
 	}
 function totp_unload() {
 	unregister_hook('construct_page', 'addon/totp/totp.php',
@@ -26,6 +30,21 @@ function totp_unload() {
 		'totp_settings');
 	unregister_hook('feature_settings_post', 'addon/totp/totp.php',
 		'totp_settings_post');
+	unregister_hook('logged_in', 'addon/totp/totp.php',
+		'totp_logged_in');
+	Zotlabs\Extend\Hook::unregister_by_file('addon/totp/totp.php');
+	}
+function totp_module_loaded(&$x) {
+	if ($x['module'] == 'totp') {
+		require_once('addon/totp/Mod_Totp.php');
+		$x['controller'] = new \Zotlabs\Module\TOTPController();
+		$x['installed'] = true;
+		}
+	}
+function totp_logged_in(&$a, &$user) {
+	$file = fopen("/tmp/logged_in", "w");
+	fwrite($file, print_r($user, true));
+	fclose($file);
 	}
 function totp_qrcode_png($uri) {
 	# generate QR code png file, return relative URL
