@@ -57,42 +57,6 @@ function totp_qrcode_png($uri) {
 	preg_match('/([^\/]+)$/', $tmpfile, $matches);
 	return "/" . $subdir . "/" . $matches[1];
 	}
-function totp_post() {
-	# AJAX POST handler
-	if (!local_channel()) return;
-	$account = App::get_account();
-	if (!$account) return;
-	$id = intval($account['account_id']);
-	if (isset($_POST['active'])) {
-		$active = intval($_POST['active']);
-		$r = q("update account set account_2fa_active=%d where account_id=%d",
-			$active, $id);
-		json_return_and_die(array("active" => $active));
-		}
-	if (isset($_POST['secret'])) {
-		require_once("library/totp.php");
-		$totp = new TOTP("channels.gnatter.org", "Gnatter Channels",
-				$account['account_email'], null, 30, 6);
-		$r = q("update account set account_2fa_secret='%s' where account_id=%d",
-				$totp->secret, $id);
-		json_return_and_die(
-			array(
-				"secret" => $totp->secret,
-				"pngurl" => totp_qrcode_png($totp->uri())
-				)
-			);
-		}
-	if (isset($_POST['test'])) {
-		require_once("library/totp.php");
-		$ref = intval($_POST['code']);
-		$totp = new TOTP("channels.gnatter.org", "Gnatter Channels",
-				$account['account_email'],
-				$account['account_2fa_secret'], 30, 6);
-		$code = $totp->authcode($totp->timestamp());
-		json_return_and_die(array("match" => ($code == $ref ? "1" : "0")));
-		}
-	}
-
 function totp_construct_page(&$a, &$b){
 	if(!local_channel()) return;
 
@@ -129,7 +93,7 @@ function totp_settings(&$a, &$s) {
 	$sc .= "<p><img id=\"id_totp_qrcode\" src=\"$qr_url\" alt=\"QR code\"/></p>";
 	$sc .= "<div>";
 	$sc .= "<input title=\"enter TOTP code from your device\" type=\"text\" style=\"width: 16em\" id=\"id_totp_test\" onfocus=\"this.value='';document.getElementById('id_totp_testres').innerHTML=''\"/>";
-	$sc .= " <input type=\"button\" value=\"Test\" onclick=\"$.post('totp',{'test':'1', 'code':document.getElementById('id_totp_test').value},function(data){document.getElementById('id_totp_testres').innerHTML = (data['match'] == '1' ? 'Pass!' : 'Fail')})\"/>";
+	$sc .= " <input type=\"button\" value=\"Test\" onclick=\"$.post('totp',{'totp_code':document.getElementById('id_totp_test').value},function(data){document.getElementById('id_totp_testres').innerHTML = (data['match'] == '1' ? 'Pass!' : 'Fail')})\"/>";
 	$sc .= " <b><span id=\"id_totp_testres\"></span></b>";
 	$sc .= "</div>";
 	$sc .= "<div><input type=\"button\" style=\"width: 16em; margin-top: 3px\" value=\"Generate New Secret\" onclick=\"$.post('totp',{'secret':'1'},function(data){document.getElementById('id_totp_secret').innerHTML=data['secret'];document.getElementById('id_totp_qrcode').src=data['pngurl']; document.getElementById('id_totp_remind').style.display='block'})\"/></div>";
