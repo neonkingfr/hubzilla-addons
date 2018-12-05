@@ -3,14 +3,12 @@
 
 <div>{{$desc}}</div>
 
-<form action="totp" method="post">
-	<div style="margin: auto; margin-top: 1em; width: 18em">
-	<input type="text" class="form-control" style="float: left; width: 8em" id="totp-code"/>
-	<input type="button" style="margin-left: 1em; float: left" value={{$submit}} onclick="totp_verify()"/>
-	<div style="clear: left"></div>
-	<div id="feedback" style="margin-top: 4px; text-align: center"></div>
-	</div>
-</form>
+<div style="margin: auto; margin-top: 1em; width: 18em">
+<input type="text" class="form-control" style="float: left; width: 8em" id="totp-code" onkeypress="hitkey(event)"/>
+<input type="button" style="margin-left: 1em; float: left" value={{$submit}} onclick="totp_verify()"/>
+<div style="clear: left"></div>
+<div id="feedback" style="margin-top: 4px; text-align: center"></div>
+</div>
 </div>
 <script type="text/javascript">
 var totp_success_msg = '{{$success}}';
@@ -37,5 +35,8 @@ function totp_verify() {
 				totp_clear();
 				}
 			});
+	}
+function hitkey(ev) {
+	if (ev.which == 13) totp_verify();
 	}
 </script>
