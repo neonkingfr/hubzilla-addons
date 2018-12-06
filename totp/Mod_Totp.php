@@ -3,9 +3,30 @@
 namespace Zotlabs\Module;
 
 class TOTPController extends \Zotlabs\Web\Controller {
+	function send_qrcode($account) {
+		# generate and deliver QR code png image
+		require_once("library/phpqrcode/qrlib.php");
+		require_once("addon/totp/class_totp.php");
+		$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
+				$account['account_email'],
+				$account['account_2fa_secret'], 30, 6);
+		$tmpfile = tempnam("/tmp", "qr");
+		\QRcode::png($totp->uri(), $tmpfile);
+		header("content-type: image/png");
+		header("content-length: " . filesize($tmpfile));
+		echo file_get_contents($tmpfile);
+		unlink($tmpfile);
+		}
 	function get() {
+		preg_match('/([^\/]+)$/', $_SERVER['REQUEST_URI'], $matches);
+		$path = $matches[1];
+		$path = preg_replace('/\?.+$/', '', $path);
 		$account = \App::get_account();
 		if (!$account) goaway(z_root());
+		if ($path == "qrcode") {
+			$this->send_qrcode($account);
+			killme();
+			}
 		$o .= replace_macros(get_markup_template('totp.tpl','addon/totp'),
 			[
 			'$header' => t('TOTP Two-Step Verification'),
@@ -36,12 +57,7 @@ class TOTPController extends \Zotlabs\Web\Controller {
 					$account['account_email'], null, 30, 6);
 			$r = q("update account set account_2fa_secret='%s' where account_id=%d",
 					$totp->secret, $id);
-			json_return_and_die(
-				array(
-					"secret" => $totp->secret,
-					"pngurl" => totp_qrcode_png($totp->uri())
-					)
-				);
+			json_return_and_die(array("secret" => $totp->secret));
 			}
 		if (isset($_POST['totp_code'])) {
 			require_once("addon/totp/class_totp.php");

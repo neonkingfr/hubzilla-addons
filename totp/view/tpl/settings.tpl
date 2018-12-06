@@ -7,7 +7,7 @@ Your shared secret is <b><span id="totp_secret">{{$secret}}</span></b>
 <div>
 Be sure to save it somewhere in case you lose or replace your mobile device.
 <br/>QR code provided for your convenience:
-<p><img id="totp_qrcode" src="{{$qr_img_url}}" alt="QR code"/></p>
+<p><img id="totp_qrcode" src="{{$qrcode_url}}{{$salt}}" alt="QR code"/></p>
 <div>
 <input title="enter TOTP code from your device" type="text"
 	style="width: 16em" id="totp_test"
@@ -45,7 +45,7 @@ function totp_generate_secret() {
 			document.getElementById('totp_secret').innerHTML =
 				data['secret'];
 			document.getElementById('totp_qrcode').src =
-				data['pngurl'];
+				"{{$qrcode_url}}" + (new Date()).getTime();
 			document.getElementById('totp_remind').style.display =
 				'block'
 			});

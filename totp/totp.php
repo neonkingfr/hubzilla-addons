@@ -43,17 +43,6 @@ function totp_module_loaded(&$x) {
 	}
 function totp_logged_in(&$a, &$user) {
 	}
-function totp_qrcode_png($uri) {
-	# generate QR code png file, return relative URL
-	require_once("library/phpqrcode/qrlib.php");
-	$subdir = "images/qr";
-	$tmpfile = tempnam($subdir, "qr");
-	unlink($tmpfile);
-	$tmpfile .= ".png";
-	QRcode::png($uri, $tmpfile);
-	preg_match('/([^\/]+)$/', $tmpfile, $matches);
-	return "/" . $subdir . "/" . $matches[1];
-	}
 function totp_construct_page(&$a, &$b){
 	if(!local_channel()) return;
 
@@ -86,7 +75,8 @@ function totp_settings(&$a, &$s) {
 			[
 			'$checked' => $active_checked,
 			'$secret' => $totp->secret,
-			'$qr_img_url' => totp_qrcode_png($totp->uri())
+			'$qrcode_url' => "/totp/qrcode?s=",
+			'$salt' => microtime()
 			]);
 	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'),
 			array(
