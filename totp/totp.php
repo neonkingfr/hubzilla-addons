@@ -81,23 +81,16 @@ function totp_settings(&$a, &$s) {
 	$secret = $account['account_2fa_secret'];
 	$totp = new TOTP("channels.gnatter.org", "Gnatter Channels",
 			$account['account_email'], $secret == "" ? null : $secret, 30, 6);
-	$qr_url = totp_qrcode_png($totp->uri());
-	$sc = "";
-	$sc .= "2FA Active <input type=\"checkbox\" name=\"2fa_active\" id=\"id_2fa_active\" value=\"1\" onclick=\"$.post('totp', {'active':(this.checked ? '1' : '0')})\"";
-	if ($account['account_2fa_active'] == 1)
-		$sc .= " checked=\"checked\"";
-	$sc .= "/>";
-	$sc .= "<br/>Your shared secret is <b><span id=\"id_totp_secret\">" . $totp->secret . "</span></b>";
-	$sc .= "<br/>Be sure to save it somewhere in case you lose or replace your mobile device.";
-	$sc .= "<br/>QR code provided for your convenience:";
-	$sc .= "<p><img id=\"id_totp_qrcode\" src=\"$qr_url\" alt=\"QR code\"/></p>";
-	$sc .= "<div>";
-	$sc .= "<input title=\"enter TOTP code from your device\" type=\"text\" style=\"width: 16em\" id=\"id_totp_test\" onfocus=\"this.value='';document.getElementById('id_totp_testres').innerHTML=''\"/>";
-	$sc .= " <input type=\"button\" value=\"Test\" onclick=\"$.post('totp',{'totp_code':document.getElementById('id_totp_test').value},function(data){document.getElementById('id_totp_testres').innerHTML = (data['match'] == '1' ? 'Pass!' : 'Fail')})\"/>";
-	$sc .= " <b><span id=\"id_totp_testres\"></span></b>";
-	$sc .= "</div>";
-	$sc .= "<div><input type=\"button\" style=\"width: 16em; margin-top: 3px\" value=\"Generate New Secret\" onclick=\"$.post('totp',{'secret':'1'},function(data){document.getElementById('id_totp_secret').innerHTML=data['secret'];document.getElementById('id_totp_qrcode').src=data['pngurl']; document.getElementById('id_totp_remind').style.display='block'})\"/></div>";
-	$sc .= "<div id=\"id_totp_remind\" style=\"display:none\">Record your new TOTP secret and rescan the QR code above.</div>";
+	$active_checked =
+		($account['account_2fa_active'] == 1
+			? "checked=\"checked\""
+			: "");
+	$sc = replace_macros(get_markup_template('settings.tpl','addon/totp'),
+			[
+			'$checked' => $active_checked,
+			'$secret' => $totp->secret,
+			'$qr_img_url' => totp_qrcode_png($totp->uri())
+			]);
 	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'),
 			array(
 				     '$addon' => array('',
