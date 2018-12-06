@@ -302,7 +302,7 @@ function diaspora_send_status($item,$owner,$contact,$public_batch = false) {
 	logger('diaspora_send_status: '.$owner['channel_name'].' -> '.$contact['xchan_name'].' base message: ' . $msg, LOGGER_DATA);
 	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'], $public_batch);
 
-	$qi = array(diaspora_queue($owner,$contact,$slap,$public_batch,$item['mid']));
+	$qi = array(diaspora_queue($owner,$contact,$slap,$public_batch,$item['uuid']));
 	return $qi;
 }
 
@@ -390,7 +390,7 @@ function diaspora_send_images($item,$owner,$contact,$images,$public_batch = fals
 		logger('diaspora_send_photo: base message: ' . $msg, LOGGER_DATA);
 		$slap = 'xml=' . urlencode(urlencode(diaspora_msg_build($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],$public_batch)));
 
-		$qi[] = diaspora_queue($owner,$contact,$slap,$public_batch,$item['mid']);
+		$qi[] = diaspora_queue($owner,$contact,$slap,$public_batch,$item['uuid']);
 	}
 
 	return $qi;
@@ -459,7 +459,7 @@ function diaspora_send_upstream($item,$owner,$contact,$public_batch = false,$upl
 	logger('diaspora_send_upstream: base message: ' . $msg, LOGGER_DATA);
 
 	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],$public_batch);
-	return(diaspora_queue($owner,$contact,$slap,$public_batch,$item['mid']));
+	return(diaspora_queue($owner,$contact,$slap,$public_batch,$item['uuid']));
 }
 
 // Diaspora will not send comments downstream to the system it originated from.
@@ -470,8 +470,8 @@ function diaspora_send_upstream($item,$owner,$contact,$public_batch = false,$upl
 
 function diaspora_deliver_local_comments($item,$parent) {
 
-	$r = q("select aid, uid from item where mid = '%s' and owner_xchan = '%s'",
-		dbesc($parent['mid']),
+	$r = q("select aid, uid from item where uuid = '%s' and owner_xchan = '%s'",
+		dbesc($parent['uuid']),
 		dbesc($parent['owner_xchan'])
 	);
 
@@ -574,7 +574,7 @@ function diaspora_send_downstream($item,$owner,$contact,$public_batch = false) {
 	logger('diaspora_send_downstream: base message: ' . $msg, LOGGER_DATA);
 
     $slap = diaspora_prepare_outbound($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],$public_batch);
-    return(diaspora_queue($owner,$contact,$slap,$public_batch,$item['mid']));
+    return(diaspora_queue($owner,$contact,$slap,$public_batch,$item['uuid']));
 
 }
 
@@ -610,14 +610,14 @@ function diaspora_send_retraction($item,$owner,$contact,$public_batch = false) {
 
 	$fields = [
 		'author'      => $author,
-		'target_guid' => $item['mid'],
+		'target_guid' => $item['uuid'],
 		'target_type' => $target_type
 	]; 
 
 	$msg = arrtoxml('retraction',$fields);
 
 	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],$public_batch);
-	return(diaspora_queue($owner,$contact,$slap,$public_batch,$item['mid']));
+	return(diaspora_queue($owner,$contact,$slap,$public_batch,$item['uuid']));
 }
 
 function diaspora_send_mail($item,$owner,$contact) {

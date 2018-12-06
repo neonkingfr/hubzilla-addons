@@ -634,7 +634,9 @@ function chess_create_game($channel, $color, $acl, $enforce_legal_moves, $public
 			$dups = true;
 	} while ($dups == true);
 	$ac = $acl->get();
-	$mid = item_message_id();
+	$uuid = item_message_id();
+	$mid = z_root() . '/item/' . $uuid;
+
 	$arr = array();  // Initialize the array of parameters for the post
 	$objtype = ACTIVITY_OBJ_CHESSGAME;
 	$perms = $acl->get();
@@ -665,6 +667,7 @@ function chess_create_game($channel, $color, $acl, $enforce_legal_moves, $public
 	$game_url = z_root() . '/chess/' . $channel['channel_address'] . '/' . $resource_id;
 	$arr['aid'] = $channel['channel_account_id'];
 	$arr['uid'] = $channel['channel_id'];
+	$arr['uuid'] = $uuid;
 	$arr['mid'] = $mid;
 	$arr['parent_mid'] = $mid;
 	$arr['item_hidden'] = $item_hidden;
@@ -708,7 +711,8 @@ function chess_create_game($channel, $color, $acl, $enforce_legal_moves, $public
 function chess_make_move($observer, $newPosFEN, $g) {
 	$resource_type = 'chess';
 	$resource_id = $g['resource_id'];
-	$mid = item_message_id();
+	$uuid = item_message_id();
+	$mid = z_root() . '/item/' . $uuid;
 	$arr = array();  // Initialize the array of parameters for the post
 	$objtype = ACTIVITY_OBJ_CHESSGAME;
 	$object = json_encode(array(
@@ -727,6 +731,7 @@ function chess_make_move($observer, $newPosFEN, $g) {
 	$game_url = z_root() . '/chess/' . $channel_address . '/' . $resource_id;
 	$arr['aid'] = $g['aid'];
 	$arr['uid'] = $g['uid'];
+	$arr['uuid'] = $uuid;
 	$arr['mid'] = $mid;
 	$arr['parent_mid'] = $g['mid'];
 	$arr['item_hidden'] = $item_hidden;
