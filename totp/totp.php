@@ -42,9 +42,6 @@ function totp_module_loaded(&$x) {
 		}
 	}
 function totp_logged_in(&$a, &$user) {
-	$file = fopen("/tmp/logged_in", "w");
-	fwrite($file, print_r($user, true));
-	fclose($file);
 	}
 function totp_qrcode_png($uri) {
 	# generate QR code png file, return relative URL
@@ -77,7 +74,7 @@ function totp_settings(&$a, &$s) {
 	$account = App::get_account();
 	if (!$account) return;
 	$acct_id = $account['account_id'];
-	require_once("library/totp.php");
+	require_once("addon/totp/class_totp.php");
 	$secret = $account['account_2fa_secret'];
 	$totp = new TOTP("channels.gnatter.org", "Gnatter Channels",
 			$account['account_email'], $secret == "" ? null : $secret, 30, 6);

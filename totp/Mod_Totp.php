@@ -31,7 +31,7 @@ class TOTPController extends \Zotlabs\Web\Controller {
 			json_return_and_die(array("active" => $active));
 			}
 		if (isset($_POST['secret'])) {
-			require_once("library/totp.php");
+			require_once("addon/totp/class_totp.php");
 			$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
 					$account['account_email'], null, 30, 6);
 			$r = q("update account set account_2fa_secret='%s' where account_id=%d",
@@ -44,7 +44,7 @@ class TOTPController extends \Zotlabs\Web\Controller {
 				);
 			}
 		if (isset($_POST['totp_code'])) {
-			require_once("library/totp.php");
+			require_once("addon/totp/class_totp.php");
 			$ref = intval($_POST['totp_code']);
 			$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
 					$account['account_email'],
