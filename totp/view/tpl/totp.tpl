@@ -31,6 +31,7 @@ function totp_verify() {
 			var box = document.getElementById("totp-code");
 			if (resp['match'] == "1") {
 				report.innerHTML = "<b>" + totp_success_msg + "</b>";
+				window.location = "/";
 				}
 			else {
 				try_countdown -= 1;

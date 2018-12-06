@@ -49,8 +49,9 @@ class TOTPController extends \Zotlabs\Web\Controller {
 			$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
 					$account['account_email'],
 					$account['account_2fa_secret'], 30, 6);
-			$code = $totp->authcode($totp->timestamp());
-			json_return_and_die(array("match" => ($code == $ref ? "1" : "0")));
+			$match = ($totp->authcode($totp->timestamp()) == $ref);
+			if ($match) $_SESSION['2FA_VERIFIED'] = true;
+			json_return_and_die(array("match" => ($match ? "1" : "0")));
 			}
 		json_return_and_die(array("status" => false));
 		}
