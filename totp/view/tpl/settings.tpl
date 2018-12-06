@@ -11,6 +11,7 @@ Be sure to save it somewhere in case you lose or replace your mobile device.
 <div>
 <input title="enter TOTP code from your device" type="text"
 	style="width: 16em" id="totp_test"
+	onkeypress="hitkey(event)"
 	onfocus="totp_clear_code()"/>
 <input type="button" value="Test" onclick="totp_test_code()"/>
 <b><span id="totp_testres"></span></b>
@@ -48,5 +49,12 @@ function totp_generate_secret() {
 			document.getElementById('totp_remind').style.display =
 				'block'
 			});
+	}
+function hitkey(ev) {
+	if (ev.which == 13) {
+		totp_test_code();
+		ev.preventDefault();
+		ev.stopPropagation();
+		}
 	}
 </script>
