@@ -355,7 +355,8 @@ function photocache_url(&$cache = array()) {
 					return $cache['status'] = photocache_ret('could not create path ' . $path);
 			if(is_file($os_path))
 				@unlink($os_path);
-			$ph->saveImage($os_path);
+			if(! $ph->saveImage($os_path))
+				return $cache['status'] = photocache_ret('could not save file ' . $os_path);
 			if(! $ph->save($r, true))
 				return $cache['status'] = photocache_ret('could not save data to database');
 			logger('new image saved: ' . $os_path . '; ' . $r['mimetype'] . ', ' . $r['width'] . 'w x ' . $r['height'] . 'h, ' . $r['filesize'] . ' bytes', LOGGER_DEBUG);
