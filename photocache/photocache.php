@@ -344,7 +344,7 @@ function photocache_url(&$cache = array()) {
 		
 		$r['filename'] = basename(parse_url($url, PHP_URL_PATH));
 		
-		// Save image to disk storage and into database
+		// Save image to disk storage
 		if($newimg) {
 			$path = 'store/[data]/[cache]/' .  substr($r['xchan'],0,2) . '/' . substr($r['xchan'],2,2);
 			$os_path = $path . '/' . $r['xchan'];
@@ -357,12 +357,10 @@ function photocache_url(&$cache = array()) {
 				@unlink($os_path);
 			if(! $ph->saveImage($os_path))
 				return $cache['status'] = photocache_ret('could not save file ' . $os_path);
-			if(! $ph->save($r, true))
-				return $cache['status'] = photocache_ret('could not save data to database');
 			logger('new image saved: ' . $os_path . '; ' . $r['mimetype'] . ', ' . $r['width'] . 'w x ' . $r['height'] . 'h, ' . $r['filesize'] . ' bytes', LOGGER_DEBUG);
 		}
 
-		// Update all links on any change
+		// Update all links in database on any change
 		if(isset($minres) || $i['return_code'] == 304) {
 			$x = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d, mimetype = '%s', filesize = %d, filename = '%s', content = '%s' WHERE xchan = '%s' AND photo_usage = %d",
 				dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
@@ -376,6 +374,8 @@ function photocache_url(&$cache = array()) {
 				dbesc($r['xchan']),
 				intval(PHOTO_CACHE)
 			);
+			if(! $x)
+				return $cache['status'] = photocache_ret('could not save data to database');
 		}
 	}
 	
