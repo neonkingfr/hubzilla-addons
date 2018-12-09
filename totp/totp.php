@@ -41,7 +41,24 @@ function totp_module_loaded(&$x) {
 		$x['installed'] = true;
 		}
 	}
+/**
+* @brief Do we need to 2FA-verify?
+*
+* Determine whether 2FA verification is needed and, if so,
+* route user to verification form.
+*
+*/
 function totp_logged_in(&$a, &$user) {
+	if (isset($_SESSION['2FA_VERIFIED'])) return;
+	if (intval($user['account_2fa_active']) == 0) return;
+	$mod = App::$module;
+	if (($mod != 'totp') # avoid infinite recursion
+			&& ($mod != 'ping') # Don't redirect essential
+			&& ($mod != 'view') # system modules.
+			&& ($mod != 'acl')
+			&& ($mod != 'photo')
+			) goaway(z_root() . '/totp');
+	return;
 	}
 function totp_construct_page(&$a, &$b){
 	if(!local_channel()) return;
