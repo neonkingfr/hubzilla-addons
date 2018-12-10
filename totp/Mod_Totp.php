@@ -10,7 +10,7 @@ class TOTPController extends \Zotlabs\Web\Controller {
 		$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
 				$account['account_email'],
 				$account['account_2fa_secret'], 30, 6);
-		$tmpfile = tempnam("/tmp", "qr");
+		$tmpfile = tempnam(sys_get_temp_dir(), "qr");
 		\QRcode::png($totp->uri(), $tmpfile);
 		header("content-type: image/png");
 		header("content-length: " . filesize($tmpfile));
