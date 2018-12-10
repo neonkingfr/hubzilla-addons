@@ -5,7 +5,7 @@ namespace Zotlabs\Module;
 class TOTPController extends \Zotlabs\Web\Controller {
 	function send_qrcode($account) {
 		# generate and deliver QR code png image
-		require_once("addon/totp/phpqrcode/qrlib.php");
+		require_once("addon/common/phpqrcode/qrlib.php");
 		require_once("addon/totp/class_totp.php");
 		$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
 				$account['account_email'],
