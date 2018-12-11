@@ -1,0 +1,5 @@
+version: 0.1
+url: $baseurl/totp, $baseurl/settings/totp
+requires: local_channel
+name: TOTP
+categories: Authentication
