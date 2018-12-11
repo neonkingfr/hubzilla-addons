@@ -2,7 +2,14 @@
 
 namespace Zotlabs\Module;
 
+use Zotlabs\Lib\Apps;
+
 class TOTPController extends \Zotlabs\Web\Controller {
+	function totp_installed() {
+		$id = local_channel();
+		if (!$id) return false;
+		return Apps::addon_app_installed($id, 'totp');
+		}
 	function send_qrcode($account) {
 		# generate and deliver QR code png image
 		require_once("addon/common/phpqrcode/qrlib.php");
@@ -18,6 +25,7 @@ class TOTPController extends \Zotlabs\Web\Controller {
 		unlink($tmpfile);
 		}
 	function get() {
+		if (!$this->totp_installed()) return;
 		preg_match('/([^\/]+)$/', $_SERVER['REQUEST_URI'], $matches);
 		$path = $matches[1];
 		$path = preg_replace('/\?.+$/', '', $path);
@@ -40,7 +48,7 @@ class TOTPController extends \Zotlabs\Web\Controller {
 		}
 	function post() {
 		# AJAX POST handler
-		if (!local_channel())
+		if (!$this->totp_installed())
 			json_return_and_die(array("status" => false));
 		$account = \App::get_account();
 		if (!$account) json_return_and_die(array("status" => false));

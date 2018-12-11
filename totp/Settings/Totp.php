@@ -5,8 +5,13 @@ namespace Zotlabs\Module\Settings;
 use Zotlabs\Lib\Apps;
 
 class Totp {
+	function totp_installed() {
+		$id = local_channel();
+		if (!$id) return false;
+		return Apps::addon_app_installed($id, 'totp');
+		}
 	function post() {
-		if (!local_channel())
+		if (!$this->totp_installed())
 			json_return_and_die(array("status" => false));
 		$account = \App::get_account();
 		if (!$account) json_return_and_die(array("status" => false));
@@ -37,8 +42,7 @@ class Totp {
 			}
 		}
 	function get() {
-		$id = local_channel();
-		if (!$id) return;
+		if (!$this->totp_installed()) return;
 		$account = \App::get_account();
 		if (!$account) return;
 		$acct_id = $account['account_id'];

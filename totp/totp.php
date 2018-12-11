@@ -10,6 +10,8 @@
  * Maintainer: Pete Yadlowsky <pm@yadlowsky.us>
  */
 
+use Zotlabs\Lib\Apps;
+
 function totp_module(){};
 function totp_load() {
 	register_hook('construct_page', 'addon/totp/totp.php',
@@ -30,7 +32,13 @@ function totp_unload() {
 	Zotlabs\Extend\Route::unregister('addon/totp/Settings/Totp.php',
 		'settings/totp');
 	}
+function totp_installed() {
+	$id = local_channel();
+	if (!$id) return false;
+	return Apps::addon_app_installed($id, 'totp');
+	}
 function totp_module_loaded(&$x) {
+	if (!totp_installed()) return;
 	if ($x['module'] == 'totp') {
 		require_once('addon/totp/Mod_Totp.php');
 		$x['controller'] = new \Zotlabs\Module\TOTPController();
@@ -45,6 +53,7 @@ function totp_module_loaded(&$x) {
 *
 */
 function totp_logged_in(&$a, &$user) {
+	if (!totp_installed()) return;
 	if (isset($_SESSION['2FA_VERIFIED'])) return;
 	if (intval($user['account_2fa_active']) == 0) return;
 	$mod = App::$module;
@@ -57,7 +66,7 @@ function totp_logged_in(&$a, &$user) {
 	return;
 	}
 function totp_construct_page(&$a, &$b){
-	if(!local_channel()) return;
+	if (!totp_installed()) return;
 
 	// Whatever you put in settings, will show up on the left nav of your pages.
 	$b['layout']['region_aside'] .= '<div>' .
