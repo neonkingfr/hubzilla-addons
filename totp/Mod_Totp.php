@@ -53,12 +53,6 @@ class TOTPController extends \Zotlabs\Web\Controller {
 		$account = \App::get_account();
 		if (!$account) json_return_and_die(array("status" => false));
 		$id = intval($account['account_id']);
-		if (isset($_POST['active'])) {
-			$active = intval($_POST['active']);
-			$r = q("update account set account_2fa_active=%d where account_id=%d",
-				$active, $id);
-			json_return_and_die(array("active" => $active));
-			}
 		if (isset($_POST['secret'])) {
 			require_once("addon/totp/class_totp.php");
 			$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",

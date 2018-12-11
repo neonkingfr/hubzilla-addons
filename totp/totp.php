@@ -55,7 +55,6 @@ function totp_module_loaded(&$x) {
 function totp_logged_in(&$a, &$user) {
 	if (!totp_installed()) return;
 	if (isset($_SESSION['2FA_VERIFIED'])) return;
-	if (intval($user['account_2fa_active']) == 0) return;
 	$mod = App::$module;
 	if (($mod != 'totp') # avoid infinite recursion
 			&& ($mod != 'ping') # Don't redirect essential

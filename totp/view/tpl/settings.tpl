@@ -1,6 +1,3 @@
-2FA Active
-<input type="checkbox" value="1"
-	onclick="totp_set_active(this)" {{$checked}}/>
 <div>
 Your shared secret is <b><span id="totp_secret">{{$secret}}</span></b>
 </div>
@@ -23,9 +20,6 @@ Be sure to save it somewhere in case you lose or replace your mobile device.
 <div id="totp_remind" style="display:none">Record your new TOTP secret and rescan the QR code above.
 </div>
 <script type="text/javascript">
-function totp_set_active(cb) {
-	$.post("/settings/totp", {active: (cb.checked ? "1" : "0")});
-	}
 function totp_clear_code() {
 	document.getElementById("totp_test").value = "";
 	document.getElementById("totp_testres").innerHTML = "";
