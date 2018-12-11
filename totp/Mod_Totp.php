@@ -3,12 +3,16 @@
 namespace Zotlabs\Module;
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\AConfig;
 
 class TOTPController extends \Zotlabs\Web\Controller {
 	function totp_installed() {
 		$id = local_channel();
 		if (!$id) return false;
 		return Apps::addon_app_installed($id, 'totp');
+		}
+	function get_secret($acct_id) {
+		return AConfig::get($acct_id, 'totp', 'secret', null);
 		}
 	function get() {
 		if (!$this->totp_installed()) return;
@@ -34,9 +38,9 @@ class TOTPController extends \Zotlabs\Web\Controller {
 		if (isset($_POST['totp_code'])) {
 			require_once("addon/totp/class_totp.php");
 			$ref = intval($_POST['totp_code']);
+			$secret = $this->get_secret($account['account_id']);
 			$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
-					$account['account_email'],
-					$account['account_2fa_secret'], 30, 6);
+					$account['account_email'], $secret, 30, 6);
 			$match = ($totp->authcode($totp->timestamp()) == $ref);
 			if ($match) $_SESSION['2FA_VERIFIED'] = true;
 			json_return_and_die(array("match" => ($match ? "1" : "0")));
