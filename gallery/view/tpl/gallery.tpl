@@ -140,7 +140,7 @@
 				for (i = 0; i < (items.length > 1 ? 1 : items.length); i++) { //keep preview image count at 1 until we have a solution to nicely present multiple photos 
 					share_str += '[zrl=' + encodeURIComponent(baseurl + '/gallery/{{$nick}}/' + album + '#&gid=1&pid=' + (i+1)) + '][zmg]' + encodeURIComponent(items[i].src) + '[/zmg][/zrl]';
 				}
-				options.shareButtons.splice(2, 1, { id: 'share_link', label: 'Share this album', url: encodeURIComponent('rpost?f=&title=Album: ' + album + '&body=' + share_str) });
+				options.shareButtons.splice(2, 1, { id: 'share_link', label: 'Share this album', url: 'rpost?f=&title=' + encodeURIComponent('Album: ' + album) + '&body=' + share_str });
 				// Initializes and opens PhotoSwipe
 				gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
 				gallery.init();
