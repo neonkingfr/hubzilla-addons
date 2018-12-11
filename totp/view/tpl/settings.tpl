@@ -24,14 +24,14 @@ Be sure to save it somewhere in case you lose or replace your mobile device.
 </div>
 <script type="text/javascript">
 function totp_set_active(cb) {
-	$.post("totp", {active: (cb.checked ? "1" : "0")});
+	$.post("/settings/totp", {active: (cb.checked ? "1" : "0")});
 	}
 function totp_clear_code() {
 	document.getElementById("totp_test").value = "";
 	document.getElementById("totp_testres").innerHTML = "";
 	}
 function totp_test_code() {
-	$.post('totp',
+	$.post('/settings/totp',
 		{totp_code: document.getElementById('totp_test').value},
 		function(data) {
 			document.getElementById("totp_testres").innerHTML =
@@ -39,7 +39,7 @@ function totp_test_code() {
 			});
 	}
 function totp_generate_secret() {
-	$.post('totp',
+	$.post('/settings/totp',
 		{secret: '1'},
 		function(data) {
 			document.getElementById('totp_secret').innerHTML =
