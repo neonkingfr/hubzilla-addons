@@ -48,7 +48,7 @@ class TOTP {
 		return $out;
 		}
 	private function gen_secret() {
-		return bin2hex(mcrypt_create_iv(16, MCRYPT_DEV_URANDOM));
+		return bin2hex(random_bytes(16));
 		}
 	public function timestamp() {
 		return floor(microtime(true) / $this->period);
