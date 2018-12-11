@@ -44,7 +44,7 @@ class Totp {
 		$acct_id = $account['account_id'];
 		require_once("addon/totp/class_totp.php");
 		$secret = $account['account_2fa_secret'];
-		$totp = new TOTP("channels.gnatter.org", "Gnatter Channels",
+		$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
 				$account['account_email'],
 				$secret == "" ? null : $secret, 30, 6);
 		$active_checked =
