@@ -86,12 +86,25 @@ class Totp {
 								'addon/totp'),
 				[
 				'$has_secret' => (is_null($secret) ? "false" : "true"),
-				'$nosecret' =>
+				'$no_secret_text' =>
 					t("You haven't set a TOTP secret yet.
-Please point your mobile device at the QR code below to register this site
+Please click the button below to generate one and register this site
+with your preferred authenticator app."),
+				'$has_secret1_text' => t("Your TOTP secret is"),
+				'$has_secret2_text' => t("Be sure to save it somewhere in case you lose or replace your mobile device.
+Use your mobile device to scan the QR code below to register this site
 with your preferred authenticator app."),
 				'$secret' => $totp->secret,
 				'$qrcode_url' => "/settings/totp/qrcode?s=",
+				'$test_button' => t("Test"),
+				'$gen_button' => t("Generate New Secret"),
+				'$go_button' => t("Go"),
+				'$enter_password' => t("Enter your password"),
+				'$test_title' => t("enter TOTP code from your device"),
+				'$test_pass' => t("Pass!"),
+				'$test_fail' => t("Fail"),
+				'$note_password' => t("Incorrect password, try again."),
+				'$note_scan' => t("Record your new TOTP secret and rescan the QR code above."),
 				'$salt' => microtime()
 				]);
 		return replace_macros(get_markup_template('settings_addon.tpl'),
