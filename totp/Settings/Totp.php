@@ -37,12 +37,22 @@ class Totp {
 		$account = \App::get_account();
 		if (!$account) json_return_and_die(array("status" => false));
 		$id = intval($account['account_id']);
-		if (isset($_POST['secret'])) {
+		if (isset($_POST['set_secret'])) {
+			$hash = hash("whirlpool",
+				$account['account_salt'] . $_POST['password']);
+			if ($hash != $account['account_password']) {
+				json_return_and_die(array("auth" => false));
+				}
 			require_once("addon/totp/class_totp.php");
 			$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
 					$account['account_email'], null, 30, 6);
 			$this->set_secret($id, $totp->secret);
-			json_return_and_die(array("secret" => $totp->secret));
+			json_return_and_die(
+				array(
+					"secret" => $totp->secret,
+					"auth" => true
+					)
+				);
 			}
 		if (isset($_POST['totp_code'])) {
 			require_once("addon/totp/class_totp.php");
@@ -52,7 +62,6 @@ class Totp {
 					$account['account_email'],
 					$secret, 30, 6);
 			$match = ($totp->authcode($totp->timestamp()) == $ref);
-			if ($match) $_SESSION['2FA_VERIFIED'] = true;
 			json_return_and_die(array("match" => ($match ? "1" : "0")));
 			}
 		}
@@ -77,6 +86,12 @@ class Totp {
 		$sc = replace_macros(get_markup_template('settings.tpl',
 								'addon/totp'),
 				[
+				'$nosecret' =>
+					t("You haven't set a TOTP secret yet.
+Please point your mobile device at the QR code below to register this site
+with your preferred authenticator app."),
+				'$nosecret_display' =>
+					(is_null($secret) ? "block" : "none"),
 				'$secret' => $totp->secret,
 				'$qrcode_url' => "/settings/totp/qrcode?s=",
 				'$salt' => microtime()
