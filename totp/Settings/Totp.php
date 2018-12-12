@@ -82,16 +82,14 @@ class Totp {
 		$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
 				$account['account_email'],
 				$secret, 30, 6);
-		if (is_null($secret)) $this->set_secret($acct_id, $totp->secret);
 		$sc = replace_macros(get_markup_template('settings.tpl',
 								'addon/totp'),
 				[
+				'$has_secret' => (is_null($secret) ? "false" : "true"),
 				'$nosecret' =>
 					t("You haven't set a TOTP secret yet.
 Please point your mobile device at the QR code below to register this site
 with your preferred authenticator app."),
-				'$nosecret_display' =>
-					(is_null($secret) ? "block" : "none"),
 				'$secret' => $totp->secret,
 				'$qrcode_url' => "/settings/totp/qrcode?s=",
 				'$salt' => microtime()
