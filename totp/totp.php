@@ -11,6 +11,7 @@
  */
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\AConfig;
 
 function totp_module(){};
 function totp_load() {
@@ -52,16 +53,24 @@ function totp_module_loaded(&$x) {
 * route user to verification form.
 *
 */
+function get_secret($acct_id) {
+	return AConfig::get($acct_id, 'totp', 'secret', null);
+	}
 function totp_logged_in(&$a, &$user) {
 	if (!totp_installed()) return;
 	if (isset($_SESSION['2FA_VERIFIED'])) return;
 	$mod = App::$module;
-	if (($mod != 'totp') # avoid infinite recursion
-			&& ($mod != 'ping') # Don't redirect essential
-			&& ($mod != 'view') # system modules.
-			&& ($mod != 'acl')
-			&& ($mod != 'photo')
-			) goaway(z_root() . '/totp');
+	if (($mod == 'totp') # avoid infinite recursion
+			|| ($mod == 'ping') # Don't redirect essential
+			|| ($mod == 'view') # system modules.
+			|| ($mod == 'acl')
+			|| ($mod == 'photo')
+			|| ($mod == 'settings')
+			) return;
+	$account = App::get_account();
+	if (is_null(get_secret($account['account_id'])))
+		goaway(z_root() . '/settings/totp');
+	goaway(z_root() . '/totp');
 	return;
 	}
 function totp_construct_page(&$a, &$b){
