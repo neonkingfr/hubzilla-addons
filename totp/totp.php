@@ -60,16 +60,20 @@ function totp_logged_in(&$a, &$user) {
 	if (!totp_installed()) return;
 	if (isset($_SESSION['2FA_VERIFIED'])) return;
 	$mod = App::$module;
+	$settings_ok = (($mod == 'settings')
+		&& isset($_SESSION['ALLOW_SETTINGS']));
 	if (($mod == 'totp') # avoid infinite recursion
 			|| ($mod == 'ping') # Don't redirect essential
 			|| ($mod == 'view') # system modules.
 			|| ($mod == 'acl')
 			|| ($mod == 'photo')
-			|| ($mod == 'settings')
+			|| $settings_ok
 			) return;
 	$account = App::get_account();
-	if (is_null(get_secret($account['account_id'])))
+	if (is_null(get_secret($account['account_id']))) {
+		$_SESSION['ALLOW_SETTINGS'] = true;
 		goaway(z_root() . '/settings/totp');
+		}
 	goaway(z_root() . '/totp');
 	return;
 	}
