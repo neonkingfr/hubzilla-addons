@@ -17,11 +17,17 @@ class Totp {
 	function set_secret($acct_id, $secret) {
 		AConfig::set($acct_id, 'totp', 'secret', $secret);
 		}
+	function hub_domain() {
+		$parts = explode('@', get_config('system', 'from_email'));
+		if (count($parts) > 1) return $parts[1];
+		return "hub.hubzilla.local";
+		}
 	function send_qrcode($account) {
 		# generate and deliver QR code png image
 		require_once("addon/common/phpqrcode/qrlib.php");
 		require_once("addon/totp/class_totp.php");
-		$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
+		$totp = new \TOTP($this->hub_domain(),
+				get_config('system', 'banner'),
 				$account['account_email'],
 				$this->get_secret($account['account_id']), 30, 6);
 		$tmpfile = tempnam(sys_get_temp_dir(), "qr");
@@ -44,8 +50,9 @@ class Totp {
 				json_return_and_die(array("auth" => false));
 				}
 			require_once("addon/totp/class_totp.php");
-			$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
-					$account['account_email'], null, 30, 6);
+			$totp = new \TOTP($this->hub_domain(),
+						get_config('system', 'banner'),
+						$account['account_email'], null, 30, 6);
 			$this->set_secret($id, $totp->secret);
 			json_return_and_die(
 				array(
@@ -58,9 +65,10 @@ class Totp {
 			require_once("addon/totp/class_totp.php");
 			$ref = intval($_POST['totp_code']);
 			$secret = $this->get_secret($id);
-			$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
-					$account['account_email'],
-					$secret, 30, 6);
+			$totp = new \TOTP($this->hub_domain(),
+							get_config('system', 'banner'),
+							$account['account_email'],
+							$secret, 30, 6);
 			$match = ($totp->authcode($totp->timestamp()) == $ref);
 			json_return_and_die(array("match" => ($match ? "1" : "0")));
 			}
@@ -79,9 +87,10 @@ class Totp {
 		$acct_id = $account['account_id'];
 		require_once("addon/totp/class_totp.php");
 		$secret = $this->get_secret($acct_id);
-		$totp = new \TOTP("channels.gnatter.org", "Gnatter Channels",
-				$account['account_email'],
-				$secret, 30, 6);
+		$totp = new \TOTP($this->hub_domain(),
+							get_config('system', 'banner'),
+							$account['account_email'],
+							$secret, 30, 6);
 		$sc = replace_macros(get_markup_template('settings.tpl',
 								'addon/totp'),
 				[
