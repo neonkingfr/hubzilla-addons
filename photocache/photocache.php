@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.1
+ * Version: 0.2.2
  * Author: Max Kostikov
  * Maintainer: max@kostikov.co
  * MinVersion: 3.9.5
@@ -45,13 +45,12 @@ function photocache_unload() {
  */
 function photocache_mode(&$v) {
 
-	if(photocache_mode_key('on')) {
-		$v['age'] = photocache_mode_key('age');
-		$v['minres'] = photocache_mode_key('minres');
-		$v['grid'] = photocache_mode_key('grid');
-		$v['exp'] = photocache_mode_key('exp');
-		$v['leak'] = photocache_mode_key('leak');
-	}
+	$v['on'] = true;
+	$v['age'] = photocache_mode_key('age');
+	$v['minres'] = photocache_mode_key('minres');
+	$v['grid'] = photocache_mode_key('grid');
+	$v['exp'] = photocache_mode_key('exp');
+	$v['leak'] = photocache_mode_key('leak');
 }
 
 
@@ -64,9 +63,6 @@ function photocache_mode(&$v) {
  */
 function photocache_mode_key($key) {
 	switch($key) {
-		case 'on':
-			return boolval(get_config('system','photo_cache_enable', 0));
-			break;
 		case 'age':
 			$x = intval(get_config('system','photo_cache_time'));
 			return ($x ? $x : 86400);
@@ -150,9 +146,6 @@ function photocache_hash($str, $alg = 'sha256') {
  function photocache_body(&$s) {
 	 
 	if(! $s['uid'])
-		return;
-	 
-	if(! photocache_mode_key('on'))
 		return;
 
 	if(! Apps::addon_app_installed($s['uid'],'photocache'))
