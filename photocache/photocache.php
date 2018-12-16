@@ -185,7 +185,7 @@ function photocache_hash($str, $alg = 'sha256') {
 					'mimetype' => '',
 					'photo_usage' => PHOTO_CACHE,
 					'os_storage' => 1,
-					'display_path' => ($sslify === false ? $match[2] : z_root() . '/sslify/' . $filename . '?f=&url=' . urlencode($match[2]));
+					'display_path' => ($sslify === false ? $match[2] : z_root() . '/sslify/' . $filename . '?f=&url=' . urlencode($match[2]))
 				);
 				if(! $ph->save($r, true))
 					logger('can not create new link in database', LOGGER_DEBUG);
