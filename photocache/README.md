@@ -4,9 +4,6 @@ Hubzilla Photo Cache
 
 ## Cache control variables
 
-**system.photo_cache_enable**
-Enable image caching. 0 - off (default), 1 - on.
-
 **system.photo_cache_minres**
 Mininal image resolution for caching. 0 - if image was resized (default 1024), N - minimum size of any dimension in px.
 
