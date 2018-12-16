@@ -19,6 +19,7 @@ function photocache_load() {
 	Hook::register('cache_mode_hook', 'addon/photocache/photocache.php', 'photocache_mode');
 	Hook::register('cache_url_hook', 'addon/photocache/photocache.php', 'photocache_url');
 	Hook::register('cache_body_hook', 'addon/photocache/photocache.php', 'photocache_body');
+	Hook::register('cache_sslify_hook', 'addon/photocache/photocache.php', 'photocache_sslify');
 	Route::register('addon/photocache/Mod_Photocache.php', 'photocache');
 	
 	logger('Photo Cache is loaded');
@@ -30,6 +31,7 @@ function photocache_unload() {
 	Hook::unregister('cache_mode_hook', 'addon/photocache/photocache.php', 'photocache_mode');
 	Hook::unregister('cache_url_hook', 'addon/photocache/photocache.php', 'photocache_url');
 	Hook::unregister('cache_body_hook', 'addon/photocache/photocache.php', 'photocache_body');
+	Hook::unregister('cache_sslify_hook', 'addon/photocache/photocache.php', 'photocache_sslify');
 	Route::unregister('addon/photocache/Mod_Photocache.php', 'photocache');
 	
 	logger('Photo Cache is unloaded');
@@ -159,7 +161,6 @@ function photocache_hash($str, $alg = 'sha256') {
 	$cnt = preg_match_all("/\<img(.+?)src=[\"|'](https?\:.*?)[\"|'](.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
 	if($cnt) {
 		$ph = photo_factory('');
-		$sslify = strpos(z_root(),'https:');
 		foreach ($matches as $match) {
 			if(photocache_isgrid($match[2]))
 				continue;
@@ -185,7 +186,7 @@ function photocache_hash($str, $alg = 'sha256') {
 					'mimetype' => '',
 					'photo_usage' => PHOTO_CACHE,
 					'os_storage' => 1,
-					'display_path' => (($sslify === false || strpos($match[2],'https:') !== false) ? $match[2] : z_root() . '/sslify/' . $filename . '?f=&url=' . urlencode($match[2]))
+					'display_path' => $match[2]
 				);
 				if(! $ph->save($r, true))
 					logger('can not create new link in database', LOGGER_DEBUG);
@@ -376,4 +377,20 @@ function photocache_url(&$cache = array()) {
 	$cache['status'] = ($r['filesize'] > 0 ? true : false);
 
 	logger('info: ' . $r['display_path'] . ' is cached as ' . $cache['resid'] . ' for ' . $cache['uid'], LOGGER_DEBUG);
+}
+
+
+ /*
+ * @brief SSLify URL if needed
+ *
+ * @param string $url
+ * @return string $url
+ *
+ */	
+function photocache_sslify(&$url) {
+	
+	$url = ((strpos(z_root(),'https:') === false || strpos($url,'https:') !== false) ? 
+		$url : 
+		z_root() . '/sslify/' . $filename . '?f=&url=' . urlencode($url)
+	);
 }
