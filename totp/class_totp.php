@@ -9,9 +9,8 @@ class TOTP {
 		);
 	private static $base32_pad = "=";
 
-	public function __construct($issuer_domain, $issuer_name, $user,
+	public function __construct($issuer_name, $user,
 			$secret, $period, $digits) {
-		$this->domain = $issuer_domain;
 		$this->issuer = $issuer_name;
 		$this->user = $user;
 		$this->period = (int)$period;
