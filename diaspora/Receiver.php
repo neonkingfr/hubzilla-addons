@@ -254,7 +254,6 @@ class Diaspora_Receiver {
 			}
 			
 			$body = $tmp . $body;
-			$body = scale_external_images($body);
 		}
 
 		$event = $this->get_property('event');
@@ -555,7 +554,6 @@ class Diaspora_Receiver {
 				}
 			}
 
-			$body = scale_external_images($body);
 		}
 
 		$maxlen = get_max_import_size();
