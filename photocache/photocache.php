@@ -374,5 +374,5 @@ function photocache_url(&$cache = array()) {
 	if($r['filesize'] > 0)
 		$cache['url'] = '';
 
-	logger('info: ' . $r['display_path'] . (empty($cache['url']) ? ' is not cached' : ' is cached as ' . $cache['resid'] . ' for ' . $r['uid']), LOGGER_DEBUG);
+	logger('info: ' . $r['display_path'] . (empty($cache['url']) ? ' is cached as ' . $cache['resid'] . ' for ' . $r['uid'] : ' is not cached'), LOGGER_DEBUG);
 }
