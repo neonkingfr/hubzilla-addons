@@ -1549,6 +1549,7 @@ class Diaspora_Receiver {
 		$object = json_encode(array(
 			'type'    => $post_type,
 			'id'	  => $parent_item['mid'],
+			'asld'    => \Zotlabs\Lib\Activity::fetch_item( [ 'id' => $parent_item['mid'] ] ),
 			'parent'  => (($parent_item['thr_parent']) ? $parent_item['thr_parent'] : $parent_item['parent_mid']),
 			'link'	  => $links,
 			'title'   => $parent_item['title'],
