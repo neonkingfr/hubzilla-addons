@@ -1579,8 +1579,16 @@ class Diaspora_Receiver {
 		
 		$arr['parent_mid'] = $parent_item['mid'];
 
-		if($parent_item['mid'] !== $parent_guid)
+		if($parent_item['mid'] !== $parent_guid) {
 			$arr['thr_parent'] = $parent_guid;
+
+			// use a URI for thr_parent if we have it
+
+			if(strpos($parent_item['mid'],'/') !== false && $arr['thr_parent'] === basename($parent_item['mid'])) {
+				$arr['thr_parent'] = $parent_item['mid'];
+			}
+
+		}
 
 		$arr['owner_xchan'] = $parent_item['owner_xchan'];
 		$arr['author_xchan'] = $person['xchan_hash'];
