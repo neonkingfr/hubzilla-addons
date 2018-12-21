@@ -931,6 +931,12 @@ class Diaspora_Receiver {
 		$datarray['parent_mid'] = $parent_item['mid'];
 		$datarray['thr_parent'] = $thr_parent;
 
+		// use a URI for thr_parent if we have it
+
+		if(strpos($parent_item['mid'],'/') !== false && $datarray['thr_parent'] === basename($parent_item['mid'])) {
+			$datarray['thr_parent'] = $parent_item['mid'];
+		}
+
 		// set the route to that of the parent so downstream hubs won't reject it.
 		$datarray['route'] = $parent_item['route'];
 		
