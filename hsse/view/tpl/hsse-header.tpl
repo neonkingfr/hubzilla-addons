@@ -165,7 +165,7 @@ var activeCommentText = '';
                             reply = bin2hex(reply);
                             $('#profile-rotator').show();
                             $.get('{{$baseurl}}/linkinfo?f=&binurl=' + reply, function(data) {
-                                    instance.insert(data,true);
+                                    instance.insert(data);
 				    instance.updateOriginal();
                                     $('#profile-rotator').hide();
                             });
