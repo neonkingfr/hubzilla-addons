@@ -481,6 +481,7 @@ function cart_do_additem (&$hookdata) {
 	if ($itemtype && !in_array($iteminfo['item_type'],$cart_itemtypes)) {
 		unset ($iteminfo['item_type']);
 	}
+	$calldata=[];
         $calldata['order'] = $order;
         $calldata['item']=$iteminfo;
 	//$calldata = Array('order'=>$order,'item'=>$iteminfo);
