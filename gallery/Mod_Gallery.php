@@ -70,9 +70,13 @@ class Gallery extends \Zotlabs\Web\Controller {
 
 		$photo = (($_GET['photo']) ? true : false);
 		if($photo) {
+
+			$ph = photo_factory('');
+			$phototypes = $ph->supportedTypes();
+
 			$photo_arr[0]['resource_id'] = $_GET['photo'];
-			$photo_arr[0]['src'] = z_root() . '/photo/' . $_GET['photo'] . '-0';
-			$photo_arr[0]['msrc'] = z_root() . '/photo/' . $_GET['photo'] . '-1';
+			$photo_arr[0]['src'] = z_root() . '/photo/' . $_GET['photo'] . '-0' . '.' . $phototypes[$_GET['type']];
+			$photo_arr[0]['msrc'] = z_root() . '/photo/' . $_GET['photo'] . '-1' . '.' . $phototypes[$_GET['type']];
 			$photo_arr[0]['w'] = $_GET['width'];
 			$photo_arr[0]['h'] = $_GET['height'];
 			$photo_arr[0]['title'] = $_GET['title'];
@@ -150,6 +154,9 @@ class Gallery extends \Zotlabs\Web\Controller {
 		if(! attach_can_view_folder($owner_uid, get_observer_hash(), $arr['album_id']))
 			return;
 
+		$ph = photo_factory('');
+		$phototypes = $ph->supportedTypes();
+
 		$sql_extra = permissions_sql($owner_uid, get_observer_hash(), 'attach');
 
 		$unsafe = ((array_key_exists('unsafe', $arr) && $arr['unsafe']) ? 1 : 0);
@@ -169,8 +176,8 @@ class Gallery extends \Zotlabs\Web\Controller {
 			$title = (($rr['description']) ? '<strong>' . $rr['description'] . '</strong><br>' . $rr['display_path'] : $rr['display_path']);
 
 			$items[$i]['resource_id'] = $rr['resource_id'];
-			$items[$i]['src'] = z_root() . '/photo/' . $rr['resource_id'] . '-1';
-			$items[$i]['msrc'] = z_root() . '/photo/' . $rr['resource_id'] . '-3';
+			$items[$i]['src'] = z_root() . '/photo/' . $rr['resource_id'] . '-1' . '.' . $phototypes[$rr['mimetype']];
+			$items[$i]['msrc'] = z_root() . '/photo/' . $rr['resource_id'] . '-3' . '.' . $phototypes[$rr['mimetype']];
 			$items[$i]['w'] = $rr['width'];
 			$items[$i]['h'] = $rr['height'];
 			$items[$i]['title'] = $title;
