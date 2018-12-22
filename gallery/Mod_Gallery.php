@@ -162,7 +162,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 		$unsafe = ((array_key_exists('unsafe', $arr) && $arr['unsafe']) ? 1 : 0);
 
 		$r = q("SELECT p.resource_id, p.width, p.height, p.display_path, p.mimetype, p.imgscale, p.description, p.created FROM photo p INNER JOIN
-			(SELECT photo.resource_id, photo.imgscale FROM photo left join attach on attach.folder = '%s' and photo.resource_id = attach.hash WHERE attach.uid = %d AND photo.imgscale = 1 AND photo.photo_usage = %d AND photo.is_nsfw = %d $sql_extra GROUP BY photo.resource_id) ph 
+			(SELECT photo.resource_id, photo.imgscale FROM photo left join attach on attach.folder = '%s' and photo.resource_id = attach.hash WHERE attach.uid = %d AND photo.imgscale = 1 AND photo.photo_usage = %d AND photo.is_nsfw = %d $sql_extra GROUP BY photo.resource_id, photo.imgscale) ph 
 			ON (p.resource_id = ph.resource_id AND p.imgscale = ph.imgscale)
 			ORDER BY created DESC",
 			dbesc($arr['album_id']),
