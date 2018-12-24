@@ -51,7 +51,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 			return;
 		}
 
-		if(! Apps::system_app_installed(App::$profile_uid, 'Gallery')) {
+		if(! Apps::addon_app_installed(App::$profile_uid, 'gallery')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
