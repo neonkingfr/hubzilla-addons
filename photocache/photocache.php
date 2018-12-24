@@ -218,29 +218,28 @@ function photocache_url(&$cache = array()) {
 	
 	if(empty($r['mimetype'])) {
 		// If new resource id
-		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND filesize > %d LIMIT 1",
+		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d ORDER BY filesize DESC LIMIT 1",
 			dbesc($r['xchan']),
-			intval(PHOTO_CACHE),
-			0
+			intval(PHOTO_CACHE)
 		);
 		if($k) {
 			// If photo already was cached for other user just duplicate it
+			if(($k[0]['height'] >= $minres || $k[0]['width'] >= $minres) && $k[0]['filesize'] > 0) {
+				$r['os_syspath'] = dbunescbin($k[0]['content']);
+				$r['filesize'] = $k[0]['filesize'];
+			}
 			$r['edited'] = $k[0]['edited'];
 			$r['expires'] = $k[0]['expires'];
 			$r['filename'] = $k[0]['filename'];
 			$r['mimetype'] = $k[0]['mimetype'];
 			$r['height'] = $k[0]['height'];
 			$r['width'] = $k[0]['width'];
-			$r['os_syspath'] = (($k[0]['height'] >= $minres || $k[0]['width'] >= $minres) ? dbunescbin($k[0]['content']) : '');
 			$ph = photo_factory('');
 			if(! $ph->save($r, true))
 				return logger('could not duplicate cached URL ' . $r['display_path'] . ' for ' . $r['uid'], LOGGER_DEBUG);
-			$r['filesize'] = $k[0]['filesize'];
 			logger('info: duplicate ' . $cache['resid'] . ' data from cache for ' . $k[0]['uid'], LOGGER_DEBUG);
 		}
 	}
-	else
-		$r['os_syspath'] = dbunescbin($r['content']);
 	
 	$exp = strtotime($r['expires']);
 	$url = (($exp - 60 < time()) ? htmlspecialchars_decode($r['display_path']) : '');
