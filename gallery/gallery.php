@@ -27,7 +27,7 @@ function gallery_unload() {
 }
 
 function gallery_channel_apps(&$b) {
-	if(Apps::system_app_installed(App::$profile_uid, 'Gallery')) {
+	if(Apps::addon_app_installed(App::$profile_uid, 'gallery')) {
 		$b['tabs'][] = [
 			'label' => t('Gallery'),
 			'url'   => z_root() . '/gallery/' . $b['nickname'],
@@ -40,13 +40,13 @@ function gallery_channel_apps(&$b) {
 }
 
 function gallery_photo_view_filter(&$arr) {
-	if(Apps::system_app_installed(App::$profile_uid, 'Gallery')) {
+	if(Apps::addon_app_installed(App::$profile_uid, 'gallery')) {
 		$arr['onclick'] = '$.get(\'gallery/' . $arr['nickname'] . '?f=&photo=' . $arr['raw_photo']['resource_id'] . '&type=' . $arr['raw_photo']['mimetype'] . '&width=' . $arr['raw_photo']['width'] . '&height=' . $arr['raw_photo']['height'] . '&title=' . (($arr['raw_photo']['description']) ? $arr['raw_photo']['description'] : $arr['raw_photo']['filename']) . '\',  function(data) { if(! $(\'#gallery-fullscreen-view\').length) { $(\'<div></div>\').attr(\'id\', \'gallery-fullscreen-view\').appendTo(\'body\'); } $(\'#gallery-fullscreen-view\').html(data); }); return false;';
 	}
 }
 
 function gallery_build_pagehead(&$arr) {
-	if(Apps::system_app_installed(App::$profile_uid, 'Gallery') && in_array(argv(0), ['gallery', 'photos'])) {
+	if(Apps::addon_app_installed(App::$profile_uid, 'gallery') && in_array(argv(0), ['gallery', 'photos'])) {
 		head_add_js('/addon/gallery/lib/photoswipe/dist/photoswipe.js');
 		head_add_js('/addon/gallery/lib/photoswipe/dist/photoswipe-ui-default.js');
 		head_add_css('/addon/gallery/lib/photoswipe/dist/photoswipe.css');
