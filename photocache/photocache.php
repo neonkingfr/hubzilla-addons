@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.4
+ * Version: 0.2.5
  * Author: Max Kostikov
  * Maintainer: max@kostikov.co
  * MinVersion: 3.9.5
@@ -188,9 +188,9 @@ function photocache_hash($str, $alg = 'sha256') {
  *
  * @param array $cache 
  * * 'resid' => string
- * * 'url' => string
+ * * 'status' => boolean
  * @return array of results | bool false on error
- * * 'url' => empty if cached
+ * * 'status' => true if cached
  *
  */
 function photocache_url(&$cache = array()) {
@@ -211,7 +211,11 @@ function photocache_url(&$cache = array()) {
 	photocache_mode($cache_mode);
 	
 	logger('info: processing ' . $cache['resid'] . ' (' . $r['display_path'] .') for ' . $r['uid'], LOGGER_DEBUG);
-
+	
+	$minres = intval(get_pconfig($r['uid'], 'photocache', 'cache_minres'));
+	if($minres == 0)
+		$minres = $cache_mode['minres'];
+	
 	if(empty($r['mimetype'])) {
 		// If new resource id
 		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND filesize > %d LIMIT 1",
@@ -227,10 +231,10 @@ function photocache_url(&$cache = array()) {
 			$r['mimetype'] = $k[0]['mimetype'];
 			$r['height'] = $k[0]['height'];
 			$r['width'] = $k[0]['width'];
-			$r['os_syspath'] = dbunescbin($k[0]['content']);
+			$r['os_syspath'] = (($k[0]['height'] >= $minres || $k[0]['width'] >= $minres) ? dbunescbin($k[0]['content']) : '');
 			$ph = photo_factory('');
 			if(! $ph->save($r, true))
-				return logger('could not duplicate cached URL ' . $cache['url'] . ' for ' . $r['uid'], LOGGER_DEBUG);
+				return logger('could not duplicate cached URL ' . $r['display_path'] . ' for ' . $r['uid'], LOGGER_DEBUG);
 			$r['filesize'] = $k[0]['filesize'];
 			logger('info: duplicate ' . $cache['resid'] . ' data from cache for ' . $k[0]['uid'], LOGGER_DEBUG);
 		}
@@ -307,56 +311,55 @@ function photocache_url(&$cache = array()) {
 					logger('photo resized: ' . $orig_width . '->' . $ph->getWidth() . 'w ' . $orig_height . '->' . $ph->getHeight() . 'h', LOGGER_DEBUG);
 				}
 
-				$minres = intval(get_pconfig($r['uid'], 'photocache', 'cache_minres'));
-				if($minres == 0)
-					$minres = $cache_mode['minres'];
-	
-				$newimg = ($orig_width >= $minres || $orig_height >= $minres);
-				
 				$r['width'] = $ph->getWidth();
 				$r['height'] = $ph->getHeight();
+				
+				$r['filesize'] = strlen($ph->imageString());
+				$r['filename'] = basename(parse_url($url, PHP_URL_PATH));
+					
+				if($orig_width >= $minres || $orig_height >= $minres) {
+					$path = 'store/[data]/[cache]/' .  substr($r['xchan'],0,2) . '/' . substr($r['xchan'],2,2);
+					$os_path = $path . '/' . $r['xchan'];
+					$r['os_syspath'] = $os_path;
+					if(! is_dir($path))
+					if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
+						return logger('could not create path ' . $path, LOGGER_DEBUG);
+					if(is_file($os_path))
+						@unlink($os_path);
+					if(! $ph->saveImage($os_path))
+						return logger('could not save file ' . $os_path, LOGGER_DEBUG);
+				
+					if(! $ph->save($r, true))
+						logger('can not save image in database', LOGGER_DEBUG);
+										
+					logger('new image saved: ' . $os_path . '; ' . $r['mimetype'] . ', ' . $r['width'] . 'w x ' . $r['height'] . 'h, ' . $r['filesize'] . ' bytes', LOGGER_DEBUG);
+				}
+				
+				// Update filesize for cached links
+				$x = q("UPDATE photo SET filesize = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > %d",
+					intval($r['filesize']),
+					dbesc($r['xchan']),
+					intval(PHOTO_CACHE),
+					0
+				);
 			}
 		}
-		
-		$r['filename'] = basename(parse_url($url, PHP_URL_PATH));
-		
-		// Save image to disk storage
-		if($newimg) {
-			$path = 'store/[data]/[cache]/' .  substr($r['xchan'],0,2) . '/' . substr($r['xchan'],2,2);
-			$os_path = $path . '/' . $r['xchan'];
-			$r['os_syspath'] = $os_path;
-			$r['filesize'] = strlen($ph->imageString());
-			if(! is_dir($path))
-				if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
-					return logger('could not create path ' . $path, LOGGER_DEBUG);
-			if(is_file($os_path))
-				@unlink($os_path);
-			if(! $ph->saveImage($os_path))
-				return logger('could not save file ' . $os_path, LOGGER_DEBUG);
-			logger('new image saved: ' . $os_path . '; ' . $r['mimetype'] . ', ' . $r['width'] . 'w x ' . $r['height'] . 'h, ' . $r['filesize'] . ' bytes', LOGGER_DEBUG);
-		}
 
-		// Update all links in database on any change
-		if(isset($minres) || $i['return_code'] == 304) {
-			$x = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d, mimetype = '%s', filesize = %d, filename = '%s', content = '%s' WHERE xchan = '%s' AND photo_usage = %d",
-				dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
-				dbescdate($r['expires']),
-				intval($r['height']),
-				intval($r['width']),
-				dbesc($r['mimetype']),
-				intval($r['filesize']),
-				dbesc($r['filename']),
-				dbesc($r['os_syspath']),
-				dbesc($r['xchan']),
-				intval(PHOTO_CACHE)
-			);
-			if(! $x)
-				return logger('could not save data to database', LOGGER_DEBUG);
-		}
+		// Update all metadata on any change
+		$x = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d, mimetype = '%s', filename = '%s' WHERE xchan = '%s' AND photo_usage = %d",
+			dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
+			dbescdate($r['expires']),
+			intval($r['height']),
+			intval($r['width']),
+			dbesc($r['mimetype']),
+			dbesc($r['filename']),
+			dbesc($r['xchan']),
+			intval(PHOTO_CACHE)
+		);
 	}
 	
 	if($r['filesize'] > 0)
-		$cache['url'] = '';
+		$cache['status'] = true;
 
-	logger('info: ' . $r['display_path'] . (empty($cache['url']) ? ' is cached as ' . $cache['resid'] . ' for ' . $r['uid'] : ' is not cached'));
+	logger('info: ' . $r['display_path'] . ($cache['status'] ? ' is cached as ' . $cache['resid'] . ' for ' . $r['uid'] : ' is not cached'));
 }
