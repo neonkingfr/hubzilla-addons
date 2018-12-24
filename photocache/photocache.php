@@ -330,6 +330,8 @@ function photocache_url(&$cache = array()) {
 				
 					if(! $ph->save($r, true))
 						logger('can not save image in database', LOGGER_DEBUG);
+						
+					$r['filesize'] = strlen($ph->imageString());
 										
 					logger('new image saved: ' . $os_path . '; ' . $r['mimetype'] . ', ' . $r['width'] . 'w x ' . $r['height'] . 'h, ' . $r['filesize'] . ' bytes', LOGGER_DEBUG);
 				}
