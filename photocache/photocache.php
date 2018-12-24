@@ -216,11 +216,12 @@ function photocache_url(&$cache = array()) {
 	if($minres == 0)
 		$minres = $cache_mode['minres'];
 	
-	if(empty($r['mimetype'])) {
+	if($r['height'] == 0) {
 		// If new resource id
-		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d ORDER BY filesize DESC LIMIT 1",
+		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND height > %d ORDER BY filesize DESC LIMIT 1",
 			dbesc($r['xchan']),
-			intval(PHOTO_CACHE)
+			intval(PHOTO_CACHE),
+			0
 		);
 		if($k) {
 			// If photo already was cached for other user just duplicate it
@@ -313,7 +314,6 @@ function photocache_url(&$cache = array()) {
 				$r['width'] = $ph->getWidth();
 				$r['height'] = $ph->getHeight();
 				
-				$r['filesize'] = strlen($ph->imageString());
 				$r['filename'] = basename(parse_url($url, PHP_URL_PATH));
 					
 				if($orig_width >= $minres || $orig_height >= $minres) {
@@ -336,7 +336,7 @@ function photocache_url(&$cache = array()) {
 				
 				// Update filesize for cached links
 				$x = q("UPDATE photo SET filesize = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > %d",
-					intval($r['filesize']),
+					intval(strlen($ph->imageString())),
 					dbesc($r['xchan']),
 					intval(PHOTO_CACHE),
 					0
@@ -344,7 +344,7 @@ function photocache_url(&$cache = array()) {
 			}
 		}
 
-		// Update all metadata on any change
+		// Update metadata on any change
 		$x = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d, mimetype = '%s', filename = '%s' WHERE xchan = '%s' AND photo_usage = %d",
 			dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
 			dbescdate($r['expires']),
