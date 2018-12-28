@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.5
+ * Version: 0.2.6
  * Author: Max Kostikov
  * Maintainer: max@kostikov.co
  * MinVersion: 3.9.5
@@ -289,7 +289,6 @@ function photocache_url(&$cache = array()) {
 		if(array_key_exists('last-modified', $hdrs))
 			$r['edited'] = gmdate('Y-m-d H:i:s', strtotime($hdrs['last-modified']));
 		
-		$newimg = false;
 		if($i['success']) {
 			// New data (HTTP 200)
 			$type = guess_image_type($r['display_path'], $i['header']);
@@ -315,6 +314,8 @@ function photocache_url(&$cache = array()) {
 				$r['height'] = $ph->getHeight();
 				
 				$r['filename'] = basename(parse_url($url, PHP_URL_PATH));
+				
+				$oldsize = $r['filesize'];
 					
 				if($orig_width >= $minres || $orig_height >= $minres) {
 					$path = 'store/[data]/[cache]/' .  substr($r['xchan'],0,2) . '/' . substr($r['xchan'],2,2);
@@ -330,30 +331,30 @@ function photocache_url(&$cache = array()) {
 				
 					if(! $ph->save($r, true))
 						logger('can not save image in database', LOGGER_DEBUG);
-						
+					
 					$r['filesize'] = strlen($ph->imageString());
 										
 					logger('new image saved: ' . $os_path . '; ' . $r['mimetype'] . ', ' . $r['width'] . 'w x ' . $r['height'] . 'h, ' . $r['filesize'] . ' bytes', LOGGER_DEBUG);
 				}
 				
-				// Update filesize for cached links
-				$x = q("UPDATE photo SET filesize = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > %d",
-					intval(strlen($ph->imageString())),
-					dbesc($r['xchan']),
-					intval(PHOTO_CACHE),
-					0
-				);
+				if($oldsize != $r['filesize']) {
+					// Update image data for cached links on change
+					$x = q("UPDATE photo SET filesize = %d, height = %d, width = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > %d",
+						intval($r['filesize']),
+						intval($r['height']),
+						intval($r['width']),
+						dbesc($r['xchan']),
+						intval(PHOTO_CACHE),
+						0
+					);
+				}
 			}
 		}
 
 		// Update metadata on any change
-		$x = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d, mimetype = '%s', filename = '%s' WHERE xchan = '%s' AND photo_usage = %d",
+		$x = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d WHERE xchan = '%s' AND photo_usage = %d",
 			dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
 			dbescdate($r['expires']),
-			intval($r['height']),
-			intval($r['width']),
-			dbesc($r['mimetype']),
-			dbesc($r['filename']),
 			dbesc($r['xchan']),
 			intval(PHOTO_CACHE)
 		);
