@@ -352,7 +352,7 @@ function photocache_url(&$cache = array()) {
 		}
 
 		// Update metadata on any change
-		$x = q("UPDATE photo SET edited = '%s', expires = '%s', height = %d, width = %d WHERE xchan = '%s' AND photo_usage = %d",
+		$x = q("UPDATE photo SET edited = '%s', expires = '%s' WHERE xchan = '%s' AND photo_usage = %d",
 			dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
 			dbescdate($r['expires']),
 			dbesc($r['xchan']),
