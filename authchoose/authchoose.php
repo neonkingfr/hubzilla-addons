@@ -45,7 +45,7 @@ function authchoose_zid(&$x) {
 	}
 	if($friends[$c['channel_id']]) {
 		foreach($friends[$c['channel_id']] as $n) {
-			if(strpos($x['url'],$n['hubloc_url']) !== false && intval($n['abook_closeness) <= $closeness)) {
+			if(strpos($x['url'],$n['hubloc_url']) !== false && intval($n['abook_closeness']) <= $closeness) {
 				return; 
 			}
 		}
