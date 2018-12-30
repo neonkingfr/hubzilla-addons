@@ -227,7 +227,7 @@ function push_queue_deliver(&$a,&$b) {
 					dbesc($b['base'])
 				);
 			}
-			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s' limit 1",
+			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s' ",
 				dbesc('accepted for delivery'),
 				dbesc(datetime_convert()),
 				dbesc($outq['outq_hash'])
