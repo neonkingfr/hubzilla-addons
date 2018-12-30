@@ -329,8 +329,9 @@ function photocache_url(&$cache = array()) {
 					if(! $ph->saveImage($os_path))
 						return logger('could not save file ' . $os_path, LOGGER_DEBUG);
 				
-					if(! $ph->save($r, true))
-						logger('can not save image in database', LOGGER_DEBUG);
+				    if($oldsize == 0)
+					    if(! $ph->save($r, true))
+						    logger('can not save image in database', LOGGER_DEBUG);
 					
 					$r['filesize'] = strlen($ph->imageString());
 										
