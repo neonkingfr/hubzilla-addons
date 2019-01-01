@@ -404,29 +404,12 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 		$body = $data;
 
 	}
-	else {
-		// fetch the old-style xml
-		$url = str_replace('/fetch/post/','/p/',$url) . '.xml';
-
-		$x = z_fetch_url($url);
-		if(! $x['success'])
-			$x = z_fetch_url(str_replace('https://','http://',$url));
-
-		if(! $x['success']) {
-			logger('get_diaspora_reshare_xml: unable to fetch source url ' . $url);
-			return false;
-		}
-		$body = $x['body'];
-	}
-
 
 	logger('get_diaspora_reshare_xml: source: ' . $body, LOGGER_DEBUG);
-
 
 	$oxml = parse_xml_string($body,false);
 	$pxml = sxml2array($oxml);
 	$source_xml = [ strtolower($oxml->getName()) => $pxml ];
-
 
 	// $source_xml = xml2array($body,false,0,'tag');
 

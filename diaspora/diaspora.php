@@ -3,7 +3,7 @@
 
 /**
  * Name: Diaspora Protocol
- * Description: Diaspora Protocol. Install 'Diaspora Statistics' first if you wish to use public tag relays
+ * Description: Diaspora Protocol. Install 'Statistics' first if you wish to use public tag relays
  * Version: 1.0
  * Author: Mike Macgirvin
  * Maintainer: none
@@ -91,10 +91,6 @@ function diaspora_load_module(&$b) {
 	if($b['module'] === 'receive') {
 		require_once('addon/diaspora/Mod_Receive.php');
 		$b['controller'] = new \Zotlabs\Module\Receive();
-		$b['installed'] = true;
-	}
-	if($b['module'] === 'p') {
-		require_once('addon/diaspora/p.php');
 		$b['installed'] = true;
 	}
 	if($b['module'] === 'fetch') {
