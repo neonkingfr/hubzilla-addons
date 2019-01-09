@@ -138,7 +138,7 @@ function gallery_prepare_body(&$arr) {
 	}
 
 	if($img_nodes) {
-		$nodes = $xp->query('//a/img/.. | //div/img/..');
+		$nodes = $xp->query('a/img/.. | div/img/..');
 		$id = $arr['item']['id'];
 		$i = 0;
 
