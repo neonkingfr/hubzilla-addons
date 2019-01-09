@@ -99,11 +99,14 @@ function gallery_prepare_body(&$arr) {
 	$dom = new DOMDocument();
 
 	$arr['html'] = mb_convert_encoding($arr['html'], 'HTML-ENTITIES', "UTF-8");
-	@$dom->loadHTML($arr['html']);
+
+	// LIBXML_HTML_NOIMPLIED does not work well without a parent element.
+	// We a parent div here and will remove it again later
+	@$dom->loadHTML('<div>' . $arr['html'] . '</div>', LIBXML_HTML_NODEFDTD | LIBXML_HTML_NOIMPLIED);
 
 	$xp = new DOMXPath($dom);
 
-	$nodes = $xp->query('/*/*/node()');
+	$nodes = $xp->query('node()');
 
 	$img_nodes = 0;
 	$i = 1;
@@ -190,6 +193,9 @@ EOF;
 
 		$gallery_div_clone->parentNode->removeChild($gallery_div_clone);
 
-		$arr['html'] = $dom->saveHTML();
+		// remove the parent div again
+		$html = substr(trim($dom->saveHTML()),5,-6);
+
+		$arr['html'] = $html;
 	}
 }
