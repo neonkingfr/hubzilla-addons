@@ -3,7 +3,7 @@
 /**
  * Name: Gallery
  * Description: Image Gallery
- * Version: 0.4
+ * Version: 0.5
  * MinVersion: 3.8.8
  * Author: Mario
  * Maintainer: Mario
@@ -18,12 +18,14 @@ function gallery_load() {
 	Hook::register('channel_apps', 'addon/gallery/gallery.php', 'gallery_channel_apps');
 	Hook::register('photo_view_filter', 'addon/gallery/gallery.php', 'gallery_photo_view_filter');
 	Hook::register('page_end', 'addon/gallery/gallery.php', 'gallery_page_end');
+	Hook::register('prepare_body', 'addon/gallery/gallery.php', 'gallery_prepare_body', 1, 20);
 }
 
 function gallery_unload() {
 	Hook::unregister('channel_apps', 'addon/gallery/gallery.php', 'gallery_channel_apps');
 	Hook::unregister('photo_view_filter', 'addon/gallery/gallery.php', 'gallery_photo_view_filter');
 	Hook::unregister('page_end', 'addon/gallery/gallery.php', 'gallery_page_end');
+	Hook::unregister('prepare_body', 'addon/gallery/gallery.php', 'gallery_prepare_body');
 }
 
 function gallery_channel_apps(&$b) {
@@ -73,9 +75,121 @@ function gallery_page_end(&$str) {
 
 		head_add_css('/addon/gallery/lib/photoswipe/dist/photoswipe.css');
 		head_add_css('/addon/gallery/lib/photoswipe/dist/default-skin/default-skin.css');
+		head_add_css('/addon/gallery/view/css/gallery.css');
 
 		$tpl = get_markup_template('gallery_dom.tpl', 'addon/gallery');
 		$str .= replace_macros($tpl, []);
 	}
 }
 
+function gallery_prepare_body(&$arr) {
+
+	$uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
+	if(! Apps::addon_app_installed($uid, 'gallery'))
+		return;
+
+	//hz_syslog(print_r($arr,true));
+
+	if(! $arr['item']['item_thread_top'])
+		return;
+
+	if($arr['item']['nsfw'] || strpos($arr['html'], 'nsfw') !== false)
+		return; //nsfw app and justified gallery do not work together nicely yet
+
+	$dom = new DOMDocument();
+
+	$arr['html'] = mb_convert_encoding($arr['html'], 'HTML-ENTITIES', "UTF-8");
+	@$dom->loadHTML($arr['html']);
+
+	$xp = new DOMXPath($dom);
+
+	$nodes = $xp->query('/*/*/node()');
+
+	$img_nodes = 0;
+	$i = 1;
+
+	$div = $dom->createElement('div');
+
+	foreach($nodes as $node) {
+		if($node->nodeName == 'br') {
+			$node->parentNode->removeChild($node);
+			continue;
+		}
+
+		if(($node->nodeName == 'img') && (strpos($node->getAttribute('class'), 'smiley') === false)) {
+			$img_nodes++;
+
+			//wrap in div
+			$div_clone = $div->cloneNode();
+			$node->parentNode->replaceChild($div_clone,$node);
+			$div_clone->appendChild($node);
+		}
+
+		if($node->nodeName == 'a' && !$node->textContent && $node->firstChild->nodeName == 'img')
+			$img_nodes++;
+
+		if(($i > $img_nodes) && ($node->nodeName != 'img' || ($node->nodeName == 'a' && !$node->textContent && $node->firstChild->nodeName == 'img')))
+			break;
+
+		$i++;
+	}
+
+	if($img_nodes) {
+		$nodes = $xp->query('//a/img/.. | //div/img/..');
+		$id = $arr['item']['id'];
+		$i = 0;
+
+		$gallery_div = $dom->createElement('div');
+		$gallery_div->setAttribute('id','gallery-wrapper-' . $id);
+		$gallery_div->setAttribute('class','gallery-wrapper');
+
+		$gallery_div_clone = $gallery_div->cloneNode();
+
+		foreach($nodes as $node) {
+			if($i == $img_nodes)
+				break;
+
+			$node->parentNode->replaceChild($gallery_div_clone,$node);
+			$gallery_div_clone->appendChild($node);
+
+			$i++;
+		}
+
+		switch($img_nodes) {
+			case 1:
+				$row_height = 300;
+				$last_row = 'justify';
+				break;
+			case 2:
+				$row_height = 240;
+				$last_row = 'justify';
+				break;
+			case 3:
+				$row_height = 180;
+				$last_row = 'justify';
+				break;
+			default:
+				$row_height = 120;
+				$last_row = 'nojustify';
+		}
+
+		$js = <<<EOF
+			<script>
+				$('#gallery-wrapper-$id').justifiedGallery({
+					captions: false,
+					rowHeight: '$row_height',
+					lastRow: '$last_row',
+					justifyThreshold: 0.5,
+					margins: 3,
+					border: 0
+				});
+			</script>
+EOF;
+
+		$arr['photo'] = $dom->saveHTML($gallery_div_clone) . $js;
+
+		$gallery_div_clone->parentNode->removeChild($gallery_div_clone);
+
+		$arr['html'] = $dom->saveHTML();
+	}
+}

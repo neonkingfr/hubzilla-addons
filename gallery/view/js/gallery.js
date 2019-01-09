@@ -4,7 +4,7 @@ $(document).ready(function() {
 	var imgMinSize = 300;
 
 	$(document).on('click', selector, function(e) {
-		if(e.target.naturalWidth < imgMinSize || e.target.naturalHeight < imgMinSize)
+		if(e.target.naturalWidth < imgMinSize)
 			return;
 
 		e.preventDefault();
@@ -26,14 +26,14 @@ $(document).ready(function() {
 		var img = $('#' + id).find('img');
 
 		img.each( function (index, item) {
-			if(item.naturalWidth < imgMinSize || item.naturalHeight < imgMinSize)
+			if(item.naturalWidth < imgMinSize)
 				return;
 
 			if(item.src == e.target.src)
 				startImage = index;
 
 			if(item.parentElement.tagName == 'A')
-				var link = item.parentElement.href;
+				var link = decodeURIComponent(item.parentElement.href);
 
 			obj = {
 				src: item.src,
@@ -61,7 +61,7 @@ $(document).ready(function() {
 	});
 
 	$(document).on('mouseenter', selector, function(e) {
-		if(e.target.naturalWidth < imgMinSize || e.target.naturalHeight < imgMinSize)
+		if(e.target.naturalWidth < imgMinSize)
 			return;
 
 		$(this).css('cursor', 'zoom-in');
