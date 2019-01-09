@@ -41,7 +41,7 @@
 			preload: [1, 3],
 			shareButtons: [
 				{{if ! $aj}}
-				{ id: 'conv_link', label: 'View conversation', url: 'photos/{{$nick}}/image/\{\{raw_image_url\}\}' },
+				{ id: 'conv_link', label: 'View conversation', url: 'photos/{{$channel_nick}}/image/\{\{raw_image_url\}\}' },
 				{{/if}}
 				{ id: 'download', label: 'Download fullsize image', url: 'photo/\{\{raw_image_url\}\}', download: true }
 				],
@@ -63,7 +63,7 @@
 			album = $(this).data('album');
 			share_str = '';
 			$.post(
-				'gallery/{{$nick}}',
+				'gallery/{{$channel_nick}}',
 				{
 					'album_id' : album_id,
 					'album' : album,
@@ -71,10 +71,12 @@
 				},
 				function(items) {
 					var i;
-					for (i = 0; i < (items.length > 1 ? 1 : items.length); i++) { //keep preview image count at 1 until we have a solution to nicely present multiple photos 
-						share_str += '[zrl=' + encodeURIComponent(baseurl + '/gallery/{{$nick}}/' + album) + ']Album: ' + album + '[/zrl]' + "\r\n" + '[zrl=' + encodeURIComponent(baseurl + '/gallery/{{$nick}}/' + album + '?pid=' + (i+1)) + '][zmg]' + encodeURIComponent(items[i].src) + '[/zmg][/zrl]';
+					for(i = 0; i < (items.length > 4 ? 4 : items.length); i++) {
+						share_str += '[zrl=' + encodeURIComponent(baseurl + '/gallery/{{$channel_nick}}/' + album + '?f=%23%26gid=1%26pid=' + (i+1)) + '][zmg]' + encodeURIComponent(items[i].src) + '[/zmg][/zrl]';
 					}
-					options.shareButtons.splice(2, 1, { id: 'share_link', label: 'Share this album', url: 'rpost?f=&title=' + encodeURIComponent('Album: ' + album) + '&body=' + share_str });
+					share_str += '[zrl={{$observer_url}}]{{$observer_name}}[/zrl] shared [zrl={{$channel_url}}]{{$channel_name}}[/zrl]\'s [zrl=' + encodeURIComponent(baseurl + '/gallery/{{$channel_nick}}/' + album) + ']album[/zrl] ' + encodeURIComponent(album) + ' (' + items.length + ' images)';
+
+					options.shareButtons.splice(2, 1, { id: 'share_link', label: 'Share this album', url: 'rpost?f=&title=' + encodeURIComponent('Album: ' + album) + '&body=' + share_str});
 					// Initializes and opens PhotoSwipe
 					gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
 					gallery.init();

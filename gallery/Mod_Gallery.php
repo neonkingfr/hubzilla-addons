@@ -29,7 +29,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 	
 			$observer = App::get_observer();
 			App::$data['observer'] = $observer;
-	
+
 			App::$page['htmlhead'] .= "<script> var profile_uid = " . ((App::$data['channel']) ? App::$data['channel']['channel_id'] : 0) . "; </script>" ;
 	
 		}
@@ -134,7 +134,11 @@ class Gallery extends \Zotlabs\Web\Controller {
 		$o = replace_macros($tpl, [
 			'$title' => t('Gallery'),
 			'$albums' => $items,
-			'$nick' => App::$data['channel']['channel_address'],
+			'$channel_nick' => App::$data['channel']['channel_address'],
+			'$channel_name' => App::$data['channel']['channel_name'],
+			'$channel_url' => App::$data['channel']['xchan_url'],
+			'$observer_name' => App::$data['observer']['xchan_name'],
+			'$observer_url' => App::$data['observer']['xchan_url'],
 			'$unsafe' => $unsafe,
 			'$json' => (($photo) ? $json_photo : $json_album),
 			'$aj' => $photo
