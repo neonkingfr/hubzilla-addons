@@ -88,13 +88,8 @@ function gallery_prepare_body(&$arr) {
 	if(! Apps::addon_app_installed($uid, 'gallery'))
 		return;
 
-	//hz_syslog(print_r($arr,true));
-
 	if(! $arr['item']['item_thread_top'])
 		return;
-
-	if($arr['item']['nsfw'] || strpos($arr['html'], 'nsfw') !== false)
-		return; //nsfw app and justified gallery do not work together nicely yet
 
 	$dom = new DOMDocument();
 
@@ -178,14 +173,27 @@ function gallery_prepare_body(&$arr) {
 
 		$js = <<<EOF
 			<script>
-				$('#gallery-wrapper-$id').justifiedGallery({
-					captions: false,
-					rowHeight: '$row_height',
-					lastRow: '$last_row',
-					justifyThreshold: 0.5,
-					margins: 3,
-					border: 0
-				});
+
+				if($('#wall-item-body-$id .btn-nsfw-wrap').length) {
+					$('#wall-item-body-$id .btn-nsfw-wrap').on('click', function() {
+						$('#gallery-wrapper-$id').height(39);
+						galleryJustifyPhotos_$id();
+					});
+				}
+				else {
+					galleryJustifyPhotos_$id();
+				}
+
+				function galleryJustifyPhotos_$id() {
+					$('#gallery-wrapper-$id').justifiedGallery({
+						captions: false,
+						rowHeight: '$row_height',
+						lastRow: '$last_row',
+						justifyThreshold: 0.5,
+						margins: 3,
+						border: 0
+					});
+				}
 			</script>
 EOF;
 
