@@ -29,18 +29,19 @@ function gallery_unload() {
 }
 
 function gallery_channel_apps(&$b) {
-	$uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
+	$uid = ((App::$profile_uid) ? App::$profile_uid : intval(local_channel()));
 
-	if(Apps::addon_app_installed($uid, 'gallery')) {
-		$b['tabs'][] = [
-			'label' => t('Gallery'),
-			'url'   => z_root() . '/gallery/' . $b['nickname'],
-			'sel'   => ((argv(0) == 'gallery') ? 'active' : ''),
-			'title' => t('Photo Gallery'),
-			'id'    => 'gallery-tab',
-			'icon'  => 'image'
-		];
-	}
+	if(! Apps::addon_app_installed($uid, 'gallery'))
+		return;
+
+	$b['tabs'][] = [
+		'label' => t('Gallery'),
+		'url'   => z_root() . '/gallery/' . $b['nickname'],
+		'sel'   => ((argv(0) == 'gallery') ? 'active' : ''),
+		'title' => t('Photo Gallery'),
+		'id'    => 'gallery-tab',
+		'icon'  => 'image'
+	];
 }
 
 function gallery_supported_modules() {
@@ -58,33 +59,36 @@ function gallery_supported_modules() {
 }
 
 function gallery_photo_view_filter(&$arr) {
-	$uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
+	$uid = ((App::$profile_uid) ? App::$profile_uid : intval(local_channel()));
 
-	if(Apps::addon_app_installed($uid, 'gallery')) {
-		$arr['onclick'] = '$.get(\'gallery/' . $arr['nickname'] . '?f=&photo=' . $arr['raw_photo']['resource_id'] . '&type=' . $arr['raw_photo']['mimetype'] . '&width=' . $arr['raw_photo']['width'] . '&height=' . $arr['raw_photo']['height'] . '&title=' . (($arr['raw_photo']['description']) ? $arr['raw_photo']['description'] : $arr['raw_photo']['filename']) . '\',  function(data) { if(! $(\'#gallery-fullscreen-view\').length) { $(\'<div></div>\').attr(\'id\', \'gallery-fullscreen-view\').appendTo(\'body\'); } $(\'#gallery-fullscreen-view\').html(data); }); return false;';
-	}
+	if(! Apps::addon_app_installed($uid, 'gallery'))
+		return;
+
+	$arr['onclick'] = '$.get(\'gallery/' . $arr['nickname'] . '?f=&photo=' . $arr['raw_photo']['resource_id'] . '&type=' . $arr['raw_photo']['mimetype'] . '&width=' . $arr['raw_photo']['width'] . '&height=' . $arr['raw_photo']['height'] . '&title=' . (($arr['raw_photo']['description']) ? $arr['raw_photo']['description'] : $arr['raw_photo']['filename']) . '\',  function(data) { if(! $(\'#gallery-fullscreen-view\').length) { $(\'<div></div>\').attr(\'id\', \'gallery-fullscreen-view\').appendTo(\'body\'); } $(\'#gallery-fullscreen-view\').html(data); }); return false;';
 }
 
 function gallery_page_end(&$str) {
-	$uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
+	$uid = ((App::$profile_uid) ? App::$profile_uid : intval(local_channel()));
 
-	if(Apps::addon_app_installed($uid, 'gallery') && in_array(argv(0), gallery_supported_modules())) {
-		head_add_js('/addon/gallery/lib/photoswipe/dist/photoswipe.js', 1);
-		head_add_js('/addon/gallery/lib/photoswipe/dist/photoswipe-ui-default.js', 1);
-		head_add_js('/addon/gallery/view/js/gallery.js', 1);
+	if(! Apps::addon_app_installed($uid, 'gallery'))
+		return;
 
-		head_add_css('/addon/gallery/lib/photoswipe/dist/photoswipe.css');
-		head_add_css('/addon/gallery/lib/photoswipe/dist/default-skin/default-skin.css');
-		head_add_css('/addon/gallery/view/css/gallery.css');
+	head_add_js('/addon/gallery/lib/photoswipe/dist/photoswipe.js', 1);
+	head_add_js('/addon/gallery/lib/photoswipe/dist/photoswipe-ui-default.js', 1);
+	head_add_js('/addon/gallery/view/js/gallery.js', 1);
 
-		$tpl = get_markup_template('gallery_dom.tpl', 'addon/gallery');
-		$str .= replace_macros($tpl, []);
-	}
+	head_add_css('/addon/gallery/lib/photoswipe/dist/photoswipe.css');
+	head_add_css('/addon/gallery/lib/photoswipe/dist/default-skin/default-skin.css');
+	head_add_css('/addon/gallery/view/css/gallery.css');
+
+	$tpl = get_markup_template('gallery_dom.tpl', 'addon/gallery');
+	$str .= replace_macros($tpl, []);
 }
 
 function gallery_prepare_body(&$arr) {
 
-	$uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
+	$uid = ((App::$profile_uid) ? App::$profile_uid : intval(local_channel()));
+
 	if(! Apps::addon_app_installed($uid, 'gallery'))
 		return;
 
@@ -132,82 +136,81 @@ function gallery_prepare_body(&$arr) {
 		$i++;
 	}
 
-	if($img_nodes) {
-		$nodes = $xp->query('a/img/.. | div/img/..');
-		$id = $arr['item']['id'];
-		$i = 0;
+	if(! $img_nodes)
+		return;
 
-		$gallery_div = $dom->createElement('div');
-		$gallery_div->setAttribute('id','gallery-wrapper-' . $id);
-		$gallery_div->setAttribute('class','gallery-wrapper');
+	$nodes = $xp->query('a/img/.. | div/img/..');
+	$id = $arr['item']['id'];
+	$i = 0;
 
-		$gallery_div_clone = $gallery_div->cloneNode();
+	$gallery_div = $dom->createElement('div');
+	$gallery_div->setAttribute('id','gallery-wrapper-' . $id);
+	$gallery_div->setAttribute('class','gallery-wrapper');
 
-		foreach($nodes as $node) {
-			if($i == $img_nodes)
-				break;
+	$gallery_div_clone = $gallery_div->cloneNode();
 
-			$node->parentNode->replaceChild($gallery_div_clone,$node);
-			$gallery_div_clone->appendChild($node);
+	foreach($nodes as $node) {
+		if($i == $img_nodes)
+			break;
 
-			$i++;
-		}
+		$node->parentNode->replaceChild($gallery_div_clone,$node);
+		$gallery_div_clone->appendChild($node);
 
-		switch($img_nodes) {
-			case 1:
-				$row_height = 300;
-				$last_row = 'justify';
-				$margins = 0;
-				break;
-			case 2:
-				$row_height = 240;
-				$last_row = 'justify';
-				$margins = 3;
-				break;
-			case 3:
-				$row_height = 180;
-				$last_row = 'justify';
-				$margins = 3;
-				break;
-			default:
-				$row_height = 120;
-				$last_row = 'nojustify';
-				$margins = 3;
-		}
+		$i++;
+	}
 
-		$js = <<<EOF
-			<script>
+	switch($img_nodes) {
+		case 1:
+			$row_height = 300;
+			$last_row = 'justify';
+			$margins = 0;
+			break;
+		case 2:
+			$row_height = 240;
+			$last_row = 'justify';
+			$margins = 3;
+			break;
+		case 3:
+			$row_height = 180;
+			$last_row = 'justify';
+			$margins = 3;
+			break;
+		default:
+			$row_height = 120;
+			$last_row = 'nojustify';
+			$margins = 3;
+	}
 
-				if($('#wall-item-body-$id .btn-nsfw-wrap').length) {
-					$('#wall-item-body-$id .btn-nsfw-wrap').on('click', function() {
-						$('#gallery-wrapper-$id').height(39);
-						galleryJustifyPhotos_$id();
-					});
-				}
-				else {
+	$js = <<<EOF
+		<script>
+			if($('#wall-item-body-$id .btn-nsfw-wrap').length) {
+				$('#wall-item-body-$id .btn-nsfw-wrap').on('click', function() {
+					$('#gallery-wrapper-$id').height(39);
 					galleryJustifyPhotos_$id();
-				}
-
+				});
+			}
+			else {
+				galleryJustifyPhotos_$id();
+			}
 				function galleryJustifyPhotos_$id() {
-					$('#gallery-wrapper-$id').justifiedGallery({
-						captions: false,
-						rowHeight: '$row_height',
-						lastRow: '$last_row',
-						justifyThreshold: 0.5,
-						margins: $margins,
-						border: 0
-					});
-				}
-			</script>
+				$('#gallery-wrapper-$id').justifiedGallery({
+					captions: false,
+					rowHeight: '$row_height',
+					lastRow: '$last_row',
+					justifyThreshold: 0.5,
+					margins: $margins,
+					border: 0
+				});
+			}
+		</script>
 EOF;
 
-		$arr['photo'] = $dom->saveHTML($gallery_div_clone) . $js;
+	$arr['photo'] = $dom->saveHTML($gallery_div_clone) . $js;
 
-		$gallery_div_clone->parentNode->removeChild($gallery_div_clone);
+	$gallery_div_clone->parentNode->removeChild($gallery_div_clone);
 
-		// remove the parent div again
-		$html = substr(trim($dom->saveHTML()),5,-6);
+	// remove the parent div again
+	$html = substr(trim($dom->saveHTML()),5,-6);
 
-		$arr['html'] = $html;
-	}
+	$arr['html'] = $html;
 }
