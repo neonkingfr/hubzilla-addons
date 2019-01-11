@@ -157,18 +157,22 @@ function gallery_prepare_body(&$arr) {
 			case 1:
 				$row_height = 300;
 				$last_row = 'justify';
+				$margins = 0;
 				break;
 			case 2:
 				$row_height = 240;
 				$last_row = 'justify';
+				$margins = 3;
 				break;
 			case 3:
 				$row_height = 180;
 				$last_row = 'justify';
+				$margins = 3;
 				break;
 			default:
 				$row_height = 120;
 				$last_row = 'nojustify';
+				$margins = 3;
 		}
 
 		$js = <<<EOF
@@ -190,7 +194,7 @@ function gallery_prepare_body(&$arr) {
 						rowHeight: '$row_height',
 						lastRow: '$last_row',
 						justifyThreshold: 0.5,
-						margins: 3,
+						margins: $margins,
 						border: 0
 					});
 				}
