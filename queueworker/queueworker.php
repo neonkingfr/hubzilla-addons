@@ -195,7 +195,7 @@ class QueueWorkerUtils {
 	}
 
 	private static function qbegin($tablename) {
-		switch (DBTYPE_ACTIVE) {
+		switch (ACTIVE_DBTYPE) {
 			case DBTYPE_MYSQL:
 				q('BEGIN');
 				q('LOCK TABLE '.$tablename.' WRITE');
@@ -210,7 +210,7 @@ class QueueWorkerUtils {
 	}
 
 	private static function qcommit() {
-		switch (DBTYPE_ACTIVE) {
+		switch (ACTIVE_DBTYPE) {
 			case DBTYPE_MYSQL:
 				q("UNLOCK TABLES");
 				q("COMMIT");
@@ -224,7 +224,7 @@ class QueueWorkerUtils {
 
 	}
 	private static function qrollback() {
-		switch (DBTYPE_ACTIVE) {
+		switch (ACTIVE_DBTYPE) {
 			case DBTYPE_MYSQL:
 				q("ROLLBACK");
 				q("UNLOCK TABLES");
