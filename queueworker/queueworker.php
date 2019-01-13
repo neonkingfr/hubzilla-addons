@@ -245,6 +245,14 @@ class QueueWorkerUtils {
 		$priority = 0; //Default priority @TODO allow reprioritization
 
 		$workinfo = ['argc'=>$argc,'argv'=>$argv];
+		
+        $r = q("select * from workerq where workerq_data = '%s'",
+                dbesc(self::maybejson($workerinfo)));
+        if ($r) {
+                logger("Ignoring duplicate workerq task");
+                return;
+        }
+
 		self::qbegin('workerq');
 		$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
 			intval($priority),
