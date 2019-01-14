@@ -2,8 +2,8 @@
 
 /**
  * Name: Gallery
- * Description: Image Gallery
- * Version: 0.5
+ * Description: Photo Album Gallery
+ * Version: 0.6
  * MinVersion: 3.8.8
  * Author: Mario
  * Maintainer: Mario
