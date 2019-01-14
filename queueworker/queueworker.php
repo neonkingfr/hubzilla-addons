@@ -195,7 +195,7 @@ class QueueWorkerUtils {
 	}
 
 	private static function qbegin($tablename) {
-		switch (DBTYPE_ACTIVE) {
+		switch (ACTIVE_DBTYPE) {
 			case DBTYPE_MYSQL:
 				q('BEGIN');
 				q('LOCK TABLE '.$tablename.' WRITE');
@@ -210,7 +210,7 @@ class QueueWorkerUtils {
 	}
 
 	private static function qcommit() {
-		switch (DBTYPE_ACTIVE) {
+		switch (ACTIVE_DBTYPE) {
 			case DBTYPE_MYSQL:
 				q("UNLOCK TABLES");
 				q("COMMIT");
@@ -224,7 +224,7 @@ class QueueWorkerUtils {
 
 	}
 	private static function qrollback() {
-		switch (DBTYPE_ACTIVE) {
+		switch (ACTIVE_DBTYPE) {
 			case DBTYPE_MYSQL:
 				q("ROLLBACK");
 				q("UNLOCK TABLES");
@@ -245,6 +245,14 @@ class QueueWorkerUtils {
 		$priority = 0; //Default priority @TODO allow reprioritization
 
 		$workinfo = ['argc'=>$argc,'argv'=>$argv];
+		
+        $r = q("select * from workerq where workerq_data = '%s'",
+                dbesc(self::maybejson($workerinfo)));
+        if ($r) {
+                logger("Ignoring duplicate workerq task");
+                return;
+        }
+
 		self::qbegin('workerq');
 		$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
 			intval($priority),
