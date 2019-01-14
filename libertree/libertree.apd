@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/libertree
+requires: local_channel
+name: Libertree Crosspost Connector
+photo: icon:tree
+categories: Networking
+

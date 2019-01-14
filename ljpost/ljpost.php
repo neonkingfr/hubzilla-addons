@@ -10,100 +10,39 @@
  * Maintainer: none
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
+
 require_once('include/permissions.php');
 
 function ljpost_load() {
     register_hook('post_local',           'addon/ljpost/ljpost.php', 'ljpost_post_local');
     register_hook('notifier_normal',      'addon/ljpost/ljpost.php', 'ljpost_send');
     register_hook('jot_networks',         'addon/ljpost/ljpost.php', 'ljpost_jot_nets');
-    register_hook('feature_settings',      'addon/ljpost/ljpost.php', 'ljpost_settings');
-    register_hook('feature_settings_post', 'addon/ljpost/ljpost.php', 'ljpost_settings_post');
 
+	Route::register('addon/ljpost/Mod_Ljpost.php', 'ljpost');
 }
 function ljpost_unload() {
     unregister_hook('post_local',       'addon/ljpost/ljpost.php', 'ljpost_post_local');
     unregister_hook('notifier_normal',  'addon/ljpost/ljpost.php', 'ljpost_send');
     unregister_hook('jot_networks',     'addon/ljpost/ljpost.php', 'ljpost_jot_nets');
-    unregister_hook('feature_settings',      'addon/ljpost/ljpost.php', 'ljpost_settings');
-    unregister_hook('feature_settings_post', 'addon/ljpost/ljpost.php', 'ljpost_settings_post');
 
+	Route::unregister('addon/ljpost/Mod_Ljpost.php', 'ljpost');
 }
 
 
 function ljpost_jot_nets(&$a,&$b) {
-    if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
-        return;
+	if(! Apps::addon_app_installed(local_channel(), 'ljpost'))
+		return;
 
-    $lj_post = get_pconfig(local_channel(),'ljpost','post');
-    if(intval($lj_post) == 1) {
-        $lj_defpost = get_pconfig(local_channel(),'ljpost','post_by_default');
+	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
+		return;
+
+	$lj_defpost = get_pconfig(local_channel(),'ljpost','post_by_default');
         $selected = ((intval($lj_defpost) == 1) ? ' checked="checked" ' : '');
         $b .= '<div class="profile-jot-net"><input type="checkbox" name="ljpost_enable" ' . $selected . ' value="1" /> '
             . t('Post to Livejournal') . '</div>';
-    }
-}
-
-
-function ljpost_settings(&$a,&$s) {
-
-    if(! local_channel())
-	return;
-
-    /* Add our stylesheet to the page so we can make our settings look nice */
-
-    //App::$page['htmlhead'] .= '<link rel="stylesheet"  type="text/css" href="' . z_root() . '/addon/ljpost/ljpost.css' . '" media="all" />' . "\r\n";
-
-    /* Get the current state of our config variables */
-
-    $enabled = get_pconfig(local_channel(),'ljpost','post');
-
-    $checked = (($enabled) ? 1 : false);
-
-    $def_enabled = get_pconfig(local_channel(),'ljpost','post_by_default');
-
-    $def_checked = (($def_enabled) ? 1 : false);
-
-    $lj_username = get_pconfig(local_channel(), 'ljpost', 'lj_username');
-    $lj_password = z_unobscure(get_pconfig(local_channel(), 'ljpost', 'lj_password'));
-
-
-    /* Add some HTML to the existing form */
-
-    $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-	'$field'	=> array('ljpost', t('Enable Livejournal Post Plugin'), $checked, '', array(t('No'),t('Yes'))),
-    ));
-
-    $sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-	'$field'	=> array('lj_username', t('Livejournal username'), $lj_username, '')
-    ));
-
-    $sc .= replace_macros(get_markup_template('field_password.tpl'), array(
-	'$field'	=> array('lj_password', t('Livejournal password'), $lj_password, '')
-    ));
-
-    $sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-	'$field'	=> array('lj_bydefault', t('Post to Livejournal by default'), $def_checked, '', array(t('No'),t('Yes'))),
-    ));
-
-    $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-	'$addon' 	=> array('ljpost',t('Livejournal Post Settings'), '', t('Submit')),
-	'$content'	=> $sc
-    ));
-
-}
-
-
-function ljpost_settings_post(&$a,&$b) {
-
-    if(x($_POST,'ljpost-submit')) {
-
-	set_pconfig(local_channel(),'ljpost','post',intval($_POST['ljpost']));
-	set_pconfig(local_channel(),'ljpost','post_by_default',intval($_POST['lj_bydefault']));
-	set_pconfig(local_channel(),'ljpost','lj_username',trim($_POST['lj_username']));
-	set_pconfig(local_channel(),'ljpost','lj_password',z_obscure(trim($_POST['lj_password'])));
-
-    }
-
 }
 
 function ljpost_post_local(&$a,&$b) {
@@ -121,7 +60,7 @@ function ljpost_post_local(&$a,&$b) {
 
     logger('Livejournal xpost invoked');
 
-    $lj_post   = intval(get_pconfig(local_channel(),'ljpost','post'));
+    $lj_post = Apps::addon_app_installed(local_channel(), 'ljpost');
 
     $lj_enable = (($lj_post && x($_REQUEST,'ljpost_enable')) ? intval($_REQUEST['ljpost_enable']) : 0);
 
