@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/nofed
+requires: local_channel
+name: No Federation
+photo: icon:paper-plane-o
+categories: Networking
+

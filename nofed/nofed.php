@@ -11,78 +11,41 @@
  *   NoFed
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
+
 require_once('include/permissions.php');
 
 function nofed_load() {
 	register_hook('feature_settings', 'addon/nofed/nofed.php', 'nofed_settings'); 
-	register_hook('feature_settings_post', 'addon/nofed/nofed.php', 'nofed_settings_post');
-	register_hook('post_local', 'addon/nofed/nofed.php', 'nofed_post_local');
 	register_hook('jot_networks',    'addon/nofed/nofed.php', 'nofed_jot_nets');
+
+	Route::register('addon/nofed/Mod_Nofed.php', 'nofed');
+
 	logger("loaded nofed");
 }
 
 
 function nofed_unload() {
 	unregister_hook('feature_settings', 'addon/nofed/nofed.php', 'nofed_settings'); 
-	unregister_hook('feature_settings_post', 'addon/nofed/nofed.php', 'nofed_settings_post');
-	unregister_hook('post_local', 'addon/nofed/nofed.php', 'nofed_post_local');
 	unregister_hook('jot_networks',    'addon/nofed/nofed.php', 'nofed_jot_nets');
 
+	Route::unregister('addon/nofed/Mod_Nofed.php', 'nofed');
 }
 
 function nofed_jot_nets(&$a,&$b) {
-    if(! local_channel()) 
-        return;
-
-	$nofed_post = get_pconfig(local_channel(),'nofed','post');
-	if(intval($nofed_post) == 1) {
-		$nofed_defpost = get_pconfig(local_channel(),'nofed','post_by_default');
-		$selected = ((intval($nofed_defpost) == 1) ? ' checked="checked" ' : '');
-		$b .= '<div class="profile-jot-net"><input type="checkbox" name="nofed_enable"' . $selected . ' value="1" /> ' 
-			. '<img style="height: 32px; width: 32px;" src="images/blank.png" /> ' . t('Federate') . '</div>';
-	}
-}
-
-function nofed_settings_post ($a,$post) {
-	if(! local_channel())
+	if(! local_channel()) 
 		return;
 
-	// don't check nofed settings if nofed submit button is not clicked
-	if (! x($_POST,'nofed-submit'))
+	if(! Apps::addon_app_installed(local_channel(), 'nofed'))
 		return;
 
-	set_pconfig(local_channel(), 'nofed', 'post',            intval($_POST['nofed_enable']));
-	set_pconfig(local_channel(), 'nofed', 'post_by_default', intval($_POST['nofed_default']));
-        info( t('nofed Settings saved.') . EOL);
-
+	$nofed_defpost = get_pconfig(local_channel(),'nofed','post_by_default');
+	$selected = ((intval($nofed_defpost) == 1) ? ' checked="checked" ' : '');
+	$b .= '<div class="profile-jot-net"><input type="checkbox" name="nofed_enable"' . $selected . ' value="1" /> ' 
+		. '<i class="fa fa-fw fa-paper-plane-o"></i> ' . t('Federate') . '</div>';
 }
-
-function nofed_settings(&$a,&$s) {
-	if(! local_channel())
-		return;
-
-	//head_add_css('/addon/nofed/nofed.css');
-
-	$enabled = get_pconfig(local_channel(), 'nofed', 'post');
-	$checked = (($enabled) ? 1 : false);
-	$defenabled = get_pconfig(local_channel(),'nofed','post_by_default');
-	$defchecked = (($defenabled) ? 1 : false);
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('nofed_enable', t('Allow Federation Toggle'), $checked, '', array(t('No'),t('Yes'))),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('nofed_default', t('Federate posts by default'), $defchecked, '', array(t('No'),t('Yes'))),
-	));
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('nofed', '<img src="images/blank.png" style="width:1em; height:1em; margin:-3px 5px 0px 0px;">' . t('NoFed Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
-
-}
-
 
 function nofed_post_local(&$a,&$b) {
 	if($b['created'] != $b['edited'])
@@ -96,7 +59,7 @@ function nofed_post_local(&$a,&$b) {
 		if($b['allow_cid'] || $b['allow_gid'] || $b['deny_cid'] || $b['deny_gid'])
 			return;
 
-		$nofed_post = get_pconfig(local_channel(),'nofed','post');
+		$nofed_post = Apps::addon_app_installed(local_channel(), 'nofed');
 		if(! $nofed_post)
 			return;
 
