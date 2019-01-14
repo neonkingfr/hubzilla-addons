@@ -2,7 +2,7 @@
 
 /**
  * Name: Gallery
- * Description: Photo Album Gallery
+ * Description: Album gallery and photo viewer based on photoswipe
  * Version: 0.6
  * MinVersion: 3.8.8
  * Author: Mario
