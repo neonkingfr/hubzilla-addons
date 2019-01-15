@@ -164,7 +164,7 @@ function nsfw_prepare_body(&$b) {
 			$onclick = 'onclick="datasrc2src(\'#nsfw-html-' . $rnd . ' img[data-src]\'); openClose(\'nsfw-html-' . $rnd . '\');"';
 		}
 
-		$b['html'] = '<div class="text-center"><button id="nsfw-wrap-' . $rnd . '" class="btn btn-warning" type="button" ' . $onclick . '>' . sprintf( t('%s - view'),$orig_word ) . '</button></div><div id="nsfw-html-' . $rnd . '" style="display: none; " class="no-collapse">' . $b['html'] . '</div>';
+		$b['html'] = '<div class="text-center"><button id="nsfw-wrap-' . $rnd . '" class="btn btn-warning btn-nsfw-wrap" type="button" ' . $onclick . '>' . sprintf( t('%s - view'),$orig_word ) . '</button></div><div id="nsfw-html-' . $rnd . '" style="display: none; " class="no-collapse">' . $b['html'] . '</div>';
 		$b['photo'] = (($b['photo']) ? '<div id="nsfw-photo-' . $rnd . '" style="display: none; " >' . $b['photo'] . '</div>' : '');
 	}
 }

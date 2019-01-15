@@ -1234,7 +1234,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	}
 
 	if($act->obj['type'] === 'Note' && $s['attach']) {
-		$s['body'] .= as_bb_attach($s['attach']);
+		$s['body'] = as_bb_attach($s['attach']) . $s['body'];
 	}
 
 	// we will need a hook here to extract magnet links e.g. peertube
@@ -1403,11 +1403,11 @@ function as_announce_note($channel,$observer_hash,$act) {
 	if($content['name'])
 		$body .= as_bb_content($content,'name') . "\r\n";
 
-	$body .= as_bb_content($content,'content');
-
 	if($act->obj['type'] === 'Note' && $s['attach']) {
 		$body .= as_bb_attach($s['attach']);
 	}
+
+	$body .= as_bb_content($content,'content');
 
 	$body .= "[/share]";
 
@@ -1573,13 +1573,13 @@ function as_bb_attach($attach) {
 
 	foreach($attach as $a) {
 		if(strpos($a['type'],'image') !== false) {
-			$ret .= "\n\n" . '[img]' . $a['href'] . '[/img]';
+			$ret .= '[img]' . $a['href'] . '[/img]' . "\n\n";
 		}
 		if(array_key_exists('type',$a) && strpos($a['type'], 'video') === 0) {
-			$ret .= "\n\n" . '[video]' . $a['href'] . '[/video]';
+			$ret .= '[video]' . $a['href'] . '[/video]' . "\n\n";
 		}
 		if(array_key_exists('type',$a) && strpos($a['type'], 'audio') === 0) {
-			$ret .= "\n\n" . '[audio]' . $a['href'] . '[/audio]';
+			$ret .= '[audio]' . $a['href'] . '[/audio]' . "\n\n";
 		}
 	}
 
