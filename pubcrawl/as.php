@@ -1653,6 +1653,10 @@ function as_get_textfield($act,$field) {
 	
 	$content = false;
 
+	if(! $act) {
+		return $content;
+	}
+
 	if(array_key_exists($field,$act) && $act[$field])
 		$content = purify_html($act[$field]);
 	elseif(array_key_exists($field . 'Map',$act) && $act[$field . 'Map']) {
