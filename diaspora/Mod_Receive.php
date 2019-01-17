@@ -1,21 +1,26 @@
 <?php
+
 namespace Zotlabs\Module;
+
 
 /**
  * Diaspora endpoint
  */
 
+use App;
+use Zotlabs\Web\Controller;
+
 require_once('include/crypto.php');
 
 
-class Receive extends \Zotlabs\Web\Controller {
+class Receive extends Controller {
 	
 	function post() {
 
 		$public = false;
 		$importer = null;
 
-		logger('diaspora_receive: ' . print_r(\App::$argv, true), LOGGER_DEBUG, LOG_INFO);
+		logger('diaspora_receive: ' . print_r(App::$argv, true), LOGGER_DEBUG, LOG_INFO);
 
 		if((argc() == 2) && (argv(1) === 'public')) {
 			$public = true;
@@ -37,7 +42,7 @@ class Receive extends \Zotlabs\Web\Controller {
 			// that we can locate our channel by the channel_guid. On our network, 
 			// channel clones have the same GUID even if they are on different sites. 
 
-			$hn = str_replace('.','',\App::get_hostname());
+			$hn = str_replace('.','',App::get_hostname());
 			if(($x = strpos($guid,$hn)) > 0)
 				$guid = substr($guid,0,$x);
 
