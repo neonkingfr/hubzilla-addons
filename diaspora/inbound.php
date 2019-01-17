@@ -27,7 +27,7 @@ function diaspora_dispatch_public($msg) {
 	);
 
 	if($r && $sys) {
-		$r = array_merge($r,$sys);
+		$r = array_merge($r,[$sys]);
 	}
 
 	$msg['public'] = 1;
