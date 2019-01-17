@@ -29,7 +29,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 	
 			$observer = App::get_observer();
 			App::$data['observer'] = $observer;
-	
+
 			App::$page['htmlhead'] .= "<script> var profile_uid = " . ((App::$data['channel']) ? App::$data['channel']['channel_id'] : 0) . "; </script>" ;
 	
 		}
@@ -51,7 +51,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 			return;
 		}
 
-		if(! Apps::system_app_installed(App::$profile_uid, 'Gallery')) {
+		if(! Apps::addon_app_installed(App::$profile_uid, 'gallery')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
@@ -70,9 +70,13 @@ class Gallery extends \Zotlabs\Web\Controller {
 
 		$photo = (($_GET['photo']) ? true : false);
 		if($photo) {
+
+			$ph = photo_factory('');
+			$phototypes = $ph->supportedTypes();
+
 			$photo_arr[0]['resource_id'] = $_GET['photo'];
-			$photo_arr[0]['src'] = z_root() . '/photo/' . $_GET['photo'] . '-0';
-			$photo_arr[0]['msrc'] = z_root() . '/photo/' . $_GET['photo'] . '-1';
+			$photo_arr[0]['src'] = z_root() . '/photo/' . $_GET['photo'] . '-0' . '.' . $phototypes[$_GET['type']];
+			$photo_arr[0]['msrc'] = z_root() . '/photo/' . $_GET['photo'] . '-1' . '.' . $phototypes[$_GET['type']];
 			$photo_arr[0]['w'] = $_GET['width'];
 			$photo_arr[0]['h'] = $_GET['height'];
 			$photo_arr[0]['title'] = $_GET['title'];
@@ -130,7 +134,11 @@ class Gallery extends \Zotlabs\Web\Controller {
 		$o = replace_macros($tpl, [
 			'$title' => t('Gallery'),
 			'$albums' => $items,
-			'$nick' => App::$data['channel']['channel_address'],
+			'$channel_nick' => App::$data['channel']['channel_address'],
+			'$channel_name' => App::$data['channel']['channel_name'],
+			'$channel_url' => App::$data['channel']['xchan_url'],
+			'$observer_name' => App::$data['observer']['xchan_name'],
+			'$observer_url' => App::$data['observer']['xchan_url'],
 			'$unsafe' => $unsafe,
 			'$json' => (($photo) ? $json_photo : $json_album),
 			'$aj' => $photo
@@ -150,12 +158,15 @@ class Gallery extends \Zotlabs\Web\Controller {
 		if(! attach_can_view_folder($owner_uid, get_observer_hash(), $arr['album_id']))
 			return;
 
+		$ph = photo_factory('');
+		$phototypes = $ph->supportedTypes();
+
 		$sql_extra = permissions_sql($owner_uid, get_observer_hash(), 'attach');
 
 		$unsafe = ((array_key_exists('unsafe', $arr) && $arr['unsafe']) ? 1 : 0);
 
 		$r = q("SELECT p.resource_id, p.width, p.height, p.display_path, p.mimetype, p.imgscale, p.description, p.created FROM photo p INNER JOIN
-			(SELECT photo.resource_id, photo.imgscale FROM photo left join attach on attach.folder = '%s' and photo.resource_id = attach.hash WHERE attach.uid = %d AND photo.imgscale = 1 AND photo.photo_usage = %d AND photo.is_nsfw = %d $sql_extra GROUP BY photo.resource_id) ph 
+			(SELECT photo.resource_id, photo.imgscale FROM photo left join attach on attach.folder = '%s' and photo.resource_id = attach.hash WHERE attach.uid = %d AND photo.imgscale = 1 AND photo.photo_usage = %d AND photo.is_nsfw = %d $sql_extra GROUP BY photo.resource_id, photo.imgscale) ph 
 			ON (p.resource_id = ph.resource_id AND p.imgscale = ph.imgscale)
 			ORDER BY created DESC",
 			dbesc($arr['album_id']),
@@ -169,8 +180,8 @@ class Gallery extends \Zotlabs\Web\Controller {
 			$title = (($rr['description']) ? '<strong>' . $rr['description'] . '</strong><br>' . $rr['display_path'] : $rr['display_path']);
 
 			$items[$i]['resource_id'] = $rr['resource_id'];
-			$items[$i]['src'] = z_root() . '/photo/' . $rr['resource_id'] . '-1';
-			$items[$i]['msrc'] = z_root() . '/photo/' . $rr['resource_id'] . '-3';
+			$items[$i]['src'] = z_root() . '/photo/' . $rr['resource_id'] . '-1' . '.' . $phototypes[$rr['mimetype']];
+			$items[$i]['msrc'] = z_root() . '/photo/' . $rr['resource_id'] . '-3' . '.' . $phototypes[$rr['mimetype']];
 			$items[$i]['w'] = $rr['width'];
 			$items[$i]['h'] = $rr['height'];
 			$items[$i]['title'] = $title;

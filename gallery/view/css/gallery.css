@@ -1,0 +1,8 @@
+.wall-photo-item {
+	background-color: #fff;
+}
+
+.gallery-wrapper a img,
+.gallery-wrapper div img {
+	border-radius: 0;
+}
