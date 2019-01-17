@@ -14,28 +14,21 @@ function diaspora_dispatch_public($msg) {
 	}
 	$sys = (($sys_disabled) ? null : get_sys_channel());
 
-	// find everybody following or allowing this author
+	if($sys) {
+		$sys['system'] = true;
+	}
 
-	$r = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network like '%%diaspora%%' and xchan_addr = '%s' ) and channel_removed = 0 ",
-		dbesc($msg['author'])
+	$app_id = hash('whirlpool','Diaspora Protocol');
+
+	// find everybody using the Diaspora Protocol by seeing who has the 'Diaspora Protocol' app installed
+
+	$r = q("SELECT * from channel where channel_id in ( SELECT app_channel from app where app_channel != 0 and app_id = '%s' ) and channel_removed = 0 ",
+		dbesc($app_id)
 	);
 
-	// look for those following tags - we'll check tag validity for each specific channel later 
-
-	$y = q("select * from channel where channel_id in ( SELECT uid from pconfig where cat = 'diaspora' and k = 'followed_tags' and v != '') and channel_removed = 0 ");
-
-	if(is_array($y) && is_array($r))
-		$r = array_merge($r,$y);
-
-	// look for everybody allowing diaspora public comments
-
-	$y = q("select * from channel where channel_id in ( SELECT uid from pconfig where cat = 'system' and k = 'diaspora_public_comments' and v = '1') and channel_removed = 0 ");
-
-	if(is_array($y) && is_array($r))
-		$r = array_merge($r,$y);
-
-
-	// @FIXME we should also enumerate channels that allow postings by anybody
+	if($r && $sys) {
+		$r = array_merge($r,$sys);
+	}
 
 	$msg['public'] = 1;
 
@@ -46,16 +39,9 @@ function diaspora_dispatch_public($msg) {
 		}
 	}
 	else {
-		if(! $sys)
-			logger('diaspora_public: no subscribers');
+		logger('diaspora_public: no subscribers');
 	}
 
-	if($sys) {
-		$sys['system'] = true;
-		logger('diaspora_public: delivering to sys.');
-		
-		diaspora_dispatch($sys,$msg);
-	}
 }
 
 
