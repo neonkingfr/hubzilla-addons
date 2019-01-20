@@ -15,22 +15,10 @@ class Queueworker extends Controller {
 
 	function post() {
 
-		if ((!local_channel()) || 
-			(!is_site_admin())) {
-			
-			goaway(z_root().'/queueworker');
-    		}
+		$content = "<H1>ERROR: Page not found</H1>";
+		App::$error = 404;
 
-		check_form_security_token('form_security_token','queueworker');
-		$maxqueueworkers = intval($_POST['queueworker_maxworkers']);
-		$maxqueueworkers = ($maxqueueworkers > 3) ? $maxqueueworkers : 4;
-		set_config('queueworker','max_queueworkers',$maxqueueworkers);
-
-		$maxworkerage = intval($_POST['queueworker_max_age']);
-		$maxworkerage = ($maxworkerage > 100) ? $maxworkerage : 300;
-		set_config('queueworker','queueworker_max_age',$maxworkerage);
-
-		goaway(z_root().'/queueworker');
+		return $content;
 	}
 
 	function get() {
@@ -47,9 +35,8 @@ class Queueworker extends Controller {
 			return $content;
     		}
 
-		load_config("queueworker");
 
-		$content = "<H1>Queue Status</H1>\n";
+		$content = "<H1>Queue Status</H1>";
 
 		$r = q('select count(*) as qentries from workerq');
 
@@ -58,52 +45,7 @@ class Queueworker extends Controller {
 			return $content;
 		}
 
-		$content .= "<H4>There are ".$r[0]['qentries']." queue items to be processed.</H4>";
-
-		$content .= "\n\n";
-
-		$maxqueueworkers = get_config('queueworker','max_queueworkers',4);
-		$maxqueueworkers = ($maxqueueworkers > 3) ? $maxqueueworkers : 4;
-		set_config('queueworker','max_queueworkers',$maxqueueworkers);
-
-
-		$sc .= replace_macros(get_markup_template('field_input.tpl'), [
-			'$field' => [
-				'queueworker_maxworkers',
-				t('Max queueworker threads'),
-				$maxqueueworkers,
-				'',
-				$paths
-			]
-		]);
-
-                $workermaxage = get_config('queueworker','queueworker_max_age');
-                $workermaxage = ($workermaxage > 120) ? $workermaxage : 300;
-		set_config('queueworker','max_queueworker_age',$workermaxage);
-
-		$sc .= replace_macros(get_markup_template('field_input.tpl'), [
-			'$field' => [
-				'queueworker_max_age',
-				t('Assume workers dead after ___ seconds'),
-				$workermaxage,
-				'',
-				$paths
-			]
-		]);
-
-
-		$tpl = get_markup_template('settings_addon.tpl');
-		$content .= replace_macros($tpl, [
-			'$action_url' => 'queueworker',
-			'$form_security_token' => get_form_security_token('queueworker'),
-			'$title' => t('Queueworker Settings'),
-			'$content' => $sc,
-			'$baseurl' => z_root(),
-			'$submit' => t('Save')
-			]
-		);
-
-
+		$content = "<H4>There are ".$r[0]['qentries']." queue items to be processed.</H4>";
 		return $content;
 
 	}

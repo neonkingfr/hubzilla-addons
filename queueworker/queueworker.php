@@ -272,20 +272,33 @@ class QueueWorkerUtils {
 		if (self::$queueworker) {
 			return self::$queueworker;
 		}
-
-		$maxworkers = get_config('queueworker','max_queueworkers',4);
+		$maxworkers = get_config('queueworker','max_queue_workers',0);
 		$maxworkers = ($maxworkers > 3) ? $maxworkers : 4;
-		$workermaxage = get_config('queueworker','max_queueworker_age');
+		$workermaxage = get_config('queueworker','max_queue_worker_age');
 		$workermaxage = ($workermaxage > 120) ? $workermaxage : 300;
-	
+		
+		$workers = q("select * from config where cat='queueworkers'");
 		$wid = uniqid('',true);
-		q("update workerq set workerq_reservationid = null where workerq_processtimeout < %s", db_utcnow());
-		$workers = q("select distinct workerq_reservationid from workerq");
 		if (count($workers) > $maxworkers) {
-			logger("Too many active workers",LOGGER_DEBUG);
-			return false;
+			foreach ($workers as $idx => $worker) {
+				$curtime = time();
+				$age = (intval($curtime) - intval($worker['v']));
+				if ( $age > $workermaxage) {
+					logger("Prune worker ".$worker['id'].": ".$worker['k']);
+					q("delete from config where id = %d",
+						intval($worker['id']));
+					unset($workers[$idx]);
+				}
+			}
+			if (count($workers) > $maxworkers) {
+				logger("Too many active workers",LOGGER_DEBUG);
+				return false;
+			}
 		}
 		
+		self::qbegin('config');
+		set_config('queueworkers','workerstarted_'.$wid,time());
+		self::qcommit();
 		self::$queueworker=$wid;
 		
 		return $wid;
@@ -302,13 +315,9 @@ class QueueWorkerUtils {
 			return false;
 		}
 
-		$workermaxage = get_config('queueworker','max_queueworker_age');
-		$workermaxage = ($workermaxage > 120) ? $workermaxage : 300;
 		$id = $work[0]['workerq_id'];
-                $work = q("update workerq set workerq_reservationid='%s', workerq_processtimeout = %s + interval %s where workerq_id = %d",
+                $work = q("update workerq set workerq_reservationid='%s' where workerq_id = %d",
                         self::$queueworker,
-			db_utcnow(),
-			db_quoteinterval($workermaxage." SECOND"),
                         intval($id));
 
 		if (!$work) {
