@@ -192,7 +192,8 @@ function gallery_prepare_body(&$arr) {
 			else {
 				galleryJustifyPhotos_$id();
 			}
-				function galleryJustifyPhotos_$id() {
+			function galleryJustifyPhotos_$id() {
+				justifiedGalleryActive = true;
 				$('#gallery-wrapper-$id').justifiedGallery({
 					captions: false,
 					rowHeight: '$row_height',
@@ -200,7 +201,7 @@ function gallery_prepare_body(&$arr) {
 					justifyThreshold: 0.5,
 					margins: $margins,
 					border: 0
-				});
+				}).on('jg.complete', function(e){ justifiedGalleryActive = false; });
 			}
 		</script>
 EOF;
