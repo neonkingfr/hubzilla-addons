@@ -18,7 +18,7 @@ function nativephpsessions_load(){
 	Hook::register('custom_session_handler', __FILE__ , 'NativePHPSessions::custom_session_handler',1,1);
 }
 
-function dm42channotice_unload(){
+function nativephpsessions_unload(){
 	Hook::unregister_by_file(__FILE__);
 }
 
