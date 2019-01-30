@@ -408,6 +408,13 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 	logger('get_diaspora_reshare_xml: source: ' . $body, LOGGER_DEBUG);
 
 	$oxml = parse_xml_string($body,false);
+
+	if(! $oxml) {
+		logger('get_diaspora_reshare_xml: unparseable result from ' . $url);
+		return '';
+	}
+
+
 	$pxml = sxml2array($oxml);
 	$source_xml = [ strtolower($oxml->getName()) => $pxml ];
 

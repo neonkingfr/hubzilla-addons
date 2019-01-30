@@ -1,5 +1,7 @@
 <?php
 
+use Zotlabs\Lib\Apps;
+
 require_once('include/crypto.php');
 require_once('include/items.php');
 require_once('include/follow.php');
@@ -40,7 +42,7 @@ function salmon_post(&$a) {
 	if(! $importer)
 		http_status_exit(500);
 
-	if(! get_pconfig($importer['channel_id'],'system','gnusoc_allowed'))
+	if(! Apps::addon_app_installed($importer['channel_id'], 'gnusoc'))
 		http_status_exit(500);
 
 	// parse the xml
@@ -276,8 +278,8 @@ function salmon_post(&$a) {
 	foreach($importer_arr as $importer) {
 
 		if(! $importer['system']) {
-			$allowed = get_pconfig($importer['channel_id'],'system','gnusoc_allowed');
-			if(! intval($allowed)) {
+			$allowed = Apps::addon_app_installed($importer['channel_id'], 'gnusoc');
+			if($allowed) {
         		logger('mod-salmon: disallowed for channel ' . $importer['channel_name']);
 				$status = 202;
         		continue;

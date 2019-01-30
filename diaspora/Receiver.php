@@ -232,7 +232,7 @@ class Diaspora_Receiver {
 		}
 
 
-		$body = markdown_to_bb($this->get_body(), false, [ 'diaspora' => true ]);
+		$body = markdown_to_bb($this->get_body(), false, [ 'diaspora' => true, 'preserve_lf' => true ]);
 
 
 		// photo could be a single photo or an array of photos.
@@ -524,7 +524,7 @@ class Diaspora_Receiver {
 		$orig_url = 'https://'.substr($orig_author,strpos($orig_author,'@')+1).'/'.$orig_url_arg.'/'.$orig_guid;
 
 		if($text)
-			$text = markdown_to_bb($text, false, [ 'diaspora' => true ]) . "\n";
+			$text = markdown_to_bb($text, false, [ 'diaspora' => true, 'preserve_lf' => true ]) . "\n";
 		else
 			$text = '';
 
@@ -532,7 +532,7 @@ class Diaspora_Receiver {
 		$source_xml = get_diaspora_reshare_xml($source_url);
 
 		if($source_xml['status_message']) {
-			$body = markdown_to_bb($this->get_body($source_xml['status_message']), false, [ 'diaspora' => true ]);
+			$body = markdown_to_bb($this->get_body($source_xml['status_message']), false, [ 'diaspora' => true, 'preserve_lf' => true ]);
 
 			$orig_author = $this->get_author($source_xml['status_message']);
 			$orig_guid   = notags($this->get_property('guid',$source_xml['status_message']));
@@ -1108,7 +1108,7 @@ class Diaspora_Receiver {
 				continue;
 			}
 
-			$body = markdown_to_bb($msg_text, false, [ 'diaspora' => true ]);
+			$body = markdown_to_bb($msg_text, false, [ 'diaspora' => true, 'preserve_lf' => true ]);
 
 			$maxlen = get_max_import_size();
 
@@ -1251,7 +1251,7 @@ class Diaspora_Receiver {
 		$reply = 0;
 
 		$subject = $conversation['subject']; //this is already encoded
-		$body = markdown_to_bb($msg_text, false, [ 'diaspora' => true ]);
+		$body = markdown_to_bb($msg_text, false, [ 'diaspora' => true, 'preserve_lf' => true ]);
 
 
 		$maxlen = get_max_import_size();
