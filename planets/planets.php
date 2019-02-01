@@ -8,51 +8,23 @@
  * Maintainer: none
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
+
 
 function planets_load() {
-
-	/**
-	 * 
-	 * Our demo plugin will attach in three places.
-	 * The first is just prior to storing a local post.
-	 *
-	 */
-
 	register_hook('post_local', 'addon/planets/planets.php', 'planets_post_hook');
-
-	/**
-	 *
-	 * Then we'll attach into the plugin settings page, and also the 
-	 * settings post hook so that we can create and update
-	 * user preferences.
-	 *
-	 */
-
-	register_hook('feature_settings', 'addon/planets/planets.php', 'planets_settings');
-	register_hook('feature_settings_post', 'addon/planets/planets.php', 'planets_settings_post');
-
+	Route::register('addon/planets/Mod_Planets.php', 'planets');
 	logger("loaded planets");
 }
 
 
 function planets_unload() {
-
-	/**
-	 *
-	 * unload unregisters any hooks created with register_hook
-	 * during load. It may also delete configuration settings
-	 * and any other cleanup.
-	 *
-	 */
-
 	unregister_hook('post_local',    'addon/planets/planets.php', 'planets_post_hook');
-	unregister_hook('feature_settings', 'addon/planets/planets.php', 'planets_settings');
-	unregister_hook('feature_settings_post', 'addon/planets/planets.php', 'planets_settings_post');
-
-
+	Route::unregister('addon/planets/Mod_Planets.php', 'planets');
 	logger("removed planets");
 }
-
 
 
 function planets_post_hook($a, &$item) {
@@ -71,18 +43,15 @@ function planets_post_hook($a, &$item) {
 	if(! local_channel())   /* non-zero if this is a logged in user of this system */
 		return;
 
+	if(! Apps::addon_app_installed(local_channel(), 'planets'))
+		return;
+
 	if(local_channel() != $item['uid'])    /* Does this person own the post? */
 		return;
 
 	if($item['parent'])   /* If the item has a parent, this is a comment or something else, not a status post. */
 		return;
 
-	/* Retrieve our personal config setting */
-
-	$active = get_pconfig(local_channel(), 'planets', 'enable');
-
-	if(! $active)
-		return;
 
 	/**
 	 *
@@ -99,58 +68,4 @@ function planets_post_hook($a, &$item) {
 	$item['location'] = '#[url=http://starwars.com]' . $planets[$planet] . '[/url]';
 
 	return;
-}
-
-
-
-
-/**
- *
- * Callback from the settings post function.
- * $post contains the $_POST array.
- * We will make sure we've got a valid user account
- * and if so set our configuration setting for this person.
- *
- */
-
-function planets_settings_post($a,$post) {
-	if(! local_channel())
-		return;
-	if($_POST['planets-submit']) {
-		set_pconfig(local_channel(),'planets','enable',intval($_POST['planets']));
-		info( t('Planets Settings updated.') . EOL);
-	}
-}
-
-
-/**
- *
- * Called from the Plugin Setting form. 
- * Add our own settings info to the page.
- *
- */
-
-
-
-function planets_settings(&$a,&$s) {
-
-	if(! local_channel())
-		return;
-
-	/* Get the current state of our config variable */
-
-	$enabled = get_pconfig(local_channel(),'planets','enable');
-
-	$checked = (($enabled) ? 1 : false);
-
-	/* Add some HTML to the existing form */
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('planets', t('Enable Planets Plugin'), $checked, '', array(t('No'),t('Yes'))),
-	));
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('planets',t('Planets Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
 }
