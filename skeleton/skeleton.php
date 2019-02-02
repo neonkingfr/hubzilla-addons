@@ -10,63 +10,30 @@
  * Maintainer: ken restivo <ken@restivo.org>
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
 
 function skeleton_load(){
-	register_hook('construct_page', 'addon/skeleton/skeleton.php', 'skeleton_construct_page');
-	register_hook('feature_settings', 'addon/skeleton/skeleton.php', 'skeleton_settings');
-	register_hook('feature_settings_post', 'addon/skeleton/skeleton.php', 'skeleton_settings_post');
-
+	Hook::register('construct_page', 'addon/skeleton/skeleton.php', 'skeleton_construct_page');
+	Route::register('addon/skeleton/Mod_Skeleton.php','skeleton');
 }
 
 
 function skeleton_unload(){
-	unregister_hook('construct_page', 'addon/skeleton/skeleton.php', 'skeleton_construct_page');
-	unregister_hook('feature_settings', 'addon/skeleton/skeleton.php', 'skeleton_settings');
-	unregister_hook('feature_settings_post', 'addon/skeleton/skeleton.php', 'skeleton_settings_post');
+	Hook::unregister('construct_page', 'addon/skeleton/skeleton.php', 'skeleton_construct_page');
+	Route::unregister('addon/skeleton/Mod_Skeleton.php','skeleton');
 }
 
-
-
-function skeleton_construct_page(&$a, &$b){
+function skeleton_construct_page(&$b){
 	if(! local_channel())
+		return;
+
+	if(! Apps::addon_app_installed(local_channel(),'skeleton'))
 		return;
 
 	$some_setting = get_pconfig(local_channel(), 'skeleton','some_setting');
 
 	// Whatever you put in settings, will show up on the left nav of your pages.
 	$b['layout']['region_aside'] .= '<div>' . htmlentities($some_setting) .  '</div>';
-
 }
-
-
-
-function skeleton_settings_post($a,$s) {
-	if(! local_channel())
-		return;
-
-	set_pconfig( local_channel(), 'skeleton', 'some_setting', $_POST['some_setting'] );
-
-}
-
-function skeleton_settings(&$a,&$s) {
-	$id = local_channel();
-	if (! $id)
-		return;
-
-	$some_setting = get_pconfig( $id, 'skeleton', 'some_setting');
-
-	$sc = replace_macros(get_markup_template('field_input.tpl'), array(
-				     '$field'	=> array('some_setting', t('Some setting'), 
-							 $some_setting, 
-							 t('A setting'))));
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-				     '$addon' 	=> array('skeleton',
-							 t('Skeleton Settings'), '', 
-							 t('Submit')),
-				     '$content'	=> $sc));
-
-}
-
-
-
-
