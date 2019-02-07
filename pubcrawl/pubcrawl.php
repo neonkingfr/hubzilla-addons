@@ -403,7 +403,7 @@ function pubcrawl_notifier_process(&$arr) {
 
 	logger('upstream: ' . intval($arr['upstream']));
 
-	logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
+	 logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
 
 	// allow this to be set per message
 
@@ -463,6 +463,7 @@ function pubcrawl_notifier_process(&$arr) {
 	if(! $target_item['mid'])
 		return;
 
+
 	$prv_recips = $arr['env_recips'];
 
 
@@ -471,6 +472,7 @@ function pubcrawl_notifier_process(&$arr) {
 	}
 	else {
 		$ti = asencode_activity($target_item);
+
 		if(! $ti)
 			return;
 
@@ -485,6 +487,7 @@ function pubcrawl_notifier_process(&$arr) {
 		$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
 	}
 
+	
 	if($prv_recips) {
 		$hashes = array();
 
@@ -867,11 +870,13 @@ function pubcrawl_item_mod_init($x) {
 
 		$sql_extra = item_permissions_sql(0);
 
-		$r = q("select * from item where mid like '%s' $item_normal $sql_extra limit 1",
+		$r = q("select * from item where (uuid = '%s' or mid like '%s') $item_normal $sql_extra limit 1",
+			dbesc($item_id),
 			dbesc($item_id . '%')
 		);
 		if(! $r) {
-			$r = q("select * from item where mid like '%s' $item_normal limit 1",
+			$r = q("select * from item where (uuid = '%s' or mid like '%s') $item_normal limit 1",
+				dbesc($item_id),
 				dbesc($item_id . '%')
 			);
 			if($r) {
