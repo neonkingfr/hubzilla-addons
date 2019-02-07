@@ -378,7 +378,7 @@ function diaspora_is_repeat($item) {
 
 	$ret['root_handle'] = $r[0]['author']['xchan_addr'];
 
-	if(! $ret['root_handle'])) {
+	if(! $ret['root_handle']) {
 		return false;
 	}
 
