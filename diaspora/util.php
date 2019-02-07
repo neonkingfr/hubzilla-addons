@@ -278,6 +278,11 @@ function diaspora_build_status($item,$owner) {
 			$arr['root_guid']   = $ret['root_guid'];
 			$msg = arrtoxml('reshare', $arr);
 		} 
+		elseif((! $item['item_private']) && ($ret = diaspora_is_repeat($item))) {
+			$arr['root_author'] = $ret['root_handle'];
+			$arr['root_guid']   = $ret['root_guid'];
+			$msg = arrtoxml('reshare', $arr);
+		} 
 		else {
 			$arr['public'] = $public;
 			$arr['text']   = $body;

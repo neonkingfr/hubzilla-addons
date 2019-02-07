@@ -355,6 +355,43 @@ function diaspora_is_reshare($body) {
 	return($ret);
 }
 
+
+function diaspora_is_repeat($item) {
+	
+
+	if($item['verb'] !== 'Announce') {
+		return false;
+	}
+
+	$r = q("select * from item where mid = '%s' and uid = %d and item_private = 0 limit 1",
+		dbesc($item['parent_mid'])
+	);
+
+	if(! $r) {
+		return false;
+	}
+
+	xchan_query($r,true);
+	$r = fetch_post_tags($r,true);
+
+	$ret = [];
+
+	$ret['root_handle'] = $r[0]['author']['xchan_addr'];
+
+	if(! $ret['root_handle'])) {
+		return false;
+	}
+
+	$ret['root_guid'] = $r[0]['uuid'];
+	if(! $ret['root_guid']) {
+		return false;
+	}
+
+	return $ret;
+}
+
+
+
 function diaspora_send_images($item,$owner,$contact,$images,$public_batch = false) {
 
 	if(! count($images))
