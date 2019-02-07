@@ -6,6 +6,11 @@ function asencode_object($x) {
 	if((substr(trim($x),0,1)) === '{' ) {
 		$x = json_decode($x,true);
 	}
+
+	if(is_array($x) && array_key_exists('asld',$x)) {
+		return $x['asld'];
+	}
+
 	if($x['type'] === ACTIVITY_OBJ_PERSON) {
 		return asfetch_person($x); 
 	}
@@ -391,6 +396,7 @@ function asencode_activity($i) {
 	else
 		return []; 
 
+
 	if($i['obj']) {
 		$obj = asencode_object($i['obj']);
 		if($obj)
@@ -633,6 +639,10 @@ function activity_mapper($verb) {
 
 	if(strpos($verb,ACTIVITY_POKE) !== false)
 		return 'Activity';
+
+	if($verb === 'Announce') 
+		return $verb;
+
 
 	// We should return false, however this will trigger an uncaught execption  and crash 
 	// the delivery system if encountered by the JSON-LDSignature library
