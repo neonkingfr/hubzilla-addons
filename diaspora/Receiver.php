@@ -1404,14 +1404,16 @@ class Diaspora_Receiver {
 
 
 	function like() {
-
 		$guid = notags($this->get_property('guid'));
+		if(! $guid) {
+			logger('diaspora_like: missing guid' . print_r($this->msg, true), LOGGER_DEBUG);
+			return;
+		}
 		$parent_guid = notags($this->get_property('parent_guid'));
 		$diaspora_handle = notags($this->get_author());
 		$target_type = notags($this->get_ptype());
 		$positive = notags($this->get_property('positive'));
 		$author_signature = notags($this->get_property('author_signature'));
-
 		$parent_author_signature = $this->get_property('parent_author_signature');
 
 		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$this->msg['author']);
@@ -1484,10 +1486,14 @@ class Diaspora_Receiver {
 		// Note: I don't think "Like" objects with positive = "false" are ever actually used
 		// It looks like "RelayableRetractions" are used for "unlike" instead
 
-		if($positive === 'true')
+		if($positive === 'true') {
 			$activity = ACTIVITY_LIKE;
-		else
+			$bodyverb = t('%1$s likes %2$s\'s %3$s');
+		}
+		else {
 			$activity = ACTIVITY_DISLIKE;
+			$bodyverb = t('%1$s dislikes %2$s\'s %3$s');
+		}
 
 		// old style signature
 		$signed_data = $positive . ';' . $guid . ';' . $target_type . ';' . $parent_guid . ';' . $diaspora_handle;
@@ -1571,8 +1577,6 @@ class Diaspora_Receiver {
 				),
 			));
 
-
-		$bodyverb = t('%1$s likes %2$s\'s %3$s');
 
 		$arr = array();
 
