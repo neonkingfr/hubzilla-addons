@@ -17,7 +17,6 @@ class Ijpost extends Controller {
 
 		check_form_security_token_redirectOnErr('ijpost', 'ijpost');
 
-		set_pconfig(local_channel(),'ijpost','post',intval($_POST['ijpost']));
 		set_pconfig(local_channel(),'ijpost','post_by_default',intval($_POST['ij_bydefault']));
 		set_pconfig(local_channel(),'ijpost','ij_username',trim($_POST['ij_username']));
 		set_pconfig(local_channel(),'ijpost','ij_password',z_obscure(trim($_POST['ij_password'])));

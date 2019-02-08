@@ -88,8 +88,6 @@ button (the page will be opened in a new browser window/tab) and get a PIN from 
 
 After this step was successful the user now has the following config options.
 
-* **Allow posting to Twitter** If a channel owner wants to post their _public postings_ 
-   to the associated Twitter account, they need to check this box.
 * **Send public postings to Twitter by default** If a channel owner wants to have _all_
   their public postings being send to the associated Twitter account they need to check
   this button as well. Otherwise they have to enable the relay of their postings
