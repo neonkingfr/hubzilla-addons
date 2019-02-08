@@ -39,7 +39,7 @@ class Photocache extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Photo Cache App (Not Installed):</b><br>';
+			$o = '<b>' . t('Photo Cache App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= $desc;
 			
 			return $o;
@@ -52,7 +52,7 @@ class Photocache extends Controller {
 				'cache_minres', 
 				t('Minimal photo size for caching'), 
 				get_pconfig(local_channel(),'photocache','cache_minres', 0), 
-				t('In pixels. 0 will be replaced with system default, from 1 up to 1024 (large images will be scaled to this value).')
+				t('In pixels. From 1 up to 1024, 0 will be replaced with system default.')
 			),
 		));	
 
