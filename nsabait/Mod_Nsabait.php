@@ -21,7 +21,7 @@ class Nsabait extends Controller {
 			return $o;
 		}
 		else
-            $o = '<b>' . t('NSA Bait App') . ' (' . t('Installed') . '):</b><br>';
+		    $o = '<b>' . t('NSA Bait App') . ' (' . t('Installed') . '):</b><br>';
             
         $o .= t('Make yourself a political target');
 		return $o;
