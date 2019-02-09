@@ -33,7 +33,7 @@ class Rtof extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Friendica Crosspost Connector App (Not Installed):</b><br>';
+			$o = '<b>' . t('Friendica Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('Relay public postings to a connected Friendica account');
 			return $o;
 		}
