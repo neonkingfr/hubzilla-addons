@@ -143,7 +143,7 @@ class Statusnet extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Hubzilla Crosspost Connector App (Not Installed):</b><br>';
+			$o = '<b>' . t('Hubzilla Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('Relay public postings to a connected GNU social account (formerly StatusNet)');
 			return $o;
 		}
