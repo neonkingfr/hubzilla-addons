@@ -47,7 +47,7 @@ class Startpage extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Startpage App (Not Installed):</b><br>';
+			$o = '<b>' . t('Startpage App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('Set a preferred page to load on login from home page');
 			return $o;
 		}
