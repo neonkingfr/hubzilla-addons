@@ -55,7 +55,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Gallery App (Not Installed):</b><br>';
+			$o = '<b>' . t('Gallery App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('A simple gallery for your photo albums');
 			return $o;
 		}
