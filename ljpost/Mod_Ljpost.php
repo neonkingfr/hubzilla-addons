@@ -33,7 +33,7 @@ class Ljpost extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Livejournal Crosspost Connector App (Not Installed):</b><br>';
+			$o = '<b>' . t('Livejournal Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('Relay public posts to Livejournal');
 			return $o;
 		}
