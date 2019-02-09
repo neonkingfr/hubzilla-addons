@@ -30,7 +30,7 @@ class Nsfw extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>NSFW App (Not Installed):</b><br>';
+			$o = '<b>' . t('NSFW App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('Collapse content that contains predefined words');
 			return $o;
 		}
