@@ -1,5 +1,5 @@
 url: $baseurl/visage
 requires: public_profile
 name: Visitors
-photo: $baseurl/addon/visage/visage.png
+photo: icon:eye
 
