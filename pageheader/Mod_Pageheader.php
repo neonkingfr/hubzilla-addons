@@ -31,7 +31,7 @@ class Pageheader extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Page Header App (Not Installed):</b><br>';
+			$o = '<b>' . t('Page Header App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('Inserts a page header');
 			return $o;
 		}

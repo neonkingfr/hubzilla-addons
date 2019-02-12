@@ -50,7 +50,7 @@ class Pumpio extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Pump.io Crosspost Connector App (Not Installed):</b><br>';
+			$o = '<b>' . t('Pump.io Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('Relay public posts to pump.io');
 			return $o;
 		}

@@ -29,7 +29,7 @@ class Skeleton extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Skeleton App (Not Installed):</b><br>';
+			$o = '<b>' . t('Skeleton App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('A skeleton for addons, you can copy/paste');
 			return $o;
 		}

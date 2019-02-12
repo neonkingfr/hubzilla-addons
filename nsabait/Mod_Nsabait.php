@@ -17,13 +17,13 @@ class Nsabait extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>NSA Bait App (Not Installed):</b><br>';
-			$o .= t('Make yourself a political target');
+			$o = '<b>' . t('NSA Bait App') . ' (' . t('Not Installed') . '):</b><br>';
 			return $o;
 		}
-
-		$o = '<b>NSA Bait App (Installed):</b><br>';
-		$o .= t('Make yourself a political target');
+		else
+		    $o = '<b>' . t('NSA Bait App') . ' (' . t('Installed') . '):</b><br>';
+            
+        $o .= t('Make yourself a political target');
 		return $o;
 
 

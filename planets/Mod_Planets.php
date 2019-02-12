@@ -17,12 +17,11 @@ class Planets extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Random Planet App (Not Installed):</b><br>';
-			$o .= t('Set a random planet from the Star Wars Empire as your location when posting');
-			return $o;
+			$o = '<b>' . t('Random Planet App') . ' (' . t('Not Installed') . '):</b><br>';
 		}
-
-		$o = '<b>Random Planet App (Installed):</b><br>';
+		else
+		    $o = '<b>' . t('Random Planet App') . ' (' . t('Installed') . '):</b><br>';
+		    
 		$o .= t('Set a random planet from the Star Wars Empire as your location when posting');
 		return $o;
 

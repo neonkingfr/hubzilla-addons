@@ -19,7 +19,7 @@ class Gnusoc extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>GNU-Social Protocol App (Not Installed):</b><br>';
+			$o = '<b>' . t('GNU-Social Protocol App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= $desc;
 			return $o;
 		}

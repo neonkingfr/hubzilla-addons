@@ -32,7 +32,7 @@ class Libertree extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Libertree Crosspost Connector App (Not Installed):</b><br>';
+			$o = '<b>' . t('Libertree Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('Relay public posts to Libertree');
 			return $o;
 		}

@@ -30,7 +30,7 @@ class Nofed extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>No Federation App (Not Installed):</b><br>';
+			$o = '<b>' . t('No Federation App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('Prevent posting from being federated to anybody. It will exist only on your channel page.');
 			return $o;
 		}

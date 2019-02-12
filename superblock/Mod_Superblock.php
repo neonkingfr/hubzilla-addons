@@ -17,7 +17,7 @@ class Superblock extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Superblock App (Not Installed):</b><br>';
+			$o = '<b>' . t('Superblock App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('Block channels');
 			return $o;
 		}
