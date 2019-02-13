@@ -6,71 +6,23 @@
  * Author: Michael Vogel <https://pirati.ca/profile/heluecht>
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
+
 function xmpp_load() {
-	register_hook('feature_settings', 'addon/xmpp/xmpp.php', 'xmpp_plugin_settings');
-	register_hook('feature_settings_post', 'addon/xmpp/xmpp.php', 'xmpp_plugin_settings_post');
 	register_hook('page_end', 'addon/xmpp/xmpp.php', 'xmpp_script');
 	register_hook('change_channel', 'addon/xmpp/xmpp.php', 'xmpp_login');
+
+	Route::register('addon/xmpp/Mod_Xmpp.php','xmpp');
 }
 
 function xmpp_unload() {
-	unregister_hook('feature_settings', 'addon/xmpp/xmpp.php', 'xmpp_plugin_settings');
-	unregister_hook('feature_settings_post', 'addon/xmpp/xmpp.php', 'xmpp_plugin_settings_post');
 	unregister_hook('page_end', 'addon/xmpp/xmpp.php', 'xmpp_script');
 	unregister_hook('logged_in', 'addon/xmpp/xmpp.php', 'xmpp_login');
 	unregister_hook('change_channel', 'addon/xmpp/xmpp.php', 'xmpp_login');
-}
 
-function xmpp_plugin_settings_post($a,$post) {
-	if(! local_channel() || (! $_POST['xmpp-submit']))
-		return;
-	set_pconfig(local_channel(),'xmpp','enabled',intval($_POST['xmpp_enabled']));
-	set_pconfig(local_channel(),'xmpp','individual',intval($_POST['xmpp_individual']));
-	set_pconfig(local_channel(),'xmpp','bosh_proxy',$_POST['xmpp_bosh_proxy']);
-
-	info( t('XMPP settings updated.') . EOL);
-}
-
-function xmpp_plugin_settings(&$a,&$s) {
-
-	if(! local_channel())
-		return;
-
-
-	/* Get the current state of our config variable */
-
-	$enabled = intval(get_pconfig(local_channel(),'xmpp','enabled'));
-	$enabled_checked = (($enabled) ? ' checked="checked" ' : '');
-
-	$individual = intval(get_pconfig(local_channel(),'xmpp','individual'));
-	$individual_checked = (($individual) ? ' checked="checked" ' : '');
-
-	$bosh_proxy = get_pconfig(local_channel(),"xmpp","bosh_proxy");
-
-
-	$sc = '';
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-        '$field'    => array('xmpp_enabled', t('Enable Chat'), $enabled, '', array(t('No'),t('Yes'))),
-    ));
-
-	if(get_config("xmpp", "central_userbase")) {
-		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-			'$field'    => array('xmpp_individual', t('Individual credentials'), $individual, '')
-		));
-	}
-
-	if((! get_config("xmpp", "central_userbase")) || (get_pconfig(local_channel(),"xmpp","individual"))) {
-		$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-			'$field'    => array('xmpp_bosh_proxy', t('Jabber BOSH server'), $bosh_proxy, '')
-		));
-	}
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-        '$addon'    => array('xmpp', '<img src="addon/xmpp/xmpp.png" style="width:auto; height:1em; margin:-3px 5px 0px 0px;">' . t('XMPP Settings'), '', t('Submit')),
-        '$content'  => $sc
-    ));
-
-
+	Route::unregister('addon/xmpp/Mod_Xmpp.php','xmpp');
 }
 
 function xmpp_login($a,$b) {
@@ -110,10 +62,10 @@ function xmpp_converse(&$a,&$s) {
 	if (!local_channel())
 		return;
 
-	if ($_GET["mode"] == "minimal")
+	if(! Apps::addon_app_installed(local_channel(),'xmpp'))
 		return;
 
-	if (!get_pconfig(local_channel(),"xmpp","enabled"))
+	if ($_GET["mode"] == "minimal")
 		return;
 
 	App::$page['htmlhead'] .= '<link type="text/css" rel="stylesheet" media="screen" href="addon/xmpp/converse/css/converse.css" />'."\n";
