@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/jappixmini
+requires: local_channel
+name: Jappix Mini
+photo: icon:xmpp
+categories: Networking
+
