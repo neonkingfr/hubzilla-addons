@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/flattrwidget
+requires: local_channel
+name: Flattr Widget
+photo: icon:refresh
+desc: Add a Flattr button to your channel page
+
