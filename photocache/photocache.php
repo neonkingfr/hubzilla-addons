@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.6
+ * Version: 0.2.7
  * Author: Max Kostikov
  * Maintainer: max@kostikov.co
  * MinVersion: 3.9.5
@@ -209,12 +209,12 @@ function photocache_url(&$cache = array()) {
 	
 	$cache_mode = array();
 	photocache_mode($cache_mode);
-	
-	logger('info: processing ' . $cache['resid'] . ' (' . $r['display_path'] .') for ' . $r['uid'], LOGGER_DEBUG);
-	
+
 	$minres = intval(get_pconfig($r['uid'], 'photocache', 'cache_minres'));
 	if($minres == 0)
 		$minres = $cache_mode['minres'];
+		
+	logger('info: processing ' . $cache['resid'] . ' (' . $r['display_path'] .') for ' . $r['uid']  . ' (min. ' . $minres . ' px)', LOGGER_DEBUG);
 	
 	if($r['height'] == 0) {
 		// If new resource id
@@ -352,11 +352,12 @@ function photocache_url(&$cache = array()) {
 			}
 		}
 
-		// Update metadata on any change
-		$x = q("UPDATE photo SET edited = '%s', expires = '%s' WHERE xchan = '%s' AND photo_usage = %d",
+		// Update metadata on change
+		$x = q("UPDATE photo SET edited = '%s', expires = '%s' WHERE xchan = '%s' AND height > %d AND photo_usage = %d",
 			dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
 			dbescdate($r['expires']),
 			dbesc($r['xchan']),
+			0,
 			intval(PHOTO_CACHE)
 		);
 	}
