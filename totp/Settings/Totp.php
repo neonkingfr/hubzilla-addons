@@ -19,7 +19,7 @@ class Totp {
 		}
 	function send_qrcode($account) {
 		# generate and deliver QR code png image
-		require_once("addon/common/phpqrcode/qrlib.php");
+		require_once("addon/addon_common/phpqrcode/qrlib.php");
 		require_once("addon/totp/class_totp.php");
 		$totp = new \TOTP(get_config('system', 'banner'),
 				$account['account_email'],

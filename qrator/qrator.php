@@ -27,7 +27,7 @@ function qrator_photo_mod_init(&$a,&$b) {
 
 	if(argc() > 1 && argv(1) === 'qr') {
 		$t = $_GET['qr'];
-		require_once('addon/qrator/phpqrcode/phpqrcode.php');
+		require_once("addon/addon_common/phpqrcode/qrlib.php");
 		header("Content-type: image/png");
 		QRcode::png(($t) ? $t : '.');
 		killme();
