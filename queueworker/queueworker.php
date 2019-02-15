@@ -106,9 +106,9 @@ class QueueWorkerUtils {
 					workerq_id bigserial NOT NULL,
 					workerq_priority smallint,
 					workerq_reservationid varchar(25) DEFAULT NULL,
-					workerq_processtimeout datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+					workerq_processtimeout timestamp NOT NULL DEFAULT '0001-01-01 00:00:00',
 					workerq_data text,
-					PRIMARY KEY (id)
+					PRIMARY KEY (workerq_id)
 					);
 				",
 				"CREATE INDEX idx_workerq_priority ON workerq (workerq_priority);",
