@@ -117,6 +117,10 @@ function chess_observer_role() {
 function widget_chess_controls() {
 
 	$owner = chess_owner_from_url();
+
+	if(! Apps::addon_app_installed(intval($owner['channel_id']), 'chess'))
+		return;
+
 	$game_id = chess_game_id_from_url();
 	$obs_role = chess_observer_role();
 	$observer = $obs_role['observer'];
@@ -167,7 +171,7 @@ function widget_chess_controls() {
  *
  * @return null
  */
-function chess_load_pdl($a, &$b) {
+function chess_load_pdl(&$b) {
 	if ($b['module'] === 'chess') {
 		$b['layout'] = '
 			[region=aside]
