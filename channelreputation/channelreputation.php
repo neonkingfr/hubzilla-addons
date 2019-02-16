@@ -30,7 +30,7 @@ function channelreputation_load() {
 
 function channelreputation_unload() {
         Hook::unregister_by_file('addon/channelreputation/channelreputation.php');
-	Route::register('addon/channelreputation/Mod_ChannelReputation.php');
+	Route::unregister_by_file('addon/channelreputation/Mod_ChannelReputation.php');
 }
 
 
@@ -87,9 +87,9 @@ class ChannelReputation_Utils {
                 head_add_js('/addon/channelreputation/view/js/channelreputation.js');
         }
 
-        public static function feature_settings (&$s) {
+        public static function feature_settings () {
         	if(! Apps::addon_app_installed(local_channel(), 'channelreputation')) {
-                	return;
+                	return "<h1>Page not found</h1>";
         	}
 
                 $id = local_channel();
@@ -130,15 +130,22 @@ class ChannelReputation_Utils {
                                 )));
                         }
                 }
-                $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-                         '$addon'   => array('community-reputation',
-                                             t('Community Moderation Settings'), '',
-                                             t('Submit')),
-                         '$content' => $sc . $moresettings
-                         ));
+
+                $o = replace_macros(get_markup_template('settings_addon.tpl'), array(
+                        '$action_url' => 'channelreputation/settings',
+                        '$form_security_token' => get_form_security_token("channelreputation"),
+                        '$title' => t('Community Moderation Settings'),
+                        '$content'  => $sc,
+                        '$baseurl'   => z_root(),
+                        '$submit'    => t('Submit'),
+                ));
+
+
+		return $o;
         }
 
 	public static function feature_settings_post () {
+
 		if(! Apps::addon_app_installed(local_channel(), 'channelreputation')) {
 			return;
 		}
@@ -147,6 +154,8 @@ class ChannelReputation_Utils {
 		if (! $id) {
 			return;
 		}
+
+                check_form_security_token_redirectOnErr('channelreputation/settings','channelreputation');
 
 		$prev_enable = get_pconfig ($id,'channelreputation','enable');
 		set_pconfig( local_channel(), 'channelreputation', 'enable', intval($_POST['channelrep_enable']) );
@@ -534,6 +543,7 @@ class ChannelReputation_Utils {
          public static function mod_content(&$arr) {
                 notice("No content");
          }
+
          public static function channel_apps(&$hookdata) {
                 $hookdata['tabs'][] = [
                         'label' => t('Channel Reputation'),
