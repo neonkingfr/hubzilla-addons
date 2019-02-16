@@ -5,6 +5,7 @@ namespace Zotlabs\Module;
 use App;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Web\Controller;
+use Zotlabs\Access\AccessList;
 
 require_once(dirname(__FILE__).'/chess.php');
 
@@ -243,7 +244,7 @@ class Chess extends Controller {
 					}
 					// Ensure ACL specifies exactly one other channel
 					$channel = App::get_channel();
-					$acl = new Zotlabs\Access\AccessList($channel);
+					$acl = new AccessList($channel);
 					$acl->set_from_array($_REQUEST);
 					$perms = $acl->get();
 					$allow_cid = expand_acl($perms['allow_cid']);
@@ -297,8 +298,7 @@ class Chess extends Controller {
 		$which = null;
 		if (argc() > 1) {
 			$which = argv(1);
-			$user = q("select channel_id from channel where channel_address = '%s' "
-				. "AND channel_removed = 0  limit 1",
+			$user = q("select channel_id from channel where channel_address = '%s' AND channel_removed = 0 limit 1",
 				dbesc($which)
 			);
 
@@ -326,7 +326,10 @@ class Chess extends Controller {
 			notice(t('You must select a local channel /chess/channelname') . EOL);
 			return;
 		} else {
-			if(! Apps::addon_app_installed(intval(local_channel()), 'chess')) {
+			$user = q("select channel_id from channel where channel_address = '%s' AND channel_removed = 0 limit 1",
+				dbesc($which)
+			);
+			if(! Apps::addon_app_installed(intval($user['channel_id']), 'chess')) {
 				notice(t('Chess not installed.') . EOL);
 				App::$error = 404;
 				return;
@@ -340,7 +343,7 @@ class Chess extends Controller {
 						notice(t('You must be logged in to see this page.') . EOL);
 						return;
 					}
-					$acl = new Zotlabs\Access\AccessList(App::get_channel());
+					$acl = new AccessList(App::get_channel());
 					$channel_acl = $acl->get();
 
 					require_once('include/acl_selectors.php');
