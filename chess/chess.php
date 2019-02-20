@@ -387,6 +387,9 @@ function chess_set_position($g, $position) {
  * @return array Success of retrieval and game item
  */
 function chess_get_game($game_id) {
+	if(! $game_id)
+		return array('game' => null, 'status' => false);
+
 	$g = q("SELECT * FROM item WHERE resource_id = '%s' AND resource_type = '%s' and "
 	  . "mid = parent_mid AND item_deleted = 0 LIMIT 1",
 		dbesc($game_id),
