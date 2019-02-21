@@ -75,6 +75,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 			$phototypes = $ph->supportedTypes();
 
 			$photo_arr[0]['resource_id'] = $_GET['photo'];
+			$photo_arr[0]['osrc'] = z_root() . '/photo/' . $_GET['photo'] . '-0' . '.' . $phototypes[$_GET['type']];
 			$photo_arr[0]['src'] = z_root() . '/photo/' . $_GET['photo'] . '-0' . '.' . $phototypes[$_GET['type']];
 			$photo_arr[0]['msrc'] = z_root() . '/photo/' . $_GET['photo'] . '-1' . '.' . $phototypes[$_GET['type']];
 			$photo_arr[0]['w'] = $_GET['width'];
@@ -180,6 +181,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 			$title = (($rr['description']) ? '<strong>' . $rr['description'] . '</strong><br>' . $rr['display_path'] : $rr['display_path']);
 
 			$items[$i]['resource_id'] = $rr['resource_id'];
+			$items[$i]['osrc'] = z_root() . '/photo/' . $rr['resource_id'] . '-0' . '.' . $phototypes[$rr['mimetype']];
 			$items[$i]['src'] = z_root() . '/photo/' . $rr['resource_id'] . '-1' . '.' . $phototypes[$rr['mimetype']];
 			$items[$i]['msrc'] = z_root() . '/photo/' . $rr['resource_id'] . '-3' . '.' . $phototypes[$rr['mimetype']];
 			$items[$i]['w'] = $rr['width'];
