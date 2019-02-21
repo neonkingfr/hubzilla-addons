@@ -41,12 +41,15 @@
 			preload: [1, 3],
 			shareButtons: [
 				{{if ! $aj}}
-				{ id: 'conv_link', label: 'View conversation', url: 'photos/{{$channel_nick}}/image/\{\{raw_image_url\}\}' },
+				{ id: 'conv_link', label: 'View conversation', url: '\{\{raw_image_url\}\}' },
 				{{/if}}
-				{ id: 'download', label: 'Download fullsize image', url: 'photo/\{\{raw_image_url\}\}', download: true }
+				{ id: 'download', label: 'Download fullsize image', url: '\{\{raw_image_url\}\}', download: true }
 				],
 			getImageURLForShare: function( shareButtonData ) {
-				return gallery.currItem.resource_id;
+				if(shareButtonData.id === 'download')
+					return gallery.currItem.osrc;
+				else
+					return 'photos/{{$channel_nick}}/image/' + gallery.currItem.resource_id;
 			}
 		};
 
