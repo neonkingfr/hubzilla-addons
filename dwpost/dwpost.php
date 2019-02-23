@@ -36,7 +36,7 @@ function dwpost_unload() {
 
 
 function dwpost_jot_nets(&$a,&$b) {
-	if(! Apps::addon_app_installed(local_channel(), 'ijpost'))
+	if(! Apps::addon_app_installed(local_channel(), 'dwpost'))
 		return;
 
 	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
