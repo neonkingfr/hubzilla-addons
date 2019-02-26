@@ -57,7 +57,6 @@ class Diaspora extends Controller {
 			return $o;
 		}
 
-
 		$pubcomments  = get_pconfig(local_channel(),'system','diaspora_public_comments',1);
 		$hijacking    = get_pconfig(local_channel(),'system','prevent_tag_hijacking');
 		$signing      = get_pconfig(local_channel(),'diaspora','sign_unsigned');
