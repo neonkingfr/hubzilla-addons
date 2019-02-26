@@ -292,6 +292,9 @@ class QueueWorkerUtils {
         }
 
 	static private function getworkid() {
+		$workermaxage = get_config('queueworker','max_queueworker_age');
+		$workermaxage = ($workermaxage > 120) ? $workermaxage : 300;
+
 		self::qbegin('workerq');
 		$work = q("select workerq_id from workerq 
 				where workerq_reservationid is null
@@ -302,8 +305,6 @@ class QueueWorkerUtils {
 			return false;
 		}
 
-		$workermaxage = get_config('queueworker','max_queueworker_age');
-		$workermaxage = ($workermaxage > 120) ? $workermaxage : 300;
 		$id = $work[0]['workerq_id'];
                 $work = q("update workerq set workerq_reservationid='%s', workerq_processtimeout = %s + interval %s where workerq_id = %d",
                         self::$queueworker,
