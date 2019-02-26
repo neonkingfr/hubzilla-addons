@@ -204,7 +204,7 @@ function gallery_prepare_body(&$arr) {
 					justifyThreshold: 0.5,
 					margins: $margins,
 					border: 0
-				}).on('jg.complete', function(e){ justifiedGalleryActive = false; });
+				}).on('jg.complete', function(e){ justifiedGalleryActive = false; setTimeout(scrollToItem, 100); });
 			}
 		</script>
 EOF;
