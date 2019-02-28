@@ -16,8 +16,14 @@ function diaspora_handle_from_contact($contact_hash) {
 
 function diaspora_get_contact_by_handle($uid,$handle) {
 
+	if(! $handle) {
+		logger('diaspora_get_contact_by_handle: no handle provided');
+		return false;
+	}
+
 	if(diaspora_is_blacklisted($handle))
 		return false;
+
 	require_once('include/channel.php');
 
 	$sys = get_sys_channel();
@@ -40,6 +46,11 @@ function find_diaspora_person_by_handle($handle) {
 
 	$person = false;
 	$refresh = false;
+
+	if(! $handle) {
+		logger('find_diaspora_person_by_handle: no handle provided');
+		return false;
+	}
 
 	if(diaspora_is_blacklisted($handle))
 		return false;
