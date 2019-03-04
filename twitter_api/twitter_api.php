@@ -266,6 +266,7 @@ function api_get_user($contact_id = null, $contact_xchan = null){
 		'screen_name' => substr($uinfo[0]['xchan_addr'],0,strpos($uinfo[0]['xchan_addr'],'@')),
 		'location' => ($usr) ? $usr[0]['channel_location'] : '',
 		'profile_image_url' => $uinfo[0]['xchan_photo_l'],
+		'profile_image_url_https' => $uinfo[0]['xchan_photo_l'],
 		'url' => $uinfo[0]['xchan_url'],
 		'contact_url' => z_root() . '/connections/'.$uinfo[0]['abook_id'],
 		'protected' => false,	
