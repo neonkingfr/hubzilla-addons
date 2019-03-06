@@ -1,5 +1,6 @@
-version: 0.5
+version: 1
 url: $baseurl/hsse
+requires: local_channel
 name: Wysiwyg Status
 photo: icon:pencil-square-o
 categories: Social

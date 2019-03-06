@@ -49,8 +49,6 @@ function initEditor(cb){
 	}
 }
 
-
-
 function enableOnUser(){
 	if(editor)
 		return;
@@ -59,9 +57,9 @@ function enableOnUser(){
 }
 </script>
 
-<script src="library/blueimp_upload/js/vendor/jquery.ui.widget.js"></script>
-<script src="library/blueimp_upload/js/jquery.iframe-transport.js"></script>
-<script src="library/blueimp_upload/js/jquery.fileupload.js"></script>
+<script src="vendor/blueimp/jquery-file-upload/js/vendor/jquery.ui.widget.js"></script>
+<script src="vendor/blueimp/jquery-file-upload/js/jquery.iframe-transport.js"></script>
+<script src="vendor/blueimp/jquery-file-upload/js/jquery.fileupload.js"></script>
 
 <script>
 var activeCommentID = 0;
@@ -203,19 +201,29 @@ var activeCommentText = '';
 		})
 	}
 
-
 	function jotShare(id,post_type) {
+		$('#like-rotator-' + id).show();
+		$.get('{{$baseurl}}/share/' + id, function(data) {
+			$('#like-rotator-' + id).hide();
+			updateInit();
+		});
+	}
+
+	function jotEmbed(id,post_type) {
 		if(post_type == 6) {
 			window.location.href = 'rpost?f=&post_id='+id;
 		}
 		else {
+
 			if ($('#jot-popup').length != 0) $('#jot-popup').show();
 
 			$('#like-rotator-' + id).show();
-			$.get('{{$baseurl}}/share/' + id, function(data) {
+			$.get('{{$baseurl}}/embed/' + id, function(data) {
 				if (!editor) $("#profile-jot-text").val("");
 				initEditor(function(){
-					addeditortext(data);
+					instance.insert(data);
+					instance.updateOriginal();
+					//addeditortext(data);
 					$('#like-rotator-' + id).hide();
 					$(window).scrollTop(0);
 				});
