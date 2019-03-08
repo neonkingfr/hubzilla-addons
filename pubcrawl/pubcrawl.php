@@ -403,7 +403,7 @@ function pubcrawl_notifier_process(&$arr) {
 
 	logger('upstream: ' . intval($arr['upstream']));
 
-	logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
+	 logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
 
 	// allow this to be set per message
 
@@ -463,6 +463,7 @@ function pubcrawl_notifier_process(&$arr) {
 	if(! $target_item['mid'])
 		return;
 
+
 	$prv_recips = $arr['env_recips'];
 
 
@@ -471,6 +472,7 @@ function pubcrawl_notifier_process(&$arr) {
 	}
 	else {
 		$ti = asencode_activity($target_item);
+
 		if(! $ti)
 			return;
 
@@ -485,6 +487,7 @@ function pubcrawl_notifier_process(&$arr) {
 		$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
 	}
 
+	
 	if($prv_recips) {
 		$hashes = array();
 
@@ -597,10 +600,11 @@ function pubcrawl_queue_message($msg,$sender,$recip,$message_id = '') {
     ));
 
     if($message_id && (! get_config('system','disable_dreport'))) {
-        q("insert into dreport ( dreport_mid, dreport_site, dreport_recip, dreport_result, dreport_time, dreport_xchan, dreport_queue ) values ( '%s','%s','%s','%s','%s','%s','%s' ) ",
+        q("insert into dreport ( dreport_mid, dreport_site, dreport_recip, dreport_name, dreport_result, dreport_time, dreport_xchan, dreport_queue ) values ( '%s','%s','%s','%s','%s','%s','%s', '%s' ) ",
             dbesc($message_id),
             dbesc($dest_url),
             dbesc($dest_url),
+			dbesc($dest_url),
             dbesc('queued'),
             dbesc(datetime_convert()),
             dbesc($sender['channel_hash']),
@@ -866,11 +870,13 @@ function pubcrawl_item_mod_init($x) {
 
 		$sql_extra = item_permissions_sql(0);
 
-		$r = q("select * from item where mid like '%s' $item_normal $sql_extra limit 1",
+		$r = q("select * from item where (uuid = '%s' or mid like '%s') $item_normal $sql_extra limit 1",
+			dbesc($item_id),
 			dbesc($item_id . '%')
 		);
 		if(! $r) {
-			$r = q("select * from item where mid like '%s' $item_normal limit 1",
+			$r = q("select * from item where (uuid = '%s' or mid like '%s') $item_normal limit 1",
+				dbesc($item_id),
 				dbesc($item_id . '%')
 			);
 			if($r) {
@@ -1128,6 +1134,10 @@ function pubcrawl_queue_deliver(&$b) {
 					do_delivery($piled_up,true);
 				}
 			}
+		}
+		else {
+			logger('pubcrawl_queue_deliver: queue post returned ' . $result['return_code'] . ' from ' . $outq['outq_posturl'], LOGGER_DEBUG);
+			update_queue_item($outq['outq_hash'],10);
 		}
 	}
 }

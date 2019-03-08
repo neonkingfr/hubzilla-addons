@@ -7,6 +7,10 @@
  * Maintainer: none
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
+
 
 function fuzzloc_load() {
 
@@ -18,17 +22,7 @@ function fuzzloc_load() {
 	 */
 
 	register_hook('post_local', 'addon/fuzzloc/fuzzloc.php', 'fuzzloc_post_hook');
-
-	/**
-	 *
-	 * Then we'll attach into the plugin settings page, and also the 
-	 * settings post hook so that we can create and update
-	 * user preferences.
-	 *
-	 */
-
-	register_hook('feature_settings', 'addon/fuzzloc/fuzzloc.php', 'fuzzloc_settings');
-	register_hook('feature_settings_post', 'addon/fuzzloc/fuzzloc.php', 'fuzzloc_settings_post');
+	Route::register('addon/fuzzloc/Mod_Fuzzloc.php','fuzzloc');
 
 	logger("loaded fuzzloc");
 }
@@ -45,9 +39,7 @@ function fuzzloc_unload() {
 	 */
 
 	unregister_hook('post_local',    'addon/fuzzloc/fuzzloc.php', 'fuzzloc_post_hook');
-	unregister_hook('feature_settings', 'addon/fuzzloc/fuzzloc.php', 'fuzzloc_settings');
-	unregister_hook('feature_settings_post', 'addon/fuzzloc/fuzzloc.php', 'fuzzloc_settings_post');
-
+	Route::unregister('addon/fuzzloc/Mod_Fuzzloc.php','fuzzloc');
 
 	logger("removed fuzzloc");
 }
@@ -78,8 +70,7 @@ function fuzzloc_post_hook($a, &$item) {
 	if(! $item['coord'])
 		return;
 
-	$active = get_pconfig(local_channel(), 'fuzzloc', 'enable');
-	if(! $active)
+	if(! Apps::addon_app_installed(local_channel(),'fuzzloc'))
 		return;
 
 	$maxfuzz = intval(get_pconfig(local_channel(), 'fuzzloc', 'maxfuzz'));
@@ -123,72 +114,6 @@ function fuzzloc_post_hook($a, &$item) {
 }
 
 
-function fuzzloc_mtod($meters, $latitude)
-{
+function fuzzloc_mtod($meters, $latitude) {
     return $meters / (111.32 * 1000 * cos($latitude * (3.1415 / 180)));
-}
-
-
-/**
- *
- * Callback from the settings post function.
- * $post contains the $_POST array.
- * We will make sure we've got a valid user account
- * and if so set our configuration setting for this person.
- *
- */
-
-function fuzzloc_settings_post($a,$post) {
-	if(! local_channel())
-		return;
-	if($_POST['fuzzloc-submit']) {
-		set_pconfig(local_channel(),'fuzzloc','enable',intval($_POST['fuzzloc']));
-		set_pconfig(local_channel(),'fuzzloc','minfuzz',intval($_POST['minfuzz']));
-		set_pconfig(local_channel(),'fuzzloc','maxfuzz',intval($_POST['maxfuzz']));
-		info( t('Fuzzloc Settings updated.') . EOL);
-	}
-}
-
-
-/**
- *
- * Called from the Plugin Setting form. 
- * Add our own settings info to the page.
- *
- */
-
-
-
-function fuzzloc_settings(&$a,&$s) {
-
-	if(! local_channel())
-		return;
-
-	/* Get the current state of our config variable */
-
-	$enabled = get_pconfig(local_channel(),'fuzzloc','enable');
-
-	$checked = (($enabled) ? 1 : false);
-
-	/* Add some HTML to the existing form */
-
-	$sc .= '<div class="descriptive-text">' . t('Fuzzloc allows you to blur your precise location if your channel uses browser location mapping.') . '</div><br>';
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('fuzzloc', t('Enable Fuzzloc Plugin'), $checked, '', array(t('No'),t('Yes'))),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-		'$field'	=> array('minfuzz', t('Minimum offset in meters'), get_pconfig(local_channel(),'fuzzloc','minfuzz')),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-		'$field'	=> array('maxfuzz', t('Maximum offset in meters'), get_pconfig(local_channel(),'fuzzloc','maxfuzz')),
-	));
-
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('fuzzloc',t('Fuzzloc Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
 }

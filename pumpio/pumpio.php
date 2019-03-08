@@ -7,6 +7,10 @@
  * Maintainer: none
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
+
 require_once('library/oauth/http.php');
 
 require_once('library/oauth/oauth_client.php');
@@ -18,18 +22,18 @@ function pumpio_load() {
     register_hook('post_local',           'addon/pumpio/pumpio.php', 'pumpio_post_local');
     register_hook('notifier_normal',      'addon/pumpio/pumpio.php', 'pumpio_send');
     register_hook('jot_networks',         'addon/pumpio/pumpio.php', 'pumpio_jot_nets');
-    register_hook('feature_settings',      'addon/pumpio/pumpio.php', 'pumpio_settings');
-    register_hook('feature_settings_post', 'addon/pumpio/pumpio.php', 'pumpio_settings_post');
 //    register_hook('cron', 'addon/pumpio/pumpio.php', 'pumpio_cron');
+
+	Route::register('addon/pumpio/Mod_Pumpio.php', 'pumpio');
 
 }
 function pumpio_unload() {
     unregister_hook('post_local',       'addon/pumpio/pumpio.php', 'pumpio_post_local');
     unregister_hook('notifier_normal',  'addon/pumpio/pumpio.php', 'pumpio_send');
     unregister_hook('jot_networks',     'addon/pumpio/pumpio.php', 'pumpio_jot_nets');
-    unregister_hook('feature_settings',      'addon/pumpio/pumpio.php', 'pumpio_settings');
-    unregister_hook('feature_settings_post', 'addon/pumpio/pumpio.php', 'pumpio_settings_post');
 //    unregister_hook('cron', 'addon/pumpio/pumpio.php', 'pumpio_cron');
+
+	Route::unregister('addon/pumpio/Mod_Pumpio.php', 'pumpio');
 }
 
 function pumpio_module() {}
@@ -146,128 +150,22 @@ function pumpio_connect($a) {
 
 	if($success) {
 		$o .= t('You are now authenticated to pumpio.');
-		$o .= '<br /><a href="' . z_root() . '/settings/featured">' . t('return to the featured settings page') . '</a>';
+		$o .= '<br /><a href="' . z_root() . '/pumpio">' . t('return to the featured settings page') . '</a>';
 	}
 
 	return($o);
 }
 
 function pumpio_jot_nets(&$a,&$b) {
+	if(! Apps::addon_app_installed(local_channel(), 'pumpio'))
+		return;
+
 	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
 		return;
 
-	$pumpio_post = get_pconfig(local_channel(),'pumpio','post');
-	if(intval($pumpio_post) == 1) {
-		$pumpio_defpost = get_pconfig(local_channel(),'pumpio','post_by_default');
-		$selected = ((intval($pumpio_defpost) == 1) ? ' checked="checked" ' : '');
-		$b .= '<div class="profile-jot-net"><input type="checkbox" name="pumpio_enable"' . $selected . ' value="1" /> <img src="addon/pumpio/pumpio.png" /> ' . t('Post to Pump.io') . '</div>';
-
-	}
-}
-
-
-function pumpio_settings(&$a,&$s) {
-
-	if(! local_channel())
-		return;
-
-	/* Add our stylesheet to the page so we can make our settings look nice */
-
-	//App::$page['htmlhead'] .= '<link rel="stylesheet"  type="text/css" href="' . z_root() . '/addon/pumpio/pumpio.css' . '" media="all" />' . "\r\n";
-
-	/* Get the current state of our config variables */
-
-	$enabled = get_pconfig(local_channel(),'pumpio','post');
-	$checked = (($enabled) ? 1 : false);
-
-	$def_enabled = get_pconfig(local_channel(),'pumpio','post_by_default');
-	$def_checked = (($def_enabled) ? 1 : false);
-
-	$public_enabled = get_pconfig(local_channel(),'pumpio','public');
-	$public_checked = (($public_enabled) ? 1 : false);
-
-	$mirror_enabled = get_pconfig(local_channel(),'pumpio','mirror');
-	$mirror_checked = (($mirror_enabled) ? 1 : false);
-
-	$servername = get_pconfig(local_channel(), "pumpio", "host");
-	$username = get_pconfig(local_channel(), "pumpio", "user");
-
-	/* Add some HTML to the existing form */
-
-	$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-		'$field'	=> array('pumpio_host', t('Pump.io servername'), $servername, t('Without "http://" or "https://"'))
-	));
-
-	$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-		'$field'	=> array('pumpio_user', t('Pump.io username'), $username, t('Without the servername'))
-	));
-
-
-	if (($username != '') AND ($servername != '')) {
-
-		$oauth_token = get_pconfig(local_channel(), "pumpio", "oauth_token");
-		$oauth_token_secret = get_pconfig(local_channel(), "pumpio", "oauth_token_secret");
-
-		if (($oauth_token == "") OR ($oauth_token_secret == "")) {
-			$sc .= '<div class="section-content-danger-wrapper">';
-			$sc .= '<strong>' . t("You are not authenticated to pumpio") . '</strong>';
-			$sc .= '</div>';
-			$sc .= '<a href="'.z_root().'/pumpio/connect" class="btn btn-primary btn-xs">'.t("(Re-)Authenticate your pump.io connection").'</a>';
-		}
-
-		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-			'$field'	=> array('pumpio', t('Enable pump.io Post Plugin'), $checked, '', array(t('No'),t('Yes'))),
-		));
-
-		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-			'$field'	=> array('pumpio_bydefault', t('Post to pump.io by default'), $def_checked, '', array(t('No'),t('Yes'))),
-		));
-
-		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-			'$field'	=> array('pumpio_public', t('Should posts be public'), $public_checked, '', array(t('No'),t('Yes'))),
-		));
-
-		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-			'$field'	=> array('pumpio_mirror', t('Mirror all public posts'), $mirror_checked, '', array(t('No'),t('Yes'))),
-		));
-
-	}
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('pumpio', '<img src="addon/pumpio/pumpio.png" style="width:auto; height:1em; margin:-3px 5px 0px 0px;">' . t('Pump.io Post Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
-
-}
-
-
-function pumpio_settings_post(&$a,&$b) {
-
-	if(x($_POST,'pumpio-submit')) {
-		// filtering the username if it is filled wrong
-		$user = $_POST['pumpio_user'];
-		if (strstr($user, "@")) {
-			$pos = strpos($user, "@");
-			if ($pos > 0)
-				$user = substr($user, 0, $pos);
-		}
-
-		// Filtering the hostname if someone is entering it with "http"
-		$host = $_POST['pumpio_host'];
-		$host = trim($host);
-		$host = str_replace(array("https://", "http://"), array("", ""), $host);
-
-		set_pconfig(local_channel(),'pumpio','post',intval($_POST['pumpio']));
-		set_pconfig(local_channel(),'pumpio','host',$host);
-		set_pconfig(local_channel(),'pumpio','user',$user);
-		set_pconfig(local_channel(),'pumpio','public',$_POST['pumpio_public']);
-		set_pconfig(local_channel(),'pumpio','mirror',$_POST['pumpio_mirror']);
-		set_pconfig(local_channel(),'pumpio','post_by_default',intval($_POST['pumpio_bydefault']));
-				info( t('PumpIO Settings saved.') . EOL);
-
-
-	}
-
+	$pumpio_defpost = get_pconfig(local_channel(),'pumpio','post_by_default');
+	$selected = ((intval($pumpio_defpost) == 1) ? ' checked="checked" ' : '');
+	$b .= '<div class="profile-jot-net"><input type="checkbox" name="pumpio_enable"' . $selected . ' value="1" /> <img src="addon/pumpio/pumpio.png" /> ' . t('Post to Pump.io') . '</div>';
 }
 
 function pumpio_post_local(&$a,&$b) {
@@ -283,7 +181,7 @@ function pumpio_post_local(&$a,&$b) {
 	if($b['item_private'] || ($b['parent_mid'] != $b['mid']))
 		return;
 
-	$pumpio_post   = intval(get_pconfig(local_channel(),'pumpio','post'));
+	$pumpio_post = Apps::addon_app_installed(local_channel(), 'pumpio');
 
 	$pumpio_enable = (($pumpio_post && x($_REQUEST,'pumpio_enable')) ? intval($_REQUEST['pumpio_enable']) : 0);
 
@@ -303,7 +201,6 @@ function pumpio_post_local(&$a,&$b) {
 
 
 function pumpio_send(&$a,&$b) {
-
 
 	if((! is_item_normal($b)) || $b['item_private'] || ($b['created'] !== $b['edited']))
 		return;

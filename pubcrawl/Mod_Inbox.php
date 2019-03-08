@@ -132,6 +132,14 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		foreach($channels as $channel) {
 
+			if(($AS->obj) && (! is_array($AS->obj))) {
+				// fetch object using current credentials
+				$o = \Zotlabs\Lib\Activity::fetch($AS->obj,$channel);
+				if(is_array($o)) {
+					$AS->obj = $o;
+				}
+			}
+
 			switch($AS->type) {
 				case 'Follow':
 					if($AS->obj && $AS->obj['type'] === 'Person') {

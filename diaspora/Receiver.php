@@ -212,7 +212,7 @@ class Diaspora_Receiver {
 		$orig_id = null;
 
 
-		$r = q("SELECT id, edited FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT id, edited FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($guid)
 		);
@@ -310,7 +310,7 @@ class Diaspora_Receiver {
 		$datarray = array();
 
 		// Look for tags and linkify them
-		$results = linkify_tags('', $body, $this->importer['channel_id'], false);
+		$results = linkify_tags($body, $this->importer['channel_id'], false);
 
 		$datarray['term'] = array();
 
@@ -409,6 +409,8 @@ class Diaspora_Receiver {
 		$datarray['uid'] = $this->importer['channel_id'];
 
 		$datarray['verb'] = ACTIVITY_POST;
+		$datarray['uuid'] = $guid;
+
 		$datarray['mid'] = $datarray['parent_mid'] = $guid;
 
 		if($updated) {
@@ -499,7 +501,7 @@ class Diaspora_Receiver {
 		if(! $contact)
 			return;
 
-		$r = q("SELECT id FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT id FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($guid)
 		);
@@ -522,7 +524,7 @@ class Diaspora_Receiver {
 		$orig_url = 'https://'.substr($orig_author,strpos($orig_author,'@')+1).'/'.$orig_url_arg.'/'.$orig_guid;
 
 		if($text)
-			$text = markdown_to_bb($text, false, [ 'diaspora' => true ]) . "\n";
+			$text = markdown_to_bb($text, false, [ 'diaspora' => true, 'preserve_lf' => true ]) . "\n";
 		else
 			$text = '';
 
@@ -530,7 +532,7 @@ class Diaspora_Receiver {
 		$source_xml = get_diaspora_reshare_xml($source_url);
 
 		if($source_xml['status_message']) {
-			$body = markdown_to_bb($this->get_body($source_xml['status_message']), false, [ 'diaspora' => true ]);
+			$body = markdown_to_bb($this->get_body($source_xml['status_message']), false, [ 'diaspora' => true, 'preserve_lf' => true ]);
 
 			$orig_author = $this->get_author($source_xml['status_message']);
 			$orig_guid   = notags($this->get_property('guid',$source_xml['status_message']));
@@ -578,7 +580,7 @@ class Diaspora_Receiver {
 		$datarray = array();
 
 		// Look for tags and linkify them
-		$results = linkify_tags('', $body, $this->importer['channel_id'], false);
+		$results = linkify_tags($body, $this->importer['channel_id'], false);
 
 		$datarray['term'] = array();
 
@@ -636,7 +638,7 @@ class Diaspora_Receiver {
 		$plink = service_plink($contact,$guid);
 		$datarray['aid'] = $this->importer['channel_account_id'];
 		$datarray['uid'] = $this->importer['channel_id'];
-		$datarray['mid'] = $datarray['parent_mid'] = $guid;
+		$datarray['uuid'] = $datarray['mid'] = $datarray['parent_mid'] = $guid;
 		$datarray['changed'] = $datarray['created'] = $datarray['edited'] = datetime_convert('UTC','UTC',$created);
 		$datarray['item_private'] = $private;
 		$datarray['plink'] = $plink;
@@ -724,7 +726,7 @@ class Diaspora_Receiver {
 			$contact = find_diaspora_person_by_handle($this->msg['author']);
 
 
-		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($parent_guid)
 		);
@@ -748,7 +750,7 @@ class Diaspora_Receiver {
 		$editing = false;
 		$orig_id = null;
 
-		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($guid)
 		);
@@ -871,7 +873,7 @@ class Diaspora_Receiver {
 		$datarray = array();
 
 		// Look for tags and linkify them
-		$results = linkify_tags('', $body, $this->importer['channel_id'], false);
+		$results = linkify_tags($body, $this->importer['channel_id'], false);
 
 		$datarray['term'] = array();
 
@@ -923,9 +925,15 @@ class Diaspora_Receiver {
 		$datarray['aid'] = $this->importer['channel_account_id'];
 		$datarray['uid'] = $this->importer['channel_id'];
 		$datarray['verb'] = ACTIVITY_POST;
-		$datarray['mid'] = $guid;
+		$datarray['mid'] = $datarray['uuid'] = $guid;
 		$datarray['parent_mid'] = $parent_item['mid'];
 		$datarray['thr_parent'] = $thr_parent;
+
+		// use a URI for thr_parent if we have it
+
+		if(strpos($parent_item['mid'],'/') !== false && $datarray['thr_parent'] === basename($parent_item['mid'])) {
+			$datarray['thr_parent'] = $parent_item['mid'];
+		}
 
 		// set the route to that of the parent so downstream hubs won't reject it.
 		$datarray['route'] = $parent_item['route'];
@@ -1365,7 +1373,7 @@ class Diaspora_Receiver {
 			return 202;
 		}
 
-		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($status_message_guid)
 		);
@@ -1396,14 +1404,16 @@ class Diaspora_Receiver {
 
 
 	function like() {
-
 		$guid = notags($this->get_property('guid'));
+		if(! $guid) {
+			logger('diaspora_like: missing guid' . print_r($this->msg, true), LOGGER_DEBUG);
+			return;
+		}
 		$parent_guid = notags($this->get_property('parent_guid'));
 		$diaspora_handle = notags($this->get_author());
 		$target_type = notags($this->get_ptype());
 		$positive = notags($this->get_property('positive'));
 		$author_signature = notags($this->get_property('author_signature'));
-
 		$parent_author_signature = $this->get_property('parent_author_signature');
 
 		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$this->msg['author']);
@@ -1427,7 +1437,7 @@ class Diaspora_Receiver {
 			return 202;
 		}
 
-		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($parent_guid)
 		);
@@ -1445,7 +1455,7 @@ class Diaspora_Receiver {
 			return;
 		}
 
-		$r = q("SELECT * FROM item WHERE uid = %d AND mid = '%s' LIMIT 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
 			dbesc($guid)
 		);
@@ -1476,10 +1486,14 @@ class Diaspora_Receiver {
 		// Note: I don't think "Like" objects with positive = "false" are ever actually used
 		// It looks like "RelayableRetractions" are used for "unlike" instead
 
-		if($positive === 'true')
+		if($positive === 'true') {
 			$activity = ACTIVITY_LIKE;
-		else
+			$bodyverb = t('%1$s likes %2$s\'s %3$s');
+		}
+		else {
 			$activity = ACTIVITY_DISLIKE;
+			$bodyverb = t('%1$s dislikes %2$s\'s %3$s');
+		}
 
 		// old style signature
 		$signed_data = $positive . ';' . $guid . ';' . $target_type . ';' . $parent_guid . ';' . $diaspora_handle;
@@ -1545,6 +1559,7 @@ class Diaspora_Receiver {
 		$object = json_encode(array(
 			'type'    => $post_type,
 			'id'	  => $parent_item['mid'],
+			'asld'    => \Zotlabs\Lib\Activity::fetch_item( [ 'id' => $parent_item['mid'] ] ),
 			'parent'  => (($parent_item['thr_parent']) ? $parent_item['thr_parent'] : $parent_item['parent_mid']),
 			'link'	  => $links,
 			'title'   => $parent_item['title'],
@@ -1563,18 +1578,25 @@ class Diaspora_Receiver {
 			));
 
 
-		$bodyverb = t('%1$s likes %2$s\'s %3$s');
-
 		$arr = array();
 
 		$arr['uid'] = $this->importer['channel_id'];
 		$arr['aid'] = $this->importer['channel_account_id'];
+		$arr['uuid'] = $guid;
 		$arr['mid'] = $guid;
 		
 		$arr['parent_mid'] = $parent_item['mid'];
 
-		if($parent_item['mid'] !== $parent_guid)
+		if($parent_item['mid'] !== $parent_guid) {
 			$arr['thr_parent'] = $parent_guid;
+
+			// use a URI for thr_parent if we have it
+
+			if(strpos($parent_item['mid'],'/') !== false && $arr['thr_parent'] === basename($parent_item['mid'])) {
+				$arr['thr_parent'] = $parent_item['mid'];
+			}
+
+		}
 
 		$arr['owner_xchan'] = $parent_item['owner_xchan'];
 		$arr['author_xchan'] = $person['xchan_hash'];
@@ -1639,7 +1661,7 @@ class Diaspora_Receiver {
 			contact_remove($this->importer['channel_id'],$contact['abook_id']);
 		}
 		elseif(($type === 'Post') || ($type === 'StatusMessage') || ($type === 'Comment') || ($type === 'Like')) {
-			$r = q("select * from item where mid = '%s' and uid = %d limit 1",
+			$r = q("select * from item where uuid = '%s' and uid = %d limit 1",
 				dbesc($guid),
 				intval($this->importer['channel_id'])
 			);
@@ -1654,7 +1676,7 @@ class Diaspora_Receiver {
 
 					// If we are the conversation owner, propagate the delete elsewhere
 
-					$p = q("select * from item where mid = '%s' and uid = %d",
+					$p = q("select * from item where uuid = '%s' and uid = %d",
 						dbesc($r[0]['parent_mid']),
 						intval($this->importer['channel_id'])
 					);
@@ -1734,7 +1756,7 @@ class Diaspora_Receiver {
 		}
 
 		if($type === 'StatusMessage' || $type === 'Comment' || $type === 'Like') {
-			$r = q("select * from item where mid = '%s' and uid = %d limit 1",
+			$r = q("select * from item where uuid = '%s' and uid = %d limit 1",
 				dbesc($guid),
 				intval($this->importer['channel_id'])
 			);
@@ -2122,7 +2144,7 @@ class Diaspora_Receiver {
 
 		$arr['uid'] = $this->importer['channel_id'];
 		$arr['aid'] = $this->importer['channel_account_id'];
-		$arr['mid'] = $guid;
+		$arr['mid'] = $arr['uuid'] = $guid;
 		
 		$arr['parent_mid'] = $parent_item['mid'];
 

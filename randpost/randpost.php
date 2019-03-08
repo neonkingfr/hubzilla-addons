@@ -188,7 +188,8 @@ function randpost_enotify_store(&$a,&$b) {
 
 	$x['uid'] = $c[0]['channel_id'];
 	$x['aid'] = $c[0]['channel_account_id'];
-	$x['mid'] = item_message_id();
+	$x['uuid'] = item_message_id();
+	$x['mid'] = z_root() . '/item/' . $x['uuid'];
 	$x['parent'] = $p[0]['id'];
 	$x['parent_mid'] = $b['item']['parent_mid'];
 	$x['author_xchan'] = $c[0]['channel_hash'];

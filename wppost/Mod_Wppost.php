@@ -38,7 +38,7 @@ class Wppost extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Wordpress Post App (Not Installed):</b><br>';
+			$o = '<b>' . t('Wordpress Post App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= t('Post to WordPress or anything else which uses the wordpress XMLRPC API');
 			return $o;
 		}

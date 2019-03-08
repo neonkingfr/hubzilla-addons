@@ -1,0 +1,6 @@
+version: 1
+url: $baseurl/fuzzloc
+requires: local_channel
+name: Fuzzy Location
+photo: icon:map-marker
+

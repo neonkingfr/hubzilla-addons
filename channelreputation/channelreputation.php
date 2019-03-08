@@ -2,34 +2,37 @@
 /**
  * Name: Channel Reputation
  * Description: Reputation system for community channels (forums, etc.)
- * Version: 0.5
+ * Version: 0.7
  * Author: DM42.Net, LLC
  * Maintainer: devhubzilla@dm42.net
- * MinVersion: 3.7.1
+ * MinVersion: 3.8.0
  */
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
 
 function channelreputation_load() {
-        Zotlabs\Extend\Hook::register('get_all_api_perms', 'addon/channelreputation/channelreputation.php', 'Channelreputation::get_perms_filter',1,5000);
-        Zotlabs\Extend\Hook::register('get_all_perms', 'addon/channelreputation/channelreputation.php', 'Channelreputation::get_perms_filter',1,5000);
-        Zotlabs\Extend\Hook::register('perm_is_allowed', 'addon/channelreputation/channelreputation.php', 'Channelreputation::perm_is_allowed',1,5000);
-        Zotlabs\Extend\Hook::register('can_comment_on_post', 'addon/channelreputation/channelreputation.php', 'Channelreputation::can_comment_on_post',1,5000);
-        Zotlabs\Extend\Hook::register('channelrep_mod_post', 'addon/channelreputation/channelreputation.php', 'Channelreputation::mod_post',1,5000);
-        Zotlabs\Extend\Hook::register('dropdown_extras', 'addon/channelreputation/channelreputation.php', 'Channelreputation::dropdown_extras',1,5000);
-        Zotlabs\Extend\Hook::register('channelrep_mod_content', 'addon/channelreputation/channelreputation.php', 'Channelreputation::mod_content',1,5000);
-        Zotlabs\Extend\Hook::register('feature_settings_post', 'addon/channelreputation/channelreputation.php', 'Channelreputation::feature_settings_post',1,5000);
-        Zotlabs\Extend\Hook::register('feature_settings', 'addon/channelreputation/channelreputation.php', 'Channelreputation::feature_settings',1,5000);
-        Zotlabs\Extend\Hook::register('channel_apps', 'addon/channelreputation/channelreputation.php', 'Channelreputation::channel_apps',1,5000);
-        Zotlabs\Extend\Hook::register('permissions_list', 'addon/channelreputation/channelreputation.php', 'Channelreputation::permissions_list',1,5000);
-        Zotlabs\Extend\Hook::register('item_store', 'addon/channelreputation/channelreputation.php', 'Channelreputation::item_store',1,5000);
-        Zotlabs\Extend\Hook::register('page_header', 'addon/channelreputation/channelreputation.php', 'Channelreputation::page_header',1,5000);
-        Zotlabs\Extend\Hook::register('page_end', 'addon/channelreputation/channelreputation.php', 'Channelreputation::page_end',1,5000);
-
+        Hook::register('get_all_api_perms', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::get_perms_filter',1,5000);
+        Hook::register('get_all_perms', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::get_perms_filter',1,5000);
+        Hook::register('perm_is_allowed', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::perm_is_allowed',1,5000);
+        Hook::register('can_comment_on_post', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::can_comment_on_post',1,5000);
+        Hook::register('channelrep_mod_post', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::mod_post',1,5000);
+        Hook::register('dropdown_extras', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::dropdown_extras',1,5000);
+        Hook::register('channelrep_mod_content', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::mod_content',1,5000);
+        Hook::register('channel_apps', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::channel_apps',1,5000);
+        Hook::register('permissions_list', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::permissions_list',1,5000);
+        Hook::register('item_store', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::item_store',1,5000);
+        Hook::register('page_header', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::page_header',1,5000);
+        Hook::register('page_end', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::page_end',1,5000);
+	Route::register('addon/channelreputation/Mod_ChannelReputation.php','channelreputation');
+	Route::register('addon/channelreputation/Mod_settings.php','settings/channelreputation');
 }
 
 function channelreputation_unload() {
-        Zotlabs\Extend\Hook::unregister_by_file('addon/channelreputation/channelreputation.php');
+        Hook::unregister_by_file('addon/channelreputation/channelreputation.php');
+	Route::unregister_by_file('addon/channelreputation/Mod_ChannelReputation.php');
+	Route::unregister_by_file('addon/channelreputation/Mod_settings.php');
 }
 
 
@@ -38,14 +41,10 @@ define('CHANNELREPUTATION_MOSTREPUTABLEMODERATION', 1); //Only the most reputabl
 define('CHANNELREPUTATION_MODERATORONLYMODERATION', 2); //Only assigned moderators opinion "counts" - NOT IMPLEMENTED
 
 function channelreputation_mod_content(&$arr) {
-        Channelreputation::mod_content($arr);
+        ChannelReputation_Utils::mod_content($arr);
 }
 
-function channelreputation_init() {
-
-}
-
-class Channelreputation {
+class ChannelReputation_Utils {
                /* REPUTATION:
                           ['reputation'] - float - reputation value
                           ['last_action'] - time() of last action affecting reputation
@@ -90,9 +89,9 @@ class Channelreputation {
                 head_add_js('/addon/channelreputation/view/js/channelreputation.js');
         }
 
-        public static function feature_settings (&$s) {
+        public static function feature_settings () {
         	if(! Apps::addon_app_installed(local_channel(), 'channelreputation')) {
-                	return;
+                	return "<h1>Page not found</h1>";
         	}
 
                 $id = local_channel();
@@ -133,47 +132,56 @@ class Channelreputation {
                                 )));
                         }
                 }
-                $s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-                         '$addon'   => array('community-reputation',
-                                             t('Community Moderation Settings'), '',
-                                             t('Submit')),
-                         '$content' => $sc . $moresettings
-                         ));
+
+                $o = replace_macros(get_markup_template('settings_addon.tpl'), array(
+                        '$action_url' => 'settings/channelreputation',
+                        '$form_security_token' => get_form_security_token("channelreputation"),
+                        '$title' => t('Community Moderation Settings'),
+                        '$content'  => $sc,
+                        '$baseurl'   => z_root(),
+                        '$submit'    => t('Submit'),
+                ));
+
+
+		return $o;
         }
 
-        public static function feature_settings_post () {
-        	if(! Apps::addon_app_installed(local_channel(), 'channelreputation')) {
-                	return;
-        	}
+	public static function feature_settings_post () {
 
-                $id = local_channel();
-                if (! $id) {
-                        return;
-                }
+		if(! Apps::addon_app_installed(local_channel(), 'channelreputation')) {
+			return;
+		}
 
-                $prev_enable = get_pconfig ($id,'channelreputation','enable');
-                set_pconfig( local_channel(), 'channelreputation', 'enable', intval($_POST['channelrep_enable']) );
+		$id = local_channel();
+		if (! $id) {
+			return;
+		}
 
-                if (!isset($_POST['channelrep_enable']) || $_POST['channelrep_enable'] != $prev_enable) {
-                        return;
-                }
+                check_form_security_token_redirectOnErr('channelreputation/settings','channelreputation');
 
-                $settings = self::get_settings($id);
-                foreach ($settings as $setting=>$value) {
-                        $postvar = 'channelrep_'.$setting;
+		$prev_enable = get_pconfig ($id,'channelreputation','enable');
+		set_pconfig( local_channel(), 'channelreputation', 'enable', intval($_POST['channelrep_enable']) );
 
-                        if (isset($_POST[$postvar])) {
-                            $newval = $_POST[$postvar];
-                            $settings[$setting] = floatval($newval);
-                        }
+		if (!isset($_POST['channelrep_enable']) || $_POST['channelrep_enable'] != $prev_enable) {
+			return;
+		}
 
-                }
+		$settings = self::get_settings($id);
+		foreach ($settings as $setting=>$value) {
+			$postvar = 'channelrep_'.$setting;
 
-                $allsettings = self::$settings;
-                $allsettings[$id] = $settings;
-                self::$settings = $allsettings;
-                self::update_settings();
-        }
+			if (isset($_POST[$postvar])) {
+				$newval = $_POST[$postvar];
+				$settings[$setting] = floatval($newval);
+			}
+
+		}
+
+		$allsettings = self::$settings;
+		$allsettings[$id] = $settings;
+		self::$settings = $allsettings;
+		self::update_settings();
+	}
 
         public static function dropdown_extras (&$extras) {
                 $uid = App::$profile_uid ? App::$profile_uid : local_channel();
@@ -537,7 +545,9 @@ class Channelreputation {
          public static function mod_content(&$arr) {
                 notice("No content");
          }
+
          public static function channel_apps(&$hookdata) {
+		/* do not list in channel apps until the app actually provides a frontend
                 $hookdata['tabs'][] = [
                         'label' => t('Channel Reputation'),
                         'url'   => z_root() . '/channelreputation/' . $hookdata['nickname'],
@@ -546,6 +556,7 @@ class Channelreputation {
                         'id'    => 'channelrep-tab',
                         'icon'  => 'line-chart'
                 ];
+		*/
          }
 
          public static function item_store(&$arr) {
@@ -565,7 +576,7 @@ class Channelreputation {
 }
 
 function channelreputation_post (&$a) {
-       $html = Channelreputation::mod_post($_POST);
+       $html = ChannelReputation_Utils::mod_post($_POST);
        echo $html;
        killme();
 }
@@ -576,5 +587,5 @@ function channelreputation_module() {
 }
 
 if (!$Channelreputation instanceof Channelreputation) {
-  $Channelreputation = new Channelreputation();
+  $Channelreputation = new ChannelReputation_Utils();
 }

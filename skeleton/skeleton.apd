@@ -1,0 +1,6 @@
+version: 1
+url: $baseurl/skeleton
+requires: local_channel
+name: Skeleton
+photo: icon:cog
+

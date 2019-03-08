@@ -18,12 +18,12 @@ class Rainbowtag extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Rainbow Tag App (Not Installed):</b><br>';
+			$o = '<b>' . t('Rainbow Tag App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= $desc;
 			return $o;
 		}
 
-		$content = '<b>Rainbow Tag App Installed:</b><br>';
+		$content = '<b>' . t('Rainbow Tag App') . ' (' . t('Installed') . '):</b><br>';
 		$content .= $desc;
 
 		$tpl = get_markup_template("settings_addon.tpl");

@@ -1,0 +1,6 @@
+version: 0.1
+url: $baseurl/photocache
+requires: local_channel
+name: Photo Cache
+photo: icon:gear
+categories: Networking

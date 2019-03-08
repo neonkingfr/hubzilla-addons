@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/rtof
+requires: local_channel
+name: Friendica Crosspost Connector
+photo: icon:friendica
+categories: Networking
+

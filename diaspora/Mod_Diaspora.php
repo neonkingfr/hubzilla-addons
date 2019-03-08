@@ -52,12 +52,10 @@ class Diaspora extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Diaspora Protocol App (Not Installed):</b><br>';
+			$o = '<b>' . t('Diaspora Protocol App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= $desc;
 			return $o;
 		}
-
-		diaspora_init_relay();
 
 		$pubcomments  = get_pconfig(local_channel(),'system','diaspora_public_comments',1);
 		$hijacking    = get_pconfig(local_channel(),'system','prevent_tag_hijacking');

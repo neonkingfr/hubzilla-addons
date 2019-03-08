@@ -1,0 +1,7 @@
+version: 1
+url: $baseurl/redred
+requires: local_channel
+name: Hubzilla Crosspost Connector
+photo: icon:hubzilla
+categories: Networking
+

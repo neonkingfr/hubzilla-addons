@@ -8,6 +8,9 @@
  * Maintainer: none
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
 
 function smileybutton_load() {
 
@@ -17,12 +20,10 @@ function smileybutton_load() {
 	 *
 	 */
 
-	register_hook('jot_tool', 'addon/smileybutton/smileybutton.php', 'show_button');
-	register_hook('feature_settings', 'addon/smileybutton/smileybutton.php', 'smileybutton_settings');
-	register_hook('feature_settings_post', 'addon/smileybutton/smileybutton.php', 'smileybutton_settings_post');
+	Hook::register('jot_tool', 'addon/smileybutton/smileybutton.php', 'show_button');
+	Route::register('addon/smileybutton/Mod_Smileybutton.php','smileybutton');
  
 }
-
 
 function smileybutton_unload() {
 
@@ -32,15 +33,12 @@ function smileybutton_unload() {
 	 *
 	 */
 
-	unregister_hook('jot_tool',    'addon/smileybutton/smileybutton.php', 'show_button');	
-	unregister_hook('feature_settings', 'addon/smileybutton/smileybutton.php', 'smileybutton_settings');
-	unregister_hook('feature_settings_post', 'addon/smileybutton/smileybutton.php', 'smileybutton_settings_post');
+	Hook::register('jot_tool',    'addon/smileybutton/smileybutton.php', 'show_button');
+	Route::unregister('addon/smileybutton/Mod_Smileybutton.php','smileybutton');
 	 
 }
 
-
-
-function show_button($a, &$b) {
+function show_button(&$b) {
 
 	/**
 	 *
@@ -48,12 +46,13 @@ function show_button($a, &$b) {
 	 *
 	 */
 
-	if(! local_channel()) {
-		$nobutton = false;
-	} else {
-		$nobutton = get_pconfig(local_channel(), 'smileybutton', 'nobutton');
-		$deactivated = get_pconfig(local_channel(), 'smileybutton', 'deactivated');
-	}
+	if(! local_channel())
+		return;
+
+	if(! Apps::addon_app_installed(local_channel(),'smileybutton'))
+		return;
+
+	$nobutton = get_pconfig(local_channel(), 'smileybutton', 'nobutton');
 
 	/**
 	 *
@@ -83,41 +82,27 @@ function show_button($a, &$b) {
 
 	/**
 	 *
-	 * Add css to page
-	 *
-	 */	
-
-	App::$page['htmlhead'] .= '<link rel="stylesheet"  type="text/css" href="' . z_root() . '/addon/smileybutton/smileybutton.css' . '" media="all" />' . "\r\n";
-
-	/**
-	 *
 	 * Add the button to the Inputbox
 	 *
 	 */	
-	if (! $nobutton and ! $deactivated) {
+	if (! $nobutton ) {
 		$b .= "<div id=\"profile-smiley-wrapper\"  >\n";
 		//$b .= "\t<img src=\"" . z_root() . "/addon/smileybutton/icon.gif\" onclick=\"toggle_smileybutton(); return false;\" alt=\"smiley\">\n";
 		$b .= "\t<button class=\"btn btn-default btn-sm\" onclick=\"toggle_smileybutton(); return false;\"><i id=\"profile-smiley-button\" class=\"fa fa-smile-o jot-icons\" ></i></button>\n";
 		$b .= "\t</div>\n";
 	}
 
- 
 	/**
 	 *
 	 * Write the smileies to an (hidden) div
 	 *
 	 */
-	if ($deactivated){
-		return;
-		}
-	else
-	{
-		if ($nobutton) {
-			$b .= "\t<div id=\"smileybutton\">\n";
-		} else {
-			$b .= "\t<div id=\"smileybutton\" style=\"display:none;\">\n";
-		}
+	if ($nobutton) {
+		$b .= "\t<div id=\"smileybutton\">\n";
+	} else {
+		$b .= "\t<div id=\"smileybutton\" style=\"display:none;\">\n";
 	}
+
 	$b .= $html . "\n"; 
 	$b .= "</div>\n";
 
@@ -126,7 +111,6 @@ function show_button($a, &$b) {
 	 * Function to show and hide the smiley-list in the hidden div
 	 *
 	 */
-
 	$b .= "<script>\n"; 
 
 	if (! $nobutton) {
@@ -146,7 +130,6 @@ function show_button($a, &$b) {
 	 * Function to add the chosen smiley to the inputbox
 	 *
 	 */
-
 	$b .= "	function smileybutton_addsmiley(text) {\n";
 	$b .= "		if(plaintext == 'none') {\n";
 	$b .= "			var v = $(\"#profile-jot-text\").val();\n";
@@ -161,63 +144,5 @@ function show_button($a, &$b) {
 	$b .= "		}\n";
 	$b .= "	}\n";
 	$b .= "</script>\n";
-}
-
-
-
-
-
-/**
- *
- * Set the configuration
- *
- */
-
-function smileybutton_settings_post($a,$post) {
-	if(! local_channel())
-		return;
-	if($_POST['smileybutton-submit'])
-		set_pconfig(local_channel(),'smileybutton','nobutton',intval($_POST['smileybutton']));
-		set_pconfig(local_channel(),'smileybutton','deactivated',intval($_POST['deactivated']));
-
-}
-
-
-/**
- *
- * Add configuration-dialog to form
- *
- */
-
-
-function smileybutton_settings(&$a,&$s) {
-
-	if(! local_channel())
-		return;
-
-	/* Add our stylesheet to the page so we can make our settings look nice */
-
-	//App::$page['htmlhead'] .= '<link rel="stylesheet"  type="text/css" href="' . z_root() . '/addon/smileybutton/smileybutton.css' . '" media="all" />' . "\r\n";
-
-	/* Get the current state of our config variable */
-
-	$nobutton = get_pconfig(local_channel(),'smileybutton','nobutton');
-	$checked['nobutton'] = (($nobutton) ? 1 : false);
-	$deactivated = get_pconfig(local_channel(),'smileybutton','deactivated');
-	$checked['deactivated'] = (($deactivated) ? 1 : false);
-	/* Add some HTML to the existing form */
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('deactivated', t('Deactivate the feature'), $checked['deactivated'], '', array(t('No'),t('Yes'))),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('smileybutton', t('Hide the button and show the smilies directly.'), $checked['nobutton'], '', array(t('No'),t('Yes'))),
-	));
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('smileybutton', t('Smileybutton Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
 }
 

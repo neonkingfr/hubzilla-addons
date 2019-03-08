@@ -10,100 +10,39 @@
  * Maintainer: none
  */
 
+use Zotlabs\Lib\Apps;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
+
 require_once('include/permissions.php');
 
 function ijpost_load() {
-    register_hook('post_local',           'addon/ijpost/ijpost.php', 'ijpost_post_local');
-    register_hook('notifier_normal',      'addon/ijpost/ijpost.php', 'ijpost_send');
-    register_hook('jot_networks',         'addon/ijpost/ijpost.php', 'ijpost_jot_nets');
-    register_hook('feature_settings',      'addon/ijpost/ijpost.php', 'ijpost_settings');
-    register_hook('feature_settings_post', 'addon/ijpost/ijpost.php', 'ijpost_settings_post');
+	register_hook('post_local',           'addon/ijpost/ijpost.php', 'ijpost_post_local');
+	register_hook('notifier_normal',      'addon/ijpost/ijpost.php', 'ijpost_send');
+	register_hook('jot_networks',         'addon/ijpost/ijpost.php', 'ijpost_jot_nets');
 
+	Route::register('addon/ijpost/Mod_Ijpost.php','ijpost');
 }
 function ijpost_unload() {
-    unregister_hook('post_local',       'addon/ijpost/ijpost.php', 'ijpost_post_local');
-    unregister_hook('notifier_normal',  'addon/ijpost/ijpost.php', 'ijpost_send');
-    unregister_hook('jot_networks',     'addon/ijpost/ijpost.php', 'ijpost_jot_nets');
-    unregister_hook('feature_settings',      'addon/ijpost/ijpost.php', 'ijpost_settings');
-    unregister_hook('feature_settings_post', 'addon/ijpost/ijpost.php', 'ijpost_settings_post');
+	unregister_hook('post_local',       'addon/ijpost/ijpost.php', 'ijpost_post_local');
+	unregister_hook('notifier_normal',  'addon/ijpost/ijpost.php', 'ijpost_send');
+	unregister_hook('jot_networks',     'addon/ijpost/ijpost.php', 'ijpost_jot_nets');
 
+	Route::unregister('addon/ijpost/Mod_Ijpost.php','ijpost');
 }
 
 
 function ijpost_jot_nets(&$a,&$b) {
-    if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
-        return;
+	if(! Apps::addon_app_installed(local_channel(), 'ijpost'))
+		return;
 
-    $ij_post = get_pconfig(local_channel(),'ijpost','post');
-    if(intval($ij_post) == 1) {
+	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
+		return;
+
         $ij_defpost = get_pconfig(local_channel(),'ijpost','post_by_default');
         $selected = ((intval($ij_defpost) == 1) ? ' checked="checked" ' : '');
         $b .= '<div class="profile-jot-net"><input type="checkbox" name="ijpost_enable" ' . $selected . ' value="1" /> '
-            . t('Post to Insanejournal') . '</div>';
-    }
-}
-
-
-function ijpost_settings(&$a,&$s) {
-
-	if(! local_channel())
-		return;
-
-	/* Add our stylesheet to the page so we can make our settings look nice */
-
-	//App::$page['htmlhead'] .= '<link rel="stylesheet"  type="text/css" href="' . z_root() . '/addon/ijpost/ijpost.css' . '" media="all" />' . "\r\n";
-
-	/* Get the current state of our config variables */
-
-	$enabled = get_pconfig(local_channel(),'ijpost','post');
-
-	$checked = (($enabled) ? 1 : false);
-
-	$def_enabled = get_pconfig(local_channel(),'ijpost','post_by_default');
-
-	$def_checked = (($def_enabled) ? 1 : false);
-
-	$ij_username = get_pconfig(local_channel(), 'ijpost', 'ij_username');
-	$ij_password = z_unobscure(get_pconfig(local_channel(), 'ijpost', 'ij_password'));
-
-
-	/* Add some HTML to the existing form */
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('ijpost', t('Enable InsaneJournal Post Plugin'), $checked, '', array(t('No'),t('Yes'))),
-	));
-
-	$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-		'$field'	=> array('ij_username', t('InsaneJournal username'), $ij_username, '')
-	));
-
-	$sc .= replace_macros(get_markup_template('field_password.tpl'), array(
-		'$field'	=> array('ij_password', t('InsaneJournal password'), $ij_password, '')
-	));
-
-	$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-		'$field'	=> array('ij_bydefault', t('Post to InsaneJournal by default'), $def_checked, '', array(t('No'),t('Yes'))),
-	));
-
-	$s .= replace_macros(get_markup_template('generic_addon_settings.tpl'), array(
-		'$addon' 	=> array('ijpost',t('InsaneJournal Post Settings'), '', t('Submit')),
-		'$content'	=> $sc
-	));
-
-}
-
-
-function ijpost_settings_post(&$a,&$b) {
-
-	if(x($_POST,'ijpost-submit')) {
-
-		set_pconfig(local_channel(),'ijpost','post',intval($_POST['ijpost']));
-		set_pconfig(local_channel(),'ijpost','post_by_default',intval($_POST['ij_bydefault']));
-		set_pconfig(local_channel(),'ijpost','ij_username',trim($_POST['ij_username']));
-		set_pconfig(local_channel(),'ijpost','ij_password',z_obscure(trim($_POST['ij_password'])));
-                info( t('Insane Journal Settings saved.') . EOL);
-	}
-
+            . t('Post to Insane Journal') . '</div>';
 }
 
 function ijpost_post_local(&$a,&$b) {
@@ -119,19 +58,20 @@ function ijpost_post_local(&$a,&$b) {
 	if($b['item_private'] || $b['parent'])
 		return;
 
-    $ij_post   = intval(get_pconfig(local_channel(),'ijpost','post'));
+	$ij_post = Apps::addon_app_installed(local_channel(), 'ijpost');
 
 	$ij_enable = (($ij_post && x($_REQUEST,'ijpost_enable')) ? intval($_REQUEST['ijpost_enable']) : 0);
 
 	if($_REQUEST['api_source'] && intval(get_pconfig(local_channel(),'ijpost','post_by_default')))
 		$ij_enable = 1;
 
-    if(! $ij_enable)
-       return;
+	if(! $ij_enable)
+		return;
 
-    if(strlen($b['postopts']))
-       $b['postopts'] .= ',';
-     $b['postopts'] .= 'ijpost';
+	if(strlen($b['postopts']))
+		$b['postopts'] .= ',';
+
+	$b['postopts'] .= 'ijpost';
 }
 
 

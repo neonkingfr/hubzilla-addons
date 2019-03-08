@@ -16,8 +16,14 @@ function diaspora_handle_from_contact($contact_hash) {
 
 function diaspora_get_contact_by_handle($uid,$handle) {
 
+	if(! $handle) {
+		logger('diaspora_get_contact_by_handle: no handle provided');
+		return false;
+	}
+
 	if(diaspora_is_blacklisted($handle))
 		return false;
+
 	require_once('include/channel.php');
 
 	$sys = get_sys_channel();
@@ -40,6 +46,11 @@ function find_diaspora_person_by_handle($handle) {
 
 	$person = false;
 	$refresh = false;
+
+	if(! $handle) {
+		logger('find_diaspora_person_by_handle: no handle provided');
+		return false;
+	}
 
 	if(diaspora_is_blacklisted($handle))
 		return false;
@@ -259,7 +270,7 @@ function diaspora_build_status($item,$owner) {
 
 		$arr = [
 			'author'     => $myaddr,
-			'guid'       => $item['mid'],
+			'guid'       => $item['uuid'],
 			'created_at' => $created_at,
 		];
 
@@ -274,6 +285,11 @@ function diaspora_build_status($item,$owner) {
 		// context specific attributes
 
 		if((! $item['item_private']) && ($ret = diaspora_is_reshare($item['body']))) {
+			$arr['root_author'] = $ret['root_handle'];
+			$arr['root_guid']   = $ret['root_guid'];
+			$msg = arrtoxml('reshare', $arr);
+		} 
+		elseif((! $item['item_private']) && ($ret = diaspora_is_repeat($item))) {
 			$arr['root_author'] = $ret['root_handle'];
 			$arr['root_guid']   = $ret['root_guid'];
 			$msg = arrtoxml('reshare', $arr);
@@ -301,7 +317,7 @@ function diaspora_build_status($item,$owner) {
 				[
 					'$root_handle' => xmlify($ret['root_handle']),
 					'$root_guid' => $ret['root_guid'],
-					'$guid' => $item['mid'],
+					'$guid' => $item['uuid'],
 					'$handle' => xmlify($myaddr),
 					'$public' => $public,
 					'$created' => $created,
@@ -313,7 +329,7 @@ function diaspora_build_status($item,$owner) {
 			$msg = replace_macros(get_markup_template('diaspora_post.tpl','addon/diaspora'),
 				[
 					'$body' => xmlify($body),
-					'$guid' => $item['mid'],
+					'$guid' => $item['uuid'],
 					'$poll' => $poll,
 					'$handle' => xmlify($myaddr),
 					'$public' => $public,
@@ -408,6 +424,13 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 	logger('get_diaspora_reshare_xml: source: ' . $body, LOGGER_DEBUG);
 
 	$oxml = parse_xml_string($body,false);
+
+	if(! $oxml) {
+		logger('get_diaspora_reshare_xml: unparseable result from ' . $url);
+		return '';
+	}
+
+
 	$pxml = sxml2array($oxml);
 	$source_xml = [ strtolower($oxml->getName()) => $pxml ];
 

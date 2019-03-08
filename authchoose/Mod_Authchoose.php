@@ -25,12 +25,12 @@ class Authchoose extends Controller {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 
-			$o = '<b>Authchoose App (Not Installed):</b><br>';
+			$o = '<b>' . t('Authchoose App') . ' (' . t('Not Installed') . '):</b><br>';
 			$o .= $desc;
 			return $o;
 		}
 
-		$content = '<b>Authchoose App Installed:</b><br>';
+		$content = '<b>' . t('Authchoose App') . ' (' . t('Installed') . '):</b><br>';
 		$content .= $desc;
 
 		$tpl = get_markup_template("settings_addon.tpl");

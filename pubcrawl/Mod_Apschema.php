@@ -14,6 +14,7 @@ class Apschema extends \Zotlabs\Web\Controller {
 				'zot'              => z_root() . '/apschema#',
 				'id'               => '@id',
 				'type'             => '@type',
+				'commentPolicy'    => 'as:commentPolicy',
 				'meData'           => 'zot:meData',
 				'meDataType'       => 'zot:meDataType',
 				'meEncoding'       => 'zot:meEncoding',
