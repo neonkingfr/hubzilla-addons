@@ -545,6 +545,7 @@ class ChannelReputation_Utils {
          }
 
          public static function channel_apps(&$hookdata) {
+		/* do not list in channel apps until the app actually provides a frontend
                 $hookdata['tabs'][] = [
                         'label' => t('Channel Reputation'),
                         'url'   => z_root() . '/channelreputation/' . $hookdata['nickname'],
@@ -553,6 +554,7 @@ class ChannelReputation_Utils {
                         'id'    => 'channelrep-tab',
                         'icon'  => 'line-chart'
                 ];
+		*/
          }
 
          public static function item_store(&$arr) {

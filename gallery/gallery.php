@@ -87,12 +87,15 @@ function gallery_page_end(&$str) {
 
 function gallery_prepare_body(&$arr) {
 
+	if(! $arr['item']['item_thread_top'])
+		return;
+
+	if($arr['item']['item_type'] != ITEM_TYPE_POST)
+		return;
+
 	$uid = ((App::$profile_uid) ? App::$profile_uid : intval(local_channel()));
 
 	if(! Apps::addon_app_installed($uid, 'gallery'))
-		return;
-
-	if(! $arr['item']['item_thread_top'])
 		return;
 
 	$dom = new DOMDocument();
@@ -201,7 +204,7 @@ function gallery_prepare_body(&$arr) {
 					justifyThreshold: 0.5,
 					margins: $margins,
 					border: 0
-				}).on('jg.complete', function(e){ justifiedGalleryActive = false; });
+				}).on('jg.complete', function(e){ justifiedGalleryActive = false; setTimeout(scrollToItem, 100); });
 			}
 		</script>
 EOF;

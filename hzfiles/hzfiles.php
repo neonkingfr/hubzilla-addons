@@ -12,6 +12,8 @@
 function hzfiles_install() {}
 function hzfiles_uninstall() {}
 function hzfiles_module() {}
+function hzfiles_load() {}
+function hzfiles_unload() {}
 
 function hzfiles_post(&$a) {
 
