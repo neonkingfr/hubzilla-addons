@@ -26,11 +26,13 @@ function channelreputation_load() {
         Hook::register('page_header', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::page_header',1,5000);
         Hook::register('page_end', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::page_end',1,5000);
 	Route::register('addon/channelreputation/Mod_ChannelReputation.php','channelreputation');
+	Route::register('addon/channelreputation/Mod_settings.php','settings/channelreputation');
 }
 
 function channelreputation_unload() {
         Hook::unregister_by_file('addon/channelreputation/channelreputation.php');
 	Route::unregister_by_file('addon/channelreputation/Mod_ChannelReputation.php');
+	Route::unregister_by_file('addon/channelreputation/Mod_settings.php');
 }
 
 
@@ -132,7 +134,7 @@ class ChannelReputation_Utils {
                 }
 
                 $o = replace_macros(get_markup_template('settings_addon.tpl'), array(
-                        '$action_url' => 'channelreputation/settings',
+                        '$action_url' => 'settings/channelreputation',
                         '$form_security_token' => get_form_security_token("channelreputation"),
                         '$title' => t('Community Moderation Settings'),
                         '$content'  => $sc,
