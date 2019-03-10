@@ -875,14 +875,14 @@ function pubcrawl_item_mod_init($x) {
 
 		$sql_extra = item_permissions_sql(0);
 
-		$r = q("select * from item where (uuid = '%s' or mid like '%s') $item_normal $sql_extra limit 1",
+		$r = q("select * from item where (uuid = '%s' or mid = '%s') $item_normal $sql_extra limit 1",
 			dbesc($item_id),
-			dbesc($item_id . '%')
+			dbesc($item_id)
 		);
 		if(! $r) {
-			$r = q("select * from item where (uuid = '%s' or mid like '%s') $item_normal limit 1",
+			$r = q("select * from item where (uuid = '%s' or = like '%s') $item_normal limit 1",
 				dbesc($item_id),
-				dbesc($item_id . '%')
+				dbesc($item_id)
 			);
 			if($r) {
 				http_status_exit(403, 'Forbidden');
