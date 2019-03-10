@@ -880,7 +880,7 @@ function pubcrawl_item_mod_init($x) {
 			dbesc($item_id)
 		);
 		if(! $r) {
-			$r = q("select * from item where (uuid = '%s' or = like '%s') $item_normal limit 1",
+			$r = q("select * from item where (uuid = '%s' or mid = '%s') $item_normal limit 1",
 				dbesc($item_id),
 				dbesc($item_id)
 			);
