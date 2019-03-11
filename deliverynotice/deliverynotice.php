@@ -108,8 +108,12 @@ logger ("Get postid & opts: ".print_r($r,true));
                         }
                 }
 
-                $postopts = explode(',',$r[0]['postopts']);
-                $postopts[] = $postopt;
+		if($r[0]['postopts'])
+			$postopts = explode(',',$r[0]['postopts']);
+		else
+			$postopts = [];
+
+		$postopts[] = $postopt;
 
                 if ($postopt == 'delivery_success') {
                         // Everything delivered, clear all the flags
@@ -124,6 +128,7 @@ logger ("Get postid & opts: ".print_r($r,true));
                 }
 
                 $postopts = implode(',',array_unique($postopts));
+
                 $r= q("update item set postopts = '%s' where id = %d",dbesc($postopts),$iid);
                 
         }
