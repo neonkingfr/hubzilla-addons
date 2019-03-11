@@ -2,7 +2,7 @@
 /**
  * Name: Gravatar Support
  * Description: If there is no avatar image for a new user or contact this plugin will look for one at Gravatar.
- * Version: 1.1
+ * Version: 1.1.1
  * MinVersion: 1.14
  * Author: Klaus Weidenbach <http://friendica.dszdw.net/profile/klaus>
  * Portig to Hubzilla: Sergey Lukin <mailto:sergey.lukin@cybergnosis.su>
@@ -90,17 +90,17 @@ function gravatar_get_profile_photo($a, &$b) {
 		$rating = 'g'; // suitable for display on all websites with any audience type
     }
     $hash = md5(trim(strtolower($email)));
-	$url = 'https://secure.gravatar.com/avatar/' . $hash . '.jpg?s=' . $resolutions[$imgscale] .'&r=' . $rating;
+	$url = 'https://www.gravatar.com/avatar/' . $hash . '.jpg?s=' . $resolutions[$imgscale] .'&r=' . $rating;
 	if ($default_avatar != "gravatar" && $default_avatar != "hub_default") {
 		$url .= '&d=' . $default_avatar;
     } elseif ($default_avatar == "hub_default") {
 		$url .= '&d=' . App::$config['system']['baseurl'] . "/" . get_default_profile_photo($resolutions[$imgscale]);
 	}
-	$data = file_get_contents($url);
-	if ($data) {
-    	$b['mimetype'] = 'image/jpg';
-		$b['data'] = $data;
-	}
+	$i = z_fetch_url($url);
+    if ($i['success']) {
+        $b['mimetype'] = 'image/jpg';
+        $b['data'] = $i['body'];
+    }
 }
 
 /**
