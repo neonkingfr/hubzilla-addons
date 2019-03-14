@@ -34,7 +34,7 @@ function pubcrawl_load() {
 		'permissions_create'         => 'pubcrawl_permissions_create',
 		'permissions_accept'         => 'pubcrawl_permissions_accept',
 		'connection_remove'          => 'pubcrawl_connection_remove',
-		'notifier_hub'               => 'pubcrawl_notifier_process',
+		'notifier_hub'               => 'pubcrawl_notifier_hub',
 		'channel_links'              => 'pubcrawl_channel_links',
 		'personal_xrd'               => 'pubcrawl_personal_xrd',
 		'queue_deliver'              => 'pubcrawl_queue_deliver',
@@ -396,7 +396,7 @@ function pubcrawl_channel_mod_init($x) {
 	}
 }
 
-function pubcrawl_notifier_process(&$arr) {
+function pubcrawl_notifier_hub(&$arr) {
 
 	if($arr['hub']['hubloc_network'] !== 'activitypub')
 		return;
@@ -514,7 +514,7 @@ function pubcrawl_notifier_process(&$arr) {
 			if(! $arr['normal_mode'])
 				continue;
 
-			if($single) {
+			if($single || $arr['upstream']) {
 				$qi = pubcrawl_queue_message($jmsg,$arr['channel'],$contact,$target_item['mid']);
 				if($qi)
 					$arr['queued'][] = $qi;
@@ -1197,9 +1197,12 @@ function pubcrawl_can_comment_on_post(&$x) {
 	if(local_channel()) {
 		$c = App::get_channel();
 		$recips = get_iconfig($x['item'],'activitypub','recips',[]);
-		if($recips && (in_array(ACTIVITY_PUBLIC_INBOX,$recips) || in_array(channel_url($c),$recips))) {
-			$x['allowed'] = true;
-		}
+
+		if($recips['to'] && (in_array(ACTIVITY_PUBLIC_INBOX, $recips['to']) || in_array(channel_url($c), $recips['to'])))
+			$x['allowed'] = Apps::addon_app_installed($c['channel_id'], 'pubcrawl');
+
+		if($recips['cc'] && (in_array(ACTIVITY_PUBLIC_INBOX, $recips['cc']) || in_array(channel_url($c), $recips['cc'])))
+			$x['allowed'] = Apps::addon_app_installed($c['channel_id'], 'pubcrawl');
 	}
 }
 
