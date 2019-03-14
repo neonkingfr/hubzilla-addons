@@ -6,6 +6,8 @@ use App;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Web\Controller;
 
+require_once('addon/diaspora/util.php'); // needed for diaspora_build_relay_tags()
+
 class Diaspora extends Controller {
 
 	function post() {
