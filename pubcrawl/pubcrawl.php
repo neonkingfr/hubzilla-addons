@@ -421,7 +421,22 @@ function pubcrawl_notifier_process(&$arr) {
 
 	$x = [];
 
-	$r = q("select abook_xchan, xchan_network from abook left join xchan on abook_xchan = xchan_hash where abook_channel = %d and abook_self = 0 and abook_pending = 0 and abook_archived = 0 and not abook_xchan in ( '%s', '%s', '%s' ) ",
+	// Add all authors of the thread
+	$r = q("select author_xchan from item where parent = %d",
+		intval($arr['target_item']['parent'])
+	);
+	if($r) {
+		foreach($r as $rv) {
+			if($rv['author_xchan'] == $arr['target_item']['author_xchan'])
+				continue;
+
+			if(! in_array($rv['author_xchan'], $x))
+				$x[] = $rv['author_xchan'];
+		}
+	}
+
+	// Add everybody from the addressbook
+	$r = q("select abook_xchan from abook where abook_channel = %d and abook_self = 0 and abook_pending = 0 and abook_archived = 0 and not abook_xchan in ( '%s', '%s', '%s' ) ",
 		intval($arr['target_item']['uid']),
 		dbesc($arr['target_item']['author_xchan']),
 		dbesc($arr['target_item']['owner_xchan']),
@@ -429,12 +444,17 @@ function pubcrawl_notifier_process(&$arr) {
 	);
 	if($r) {
 		foreach($r as $rv) {
-			$x[] = $rv['abook_xchan'];
+			if(! in_array($rv['abook_xchan'], $x))
+				$x[] = $rv['abook_xchan'];
 		}
-		$sys = get_sys_channel();
-		$x[] = $sys['channel_hash'];
-		stringify_array_elms($x);
 	}
+
+	// Add the sys_channel
+	$sys = get_sys_channel();
+	$x[] = $sys['channel_hash'];
+
+	stringify_array_elms($x);
+
 	$arr['recipients'] = array_unique(array_merge($arr['recipients'], $x));
 }
 
@@ -1240,10 +1260,10 @@ function pubcrawl_can_comment_on_post(&$x) {
 		$c = App::get_channel();
 		$recips = get_iconfig($x['item'],'activitypub','recips',[]);
 
-		if($recips['to'] && (in_array(ACTIVITY_PUBLIC_INBOX, $recips['to']) || in_array(channel_url($c), $recips['to'])))
+		if(isset($recips['to']) && (in_array(ACTIVITY_PUBLIC_INBOX, $recips['to']) || in_array(channel_url($c), $recips['to'])))
 			$x['allowed'] = Apps::addon_app_installed($c['channel_id'], 'pubcrawl');
 
-		if($recips['cc'] && (in_array(ACTIVITY_PUBLIC_INBOX, $recips['cc']) || in_array(channel_url($c), $recips['cc'])))
+		if(isset($recips['cc']) && (in_array(ACTIVITY_PUBLIC_INBOX, $recips['cc']) || in_array(channel_url($c), $recips['cc'])))
 			$x['allowed'] = Apps::addon_app_installed($c['channel_id'], 'pubcrawl');
 	}
 }
