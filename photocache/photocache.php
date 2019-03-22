@@ -143,16 +143,16 @@ function photocache_hash($str, $alg = 'sha256') {
 		return logger('invalid channel ID received ' . $s['uid'], LOGGER_DEBUG);
 	
 	$matches = null;
-	$cnt = preg_match_all("/\<img(.+?)src=[\"|'](https?\:.*?)[\"|'](.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
+	$cnt = preg_match_all("/\<img(.+?)src=([\"|'])(https?\:.*?)\2(.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
 	if($cnt) {
 		$ph = photo_factory('');
 		foreach ($matches as $match) {
-			if(photocache_isgrid($match[2]))
+			if(photocache_isgrid($match[3]))
 				continue;
 
-			logger('uid: ' . $s['uid'] . '; url: ' . $match[2], LOGGER_DEBUG);
+			logger('uid: ' . $s['uid'] . '; url: ' . $match[3], LOGGER_DEBUG);
 
-			$hash = photocache_hash(preg_replace('|^https?://|' ,'' , $match[2]));
+			$hash = photocache_hash(preg_replace('|^https?://|' ,'' , $match[3]));
 			$resid = photocache_hash($s['uid'] . $hash);
 			$r = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND uid = %d LIMIT 1",
 				dbesc($hash),
@@ -209,11 +209,11 @@ function photocache_url(&$cache = array()) {
 	
 	$cache_mode = array();
 	photocache_mode($cache_mode);
-
+		
 	$minres = intval(get_pconfig($r['uid'], 'photocache', 'cache_minres'));
 	if($minres == 0)
 		$minres = $cache_mode['minres'];
-		
+
 	logger('info: processing ' . $cache['resid'] . ' (' . $r['display_path'] .') for ' . $r['uid']  . ' (min. ' . $minres . ' px)', LOGGER_DEBUG);
 	
 	if($r['height'] == 0) {
@@ -288,7 +288,7 @@ function photocache_url(&$cache = array()) {
 		
 		if(array_key_exists('last-modified', $hdrs))
 			$r['edited'] = gmdate('Y-m-d H:i:s', strtotime($hdrs['last-modified']));
-		
+
 		if($i['success']) {
 			// New data (HTTP 200)
 			$type = guess_image_type($r['display_path'], $i['header']);
@@ -329,13 +329,13 @@ function photocache_url(&$cache = array()) {
 					if(! $ph->saveImage($os_path))
 						return logger('could not save file ' . $os_path, LOGGER_DEBUG);
 				
-				    if($oldsize == 0)
-					    if(! $ph->save($r, true))
-						    logger('can not save image in database', LOGGER_DEBUG);
+					if($oldsize == 0)
+						if(! $ph->save($r, true))
+							logger('can not save image in database', LOGGER_DEBUG);
 					
 					$r['filesize'] = strlen($ph->imageString());
 										
-					logger('new image saved: ' . $os_path . '; ' . $r['mimetype'] . ', ' . $r['width'] . 'w x ' . $r['height'] . 'h, ' . $r['filesize'] . ' bytes', LOGGER_DEBUG);
+					logger('image saved: ' . $os_path . '; ' . $r['mimetype'] . ', ' . $r['width'] . 'w x ' . $r['height'] . 'h, ' . $r['filesize'] . ' bytes', LOGGER_DEBUG);
 				}
 				
 				if($oldsize != $r['filesize']) {
@@ -352,7 +352,7 @@ function photocache_url(&$cache = array()) {
 			}
 		}
 
-		// Update metadata on change
+		// Update metadata on any change
 		$x = q("UPDATE photo SET edited = '%s', expires = '%s' WHERE xchan = '%s' AND height > %d AND photo_usage = %d",
 			dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
 			dbescdate($r['expires']),
