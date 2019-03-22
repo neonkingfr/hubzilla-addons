@@ -143,7 +143,7 @@ function photocache_hash($str, $alg = 'sha256') {
 		return logger('invalid channel ID received ' . $s['uid'], LOGGER_DEBUG);
 	
 	$matches = null;
-	$cnt = preg_match_all("/\<img(.+?)src=([\"|'])(https?\:.*?)\2(.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
+	$cnt = preg_match_all("/\<img(.+?)src=([\"|'])(https?\:.*?)\\2(.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
 	if($cnt) {
 		$ph = photo_factory('');
 		foreach ($matches as $match) {
@@ -171,13 +171,13 @@ function photocache_hash($str, $alg = 'sha256') {
 					'mimetype' => '',
 					'photo_usage' => PHOTO_CACHE,
 					'os_storage' => 1,
-					'display_path' => $match[2]
+					'display_path' => $match[3]
 				);
 				if(! $ph->save($r, true))
 					logger('can not create new link in database', LOGGER_DEBUG);
 			}
-			$s['body'] = str_replace($match[2], z_root() . '/photo/' . $resid . '-' . ($r[0]['imgscale'] ? $r[0]['imgscale'] : 0), $s['body']);
-			logger('local resource id ' . $resid . '; xchan: ' . $hash . '; url: ' . $match[2]);
+			$s['body'] = str_replace($match[3], z_root() . '/photo/' . $resid . '-' . ($r[0]['imgscale'] ? $r[0]['imgscale'] : 0), $s['body']);
+			logger('local resource id ' . $resid . '; xchan: ' . $hash . '; url: ' . $match[3]);
 		}
 	}
 }
