@@ -1168,7 +1168,7 @@ function diaspora_service_plink(&$b) {
 	if($contact['xchan_network'] === 'diaspora')
 		$b['plink'] = $url . '/posts/' . $guid;
 	if($contact['xchan_network'] === 'friendica-over-diaspora')
-		$b['plink'] = $url . '/display/' . $handle . '/' . $guid;
+		$b['plink'] = $url . '/display/' . $guid;
 
 
 }
