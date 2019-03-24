@@ -42,6 +42,8 @@ class Pubcrawl extends Controller {
 			return $o;
 		}
 
+		$yes_no = [t('No'),t('Yes')];
+
 		$sc = '<div class="section-content-info-wrapper">' . $desc . '</div><br>';
 
 		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
