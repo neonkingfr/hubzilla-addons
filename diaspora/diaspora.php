@@ -890,7 +890,12 @@ function diaspora_item_stored(&$item) {
 	if(! Apps::addon_app_installed($item['uid'], 'diaspora'))
 		return;
 
-	sync_an_item($item['uid'],$item['id']);
+	$r = q("select xchan_network from xchan where xchan_hash = '%s' limit 1",
+		dbesc($item['owner_xchan'])
+	);
+
+	if(strpos($r[0]['xchan_network'], 'diaspora') !== false)
+		sync_an_item($item['uid'],$item['id']);
 }
 
 function diaspora_create_identity($b) {
