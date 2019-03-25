@@ -35,6 +35,7 @@ function diaspora_load() {
 		'module_loaded'               => 'diaspora_load_module',
 		'follow_allow'                => 'diaspora_follow_allow',
 		'post_local'                  => 'diaspora_post_local',
+		'item_stored'                 => 'diaspora_item_stored',
 		'well_known'                  => 'diaspora_well_known',
 		'create_identity'             => 'diaspora_create_identity',
 		'profile_sidebar'             => 'diaspora_profile_sidebar',
@@ -873,8 +874,23 @@ function diaspora_post_local(&$item) {
 
 	if($meta)
 		set_iconfig($item,'diaspora','fields', $meta, true);
+}
 
+function diaspora_item_stored(&$item) {
+	// Sync private local comments which will not be catched in Receiver.php comment()
+	if($item['mid'] === $item['parent_mid'])
+		return;
 
+	if(! $item['item_origin'])
+		return;
+
+	if(! $item['item_private'])
+		return;
+
+	if(! Apps::addon_app_installed($item['uid'], 'diaspora'))
+		return;
+
+	sync_an_item($item['uid'],$item['id']);
 }
 
 function diaspora_create_identity($b) {
@@ -1168,7 +1184,7 @@ function diaspora_service_plink(&$b) {
 	if($contact['xchan_network'] === 'diaspora')
 		$b['plink'] = $url . '/posts/' . $guid;
 	if($contact['xchan_network'] === 'friendica-over-diaspora')
-		$b['plink'] = $url . '/display/' . $handle . '/' . $guid;
+		$b['plink'] = $url . '/display/' . $guid;
 
 
 }
