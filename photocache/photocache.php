@@ -147,6 +147,7 @@ function photocache_hash($str, $alg = 'sha256') {
 	if($cnt) {
 		$ph = photo_factory('');
 		foreach ($matches as $match) {
+		    $match[3] = trim($match[3]);
 			if(photocache_isgrid($match[3]))
 				continue;
 
