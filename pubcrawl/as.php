@@ -1175,6 +1175,10 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
+	$s['uuid'] = '';
+	// Friendica sends the diaspora guid in a nonstandard field via AP
+	if($act->obj['diaspora:guid'])
+		$s['uuid'] = $act->obj['diaspora:guid'];
 	$s['mid'] = urldecode($act->obj['id']);
 	$s['plink'] = urldecode($act->obj['id']);
 

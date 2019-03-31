@@ -48,6 +48,9 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		if($AS->type == 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo',$AS->obj)) {
 
+			$arr = [];
+			$x = [];
+
 			$arr['author']['url'] = $AS->obj['attributedTo'];
 
 			pubcrawl_import_author($arr);
