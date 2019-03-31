@@ -20,8 +20,6 @@ class Diaspora_Receiver {
 		$sender_handle    = $this->get_author();
 		$recipient_handle = $this->get_recipient();
 
-		// @TODO - map these perms to $newperms below
-
 		if(array_key_exists('following',$this->xmlbase) && array_key_exists('sharing',$this->xmlbase)) {
 			$following = (($this->get_property('following')) === 'true' ? true : false);
 			$sharing   = (($this->get_property('sharing'))   === 'true' ? true : false);
@@ -39,11 +37,24 @@ class Diaspora_Receiver {
 
 		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$sender_handle);
 
+		if(! ($following || $sharing)) {
+			contact_remove($this->importer['channel_id'],$contact['abook_id']);
+			return;
+		}
+
 		// Please note some permissions such as PERMS_R_PAGES are impossible for Disapora.
 		// They cannot currently authenticate to our system.
 
 		$x = \Zotlabs\Access\PermissionRoles::role_perms('social');
 		$their_perms = \Zotlabs\Access\Permissions::FilledPerms($x['perms_connect']);
+
+		if(! $sharing) {
+			$their_perms['view_stream'] = 0;
+		}
+
+		if(! $following) {
+			$their_perms['send_stream'] = 0;
+		}
 
 		if($contact && $contact['abook_id']) {
 
@@ -116,14 +127,17 @@ class Diaspora_Receiver {
 				dbesc($ret['xchan_hash'])
 			);
 			if($new_connection) {
-				\Zotlabs\Lib\Enotify::submit(
-					[
-						'type'	       => NOTIFY_INTRO,
-						'from_xchan'   => $ret['xchan_hash'],
-						'to_xchan'     => $this->importer['channel_hash'],
-						'link'         => z_root() . '/connedit/' . $new_connection[0]['abook_id'],
-					]
-				);
+
+				if($following && $sharing) {
+					\Zotlabs\Lib\Enotify::submit(
+						[
+							'type'	       => NOTIFY_INTRO,
+							'from_xchan'   => $ret['xchan_hash'],
+							'to_xchan'     => $this->importer['channel_hash'],
+							'link'         => z_root() . '/connedit/' . $new_connection[0]['abook_id'],
+						]
+					);
+				}
 
 				if($my_perms && $automatic) {
 					// Send back a sharing notification to them
