@@ -34,7 +34,7 @@ function pubcrawl_load() {
 		'permissions_create'         => 'pubcrawl_permissions_create',
 		'permissions_accept'         => 'pubcrawl_permissions_accept',
 		'connection_remove'          => 'pubcrawl_connection_remove',
-		'notifier_process'           => 'pubcrawl_notifier_process',
+		'item_stored'                => 'pubcrawl_item_stored',
 		'notifier_hub'               => 'pubcrawl_notifier_hub',
 		'channel_links'              => 'pubcrawl_channel_links',
 		'personal_xrd'               => 'pubcrawl_personal_xrd',
@@ -395,67 +395,6 @@ function pubcrawl_channel_mod_init($x) {
 		logger('channel: ' . $ret, LOGGER_DATA);
 		killme();
 	}
-}
-
-function pubcrawl_notifier_process(&$arr) {
-
-	//add additional recipients to public comments on AP posts
-
-	if($arr['cmd'] !== 'comment-new')
-		return;
-
-	if($arr['target_item']['item_private'])
-		return;
-
-	if($arr['parent_item']['owner']['xchan_network'] !== 'activitypub')
-		return;
-
-	if($arr['parent_item']['author']['xchan_network'] !== 'activitypub')
-		return;
-
-	if($arr['target_item']['id'] == $arr['target_item']['parent'])
-		return;
-
-	if(! Apps::addon_app_installed($arr['channel']['channel_id'],'pubcrawl'))
-		return;
-
-	$x = [];
-
-	// Add all authors of the thread
-	$r = q("select author_xchan from item where parent = %d",
-		intval($arr['target_item']['parent'])
-	);
-	if($r) {
-		foreach($r as $rv) {
-			if($rv['author_xchan'] == $arr['target_item']['author_xchan'])
-				continue;
-
-			if(! in_array($rv['author_xchan'], $x))
-				$x[] = $rv['author_xchan'];
-		}
-	}
-
-	// Add everybody from the addressbook
-	$r = q("select abook_xchan from abook where abook_channel = %d and abook_self = 0 and abook_pending = 0 and abook_archived = 0 and not abook_xchan in ( '%s', '%s', '%s' ) ",
-		intval($arr['target_item']['uid']),
-		dbesc($arr['target_item']['author_xchan']),
-		dbesc($arr['target_item']['owner_xchan']),
-		dbesc($arr['target_item']['source_xchan'])
-	);
-	if($r) {
-		foreach($r as $rv) {
-			if(! in_array($rv['abook_xchan'], $x))
-				$x[] = $rv['abook_xchan'];
-		}
-	}
-
-	// Add the sys_channel
-	$sys = get_sys_channel();
-	$x[] = $sys['channel_hash'];
-
-	stringify_array_elms($x);
-
-	$arr['recipients'] = array_unique(array_merge($arr['recipients'], $x));
 }
 
 function pubcrawl_notifier_hub(&$arr) {
