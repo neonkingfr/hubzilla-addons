@@ -82,7 +82,7 @@ function find_diaspora_person_by_handle($handle) {
 		if($result) {
 
 			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' and hubloc_network like '%%diaspora%%' limit 1",
-				dbesc(str_replace('acct:'.'',$handle))
+				dbesc(str_replace('acct:','',$handle))
 			);
 			if(! $r) {
 				$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' limit 1",
