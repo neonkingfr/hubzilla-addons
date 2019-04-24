@@ -205,7 +205,7 @@ class Diaspora_Receiver {
 
 		$xchan = find_diaspora_person_by_handle($diaspora_handle);
 
-		if(! $xchan) {
+		if((! $xchan) || (! strstr($xchan['xchan_network'],'diaspora'))) {
 			logger('Cannot resolve diaspora handle ' . $diaspora_handle);
 			return;
 		}
@@ -453,7 +453,7 @@ class Diaspora_Receiver {
 		$datarray['item_thread_top'] = 1;
 
 		$tgroup = tgroup_check($this->importer['channel_id'],$datarray);
-		
+
 		if((! $this->importer['system']) && (! perm_is_allowed($this->importer['channel_id'],$xchan['xchan_hash'],'send_stream')) && (! $tgroup) && (! $found_tags)) {
 			logger('diaspora_post: Ignoring this author.');
 			return 202;
