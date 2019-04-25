@@ -187,7 +187,7 @@ function superblock_enotify_store(&$a,&$b) {
 }
 
 
-function superblock_enotify_format(&$b) {
+function superblock_enotify_format(&$a,&$b) {
 
 	$sb = new Superblock($b['uid']);
 
