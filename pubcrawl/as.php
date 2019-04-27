@@ -1,5 +1,6 @@
 <?php
 
+use Zotlabs\Lib\Apps;
 
 function asencode_object($x) {
 
