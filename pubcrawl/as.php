@@ -197,6 +197,10 @@ function asencode_item($i) {
 
 	$ret['attributedTo'] = $i['author']['xchan_url'];
 
+	// Nonstandard field diaspora:guid for Friendica comaptibility
+	if(Apps::addon_app_installed($i['uid'], 'diaspora'))
+		$ret['diaspora:guid'] = $i['uuid'];
+
 	$cnv = null;
 
 	if($i['id'] != $i['parent']) {
@@ -1022,7 +1026,6 @@ function as_actor_store($url,$person_obj) {
 
 		// Record exists. Cache existing records for one week at most
 		// then refetch to catch updated profile photos, names, etc. 
-
 		$d = datetime_convert('UTC','UTC','now - 1 week');
 		if($r[0]['xchan_name_date'] > $d)
 			return;
