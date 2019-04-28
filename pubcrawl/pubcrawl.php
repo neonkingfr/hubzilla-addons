@@ -761,6 +761,11 @@ function pubcrawl_permissions_create(&$x) {
 
 function pubcrawl_permissions_update(&$x) {
 	if($x['recipient']['xchan_network'] === 'activitypub') {
+		q("update xchan set xchan_name_date = '%s' where xchan_hash = '%s' and xchan_network = '%s'",
+			dbescdate(NULL_DATE),
+			dbesc($x['recipient']['xchan_hash']),
+			dbesc('activitypub')
+		);
 		discover_by_webbie($x['recipient']['xchan_hash'], 'activitypub');
 		$x['success'] = 1;
 	}

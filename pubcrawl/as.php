@@ -1028,9 +1028,9 @@ function as_actor_store($url,$person_obj) {
 		// Record exists. Cache existing records for one week at most
 		// then refetch to catch updated profile photos, names, etc. 
 
-		//$d = datetime_convert('UTC','UTC','now - 1 week');
-		//if($r[0]['xchan_name_date'] > $d)
-		//	return;
+		$d = datetime_convert('UTC','UTC','now - 1 week');
+		if($r[0]['xchan_name_date'] > $d)
+			return;
 
 		// update existing record
 		$r = q("update xchan set xchan_name = '%s', xchan_pubkey = '%s', xchan_network = '%s', xchan_name_date = '%s' where xchan_hash = '%s'",
@@ -1040,6 +1040,7 @@ function as_actor_store($url,$person_obj) {
 			dbescdate(datetime_convert()),
 			dbesc($url)
 		);
+
 	}
 
 	if($collections) {

@@ -43,9 +43,6 @@ class Inbox extends \Zotlabs\Web\Controller {
 		if(! $observer_hash)
 			return;
 
-		//if(is_array($AS->actor) && array_key_exists('id',$AS->actor))
-		//	as_actor_store($AS->actor['id'],$AS->actor);
-
 		if($AS->type == 'Update' && $AS->obj['type'] == 'Person') {
 			$x['recipient']['xchan_network'] = 'activitypub';
 			$x['recipient']['xchan_hash'] = $AS->obj['id'];
@@ -53,6 +50,8 @@ class Inbox extends \Zotlabs\Web\Controller {
 			return;
 		}
 
+		if(is_array($AS->actor) && array_key_exists('id',$AS->actor))
+			as_actor_store($AS->actor['id'],$AS->actor);
 
 		if($AS->type == 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo',$AS->obj)) {
 
