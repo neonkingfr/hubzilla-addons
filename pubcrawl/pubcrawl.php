@@ -156,15 +156,15 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 			}
 		}	
 
-	    if(strpos($url,'@') && $x && array_key_exists('links',$x) && $x['links']) {
-    	    foreach($x['links'] as $link) {
-        	    if(array_key_exists('rel',$link) && array_key_exists('type',$link)) {
-            	    if($link['rel'] === 'self' && ($link['type'] === 'application/activity+json' || strpos($link['type'],'ld+json') !== false)) {
+		if(strpos($url,'@') && $x && array_key_exists('links',$x) && $x['links']) {
+			foreach($x['links'] as $link) {
+				if(array_key_exists('rel',$link) && array_key_exists('type',$link)) {
+					if($link['rel'] === 'self' && ($link['type'] === 'application/activity+json' || strpos($link['type'],'ld+json') !== false)) {
 						$url = $link['href'];
-                	}
-            	}
-        	}
-    	}
+					}
+				}
+			}
+		}
 	}
 	
 	if(($url) && (strpos($url,'http') === 0)) {
@@ -761,11 +761,6 @@ function pubcrawl_permissions_create(&$x) {
 
 function pubcrawl_permissions_update(&$x) {
 	if($x['recipient']['xchan_network'] === 'activitypub') {
-		$r = q("update xchan set xchan_name_date = '%s' where xchan_network = '%s' and xchan_hash = '%s'",
-			dbescdate(NULL_DATE),
-			dbesc('activitypub'),
-			dbesc($x['recipient']['xchan_hash'])
-		);
 		discover_by_webbie($x['recipient']['xchan_hash'], 'activitypub');
 		$x['success'] = 1;
 	}
