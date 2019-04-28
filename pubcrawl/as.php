@@ -956,7 +956,7 @@ function as_actor_store($url,$person_obj) {
 	if(! is_array($person_obj))
 		return;
 
-    $icon = '';
+	$icon = '';
 	$name = $person_obj['name'];
 	if(! $name)
 		$name = $person_obj['preferredUsername'];
@@ -1027,9 +1027,10 @@ function as_actor_store($url,$person_obj) {
 
 		// Record exists. Cache existing records for one week at most
 		// then refetch to catch updated profile photos, names, etc. 
-		$d = datetime_convert('UTC','UTC','now - 1 week');
-		if($r[0]['xchan_name_date'] > $d)
-			return;
+
+		//$d = datetime_convert('UTC','UTC','now - 1 week');
+		//if($r[0]['xchan_name_date'] > $d)
+		//	return;
 
 		// update existing record
 		$r = q("update xchan set xchan_name = '%s', xchan_pubkey = '%s', xchan_network = '%s', xchan_name_date = '%s' where xchan_hash = '%s'",
@@ -1090,7 +1091,6 @@ function as_create_action($channel,$observer_hash,$act) {
 	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video', 'Image', 'Event' ])) {
 		as_create_note($channel,$observer_hash,$act);
 	}
-
 
 }
 
