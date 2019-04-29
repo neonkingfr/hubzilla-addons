@@ -1,5 +1,6 @@
 <?php
 
+use Zotlabs\Lib\Apps;
 
 function asencode_object($x) {
 
@@ -223,6 +224,10 @@ function asencode_item($i) {
 	];
 
 	$ret['attributedTo'] = $i['author']['xchan_url'];
+
+	// Nonstandard field diaspora:guid for Friendica comaptibility
+	if(Apps::addon_app_installed($i['uid'], 'diaspora'))
+		$ret['diaspora:guid'] = $i['uuid'];
 
 	$cnv = null;
 
@@ -978,7 +983,7 @@ function as_actor_store($url,$person_obj) {
 	if(! is_array($person_obj))
 		return;
 
-    $icon = '';
+	$icon = '';
 	$name = $person_obj['name'];
 	if(! $name)
 		$name = $person_obj['preferredUsername'];
@@ -1062,6 +1067,7 @@ function as_actor_store($url,$person_obj) {
 			dbescdate(datetime_convert()),
 			dbesc($url)
 		);
+
 	}
 
 	if($collections) {
@@ -1113,7 +1119,6 @@ function as_create_action($channel,$observer_hash,$act) {
 	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video', 'Image', 'Event' ])) {
 		as_create_note($channel,$observer_hash,$act);
 	}
-
 
 }
 

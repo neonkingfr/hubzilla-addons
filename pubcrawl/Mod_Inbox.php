@@ -43,6 +43,13 @@ class Inbox extends \Zotlabs\Web\Controller {
 		if(! $observer_hash)
 			return;
 
+		if($AS->type == 'Update' && $AS->obj['type'] == 'Person') {
+			$x['recipient']['xchan_network'] = 'activitypub';
+			$x['recipient']['xchan_hash'] = $AS->obj['id'];
+			pubcrawl_permissions_update($x);
+			return;
+		}
+
 		if(is_array($AS->actor) && array_key_exists('id',$AS->actor))
 			as_actor_store($AS->actor['id'],$AS->actor);
 
@@ -148,14 +155,14 @@ class Inbox extends \Zotlabs\Web\Controller {
 					if($AS->obj && $AS->obj['type'] === 'Person') {
 						// do follow activity
 						as_follow($channel,$AS);
-						continue;
+						break;
 					}
 					break;
 				case 'Accept':
 					if($AS->obj && $AS->obj['type'] === 'Follow') {
 						// do follow activity
 						as_follow($channel,$AS);
-						continue;
+						break;
 					}
 					break;
 
@@ -173,16 +180,16 @@ class Inbox extends \Zotlabs\Web\Controller {
 				case 'Create':
 				case 'Update':
 					as_create_action($channel,$observer_hash,$AS);
-					continue;
+					break;
 				case 'Like':
 				case 'Dislike':
 					as_like_action($channel,$observer_hash,$AS);
-					continue;
+					break;
 				case 'Undo':
 					if($AS->obj && $AS->obj['type'] === 'Follow') {
 						// do unfollow activity
 						as_unfollow($channel,$AS);
-						continue;
+						break;
 					}
 				case 'Delete':
 				case 'Add':
@@ -191,7 +198,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 				case 'Announce':
 					as_announce_action($channel,$observer_hash,$AS);
-					continue;
+					break;
 				default:
 					break;
 
