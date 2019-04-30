@@ -26,6 +26,10 @@ function asencode_object($x) {
 	if($x['type'] === ACTIVITY_OBJ_THING) {
 		return asfetch_thing($x); 
 	}
+	
+	if($x['type'] === ACTIVITY_OBJ_PHOTO) {
+		return asfetch_image($x); 
+	}
 
 
 }	
@@ -33,6 +37,29 @@ function asencode_object($x) {
 function asfetch_person($x) {
 	return asfetch_profile($x);
 }
+
+
+function asfetch_image($x) {
+
+	$ret = [
+		'type' => 'Image',
+		'id' => $x['id'],
+		'name' => $x['title'],
+		'content' => bbcode($x['body']),
+		'source' => [ 'mediaType' => 'text/bbcode', 'content' => $x['body'] ],
+		'published' => datetime_convert('UTC','UTC',$x['created'],ATOM_TIME), 
+		'updated' => datetime_convert('UTC','UTC', $x['edited'],ATOM_TIME),
+		'url' => [
+			'type'      => 'Link',
+			'mediaType' => $x['link'][0]['type'], 
+			'href'      => $x['link'][0]['href'],
+			'width'     => $x['link'][0]['width'],
+  			'height'    => $x['link'][0]['height']
+		]
+	];
+	return $ret;
+}
+
 
 function asfetch_profile($x) {
 	$r = q("select * from xchan where xchan_url like '%s' limit 1",
