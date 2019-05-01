@@ -448,8 +448,6 @@ function asencode_activity($i) {
 		$tgt = asencode_object($i['target']);
 		if($tgt)
 			$ret['target'] = $tgt;
-		else
-			return [];
 	}
 
 	if($i['id'] != $i['parent']) {
