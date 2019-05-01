@@ -846,7 +846,7 @@ function diaspora_post_local(&$item) {
 
 			$meta = [
 				'guid'            => $item['uuid'],
-				'parent_guid'     => (isset($thr_parent) ? $thr_parent['uuid'] : $parent['uuid']),
+				'parent_guid'     => $parent['uuid'],
 				'text'            => $body
 			];
 
