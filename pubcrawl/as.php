@@ -200,7 +200,7 @@ function asencode_item($i) {
 	$cnv = null;
 
 	if($i['id'] != $i['parent']) {
-		$ret['inReplyTo'] = ((strpos($i['parent_mid'],'http') === 0) ? $i['parent_mid'] : z_root() . '/item/' . urlencode($i['parent_mid']));
+		$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
 		$cnv = get_iconfig($i['parent'],'ostatus','conversation');
 	}
 	if(! $cnv) {
@@ -422,7 +422,7 @@ function asencode_activity($i) {
 
 	if($i['id'] != $i['parent']) {
 		$reply = true;
-		$ret['inReplyTo'] = ((strpos($i['parent_mid'],'http') === 0) ? $i['parent_mid'] : z_root() . '/item/' . urlencode($i['parent_mid']));
+		$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
 		$recips = get_iconfig($i['parent'], 'activitypub', 'recips');
 	}
 
