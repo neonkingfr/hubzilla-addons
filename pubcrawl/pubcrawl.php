@@ -286,11 +286,6 @@ function pubcrawl_load_module(&$b) {
 		$b['controller'] = new \Zotlabs\Module\Ap_probe();
 		$b['installed'] = true;
 	}
-	if($b['module'] === 'apschema') {
-		require_once('addon/pubcrawl/Mod_Apschema.php');
-		$b['controller'] = new \Zotlabs\Module\Apschema();
-		$b['installed'] = true;
-	}
 	if($b['module'] === 'followers') {
 		require_once('addon/pubcrawl/Mod_Followers.php');
 		$b['controller'] = new \Zotlabs\Module\Followers();
