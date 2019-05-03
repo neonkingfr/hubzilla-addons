@@ -575,6 +575,7 @@ function asencode_person($p) {
 	if(! $p['xchan_url'])
 		return [];
 
+	$i = [];
 	$r = q("SELECT resource_id FROM photo WHERE photo_usage = %d AND uid = %d LIMIT 1",
 		intval(PHOTO_COVER),
 		intval($p['channel_id'])
