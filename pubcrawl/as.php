@@ -575,6 +575,13 @@ function asencode_person($p) {
 	if(! $p['xchan_url'])
 		return [];
 
+	$r = q("SELECT resource_id FROM photo WHERE photo_usage = %d AND uid = %d LIMIT 1",
+		intval(PHOTO_COVER),
+		intval($p['channel_id'])
+	);
+	if($r)
+		$i = $r[0];
+
 	$ret = [];
 
 	$ret['type']  = 'Person';
@@ -585,10 +592,19 @@ function asencode_person($p) {
 	$ret['icon']  = [
 		'type'      => 'Image',
 		'mediaType' => (($p['xchan_photo_mimetype']) ? $p['xchan_photo_mimetype'] : 'image/png' ),
-		'url'       => $p['xchan_photo_l'],
+		'url'       => $p['xchan_photo_l'] . '?_rnd=' . random_string(8),
 		'height'    => 300,
 		'width'     => 300,
         ];
+	if($i) {
+		$ret['image']  = [
+			'type'      => 'Image',
+			'mediaType' => (($i['mimetype']) ? $p['mimetype'] : 'image/png' ),
+			'url'       => z_root() . '/photo/' . $i['resource_id'] . '-7',
+			'height'    => 435,
+			'width'     => 1200,
+		];
+	}
 	$ret['url'] = [
 		'type'      => 'Link',
 		'mediaType' => 'text/html',
