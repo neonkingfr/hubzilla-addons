@@ -225,7 +225,12 @@ class ChannelReputation_Utils {
                         if (argc() > 1) {
                              $item = intval(argv(1));
                              $uid = intval($postvars["uid"]);
+                             $values = Array (
+                                 'title' => t('Channel Reputation'),
+                                 'close' => t('Close')
+                             );
                              if (!$uid) {
+                                     $values['error'] = t('An Error has occurred.');
                                      return replace_macros(get_markup_template('channelrepModalerror.tpl','addon/channelreputation/'), $values);
                              }
 
@@ -237,12 +242,14 @@ class ChannelReputation_Utils {
 
                              $recommended = sprintf('%1$.3f',$maxpoints / 10);
                              $maxpoints = sprintf('%1$.3f',$maxpoints);
-                             $values = Array(
-                                     'maxpoints'=>$maxpoints,
-                                     'security_token'=>get_form_security_token(),
-                                     'channelrepId'=>$item,
-                                     'pointssuggestion'=>$recommended,
-                                     'uid'=>$uid
+                             $values += Array(
+                                     'maxpoints' => $maxpoints,
+                                     'security_token' => get_form_security_token(),
+                                     'channelrepId' => $item,
+                                     'pointssuggestion' => $recommended,
+                                     'uid' => $uid,
+                                     'upvote' => t('Upvote'),
+                                     'downvote' => t('Downvote')
                              );
                              return replace_macros(get_markup_template('channelrepModal.tpl','addon/channelreputation/'), $values);
 
