@@ -397,9 +397,14 @@ function pubcrawl_notifier_hub(&$arr) {
 	if($arr['hub']['hubloc_network'] !== 'activitypub')
 		return;
 
-	logger('upstream: ' . intval($arr['upstream']));
+	$allowed = Apps::addon_app_installed($arr['channel']['channel_id'],'pubcrawl');
+	if(! $allowed) {
+		logger('pubcrawl: disallowed for channel ' . $arr['channel']['channel_name']);
+		return;
+	}
 
-	 logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
+	logger('upstream: ' . intval($arr['upstream']));
+	logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
 
 	// allow this to be set per message
 
@@ -408,10 +413,23 @@ function pubcrawl_notifier_hub(&$arr) {
 		return;
 	}
 
+	if($arr['location'])
+		return;
+
+	$is_profile = false;
+	if($arr['cmd'] == 'refresh_all')
+		$is_profile = true;
+
+	$target_item = [];
+	if(array_key_exists('target_item',$arr) && is_array($arr['target_item']))
+		$target_item = $arr['target_item'];
+
+	if(! $target_item['mid'] && ! $is_profile)
+		return;
+
 	$signed_msg = null;
 
-	if(array_key_exists('target_item',$arr) && is_array($arr['target_item'])) {
-
+	if($target_item) {
 		if(intval($arr['target_item']['item_obscured'])) {
 			logger('Cannot send raw data as an activitypub activity.');
 			return;
@@ -429,46 +447,24 @@ function pubcrawl_notifier_hub(&$arr) {
 
 		$signed_msg = get_iconfig($arr['target_item'],'activitypub','rawmsg');
 
-
 		// If we have an activity already stored with an LD-signature
 		// which we are sending downstream, use that signed activity as is.
 		// The channel will then sign the HTTP transaction. 
 
-		// It is unclear if Mastodon supports the federation delivery model. Initial tests were
-		// inconclusive and the behaviour varied. 
-
+		// Mastodon does not support the federation delivery model
 		if(($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) && (! $signed_msg)) {
 			return;
 		}
-		
 	}
-
-	$allowed = Apps::addon_app_installed($arr['channel']['channel_id'],'pubcrawl');
-
-	if(! intval($allowed)) {
-		logger('pubcrawl: disallowed for channel ' . $arr['channel']['channel_name']);
-		return;
-	}
-
-
-	if($arr['location'])
-		return;
-
-	$target_item = $arr['target_item'];
-
-	if(! $target_item['mid'])
-		return;
-
 
 	$prv_recips = $arr['env_recips'];
-
 
 	if($signed_msg) {
 		$jmsg = $signed_msg;
 	}
-	else {
-		$ti = asencode_activity($target_item);
 
+	if($target_item) {
+		$ti = asencode_activity($target_item);
 		if(! $ti)
 			return;
 
@@ -479,10 +475,30 @@ function pubcrawl_notifier_hub(&$arr) {
 		]], $ti);
 	
 		$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg,$arr['channel']);
-
 		$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
 	}
 
+	if($is_profile) {
+		$p = asencode_person($arr['channel']);
+		if(! $p)
+			return;
+
+		$msg = array_merge(['@context' => [
+				ACTIVITYSTREAMS_JSONLD_REV,
+				'https://w3id.org/security/v1',
+				z_root() . ZOT_APSCHEMA_REV
+			]], 
+			[
+				'id'     => $arr['channel']['xchan_url'],
+				'type'   => 'Update',
+				'actor'  => $arr['channel']['xchan_url'],
+				'object' => $p,
+				'to'     => [ z_root() . '/followers/' . $arr['channel']['channel_address'] ]
+		]);
+
+		$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg,$arr);
+		$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
+	}
 	
 	if($prv_recips) {
 		$hashes = array();
@@ -626,7 +642,7 @@ function pubcrawl_connection_remove(&$x) {
 	if(! $channel)
 		return;
 
-	$p = asencode_person($channel);
+	$p = $channel['xchan_url']; // asencode_person($channel);
 	if(! $p)
 		return;
 
@@ -715,7 +731,7 @@ function pubcrawl_permissions_create(&$x) {
 		return;
 	}
 
-	$p = asencode_person($x['sender']);
+	$p = $x['sender']['xchan_url']; //asencode_person($x['sender']);
 	if(! $p)
 		return;
 
@@ -755,6 +771,7 @@ function pubcrawl_permissions_create(&$x) {
 }
 
 function pubcrawl_permissions_update(&$x) {
+
 	if($x['recipient']['xchan_network'] === 'activitypub') {
 		q("update xchan set xchan_name_date = '%s' where xchan_hash = '%s' and xchan_network = '%s'",
 			dbescdate(NULL_DATE),
@@ -780,7 +797,7 @@ function pubcrawl_permissions_accept(&$x) {
 	if(! $accept)
 		return;
 
-	$p = asencode_person($x['sender']);
+	$p = $x['sender']['xchan_url']; //asencode_person($x['sender']);
 	if(! $p)
 		return;
 
@@ -1095,7 +1112,7 @@ function pubcrawl_follow_mod_init($x) {
 		if(! $chan)
 			http_status_exit(404, 'Not found');
 
-		$actor = asencode_person($chan);
+		$actor = $chan['xchan_url']; //asencode_person($chan);
 		if(! $actor)
 			http_status_exit(404, 'Not found');
 
