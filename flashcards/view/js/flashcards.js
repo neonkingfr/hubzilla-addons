@@ -1561,6 +1561,7 @@ $(document).on("click", "#button_delete_box", function() {
 
 function animate_on() {
     $('#button_share_box').find('.fa').addClass("fa-spin").addClass("fa-fw");
+    fixTitleLength();
 }
 
 function animate_off() {
@@ -1612,7 +1613,6 @@ function uploadBox() {
 				var remoteBox = new Box();
 				remoteBox.setContent(data['box']);
 				importBox(remoteBox);
-                loadStartPage();
                 setShareButton();
 			}
 		} else {
