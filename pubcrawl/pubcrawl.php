@@ -626,7 +626,7 @@ function pubcrawl_connection_remove(&$x) {
 	if(! $channel)
 		return;
 
-	$p = asencode_person($channel);
+	$p = $channel['xchan_url']; // asencode_person($channel);
 	if(! $p)
 		return;
 
@@ -715,7 +715,7 @@ function pubcrawl_permissions_create(&$x) {
 		return;
 	}
 
-	$p = asencode_person($x['sender']);
+	$p = $x['sender']['xchan_url']; //asencode_person($x['sender']);
 	if(! $p)
 		return;
 
@@ -780,7 +780,7 @@ function pubcrawl_permissions_accept(&$x) {
 	if(! $accept)
 		return;
 
-	$p = asencode_person($x['sender']);
+	$p = $x['sender']['xchan_url']; //asencode_person($x['sender']);
 	if(! $p)
 		return;
 
@@ -1095,7 +1095,7 @@ function pubcrawl_follow_mod_init($x) {
 		if(! $chan)
 			http_status_exit(404, 'Not found');
 
-		$actor = asencode_person($chan);
+		$actor = $chan['xchan_url']; //asencode_person($chan);
 		if(! $actor)
 			http_status_exit(404, 'Not found');
 

@@ -254,7 +254,7 @@ function asencode_item($i) {
 		$ret['content'] = bbcode($i['body']);
 	}
 
-	$actor = asencode_person($i['author']);
+	$actor = $i['author']['xchan_url']; //asencode_person($i['author']);
 	if($actor)
 		$ret['actor'] = $actor;
 	else
@@ -422,7 +422,7 @@ function asencode_activity($i) {
 		}
 	}
 
-	$actor = asencode_person($i['author']);
+	$actor = $i['author']['xchan_url']; //asencode_person($i['author']);
 	if($actor)
 		$ret['actor'] = $actor;
 	else
