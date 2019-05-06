@@ -961,6 +961,7 @@ function conductGUIelements(action) {
         var localTimeString = new Date(box.content.lastChangedPublicMetaData).toLocaleString();
         $("#flashcards_editor").html("last edit by " + box.content.lastEditor + " at " + localTimeString);
 		$('#panel_box_attributes').collapse("show");
+		$("#button_share_box").hide();
 		$("#button_flashcards_save_box").show();
 		//$("#button_flashcards_edit_box").hide();
 		$("#panel_flashcards_card").hide();
@@ -968,6 +969,7 @@ function conductGUIelements(action) {
 		$("#panel_flashcards_cards").hide();
 	}
 	if(action === 'save-box') {
+		$("#panel_flashbox_settings").collapse("hide");
 		$('#panel_box_attributes').collapse("hide");
 		//$("#button_flashcards_edit_box").show();
 		$("#button_flashcards_save_box").hide();
@@ -1399,7 +1401,11 @@ $(document).on("click", "#button_flashcards_edit_box", function() {
 });
 
 $(document).on("click", "#button_flashcards_save_box", function() {
-	logger.log('clicked button save box');	
+	logger.log('clicked button save box');
+    saveBoxSettings();
+});
+
+function saveBoxSettings() {
 	if(validateInputsBox()) {
 		box.edit();
 		box.setTitle($('#flashcards_box_title').val());
@@ -1417,7 +1423,7 @@ $(document).on("click", "#button_flashcards_save_box", function() {
 		box.save('box');
 		conductGUIelements('save-box');
 	}
-});
+}
 
 $(document).on("input", "#flashcards_box_title", function() {	
 	validateInputsBox();
@@ -1793,12 +1799,16 @@ $(document).on("click", ".flashcards-table-row", function() {
 });
 	
 $(document).on("click", "#flashcards_navbar_brand", function() {
-	logger.log('Clicked on title in navbar');    
-	conductGUIelements('edit-box');
+	logger.log('Clicked on title in navbar');   
+    if($('#button_flashcards_save_box').is(':visible')) {
+        saveBoxSettings();
+    } else {
+        conductGUIelements('edit-box');
+    }
 });	
 $(document).on("click", "#flashcards_edit_box", function() {
 	logger.log('Clicked on flashcards_edit_box');
-	conductGUIelements('edit-box');
+    conductGUIelements('edit-box');
 });
 	
 $(document).on("click", "#flashcards_new_box", function() {

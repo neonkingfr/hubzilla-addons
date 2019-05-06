@@ -12,13 +12,14 @@
 		</li>
 		<div class="navbar-brand nav-pill">
 			<span id="flashcards_navbar_brand" class="flashcards_nav"></span>
-			<!-- button class="btn flashcards_nav" id="button_flashcards_edit_box"><i class="fa fa-edit fa-lg"></i></button -->
-			<button class="btn flashcards_nav" id="button_flashcards_save_box"><i class="fa fa-save fa-lg"></i></button>
 			<button class="btn flashcards_nav" id="button_flashcards_learn_play"><i class="fa fa-play fa-lg"></i> <sup><span id="span_flashcards_cards_due"></span></sup></button>
 		</div>
 		<button class="btn btn-default nav-pill ml-auto" id="button_share_box">
 			<i class="fa fa-refresh fa-lg"></i>
 			<span id="button_share_box_counter"></span>
+		</button>
+		<button class="btn btn-default nav-pill ml-auto" id="button_flashcards_save_box" style="display: none;">
+			<i class="fa fa-save fa-lg"></i> Save
 		</button>
 		<button class="btn btn-default nav-pill ml-auto" id="button_flashcards_list_close" style="display: none;">
 			<i class="fa fa-window-close fa-lg"></i> Close
