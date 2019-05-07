@@ -35,7 +35,7 @@ function pubcrawl_load() {
 		'permissions_update'         => 'pubcrawl_permissions_update',
 		'permissions_accept'         => 'pubcrawl_permissions_accept',
 		'connection_remove'          => 'pubcrawl_connection_remove',
-		'item_stored'                => 'pubcrawl_item_stored',
+		'post_local_end'                => 'pubcrawl_post_local_end',
 		'notifier_hub'               => 'pubcrawl_notifier_hub',
 		'channel_links'              => 'pubcrawl_channel_links',
 		'personal_xrd'               => 'pubcrawl_personal_xrd',
@@ -94,6 +94,35 @@ function pubcrawl_channel_links(&$b) {
 			'url' => z_root() . '/channel/' . $c['channel_address']
 		];
 	}
+}
+
+function pubcrawl_post_local_end(&$x) {
+	$item[] = $x;
+
+	if($item[0]['mid'] === $item[0]['parent_mid'])
+		return;
+
+	if(! Apps::addon_app_installed($item[0]['uid'],'pubcrawl'))
+		return;
+
+	xchan_query($item);
+
+	$channel = channelx_by_hash($item[0]['author_xchan']);
+
+	$s = asencode_activity($item[0]);
+
+	$msg = array_merge(['@context' => [
+			ACTIVITYSTREAMS_JSONLD_REV,
+			'https://w3id.org/security/v1',
+			z_root() . ZOT_APSCHEMA_REV
+		]],
+		$s
+	);
+	$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg,$channel);
+
+	$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
+
+	set_iconfig($item[0]['id'],'activitypub', 'rawmsg', $jmsg, true);
 }
 
 function pubcrawl_webfinger(&$b) {
@@ -445,11 +474,14 @@ function pubcrawl_notifier_hub(&$arr) {
 			return;
 		}
 
-		$signed_msg = get_iconfig($arr['target_item'],'activitypub','rawmsg');
 
 		// If we have an activity already stored with an LD-signature
 		// which we are sending downstream, use that signed activity as is.
 		// The channel will then sign the HTTP transaction. 
+
+		if($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan'])
+			$signed_msg = get_iconfig($arr['target_item'],'activitypub','rawmsg');
+
 
 		// Mastodon does not support the federation delivery model
 		if(($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) && (! $signed_msg)) {
@@ -463,7 +495,7 @@ function pubcrawl_notifier_hub(&$arr) {
 		$jmsg = $signed_msg;
 	}
 
-	if($target_item) {
+	if($target_item && !$signed_msg) {
 		$ti = asencode_activity($target_item);
 		if(! $ti)
 			return;

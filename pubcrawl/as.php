@@ -231,7 +231,7 @@ function asencode_item($i) {
 
 	$cnv = null;
 
-	if($i['id'] != $i['parent']) {
+	if($i['mid'] != $i['parent_mid']) {
 		$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
 		$cnv = get_iconfig($i['parent'],'ostatus','conversation');
 	}
@@ -450,7 +450,7 @@ function asencode_activity($i) {
 			$ret['target'] = $tgt;
 	}
 
-	if($i['id'] != $i['parent']) {
+	if($i['mid'] != $i['parent_mid']) {
 		$reply = true;
 		$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
 		$recips = get_iconfig($i['parent'], 'activitypub', 'recips');
@@ -464,7 +464,10 @@ function asencode_activity($i) {
 	if($i['item_private']) {
 		if($reply && ! $item_owner) {
 
-			$dm = ((in_array($i['author']['xchan_url'], $recips['to'])) ? true : false);
+			$dm = true;
+
+			if(isset($recips['to']))
+				$dm = ((in_array($i['author']['xchan_url'], $recips['to'])) ? true : false);
 
 			$reply_url = (($dm) ? $i['owner']['xchan_url'] : $followers_url);
 			$reply_addr = (($i['owner']['xchan_addr']) ? $i['owner']['xchan_addr'] : $i['owner']['xchan_name']);
@@ -489,7 +492,7 @@ function asencode_activity($i) {
 		if($reply) {
 			$ret['to'][] = $i['owner']['xchan_url'];
 
-			if(in_array(ACTIVITY_PUBLIC_INBOX, $recips['to'])) {
+			if(isset($recips['to']) && in_array(ACTIVITY_PUBLIC_INBOX, $recips['to'])) {
 				//visible in public timelines
 				$ret['to'][] = ACTIVITY_PUBLIC_INBOX;
 				$ret['cc'][] = $followers_url;
