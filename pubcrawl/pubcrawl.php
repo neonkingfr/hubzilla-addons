@@ -35,7 +35,7 @@ function pubcrawl_load() {
 		'permissions_update'         => 'pubcrawl_permissions_update',
 		'permissions_accept'         => 'pubcrawl_permissions_accept',
 		'connection_remove'          => 'pubcrawl_connection_remove',
-		'post_local_end'                => 'pubcrawl_post_local_end',
+		'post_local_end'             => 'pubcrawl_post_local_end',
 		'notifier_hub'               => 'pubcrawl_notifier_hub',
 		'channel_links'              => 'pubcrawl_channel_links',
 		'personal_xrd'               => 'pubcrawl_personal_xrd',
@@ -119,7 +119,6 @@ function pubcrawl_post_local_end(&$x) {
 		$s
 	);
 	$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg,$channel);
-
 	$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
 
 	set_iconfig($item[0]['id'],'activitypub', 'rawmsg', $jmsg, true);
