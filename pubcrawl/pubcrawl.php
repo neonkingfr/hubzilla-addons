@@ -102,7 +102,7 @@ function pubcrawl_post_local_end(&$x) {
 	if($item[0]['mid'] === $item[0]['parent_mid'])
 		return;
 
-	if(! Apps::addon_app_installed($item[0]['uid'],'pubcrawl'))
+	if(! Apps::addon_app_installed($item[0]['uid'], 'pubcrawl'))
 		return;
 
 	xchan_query($item);
@@ -118,7 +118,7 @@ function pubcrawl_post_local_end(&$x) {
 		]],
 		$s
 	);
-	$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg,$channel);
+	$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $channel);
 	$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
 
 	set_iconfig($item[0]['id'], 'activitypub', 'rawmsg', $jmsg, true);
