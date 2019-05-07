@@ -121,7 +121,7 @@ function pubcrawl_post_local_end(&$x) {
 	$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg,$channel);
 	$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
 
-	set_iconfig($item[0]['id'],'activitypub', 'rawmsg', $jmsg, true);
+	set_iconfig($item[0]['id'], 'activitypub', 'rawmsg', $jmsg, true);
 }
 
 function pubcrawl_webfinger(&$b) {
