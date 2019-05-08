@@ -468,21 +468,19 @@ function pubcrawl_notifier_hub(&$arr) {
 		}
 
 		// don't forward guest comments to activitypub at the moment
-
 		if(strpos($arr['target_item']['author']['xchan_url'],z_root() . '/guest/') !== false) {
 			return;
 		}
 
-
 		// If we have an activity already stored with an LD-signature
 		// which we are sending downstream, use that signed activity as is.
 		// The channel will then sign the HTTP transaction. 
-
-		if($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan'])
+		if($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) {
 			$signed_msg = get_iconfig($arr['target_item'],'activitypub','rawmsg');
+		}
 
-
-		// Mastodon does not support the federation delivery model
+		// If we don't have a signed message and we are not the author,
+		// the message will be misattributed in mastodon
 		if(($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) && (! $signed_msg)) {
 			return;
 		}
