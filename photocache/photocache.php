@@ -232,7 +232,6 @@ function photocache_url(&$cache = array()) {
 			}
 			$r['edited'] = $k[0]['edited'];
 			$r['expires'] = $k[0]['expires'];
-			$r['filename'] = $k[0]['filename'];
 			$r['mimetype'] = $k[0]['mimetype'];
 			$r['height'] = $k[0]['height'];
 			$r['width'] = $k[0]['width'];
@@ -313,9 +312,7 @@ function photocache_url(&$cache = array()) {
 
 				$r['width'] = $ph->getWidth();
 				$r['height'] = $ph->getHeight();
-				
-				$r['filename'] = basename(parse_url($url, PHP_URL_PATH));
-				
+
 				$oldsize = $r['filesize'];
 					
 				if($orig_width >= $minres || $orig_height >= $minres) {
