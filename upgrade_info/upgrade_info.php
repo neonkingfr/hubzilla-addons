@@ -45,7 +45,7 @@ function upgrade_info_construct_page(&$b){
 	if($parts[1] % 2 == 0)
 		$dev = false;
 
-	$content[] = t('Your channel has been upgraded to version');
+	$content[] = t('Your channel has been upgraded to $Projectname version');
 	$content[] = STD_VERSION;
 	$content[] = t('Please have a look at the');
 	if($dev)
