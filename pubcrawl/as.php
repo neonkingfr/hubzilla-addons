@@ -45,7 +45,7 @@ function asfetch_image($x) {
 		'type' => 'Image',
 		'id' => $x['id'],
 		'name' => $x['title'],
-		'content' => bbcode($x['body']),
+		'content' => bbcode($x['body'], ['cache' => true ]),
 		'source' => [ 'mediaType' => 'text/bbcode', 'content' => $x['body'] ],
 		'published' => datetime_convert('UTC','UTC',$x['created'],ATOM_TIME), 
 		'updated' => datetime_convert('UTC','UTC', $x['edited'],ATOM_TIME),
@@ -197,7 +197,7 @@ function asencode_item($i) {
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
 
 	if($i['title'])
-		$ret['title'] = bbcode($i['title']);
+		$ret['title'] = bbcode($i['title'], ['cache' => true ]);
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);
 	if($i['created'] !== $i['edited'])
@@ -248,10 +248,10 @@ function asencode_item($i) {
 		$ret['summary'] = $match[1];
 
 		$body_content = preg_replace("/^(.*?)\[summary\](.*?)\[\/summary\](.*?)$/ism", '', $i['body']);
-		$ret['content'] = bbcode(trim($body_content));
+		$ret['content'] = bbcode(trim($body_content), ['cache' => true ]);
 	}
 	else {
-		$ret['content'] = bbcode($i['body']);
+		$ret['content'] = bbcode($i['body'], ['cache' => true ]);
 	}
 
 	$actor = $i['author']['xchan_url']; //asencode_person($i['author']);
@@ -402,7 +402,7 @@ function asencode_activity($i) {
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/activity/' . urlencode($i['mid']));
 
 	if($i['title'])
-		$ret['title'] = html2plain(bbcode($i['title']));
+		$ret['title'] = html2plain(bbcode($i['title'], ['cache' => true ]));
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);
 	if($i['created'] !== $i['edited'])
@@ -1660,7 +1660,7 @@ function as_bb_content($content,$field) {
 
 	if(is_array($content[$field])) {
 		foreach($content[$field] as $k => $v) {
-			$ret .= '[language=' . $k . ']' . html2bbcode($v) . '[/language]';
+			$ret .= '[language=' . $k . ']' . html2bbcode($v, ['cache' => true ]) . '[/language]';
 		}
 	}
 	else {
