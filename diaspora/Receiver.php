@@ -2380,11 +2380,11 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('diaspora_handle',$xml))
+		if(isset($xml['diaspora_handle']))
 			return unxmlify($xml['diaspora_handle']);
-		elseif(array_key_exists('sender_handle',$xml))
+		elseif(isset($xml['sender_handle']))
 			return unxmlify($xml['sender_handle']);
-		elseif(array_key_exists('author',$xml))
+		elseif(isset($xml['author']))
 			return unxmlify($xml['author']);
 		else
 			return '';
@@ -2394,9 +2394,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('root_diaspora_id',$xml))
+		if(isset($xml['root_diaspora_id']))
 			return unxmlify($xml['root_diaspora_id']);
-		elseif(array_key_exists('root_author',$xml))
+		elseif(isset($xml['root_author']))
 			return unxmlify($xml['root_author']);
 		else
 			return '';
@@ -2407,9 +2407,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('participant_handles',$xml))
+		if(isset($xml['participant_handles']))
 			return unxmlify($xml['participant_handles']);
-		elseif(array_key_exists('participants',$xml))
+		elseif(isset($xml['participants']))
 			return unxmlify($xml['participants']);
 		else
 			return '';
@@ -2419,9 +2419,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('target_type',$xml))
+		if(isset($xml['target_type']))
 			return unxmlify($xml['target_type']);
-		elseif(array_key_exists('parent_type',$xml))
+		elseif(isset($xml['parent_type']))
 			return unxmlify($xml['parent_type']);
 		else
 			return '';
@@ -2431,9 +2431,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('target_type',$xml))
+		if(isset($xml['target_type']))
 			return unxmlify($xml['target_type']);
-		elseif(array_key_exists('type',$xml))
+		elseif(isset($xml['type']))
 			return unxmlify($xml['type']);
 		else
 			return '';
@@ -2444,11 +2444,11 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('post_guid',$xml))
+		if(isset($xml['post_guid']))
 			return unxmlify($xml['post_guid']);
-		elseif(array_key_exists('target_guid',$xml))
+		elseif(isset($xml['target_guid']))
 			return unxmlify($xml['target_guid']);
-		elseif(array_key_exists('guid',$xml))
+		elseif(isset($xml['guid']))
 			return unxmlify($xml['guid']);
 		else
 			return '';
@@ -2459,9 +2459,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('recipient_handle',$xml))
+		if(isset($xml['recipient_handle']))
 			return unxmlify($xml['recipient_handle']);
-		elseif(array_key_exists('recipient',$xml))
+		elseif(isset($xml['recipient']))
 			return unxmlify($xml['recipient']);
 		else
 			return '';
@@ -2471,9 +2471,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('raw_message',$xml))
+		if(isset($xml['raw_message']))
 			return unxmlify($xml['raw_message']);
-		elseif(array_key_exists('text',$xml))
+		elseif(isset($xml['text']))
 			return unxmlify($xml['text']);
 		else
 			return '';
@@ -2483,7 +2483,7 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists($property,$xml)) {
+		if(isset($xml[$property])) {
 			if(is_array($xml[$property])) {
 				return $xml[$property];
 			}
