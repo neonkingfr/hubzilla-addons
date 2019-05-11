@@ -253,7 +253,7 @@ class Diaspora_Receiver {
 		// Turn singles into an array of one. 
 
 		$photos = $this->get_property('photo');
-		if(is_array($photos) && array_key_exists('guid',$photos))
+		if(is_array($photos) && isset($photos['guid']))
 			$photos = array($photos);
 
 		if($photos) {
@@ -271,7 +271,7 @@ class Diaspora_Receiver {
 		}
 
 		$event = $this->get_property('event');
-		if(is_array($event) && array_key_exists('guid',$event)) {
+		if(is_array($event) && isset($event['guid'])) {
 			$ev = [];
 			$dts = $this->get_property('start',$event);
 			if($dts) {
@@ -411,9 +411,9 @@ class Diaspora_Receiver {
 		$plink = service_plink($xchan,$guid);
 
 		if(is_array($raw_location)) {
-			if(array_key_exists('address',$raw_location))
+			if(isset($raw_location['address']))
 				$datarray['location'] = unxmlify($raw_location['address']);
-			if(array_key_exists('lat',$raw_location) && array_key_exists('lng',$raw_location))
+			if(isset($raw_location['lat']) && isset($raw_location['lng']))
 				$datarray['coord'] = floatval(unxmlify($raw_location['lat'])) 
 					. ' ' . floatval(unxmlify($raw_location['lng']));
 		}
@@ -555,7 +555,7 @@ class Diaspora_Receiver {
 		
 			if($source_xml['status_message']['photo']) {
 				$photos = $source_xml['status_message']['photo'];
-				if(array_key_exists('remote_photo_path',$photos)) {
+				if(isset($photos['remote_photo_path'])) {
 					$photos = [ $photos ];
 				}
 				if($photos) {
@@ -708,14 +708,14 @@ class Diaspora_Receiver {
 		$parent_guid = notags($this->get_property('parent_guid'));
 		$diaspora_handle = notags($this->get_author());
 
-		$created_at = ((array_key_exists('created_at',$this->xmlbase)) 
+		$created_at = ((isset($this->xmlbase['created_at'])) 
 			? datetime_convert('UTC','UTC',$this->get_property('created_at')) : datetime_convert());
 
-		$edited_at = ((array_key_exists('edited_at',$this->xmlbase)) 
+		$edited_at = ((isset($this->xmlbase['edited_at'])) 
 			? datetime_convert('UTC','UTC',$this->get_property('edited_at')) : $created_at);
 
 
-		$thr_parent = ((array_key_exists('thread_parent_guid',$this->xmlbase)) 
+		$thr_parent = ((isset($this->xmlbase['thread_parent_guid'])) 
 			? notags($this->get_property('thread_parent_guid')) : '');
 
 		$text = $this->get_body();
@@ -1829,7 +1829,7 @@ class Diaspora_Receiver {
 		}
 
 		// full_name added to protocol 2018-04
-		if(array_key_exists('full_name',$this->xmlbase) && $this->xmlbase['full_name']) {
+		if(isset($this->xmlbase['full_name'])) {
 			$name = unxmlify($this->xmlbase['full_name']);
 		}
 		else {
