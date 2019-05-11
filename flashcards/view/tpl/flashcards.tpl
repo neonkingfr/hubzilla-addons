@@ -261,9 +261,6 @@
 		<div id="flashcards_main_card">        
             <div class="container-fluid"> 
               <div class="row">
-                <div class="col-sm-12">
-                     <small class="form-text text-muted" id="flashcard_learn_card_details"></small>	
-                </div>
                 <div class="col-sm-6">
                      <div class="form-group">
                       <label for="flashcards_language1">Side 1:</label>
@@ -291,6 +288,11 @@
                       <label for="flashcards_tags">Tags:</label>
                       <input class="form-control card-content" id="flashcards_tags">
                     </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-12">
+                     <small class="form-text text-muted" id="flashcard_learn_card_details"></small>	
                 </div>
               </div>
             </div>

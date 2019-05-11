@@ -1278,9 +1278,9 @@ function setLearnButtonsToFixedPosition() {
         pos = $("#button_flashcards_learn_stopp").offset();
         leftLearnButtons = pos.left - 5;
     }
-	$("#flashcards_panel_learn_buttons").css({ 'position': 'fixed' }).css({ 'top': topLearnButtons }).css({ 'left': leftLearnButtons }).css({ 'z-index': 10 });
-	var heightButtons = $("#flashcards_panel_learn_buttons").outerHeight();
-	$("#flashcards_main_card").css({ 'z-index': 5 }).css({ 'margin-top': heightButtons });
+    $("#flashcards_panel_learn_buttons").css({ 'position': 'fixed' }).css({ 'left': leftLearnButtons }).css({ 'z-index': 10 });
+    var heightButtons = $("#flashcards_panel_learn_buttons").outerHeight();
+    $("#flashcards_main_card").css({ 'z-index': 5 }).css({ 'margin-top': heightButtons });
 }
 
 function unsetLearnButtonsToFixedPosition() {
