@@ -1678,7 +1678,7 @@ function as_get_content($act) {
 	$content = [];
 	$event = null;
 
-	if($act['type'] === 'Event') {
+	if(array_key_exists('type', $act) && ($act['type'] === 'Event')) {
 		$adjust = false;
 		$event = [];
 		$event['event_hash'] = $act['id'];

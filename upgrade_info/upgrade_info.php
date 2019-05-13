@@ -42,7 +42,7 @@ function upgrade_info_construct_page(&$b){
 
 	$parts = explode('.', STD_VERSION);
 	$dev = true;
-	if($parts[1] % 2 == 0)
+	if(is_numeric($parts[1]) && $parts[1] % 2 == 0)
 		$dev = false;
 
 	$content[] = t('Your channel has been upgraded to $Projectname version');
