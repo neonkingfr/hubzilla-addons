@@ -52,7 +52,7 @@ function upgrade_info_construct_page(&$b){
 		$content[] = '<a target="_blank" href="https://framagit.org/hubzilla/core/commits/dev">' . t('git history') . '</a>';
 	else
 		$content[] = '<a target="_blank" href="https://framagit.org/hubzilla/core/tags/' . STD_VERSION . '">' . t('change log') . '</a>';
-	$content[] = t('for further infos.');
+	$content[] = t('for further info.');
 
 	$tpl = get_markup_template('upgrade_info.tpl', 'addon/upgrade_info');
 
