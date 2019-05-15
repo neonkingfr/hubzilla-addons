@@ -1230,7 +1230,35 @@ function as_create_note($channel,$observer_hash,$act) {
 	if($act->obj['diaspora:guid'])
 		$s['uuid'] = $act->obj['diaspora:guid'];
 	$s['mid'] = urldecode($act->obj['id']);
-	$s['plink'] = urldecode($act->obj['id']);
+
+
+	if(in_array($act->obj['type'],[ 'Note','Article','Page' ])) {
+		$ptr = null;
+
+		if(array_key_exists('url',$act->obj)) {
+			if(is_array($act->obj['url'])) {
+				if(array_key_exists(0,$act->obj['url'])) {				
+					$ptr = $act->obj['url'];
+				}
+				else {
+					$ptr = [ $act->obj['url'] ];
+				}
+				foreach($ptr as $vurl) {
+					if(array_key_exists('mediaType',$vurl) && $vurl['mediaType'] === 'text/html') {
+						$s['plink'] = $vurl['href'];
+						break;
+					}
+				}
+			}
+			elseif(is_string($act->obj['url'])) {
+				$s['plink'] = $act->obj['url'];
+			}
+		}
+	}
+
+	if(! $s['plink']) {
+		$s['plink'] = $s['mid'];
+	}
 
 
 	if($act->data['published']) {
