@@ -29,6 +29,10 @@ function asencode_object($x) {
 		return asfetch_thing($x); 
 	}
 	
+	if($x['type'] === ACTIVITY_OBJ_EVENT) {
+		return asfetch_event($x); 
+	}
+	
 	if($x['type'] === ACTIVITY_OBJ_PHOTO) {
 		return asfetch_image($x); 
 	}
@@ -38,6 +42,49 @@ function asencode_object($x) {
 
 function asfetch_person($x) {
 	return asfetch_profile($x);
+}
+
+function asfetch_event($x) {
+
+	// convert old Zot event objects to ActivityStreams Event objects
+
+	if (array_key_exists('content',$x) && array_key_exists('dtstart',$x)) {
+		$ev = bbtoevent($x['content']);
+		if($ev) {
+
+			$actor = null;
+			if(array_key_exists('author',$x) && array_key_exists('link',$x['author'])) {
+				$actor = $x['author']['link'][0]['href'];
+			}
+			$y = [ 
+				'type'      => 'Event',
+				'id'        => z_root() . '/event/' . $ev['event_hash'],
+				'summary'   => bbcode($ev['summary'], [ 'cache' => true ]),
+				// RFC3339 Section 4.3
+				'startTime' => (($ev['adjust']) ? datetime_convert('UTC','UTC',$ev['dtstart'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtstart'],'Y-m-d\\TH:i:s-00:00')),
+				'content'   => bbcode($ev['description'], [ 'cache' => true ]),
+				'location'  => [ 'type' => 'Place', 'content' => bbcode($ev['location'], [ 'cache' => true ]) ],
+				'source'    => [ 'content' => format_event_bbcode($ev), 'mediaType' => 'text/bbcode' ],
+				'actor'     => $actor,
+			];
+			if(! $ev['nofinish']) {
+				$y['endTime'] = (($ev['adjust']) ? datetime_convert('UTC','UTC',$ev['dtend'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtend'],'Y-m-d\\TH:i:s-00:00'));
+			}
+				
+			// copy attachments from the passed object - these are already formatted for ActivityStreams
+
+			if($x['attachment']) {
+				$y['attachment'] = $x['attachment'];
+			}
+
+			if($actor) {
+				return $y;
+			}
+		}
+	}
+
+	return $x;
+
 }
 
 
@@ -446,6 +493,7 @@ function asencode_activity($i) {
 			return [];
 	}
 
+
 	if($i['target']) {
 		$tgt = asencode_object($i['target']);
 		if($tgt)
@@ -672,6 +720,10 @@ function activity_mapper($verb) {
 		'http://activitystrea.ms/schema/1.0/tag'       => 'Add',
 		'http://activitystrea.ms/schema/1.0/follow'    => 'Follow',
 		'http://activitystrea.ms/schema/1.0/unfollow'  => 'Unfollow',
+		'http://purl.org/zot/activity/attendyes'       => 'Accept',
+		'http://purl.org/zot/activity/attendno'        => 'Reject',
+		'http://purl.org/zot/activity/attendmaybe'     => 'TentativeAccept'
+
 	];
 
 
