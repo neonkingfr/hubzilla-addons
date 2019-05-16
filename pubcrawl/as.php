@@ -1715,19 +1715,21 @@ function as_get_content($act) {
 		$adjust = false;
 		$event = [];
 		$event['event_hash'] = $act['id'];
-		if(array_key_exists('startTime',$act) && strpos($act['startTime'],-1,1) === 'Z') {
-			$adjust = true;
-			$event['adjust'] = 1;
-			$event['dtstart'] = datetime_convert('UTC','UTC',$event['startTime'] . (($adjust) ? '' : 'Z')); 
+		if(array_key_exists('startTime',$act)) {
+			if(substr($act['startTime'],-1,1) === 'Z') {
+				$adjust = true;
+				$event['adjust'] = 1;
+			}
+			$event['dtstart'] = datetime_convert('UTC','UTC',$act['startTime'] . (($adjust) ? '' : 'Z')); 
 		}
 		if(array_key_exists('endTime',$act)) {
-			$event['dtend'] = datetime_convert('UTC','UTC',$event['endTime'] . (($adjust) ? '' : 'Z')); 
+			$event['dtend'] = datetime_convert('UTC','UTC',$act['endTime'] . (($adjust) ? '' : 'Z')); 
  		}
 		else {
 			$event['nofinish'] = true;
 		}
 	}
-
+	
 	foreach([ 'name', 'summary', 'content' ] as $a) {
 		if(($x = as_get_textfield($act,$a)) !== false) {
 			$content[$a] = $x;
@@ -1735,7 +1737,7 @@ function as_get_content($act) {
 	}
 
 	if($event) {
-		$event['summary'] = $content['summary'];
+		$event['summary'] = (($content['summary']) ? $content['summary'] : $content['name']);
 		$event['description'] = $content['content'];
 		if($event['summary'] && $event['dtstart']) {
 			$content['event'] = $event;
