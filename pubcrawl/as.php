@@ -2,6 +2,8 @@
 
 use Zotlabs\Lib\Apps;
 
+require_once('include/event.php');
+
 function asencode_object($x) {
 
 	if((substr(trim($x),0,1)) === '{' ) {
@@ -27,6 +29,10 @@ function asencode_object($x) {
 		return asfetch_thing($x); 
 	}
 	
+	if($x['type'] === ACTIVITY_OBJ_EVENT) {
+		return asfetch_event($x); 
+	}
+	
 	if($x['type'] === ACTIVITY_OBJ_PHOTO) {
 		return asfetch_image($x); 
 	}
@@ -36,6 +42,49 @@ function asencode_object($x) {
 
 function asfetch_person($x) {
 	return asfetch_profile($x);
+}
+
+function asfetch_event($x) {
+
+	// convert old Zot event objects to ActivityStreams Event objects
+
+	if (array_key_exists('content',$x) && array_key_exists('dtstart',$x)) {
+		$ev = bbtoevent($x['content']);
+		if($ev) {
+
+			$actor = null;
+			if(array_key_exists('author',$x) && array_key_exists('link',$x['author'])) {
+				$actor = $x['author']['link'][0]['href'];
+			}
+			$y = [ 
+				'type'      => 'Event',
+				'id'        => z_root() . '/event/' . $ev['event_hash'],
+				'summary'   => bbcode($ev['summary'], [ 'cache' => true ]),
+				// RFC3339 Section 4.3
+				'startTime' => (($ev['adjust']) ? datetime_convert('UTC','UTC',$ev['dtstart'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtstart'],'Y-m-d\\TH:i:s-00:00')),
+				'content'   => bbcode($ev['description'], [ 'cache' => true ]),
+				'location'  => [ 'type' => 'Place', 'content' => bbcode($ev['location'], [ 'cache' => true ]) ],
+				'source'    => [ 'content' => format_event_bbcode($ev), 'mediaType' => 'text/bbcode' ],
+				'actor'     => $actor,
+			];
+			if(! $ev['nofinish']) {
+				$y['endTime'] = (($ev['adjust']) ? datetime_convert('UTC','UTC',$ev['dtend'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtend'],'Y-m-d\\TH:i:s-00:00'));
+			}
+				
+			// copy attachments from the passed object - these are already formatted for ActivityStreams
+
+			if($x['attachment']) {
+				$y['attachment'] = $x['attachment'];
+			}
+
+			if($actor) {
+				return $y;
+			}
+		}
+	}
+
+	return $x;
+
 }
 
 
@@ -444,6 +493,7 @@ function asencode_activity($i) {
 			return [];
 	}
 
+
 	if($i['target']) {
 		$tgt = asencode_object($i['target']);
 		if($tgt)
@@ -673,6 +723,10 @@ function activity_mapper($verb) {
 		'http://activitystrea.ms/schema/1.0/tag'       => 'Add',
 		'http://activitystrea.ms/schema/1.0/follow'    => 'Follow',
 		'http://activitystrea.ms/schema/1.0/unfollow'  => 'Unfollow',
+		'http://purl.org/zot/activity/attendyes'       => 'Accept',
+		'http://purl.org/zot/activity/attendno'        => 'Reject',
+		'http://purl.org/zot/activity/attendmaybe'     => 'TentativeAccept'
+
 	];
 
 
@@ -1294,6 +1348,12 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
 	$s['app']      = t('ActivityPub');
 
+	if($act->obj['type'] === 'Event') {
+		$ev = as_bb_content($content,'event');
+		if($ev) {
+			$s['obj_type'] = ACTIVITY_OBJ_EVENT;
+		}
+	}
 
 	if($channel['channel_system']) {
 		if(! \Zotlabs\Lib\MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
@@ -1713,19 +1773,21 @@ function as_get_content($act) {
 		$adjust = false;
 		$event = [];
 		$event['event_hash'] = $act['id'];
-		if(array_key_exists('startTime',$act) && strpos($act['startTime'],-1,1) === 'Z') {
-			$adjust = true;
-			$event['adjust'] = 1;
-			$event['dtstart'] = datetime_convert('UTC','UTC',$event['startTime'] . (($adjust) ? '' : 'Z')); 
+		if(array_key_exists('startTime',$act)) {
+			if(substr($act['startTime'],-1,1) === 'Z') {
+				$adjust = true;
+				$event['adjust'] = 1;
+			}
+			$event['dtstart'] = datetime_convert('UTC','UTC',$act['startTime'] . (($adjust) ? '' : 'Z')); 
 		}
 		if(array_key_exists('endTime',$act)) {
-			$event['dtend'] = datetime_convert('UTC','UTC',$event['endTime'] . (($adjust) ? '' : 'Z')); 
+			$event['dtend'] = datetime_convert('UTC','UTC',$act['endTime'] . (($adjust) ? '' : 'Z')); 
  		}
 		else {
 			$event['nofinish'] = true;
 		}
 	}
-
+	
 	foreach([ 'name', 'summary', 'content' ] as $a) {
 		if(($x = as_get_textfield($act,$a)) !== false) {
 			$content[$a] = $x;
@@ -1733,10 +1795,13 @@ function as_get_content($act) {
 	}
 
 	if($event) {
-		$event['summary'] = $content['summary'];
+		$event['summary'] = (($content['summary']) ? $content['summary'] : $content['name']);
 		$event['description'] = $content['content'];
 		if($event['summary'] && $event['dtstart']) {
 			$content['event'] = $event;
+		}
+		if(! $content['content']) {
+			$content['content'] = format_event_bbcode($content['event']);
 		}
 	}
 
