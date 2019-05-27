@@ -1231,7 +1231,6 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['uuid'] = $act->obj['diaspora:guid'];
 	$s['mid'] = urldecode($act->obj['id']);
 
-
 	if(in_array($act->obj['type'],[ 'Note','Article','Page' ])) {
 		$ptr = null;
 
@@ -1577,6 +1576,10 @@ function as_like_note($channel,$observer_hash,$act) {
 
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
+	$s['uuid'] = '';
+	// Friendica sends the diaspora guid in a nonstandard field via AP
+	if($act->obj['diaspora:guid'])
+		$s['uuid'] = $act->obj['diaspora:guid'];
 	$s['mid'] = $act->id;
 
 	if(! $s['parent_mid'])
