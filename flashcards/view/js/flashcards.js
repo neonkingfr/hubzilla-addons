@@ -1504,7 +1504,7 @@ function learnNext(takeNext) {
 			$('#flashcards_language2').val(card.content[2]);
 		}
 		$('#flashcards_description').val("");
-		$('#flashcards_tags').val("");
+		$('#flashcards_tags').val(card.content[4]);
 		html = '';
 		if(card.content[9] != 0) {
 			html = 'Card is in deck ' + card.content[6];
