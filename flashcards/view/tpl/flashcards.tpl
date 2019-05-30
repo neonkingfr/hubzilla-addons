@@ -69,15 +69,10 @@
 		</div>
 		<div class="row">
 			<div class="col-sm-10">
-                <!--
-				<div class="checkbox">
-					<label><input type="checkbox" name="public_visible" id="flashcards_box_public_visible"> Make publicly visible (not implemented yet)</label>
-					<small class="form-text text-muted">Your learning progress is kept private</small>		
-				</div>
-                -->
+				<button class="btn" data-toggle="collapse" id="flashcards_perms" href="#panel_flashcards_permissions" role="button" aria-expanded="false" aria-controls="panel_flashcards__permissions"><i class="fa fa-community fa-lg"></i> Permissions</button>
 			</div>      
 			<div class="col-sm-2">
-				<button class="btn" data-toggle="collapse" href="#panel_flashbox_settings" role="button" aria-expanded="false" aria-controls="panel_flashbox_settings"><i class="fa fa-sliders fa-lg"></i> Settings</button>
+				<button class="btn" data-toggle="collapse" href="#panel_flashbox_settings" role="button" aria-expanded="false" aria-controls="panel_flashbox_settings"><i class="fa fa-cogs fa-lg"></i> Settings</button>
 			</div>
 		</div>
 		<div id="panel_flashbox_settings" class="panel-collapse collapse">
@@ -300,6 +295,10 @@
 		</div>
 	</div>
 </div>
+                        
+<div id="panel_flashcards_permissions" class="panel-collapse collapse">
+</div>
+                        
 <div id="panel_flashcards_cards_actions" style="display: none;">
 	<span class="navbar-brand">
 		<span>&nbsp;</span>
@@ -344,6 +343,7 @@
 <div id="panel_flashcards_cards" style="display: none;"></div>
 
 <div id="post_url" style="display: none;">{{$post_url}}</div>
+<div id="nick" style="display: none;">{{$nick}}</div>
 <div id="is_owner" style="display: none;">{{$is_owner}}</div>
 <!--
 <p>
@@ -375,6 +375,7 @@ Modal to delete a box
 	    </div>
 	</div>
 </div>
+<div id="acl_modal_flashcards_cards"></div>
 
 
 <script src="/addon/flashcards/view/js/flashcards.js"></script>

@@ -884,6 +884,7 @@ class Box {
 	}
 }
 var box = new Box();
+var nick = "";
 
 var sortByColumn = 0;
 var sortReversOrder = false;
@@ -939,12 +940,14 @@ function conductGUIelements(action) {
 		$("#flashcards_panel_learn_buttons").hide();
 		$("#flashcards_import").prop("disabled",false);
 		$("#panel_cloud_boxes_1").hide();
+                $('#panel_flashcards_permissions').collapse("hide");
 		if(box.isEmpty()) {
 			//$("#button_flashcards_edit_box").hide();
 			$("#button_flashcards_save_box").show();
 			$("#button_flashcards_learn_play").hide();
 			$("#button_share_box").hide();
 			$('#panel_box_attributes').collapse("show");
+                        showACLbutton();
 			$("#panel_flashcards_cards_actions").hide();
 			$("#panel_flashcards_cards").hide();
 			$("#button_flashcards_new_card").css({ 'color': 'green' });
@@ -962,11 +965,14 @@ function conductGUIelements(action) {
         $("#flashcards_editor").html("last edit by " + box.content.lastEditor + " at " + localTimeString);
 		$('#panel_box_attributes').collapse("show");
 		$("#button_share_box").hide();
+		$("#button_flashcards_learn_play").hide();
 		$("#button_flashcards_save_box").show();
 		//$("#button_flashcards_edit_box").hide();
 		$("#panel_flashcards_card").hide();
 		$("#panel_flashcards_cards_actions").hide();
 		$("#panel_flashcards_cards").hide();
+                $('#panel_flashcards_permissions').collapse("hide");
+		showACLbutton();
 	}
 	if(action === 'save-box') {
 		$("#panel_flashbox_settings").collapse("hide");
@@ -1051,6 +1057,7 @@ function conductGUIelements(action) {
 		$("#button_flashcards_learn_play").hide();
 		$("#button_share_box").hide();
 		$('#panel_box_attributes').collapse("hide");
+                $('#panel_flashcards_permissions').collapse("hide");
 		$("#panel_flashcards_cards_actions").hide();
 		$("#panel_flashcards_cards").hide();
 		$("#panel_cloud_boxes_1").show();
@@ -1935,6 +1942,39 @@ function fixTitleLength() {
     }
 }
 
+$(document).on("click", "#flashcards_perms", function() { 
+    var url = postUrl + '/acl';
+    logger.log('Sending request to get ACL for box ' + box.content.boxID + ' ... (' + url + ")");
+    $.post(url,  {boxID: box.content.boxID} , function(data) {
+	if (data['status']) {
+            logger.log("Donwnload of boxes successfull. Status: " + data['status']);
+            var acl_modal = data['acl_modal'];
+            var permissions_panel = data['permissions_panel'];
+            if(acl_modal && permissions_panel) {
+            } else {
+                logger.log("Response not complete. Either empty ACL modal or permissions panel.");
+                return;
+            }
+            $('#acl_modal_flashcards_cards').html(acl_modal);
+            $('#panel_flashcards_permissions').html(permissions_panel);
+            $('#panel_flashcards_permissions').collapse("show");
+            $("#button_flashcards_save_box").hide();
+            $("#panel_flashbox_settings").collapse("hide");
+            $('#panel_box_attributes').collapse("hide");  
+        } else {
+            logger.log("Failed to load ACL. Error message is: " + data['errormsg']);
+        }
+    });
+})
+
+function showACLbutton() {
+    if(is_owner == 1 &&  box.content.boxID !== "") {
+        $("#flashcards_perms").show();
+    } else {
+        $("#flashcards_perms").hide();
+    }
+}
+
 //------------------------
 // ###
 // ### Start Unit Tests
@@ -2762,6 +2802,7 @@ function loadBox() {
 	box.load();
     box.validate();
     postUrl = $("#post_url").html();
+    nick = $("#nick").html();
     is_owner = $("#is_owner").html();
     if(!is_owner) {
 		$("#flashcards_new_box").hide();

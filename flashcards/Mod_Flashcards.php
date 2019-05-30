@@ -12,6 +12,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
     private $is_owner;
     private $owner;
     private $observer;
+    private $canWrite;
 
     function init() {
         // Determine which channel's flashcards to display to the observer
@@ -62,10 +63,11 @@ class Flashcards extends \Zotlabs\Web\Controller {
 
         $o = replace_macros(get_markup_template('flashcards.tpl','addon/flashcards'),array(
                 '$post_url' => 'flashcards/' . $this->owner['channel_address'],
+                '$nick' => $this->owner['channel_address'],
                 '$is_owner' => $this->is_owner,
                 '$flashcards_editor' => $this->observer['xchan_addr']
-        ));
-        
+        )); 
+
         return $o;
     }
 
@@ -105,6 +107,14 @@ class Flashcards extends \Zotlabs\Web\Controller {
                     // API: /flashcards/nick/list
                     // List all boxes owned by the channel
                     $this->listBoxes();
+                case 'permissions':
+                    // API: /flashcards/nick/permissions/
+                    // List all boxes owned by the channel
+                    $this->setPermissions();
+                case 'acl':
+                    // API: /flashcards/nick/acl/
+                    // List all boxes owned by the channel
+                    $this->getACL();
                 case 'delete':
                     // API: /flashcards/nick/delete
                     // Deletes a box specified by param "box_id"
@@ -135,6 +145,10 @@ class Flashcards extends \Zotlabs\Web\Controller {
         if (!perm_is_allowed($owner_uid, get_observer_hash(), 'view_storage')) {
             return array('status' => false, 'errormsg' => 'Permission view storage denied');
         }
+
+        if (perm_is_allowed($owner_uid, get_observer_hash(), 'write_storage')) {
+            $this->canWrite = true;
+        }
         
         $this->owner = channelx_by_n($owner_uid);        
         $this->observer = \App::get_observer();
@@ -149,6 +163,104 @@ class Flashcards extends \Zotlabs\Web\Controller {
         }
         
         return array('status' => true);
+    }
+
+    private function getACL() {
+        
+        logger('+++ get permissions (ACL) of box ... +++');
+        
+        // API: /flashcards/nick/fileid/permissions
+        if(! $this->canWrite) {   
+            notice(t('Not allowed.') . EOL);
+            json_return_and_die(array('status' => false, 'errormsg' => 'No permission to change ACLs ' . $box_id));
+            return;
+        }
+        require_once('include/acl_selectors.php');
+        $box_id = isset($_POST['boxID']) ? $_POST['boxID'] : ''; 
+        if(strlen($box_id) < 1) {
+            json_return_and_die(array('status' => false, 'errormsg' => 'Missing post param boxID in request'));
+            return;
+        }
+        
+        logger('user requested ACL for box id = ' . $box_id);
+        
+        $filename = $box_id . '.json';
+        $r = q("select id, uid, folder, filename, revision, flags, is_dir, os_storage, hash, allow_cid, allow_gid, deny_cid, deny_gid from attach where filename = '%s' and uid = %d limit 1",
+                dbesc($filename),
+                intval($this->owner['channel_id'])
+        );
+
+        $f = $r[0];
+        if(!$f) {
+            json_return_and_die(array('status' => false, 'errormsg' => 'box ID ' . $file . ' not found.'));
+            return;
+        }
+        $channel = \App::get_channel();
+
+        $aclselect_e = populate_acl($f, false, \Zotlabs\Lib\PermissionDescription::fromGlobalPermission('view_storage'));
+
+        $lockstate = (($f['allow_cid'] || $f['allow_gid'] || $f['deny_cid'] || $f['deny_gid']) ? 'lock' : 'unlock');
+
+        //$o = replace_macros(get_markup_template('attach_edit.tpl'), array(
+        $o = replace_macros(get_markup_template('flashcards_attach_edit.tpl','addon/flashcards'),array(
+                '$boxid' => $box_id,
+                '$file' => $f,
+                '$uid' => $channel['channel_id'],
+                '$channelnick' => $channel['channel_address'],
+                '$permissions' => t('Permissions'),
+                '$aclselect' => $aclselect_e,
+                '$allow_cid' => acl2json($f['allow_cid']),
+                '$allow_gid' => acl2json($f['allow_gid']),
+                '$deny_cid' => acl2json($f['deny_cid']),
+                '$deny_gid' => acl2json($f['deny_gid']),
+                '$lockstate' => $lockstate,
+                '$permset' => t('Set/edit permissions'),
+                '$submit' => t('Submit'),
+        )); 
+
+        
+        logger('sending post response: ACL for box id = ' . $box_id . ' ...');
+        
+        json_return_and_die(array('status' => true, 'acl_modal' => $aclselect_e, 'permissions_panel' => $o));
+    }
+
+    private function setPermissions() {
+        
+        logger('+++ set permissions of box ... +++');
+        
+        $channel_id = ((x($_POST, 'uid')) ? intval($_POST['uid']) : 0);
+
+        $recurse = ((x($_POST, 'recurse')) ? intval($_POST['recurse']) : 0); # not sent
+        $resource = ((x($_POST, 'filehash')) ? notags($_POST['filehash']) : '');
+        $notify = ((x($_POST, 'notify_edit')) ? intval($_POST['notify_edit']) : 0); # not sent
+
+        if(! $resource) {
+            notice(t('Item not found.') . EOL);
+            json_return_and_die(array('status' => false, 'errormsg' => t('Item not found.') . EOL));
+            return;
+        }
+
+        $channel = \App::get_channel();
+
+        $acl = new \Zotlabs\Access\AccessList($channel);
+        $acl->set_from_array($_POST);
+        $x = $acl->get();
+
+        $url = get_cloud_url($channel['channel_id'], $channel['channel_address'], $resource);
+
+        //get the object before permissions change so we can catch eventual former allowed members
+        $object = get_file_activity_object($channel_id, $resource, $url);
+
+        attach_change_permissions($channel_id, $resource, $x['allow_cid'], $x['allow_gid'], $x['deny_cid'], $x['deny_gid'], $recurse, true);
+
+        file_activity($channel_id, $object, $x['allow_cid'], $x['allow_gid'], $x['deny_cid'], $x['deny_gid'], 'post', $notify);
+        
+        logger('sending post response for setting box permissons...');
+        
+        $box_id = ((x($_POST, 'boxid')) ? notags($_POST['boxid']) : '');
+        $go_away_url = z_root() . '/flashcards/' . $channel['channel_address'] . '/' . $box_id;
+        
+        goaway($go_away_url);
     }
 
     private function listBoxes() {
@@ -232,17 +344,20 @@ class Flashcards extends \Zotlabs\Web\Controller {
             logger('user requested box id = ' . $box_id);
         
             $box = $this->readBox($this->boxesDir, $box_id . '.json');
+            
             if(! $box) {
         
                 logger('box not found, box id = ' . $box_id);
                 
                 json_return_and_die(array('status' => false, 'errormsg' => 'No box found or no permissions for ' . $box_id));
             }
+            
             if($this->is_owner) {
         
                 logger('owner requested box id = ' . $box_id);
             
                 $box = $this->importSharedBoxes($box);
+                
                 json_return_and_die(
                         array(
                             'status' => true,
