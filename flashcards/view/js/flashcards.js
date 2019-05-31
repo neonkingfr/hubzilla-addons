@@ -166,13 +166,19 @@ class Card {
 			return true;
 		}
 		var daysToWait = Math.pow(box.content.cardsDeckWaitExponent, deck - 1);	
-		var repetitionsPerDeck = box.content.cardsRepetitionsPerDeck;	
+//		var repetitionsPerDeck = box.content.cardsRepetitionsPerDeck;	
+                var daysToWaitInDeck = Math.pow(box.content.cardsDeckWaitExponent, deck - 2);
+                daysToWaitInDeck = Math.round(daysToWaitInDeck);
 		if(deckProgress > 0) {
-			if(daysToWait > repetitionsPerDeck) {
-				daysToWait = 1;
-			} else {
-				return true; // daysToWait = 0;
-			}
+                    if(daysToWaitInDeck < 1) {
+                        return true;
+                    }
+                    daysToWait = daysToWaitInDeck;
+//			if(daysToWait >= repetitionsPerDeck) {
+//				daysToWait = 1;
+//			} else {
+//				return true; // daysToWait = 0;
+//			}
 		}
 		var lastLearned = new Date(this.content[9]); // milliseconds
 		var logMessage = 'Card id ' + this.content[0] + ' last learned  ' + lastLearned.toLocaleString();
@@ -853,6 +859,7 @@ class Box {
 		table += "</tr>";
 		table += "<tr>";
 		var daysToWait = 0;
+                var daysToPassAllDecks = 0;
 		for(c = 0; c < count; c++) {
 			if(c == 0) {
 				table += '<td>[days]</td>';
@@ -861,22 +868,22 @@ class Box {
 			table += '<td>';
 			if(r > 0) {
 				daysToWait = Math.pow(exponent, c - 1);
-			}	
+			}
+                        daysToPassAllDecks += daysToWait;
 			table += daysToWait + ' >';
+                        var daysToWaitInDeck = Math.pow(exponent, c - 2);
+                        daysToWaitInDeck = Math.round(daysToWaitInDeck);
 			var r;
 			for(r = 1; r < repetitions; r++) {
 				howOftenLearned++;
-				if(daysToWait > repetitions) {
-					table += " 1>";
-				} else {
-					table += " 0>";
-				}
+				table += " " + daysToWaitInDeck + ">";
+                                daysToPassAllDecks += daysToWaitInDeck;
 			}
 			table += "</td>";
 		}
 		table += "</tr>";
 		table += "</table>";
-		table += '<p>A card needs ' + daysToWait + ' days and ' + howOftenLearned + ' repetitions to pass all decks.</p>'
+		table += '<p>A card needs ' + daysToPassAllDecks + ' days and ' + howOftenLearned + ' repetitions to pass all decks.</p>'
 		var calculation = '(deck-1)<sup>exponent</sup>'
 		calculation += ' = (' + (count-1) + '-1)<sup>' + exponent + '</sup>'
 		calculation += ' = ' + daysToWait + ' days';
@@ -2338,12 +2345,12 @@ function test_card_isDue() {
 	}
 	card.getContent()[6] = 2;
 	card.getContent()[7] = 1;
-	if(!card.isDue(0)) {
+	if(card.isDue(0)) {
 		return false;
 	}
 	card.getContent()[6] = 2;
 	card.getContent()[7] = 1;
-	if(!card.isDue()) {
+	if(card.isDue()) {
 		return false;
 	}
 	card.getContent()[6] = 3;
@@ -2435,17 +2442,29 @@ function test_card_isDue() {
 	// next day but progress = 1
 	testNow = new Date('2015-06-11T21:00:00.000Z');
 	card.getContent()[7] = 1;
-	if(!card.isDue(testNow.getTime())) {
+	if(card.isDue(testNow.getTime())) {
 		return false;
 	}	
+	// next day and progress = 1
+	testNow = new Date('2015-06-19T21:00:00.000Z');
+	card.getContent()[7] = 1;
+	if(!card.isDue(testNow.getTime())) {
+		return false;
+	}
 	// progress = 2
 	testNow = new Date('2015-06-11T21:00:00.000Z');
+	card.getContent()[7] = 2;
+	if(card.isDue(testNow.getTime())) {
+		return false;
+	}
+	// progress = 2
+	testNow = new Date('2015-06-19T21:00:00.000Z');
 	card.getContent()[7] = 2;
 	if(!card.isDue(testNow.getTime())) {
 		return false;
 	}
 	// just in case progress = 3
-	testNow = new Date('2015-06-11T21:00:00.000Z');
+	testNow = new Date('2015-06-19T21:00:00.000Z');
 	card.getContent()[7] = 3;
 	if(!card.isDue(testNow.getTime())) {
 		return false;
