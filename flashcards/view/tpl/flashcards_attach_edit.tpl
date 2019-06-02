@@ -16,14 +16,6 @@
                 {{$submit}}
             </button>
         </div> 
-        <div>
-            &nbsp;
-        </div>
     </div>
-    <!--
-    <div id="attach-edit-tools-share" class="btn-group form-group">
-        <label><input type="checkbox" id="flashcards-switch-learn-directions"> Read only</label>
-    </div>
-    -->
 </form>
 

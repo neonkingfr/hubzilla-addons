@@ -98,7 +98,7 @@ var stringContentOldCard = '';
 class Card {
     constructor() {
         // content of a box
-        this.content = [new Date().getTime(), "", "", "", "", 0, 0, 0, 0, 0, false];
+        this.content = [new Date().getTime(), "", "", "", "", 0, 0, 0, 0, 0, false, false];
     }
     validate() {
         // id = Integer = ms = creation time of card
@@ -295,6 +295,7 @@ class Box {
             "private_switch_learn_direction": false,
             "private_switch_learn_all": false,
             "private_hasChanged": false,
+            "private_block": false,
             "cards": []
         };
     }
@@ -373,7 +374,7 @@ class Box {
         this.content.lastChangedPrivateMetaData = this.checkInteger(this.content.lastChangedPrivateMetaData);
         this.content.maxLengthCardField = this.checkInteger(this.content.maxLengthCardField);
         if (this.content.maxLengthCardField > 1000) {
-            this.content.maxLengthCardField = 1000
+            this.content.maxLengthCardField = 1000;
         }
         var i = this.checkInteger(this.content.cardsDecks);
         if (i < 4) {
@@ -396,6 +397,7 @@ class Box {
         if (this.content.cardsRepetitionsPerDeck > 10) {
             this.content.cardsRepetitionsPerDeck = 10;
         }
+        this.content.private_block = this.checkBoolean(this.content.private_block, false);
         this.content.private_sortColumn = this.checkInteger(this.content.private_sortColumn);
         if (this.content.private_sortColumn > 9) {
             this.content.private_sortColumn = 9;
@@ -490,6 +492,7 @@ class Box {
         s += this.content.private_visibleColumns;
         s += this.content.private_switch_learn_direction;
         s += this.content.private_switch_learn_all;
+        s += this.content.private_block;
         return s;
     }
     edit() {
@@ -694,7 +697,7 @@ class Box {
             }
         }
         if (isOwnBox) {
-            var keysPrivate = ['cardsDecks', 'cardsDeckWaitExponent', 'cardsRepetitionsPerDeck', 'private_sortColumn', 'private_sortReverse', 'private_filter', 'private_visibleColumns', 'private_switch_learn_direction', 'private_switch_learn_all', 'lastChangedPrivateMetaData'];
+            var keysPrivate = ['cardsDecks', 'cardsDeckWaitExponent', 'cardsRepetitionsPerDeck', 'private_block', 'private_sortColumn', 'private_sortReverse', 'private_filter', 'private_visibleColumns', 'private_switch_learn_direction', 'private_switch_learn_all', 'lastChangedPrivateMetaData'];
             if (this.content.lastChangedPrivateMetaData !== boxRemote.content.lastChangedPrivateMetaData) {
                 var i;
                 for (i = 0; i < keysPrivate.length; i++) {
@@ -1083,13 +1086,14 @@ function fillInputsBox() {
         $("#flashcards_navbar_brand").html("Create a new Box of Flashcards");
         $("#flashcards_box_title").val('');
         $("#flashcards_box_description").val('');
+        $('#flashcards-block-changes').prop('checked', false);
     } else {
         logger.log('Displaying FlashCards titled: ' + box.content.title + '...');
         $("#flashcards_navbar_brand").html(box.content.title);
         $("#flashcards_box_title").val(box.content.title);
         $("#flashcards_box_description").val(box.content.description);
+        $('#flashcards-block-changes').prop('checked', box.content.private_block);
     }
-    $("#flashcards_box_public_visible").prop("disabled", true);
 }
 
 function fillInputsSettings() {
@@ -1425,6 +1429,7 @@ function saveBoxSettings() {
         box.edit();
         box.setTitle($('#flashcards_box_title').val());
         box.setDescription($('#flashcards_box_description').val());
+        box.content.private_block = $('#flashcards-block-changes').prop('checked');
         // settings
         box.content.private_switch_learn_direction = $('#flashcards-switch-learn-directions').prop('checked');
         box.content.private_switch_learn_all = $('#flashcards-switch-learn-all').prop('checked');
@@ -1883,7 +1888,7 @@ function createBoxList(boxes) {
     for (i = 0; i < boxes.length; i++) {
         var cloudBox = boxes[i];
         if (!cloudBox) {
-            logger.log('Description of a cloud box is null. BoxID = ' + cloudBox["boxID"]);
+            logger.log('Received a box that is NULL (seems to be a bug).');
             continue;  // This happened in dev (alpha)
         }
         var description = cloudBox["description"];
@@ -2113,10 +2118,15 @@ function test_box_validate() {
     if (test_card_00.content[0] === "1528468538430") {
         return false;
     }
+    
+    if (testBox.content.private_block !== false) {
+        return false;
+    }
 
     testBox.content.private_sortReverse = true;
     testBox.content.private_switch_learn_direction = false;
     testBox.content.private_switch_learn_all = true;
+    testBox.content.private_block = true;
     testBox.validate();
     if (testBox.content.private_sortReverse !== true) {
         return false;
@@ -2125,11 +2135,15 @@ function test_box_validate() {
         return false;
     }
     if (testBox.content.private_switch_learn_all !== true) {
+        return false;
+    }
+    if (testBox.content.private_block !== true) {
         return false;
     }
     testBox.content.private_sortReverse = "true";
     testBox.content.private_switch_learn_direction = "false";
     testBox.content.private_switch_learn_all = "true";
+    testBox.content.private_block = "true";
     testBox.validate();
     if (testBox.content.private_sortReverse !== true) {
         return false;
@@ -2140,9 +2154,13 @@ function test_box_validate() {
     if (testBox.content.private_switch_learn_all !== true) {
         return false;
     }
+    if (testBox.content.private_block !== true) {
+        return false;
+    }
     testBox.content.private_sortReverse = "";
     testBox.content.private_switch_learn_direction = 0;
     testBox.content.private_switch_learn_all = "hallo";
+    testBox.content.private_block = "nonsense";
     testBox.validate();
     if (testBox.content.private_sortReverse !== false) {
         return false;
@@ -2151,6 +2169,9 @@ function test_box_validate() {
         return false;
     }
     if (testBox.content.private_switch_learn_all !== false) {
+        return false;
+    }
+    if (testBox.content.private_block !== false) {
         return false;
     }
     testBox.content.private_visibleColumns = ["", 0, 1, "hallo", "false", false, false, false, false, false, false];
@@ -2554,6 +2575,7 @@ function test_box_merge() {
     localTestBox.getContent().private_sortColumn = 1;
     localTestBox.getContent().lastChangedPublicMetaData = 1528468538430;
     localTestBox.getContent().lastChangedPrivateMetaData = 1528468538430;
+    localTestBox.getContent().private_block = false;
     var remoteTestBox = localTestBox.getCopy();
     remoteTestBox.getContent().lastChangedPublicMetaData = 0;
     remoteTestBox.getContent().lastChangedPrivateMetaData = 0;
@@ -2563,10 +2585,14 @@ function test_box_merge() {
     remoteTestBox.getContent().boxPublicID = "1528468533333";
     remoteTestBox.getContent().cardsDeckWaitExponent = 2;
     remoteTestBox.getContent().private_sortColumn = 2;
+    remoteTestBox.getContent().private_block = true;
     // metadata local wins
     remoteTestBox.getContent().lastChangedPublicMetaData = "";
     localTestBox.merge(remoteTestBox);
     if (localTestBox.getContent().title != "local box") {
+        return false;
+    }
+    if (localTestBox.getContent().private_block !== false) {
         return false;
     }
     // metadata local wins
@@ -2622,11 +2648,13 @@ function test_box_merge() {
     localTestBox.getContent().cardsDeckWaitExponent = 4; // private meta data
     localTestBox.save('box'); // mark the box as "changed"
     localTestBox.getContent().lastChangedPublicMetaData = 1528468538430;
+    localTestBox.getContent().private_block = false;
     //localTestBox.getContent().lastChangedPrivateMetaData = 1528468538430; // set back
     // metadata remote wins but not over public metadata
     remoteTestBox.getContent().lastChangedPublicMetaData = 1528468538431;
     remoteTestBox.getContent().lastChangedPrivateMetaData = 1528468538431;
     remoteTestBox.getContent().title = "ab";
+    remoteTestBox.getContent().private_block = "true";
     remoteTestBox.getContent().cardsDeckWaitExponent = 2; // private meta data
     localTestBox.merge(remoteTestBox);
     // remote wins public meta data
@@ -2638,6 +2666,9 @@ function test_box_merge() {
         return false;
     }
     if (!localTestBox.content.private_hasChanged) {
+        return false;
+    }
+    if (localTestBox.getContent().private_block !== false) {
         return false;
     }
     // remote wins private and public metadata	
@@ -2659,6 +2690,9 @@ function test_box_merge() {
     }
     // remote wins private meta data
     if (localTestBox.getContent().cardsDeckWaitExponent != 2) {
+        return false;
+    }
+    if (localTestBox.getContent().private_block !== true) {
         return false;
     }
     if (localTestBox.content.private_hasChanged) {
@@ -2826,6 +2860,7 @@ function loadBox() {
     is_owner = $("#is_owner").html();
     if (!is_owner) {
         $("#flashcards_new_box").hide();
+        $("#flashcards-block-changes-row").hide();
     }
     flashcards_editor = $("#flashcards_editor").html();
     if (box.isEmpty()) {

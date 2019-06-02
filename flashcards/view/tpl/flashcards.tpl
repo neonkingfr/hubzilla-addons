@@ -61,12 +61,19 @@
 					<small class="form-text text-muted">Description of box (between 10 to 800 characters)</small>
 				</div>
 			</div>
-		</div>        
+		</div>     
+		<div class="row" id="flashcards-block-changes-row">
+                        <div class="col-sm-12">
+                                <label><input type="checkbox" id="flashcards-block-changes"> Only the owner (you) can make changes to the original</label>
+                        </div>
+		</div>    
 		<div class="row">
 			<div class="col-sm-12">
-				<div id="flashcards_editor">{{$flashcards_editor}}</div>
+				<div class="form-group">
+					<small id="flashcards_editor" class="form-text text-muted">{{$flashcards_editor}}</small>
+				</div>
 			</div>
-		</div>
+		</div>      
 		<div class="row">
 			<div class="col-sm-10">
 				<button class="btn" data-toggle="collapse" id="flashcards_perms" href="#panel_flashcards_permissions" role="button" aria-expanded="false" aria-controls="panel_flashcards__permissions"><i class="fa fa-community fa-lg"></i> Permissions</button>
