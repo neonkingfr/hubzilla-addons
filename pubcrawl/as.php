@@ -252,7 +252,7 @@ function asencode_item($i) {
 	if($i['created'] !== $i['edited'])
 		$ret['updated'] = datetime_convert('UTC','UTC',$i['edited'],ATOM_TIME);
 	if($i['app']) {
-		$ret['instrument'] = [ 'type' => 'Service', 'name' => $i['app'] ];
+		$ret['generator'] = [ 'type' => 'Application', 'name' => $i['app'] ];
 	}
 	if($i['location'] || $i['coord']) {
 		$ret['location'] = [ 'type' => 'Place' ];
@@ -457,7 +457,7 @@ function asencode_activity($i) {
 	if($i['created'] !== $i['edited'])
 		$ret['updated'] = datetime_convert('UTC','UTC',$i['edited'],ATOM_TIME);
 	if($i['app']) {
-		$ret['instrument'] = [ 'type' => 'Service', 'name' => $i['app'] ];
+		$ret['generator'] = [ 'type' => 'Application', 'name' => $i['app'] ];
 	}
 	if($i['location'] || $i['coord']) {
 		$ret['location'] = [ 'type' => 'Place' ];
