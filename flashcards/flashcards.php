@@ -5,7 +5,7 @@ use Zotlabs\Extend\Route;
 /**
  * Name: Flashcards
  * Description: Flashcard software that uses spaced repetition as a learning technique.
- * Version: 1.0
+ * Version: 1.2.1
  * Author: Tom Wiedenhöft (ojrandom@protonmail.com)
  * Maintainer: Tom Wiedenhöft (ojrandom@protonmail.com)
  *
