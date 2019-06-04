@@ -40,11 +40,19 @@ function upgrade_info_construct_page(&$b){
 	if(version_compare(STD_VERSION, $version) < 1)
 		return; 
 
-	$content[] = t('Your channel has been upgraded to the latest $Projectname version.');
-	$content[] = t('To improve usability, we have converted some features into installable stand-alone apps.');
-	$content[] = t('Please visit the $Projectname');
-	$content[] = '<a href="apps/available">' . t('app store') . '</a>';
-	$content[] = t('and install possibly missing apps.');
+	$parts = explode('.', STD_VERSION);
+	$dev = true;
+	if(is_numeric($parts[1]) && $parts[1] % 2 == 0)
+		$dev = false;
+
+	$content[] = t('Your channel has been upgraded to $Projectname version');
+	$content[] = STD_VERSION;
+	$content[] = t('Please have a look at the');
+	if($dev)
+		$content[] = '<a target="_blank" href="https://framagit.org/hubzilla/core/commits/dev">' . t('git history') . '</a>';
+	else
+		$content[] = '<a target="_blank" href="https://framagit.org/hubzilla/core/tags/' . STD_VERSION . '">' . t('change log') . '</a>';
+	$content[] = t('for further info.');
 
 	$tpl = get_markup_template('upgrade_info.tpl', 'addon/upgrade_info');
 

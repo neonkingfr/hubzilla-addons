@@ -12,13 +12,14 @@
 		</li>
 		<div class="navbar-brand nav-pill">
 			<span id="flashcards_navbar_brand" class="flashcards_nav"></span>
-			<!-- button class="btn flashcards_nav" id="button_flashcards_edit_box"><i class="fa fa-edit fa-lg"></i></button -->
-			<button class="btn flashcards_nav" id="button_flashcards_save_box"><i class="fa fa-save fa-lg"></i></button>
 			<button class="btn flashcards_nav" id="button_flashcards_learn_play"><i class="fa fa-play fa-lg"></i> <sup><span id="span_flashcards_cards_due"></span></sup></button>
 		</div>
 		<button class="btn btn-default nav-pill ml-auto" id="button_share_box">
 			<i class="fa fa-refresh fa-lg"></i>
 			<span id="button_share_box_counter"></span>
+		</button>
+		<button class="btn btn-default nav-pill ml-auto" id="button_flashcards_save_box" style="display: none;">
+			<i class="fa fa-save fa-lg"></i> Save
 		</button>
 		<button class="btn btn-default nav-pill ml-auto" id="button_flashcards_list_close" style="display: none;">
 			<i class="fa fa-window-close fa-lg"></i> Close
@@ -60,23 +61,25 @@
 					<small class="form-text text-muted">Description of box (between 10 to 800 characters)</small>
 				</div>
 			</div>
-		</div>        
+		</div>     
+		<div class="row" id="flashcards-block-changes-row">
+                        <div class="col-sm-12">
+                                <label><input type="checkbox" id="flashcards-block-changes"> Only the owner (you) can make changes to the original</label>
+                        </div>
+		</div>    
 		<div class="row">
 			<div class="col-sm-12">
-				<div id="flashcards_editor">{{$flashcards_editor}}</div>
+				<div class="form-group">
+					<small id="flashcards_editor" class="form-text text-muted">{{$flashcards_editor}}</small>
+				</div>
 			</div>
-		</div>
+		</div>      
 		<div class="row">
 			<div class="col-sm-10">
-                <!--
-				<div class="checkbox">
-					<label><input type="checkbox" name="public_visible" id="flashcards_box_public_visible"> Make publicly visible (not implemented yet)</label>
-					<small class="form-text text-muted">Your learning progress is kept private</small>		
-				</div>
-                -->
+				<button class="btn" data-toggle="collapse" id="flashcards_perms" href="#panel_flashcards_permissions" role="button" aria-expanded="false" aria-controls="panel_flashcards__permissions"><i class="fa fa-community fa-lg"></i> Permissions</button>
 			</div>      
 			<div class="col-sm-2">
-				<button class="btn" data-toggle="collapse" href="#panel_flashbox_settings" role="button" aria-expanded="false" aria-controls="panel_flashbox_settings"><i class="fa fa-sliders fa-lg"></i> Settings</button>
+				<button class="btn" data-toggle="collapse" href="#panel_flashbox_settings" role="button" aria-expanded="false" aria-controls="panel_flashbox_settings"><i class="fa fa-cogs fa-lg"></i> Settings</button>
 			</div>
 		</div>
 		<div id="panel_flashbox_settings" class="panel-collapse collapse">
@@ -261,9 +264,6 @@
 		<div id="flashcards_main_card">        
             <div class="container-fluid"> 
               <div class="row">
-                <div class="col-sm-12">
-                     <small class="form-text text-muted" id="flashcard_learn_card_details"></small>	
-                </div>
                 <div class="col-sm-6">
                      <div class="form-group">
                       <label for="flashcards_language1">Side 1:</label>
@@ -293,10 +293,19 @@
                     </div>
                 </div>
               </div>
+              <div class="row">
+                <div class="col-sm-12">
+                     <small class="form-text text-muted" id="flashcard_learn_card_details"></small>	
+                </div>
+              </div>
             </div>
 		</div>
 	</div>
 </div>
+                        
+<div id="panel_flashcards_permissions" class="panel-collapse collapse">
+</div>
+                        
 <div id="panel_flashcards_cards_actions" style="display: none;">
 	<span class="navbar-brand">
 		<span>&nbsp;</span>
@@ -341,6 +350,7 @@
 <div id="panel_flashcards_cards" style="display: none;"></div>
 
 <div id="post_url" style="display: none;">{{$post_url}}</div>
+<div id="nick" style="display: none;">{{$nick}}</div>
 <div id="is_owner" style="display: none;">{{$is_owner}}</div>
 <!--
 <p>
@@ -372,6 +382,7 @@ Modal to delete a box
 	    </div>
 	</div>
 </div>
+<div id="acl_modal_flashcards_cards"></div>
 
 
 <script src="/addon/flashcards/view/js/flashcards.js"></script>

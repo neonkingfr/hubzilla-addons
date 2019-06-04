@@ -253,7 +253,7 @@ class Diaspora_Receiver {
 		// Turn singles into an array of one. 
 
 		$photos = $this->get_property('photo');
-		if(is_array($photos) && array_key_exists('guid',$photos))
+		if(is_array($photos) && !empty($photos['guid']))
 			$photos = array($photos);
 
 		if($photos) {
@@ -271,7 +271,7 @@ class Diaspora_Receiver {
 		}
 
 		$event = $this->get_property('event');
-		if(is_array($event) && array_key_exists('guid',$event)) {
+		if(is_array($event) && !empty($event['guid'])) {
 			$ev = [];
 			$dts = $this->get_property('start',$event);
 			if($dts) {
@@ -411,9 +411,9 @@ class Diaspora_Receiver {
 		$plink = service_plink($xchan,$guid);
 
 		if(is_array($raw_location)) {
-			if(array_key_exists('address',$raw_location))
+			if(!empty($raw_location['address']))
 				$datarray['location'] = unxmlify($raw_location['address']);
-			if(array_key_exists('lat',$raw_location) && array_key_exists('lng',$raw_location))
+			if(!empty($raw_location['lat']) && !empty($raw_location['lng']))
 				$datarray['coord'] = floatval(unxmlify($raw_location['lat'])) 
 					. ' ' . floatval(unxmlify($raw_location['lng']));
 		}
@@ -555,7 +555,7 @@ class Diaspora_Receiver {
 		
 			if($source_xml['status_message']['photo']) {
 				$photos = $source_xml['status_message']['photo'];
-				if(array_key_exists('remote_photo_path',$photos)) {
+				if(!empty($photos['remote_photo_path'])) {
 					$photos = [ $photos ];
 				}
 				if($photos) {
@@ -708,14 +708,14 @@ class Diaspora_Receiver {
 		$parent_guid = notags($this->get_property('parent_guid'));
 		$diaspora_handle = notags($this->get_author());
 
-		$created_at = ((array_key_exists('created_at',$this->xmlbase)) 
+		$created_at = ((!empty($this->xmlbase['created_at'])) 
 			? datetime_convert('UTC','UTC',$this->get_property('created_at')) : datetime_convert());
 
-		$edited_at = ((array_key_exists('edited_at',$this->xmlbase)) 
+		$edited_at = ((!empty($this->xmlbase['edited_at'])) 
 			? datetime_convert('UTC','UTC',$this->get_property('edited_at')) : $created_at);
 
 
-		$thr_parent = ((array_key_exists('thread_parent_guid',$this->xmlbase)) 
+		$thr_parent = ((!empty($this->xmlbase['thread_parent_guid'])) 
 			? notags($this->get_property('thread_parent_guid')) : '');
 
 		$text = $this->get_body();
@@ -1829,7 +1829,7 @@ class Diaspora_Receiver {
 		}
 
 		// full_name added to protocol 2018-04
-		if(array_key_exists('full_name',$this->xmlbase) && $this->xmlbase['full_name']) {
+		if(!empty($this->xmlbase['full_name'])) {
 			$name = unxmlify($this->xmlbase['full_name']);
 		}
 		else {
@@ -2380,11 +2380,11 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('diaspora_handle',$xml))
+		if(!empty($xml['diaspora_handle']))
 			return unxmlify($xml['diaspora_handle']);
-		elseif(array_key_exists('sender_handle',$xml))
+		elseif(!empty($xml['sender_handle']))
 			return unxmlify($xml['sender_handle']);
-		elseif(array_key_exists('author',$xml))
+		elseif(!empty($xml['author']))
 			return unxmlify($xml['author']);
 		else
 			return '';
@@ -2394,9 +2394,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('root_diaspora_id',$xml))
+		if(!empty($xml['root_diaspora_id']))
 			return unxmlify($xml['root_diaspora_id']);
-		elseif(array_key_exists('root_author',$xml))
+		elseif(!empty($xml['root_author']))
 			return unxmlify($xml['root_author']);
 		else
 			return '';
@@ -2407,9 +2407,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('participant_handles',$xml))
+		if(!empty($xml['participant_handles']))
 			return unxmlify($xml['participant_handles']);
-		elseif(array_key_exists('participants',$xml))
+		elseif(!empty($xml['participants']))
 			return unxmlify($xml['participants']);
 		else
 			return '';
@@ -2419,9 +2419,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('target_type',$xml))
+		if(!empty($xml['target_type']))
 			return unxmlify($xml['target_type']);
-		elseif(array_key_exists('parent_type',$xml))
+		elseif(!empty($xml['parent_type']))
 			return unxmlify($xml['parent_type']);
 		else
 			return '';
@@ -2431,9 +2431,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('target_type',$xml))
+		if(!empty($xml['target_type']))
 			return unxmlify($xml['target_type']);
-		elseif(array_key_exists('type',$xml))
+		elseif(!empty($xml['type']))
 			return unxmlify($xml['type']);
 		else
 			return '';
@@ -2444,11 +2444,11 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('post_guid',$xml))
+		if(!empty($xml['post_guid']))
 			return unxmlify($xml['post_guid']);
-		elseif(array_key_exists('target_guid',$xml))
+		elseif(!empty($xml['target_guid']))
 			return unxmlify($xml['target_guid']);
-		elseif(array_key_exists('guid',$xml))
+		elseif(!empty($xml['guid']))
 			return unxmlify($xml['guid']);
 		else
 			return '';
@@ -2459,9 +2459,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('recipient_handle',$xml))
+		if(!empty($xml['recipient_handle']))
 			return unxmlify($xml['recipient_handle']);
-		elseif(array_key_exists('recipient',$xml))
+		elseif(!empty($xml['recipient']))
 			return unxmlify($xml['recipient']);
 		else
 			return '';
@@ -2471,9 +2471,9 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists('raw_message',$xml))
+		if(!empty($xml['raw_message']))
 			return unxmlify($xml['raw_message']);
-		elseif(array_key_exists('text',$xml))
+		elseif(!empty($xml['text']))
 			return unxmlify($xml['text']);
 		else
 			return '';
@@ -2483,7 +2483,7 @@ class Diaspora_Receiver {
 		if(! $xml)
 			$xml = $this->xmlbase;
 
-		if(array_key_exists($property,$xml)) {
+		if(!empty($xml[$property])) {
 			if(is_array($xml[$property])) {
 				return $xml[$property];
 			}

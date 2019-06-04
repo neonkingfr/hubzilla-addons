@@ -1,12 +1,9 @@
 <div id="upgrade_info_aside" class="alert alert-info alert-dismissible fade show">
 	<h3><i class="fa fa-hubzilla"></i> {{$title}}</h3>
 	<hr>
-	{{$content.0}}<br>
-	<br>
-	{{$content.1}}<br>
-	<br>
-	{{$content.2}} {{$content.3}} {{$content.4}}<br>
-	<br>
+	<p>{{$content.0}}</p>
+	<p class="text-center"><strong>{{$content.1}}</strong></p>
+	<p>{{$content.2}} {{$content.3}} {{$content.4}}</p>
 	<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 		<span aria-hidden="true">&times;</span>
 	</button>

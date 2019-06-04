@@ -1,5 +1,8 @@
 <?php
 
+use Zotlabs\Lib\Apps;
+
+require_once('include/event.php');
 
 function asencode_object($x) {
 
@@ -25,6 +28,14 @@ function asencode_object($x) {
 	if($x['type'] === ACTIVITY_OBJ_THING) {
 		return asfetch_thing($x); 
 	}
+	
+	if($x['type'] === ACTIVITY_OBJ_EVENT) {
+		return asfetch_event($x); 
+	}
+	
+	if($x['type'] === ACTIVITY_OBJ_PHOTO) {
+		return asfetch_image($x); 
+	}
 
 
 }	
@@ -32,6 +43,72 @@ function asencode_object($x) {
 function asfetch_person($x) {
 	return asfetch_profile($x);
 }
+
+function asfetch_event($x) {
+
+	// convert old Zot event objects to ActivityStreams Event objects
+
+	if (array_key_exists('content',$x) && array_key_exists('dtstart',$x)) {
+		$ev = bbtoevent($x['content']);
+		if($ev) {
+
+			$actor = null;
+			if(array_key_exists('author',$x) && array_key_exists('link',$x['author'])) {
+				$actor = $x['author']['link'][0]['href'];
+			}
+			$y = [ 
+				'type'      => 'Event',
+				'id'        => z_root() . '/event/' . $ev['event_hash'],
+				'summary'   => bbcode($ev['summary'], [ 'cache' => true ]),
+				// RFC3339 Section 4.3
+				'startTime' => (($ev['adjust']) ? datetime_convert('UTC','UTC',$ev['dtstart'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtstart'],'Y-m-d\\TH:i:s-00:00')),
+				'content'   => bbcode($ev['description'], [ 'cache' => true ]),
+				'location'  => [ 'type' => 'Place', 'content' => bbcode($ev['location'], [ 'cache' => true ]) ],
+				'source'    => [ 'content' => format_event_bbcode($ev), 'mediaType' => 'text/bbcode' ],
+				'actor'     => $actor,
+			];
+			if(! $ev['nofinish']) {
+				$y['endTime'] = (($ev['adjust']) ? datetime_convert('UTC','UTC',$ev['dtend'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtend'],'Y-m-d\\TH:i:s-00:00'));
+			}
+				
+			// copy attachments from the passed object - these are already formatted for ActivityStreams
+
+			if($x['attachment']) {
+				$y['attachment'] = $x['attachment'];
+			}
+
+			if($actor) {
+				return $y;
+			}
+		}
+	}
+
+	return $x;
+
+}
+
+
+function asfetch_image($x) {
+
+	$ret = [
+		'type' => 'Image',
+		'id' => $x['id'],
+		'name' => $x['title'],
+		'content' => bbcode($x['body'], ['cache' => true ]),
+		'source' => [ 'mediaType' => 'text/bbcode', 'content' => $x['body'] ],
+		'published' => datetime_convert('UTC','UTC',$x['created'],ATOM_TIME), 
+		'updated' => datetime_convert('UTC','UTC', $x['edited'],ATOM_TIME),
+		'url' => [
+			'type'      => 'Link',
+			'mediaType' => $x['link'][0]['type'], 
+			'href'      => $x['link'][0]['href'],
+			'width'     => $x['link'][0]['width'],
+  			'height'    => $x['link'][0]['height']
+		]
+	];
+	return $ret;
+}
+
 
 function asfetch_profile($x) {
 	$r = q("select * from xchan where xchan_url like '%s' limit 1",
@@ -169,13 +246,13 @@ function asencode_item($i) {
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
 
 	if($i['title'])
-		$ret['title'] = bbcode($i['title']);
+		$ret['title'] = bbcode($i['title'], ['cache' => true ]);
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);
 	if($i['created'] !== $i['edited'])
 		$ret['updated'] = datetime_convert('UTC','UTC',$i['edited'],ATOM_TIME);
 	if($i['app']) {
-		$ret['instrument'] = [ 'type' => 'Service', 'name' => $i['app'] ];
+		$ret['generator'] = [ 'type' => 'Application', 'name' => $i['app'] ];
 	}
 	if($i['location'] || $i['coord']) {
 		$ret['location'] = [ 'type' => 'Place' ];
@@ -197,10 +274,14 @@ function asencode_item($i) {
 
 	$ret['attributedTo'] = $i['author']['xchan_url'];
 
+	// Nonstandard field diaspora:guid for Friendica comaptibility
+	if(Apps::addon_app_installed($i['uid'], 'diaspora'))
+		$ret['diaspora:guid'] = $i['uuid'];
+
 	$cnv = null;
 
-	if($i['id'] != $i['parent']) {
-		$ret['inReplyTo'] = ((strpos($i['parent_mid'],'http') === 0) ? $i['parent_mid'] : z_root() . '/item/' . urlencode($i['parent_mid']));
+	if($i['mid'] != $i['parent_mid']) {
+		$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
 		$cnv = get_iconfig($i['parent'],'ostatus','conversation');
 	}
 	if(! $cnv) {
@@ -216,13 +297,13 @@ function asencode_item($i) {
 		$ret['summary'] = $match[1];
 
 		$body_content = preg_replace("/^(.*?)\[summary\](.*?)\[\/summary\](.*?)$/ism", '', $i['body']);
-		$ret['content'] = bbcode(trim($body_content));
+		$ret['content'] = bbcode(trim($body_content), ['cache' => true ]);
 	}
 	else {
-		$ret['content'] = bbcode($i['body']);
+		$ret['content'] = bbcode($i['body'], ['cache' => true ]);
 	}
 
-	$actor = asencode_person($i['author']);
+	$actor = $i['author']['xchan_url']; //asencode_person($i['author']);
 	if($actor)
 		$ret['actor'] = $actor;
 	else
@@ -370,13 +451,13 @@ function asencode_activity($i) {
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/activity/' . urlencode($i['mid']));
 
 	if($i['title'])
-		$ret['title'] = html2plain(bbcode($i['title']));
+		$ret['title'] = html2plain(bbcode($i['title'], ['cache' => true ]));
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);
 	if($i['created'] !== $i['edited'])
 		$ret['updated'] = datetime_convert('UTC','UTC',$i['edited'],ATOM_TIME);
 	if($i['app']) {
-		$ret['instrument'] = [ 'type' => 'Service', 'name' => $i['app'] ];
+		$ret['generator'] = [ 'type' => 'Application', 'name' => $i['app'] ];
 	}
 	if($i['location'] || $i['coord']) {
 		$ret['location'] = [ 'type' => 'Place' ];
@@ -390,7 +471,7 @@ function asencode_activity($i) {
 		}
 	}
 
-	$actor = asencode_person($i['author']);
+	$actor = $i['author']['xchan_url']; //asencode_person($i['author']);
 	if($actor)
 		$ret['actor'] = $actor;
 	else
@@ -412,17 +493,16 @@ function asencode_activity($i) {
 			return [];
 	}
 
+
 	if($i['target']) {
 		$tgt = asencode_object($i['target']);
 		if($tgt)
 			$ret['target'] = $tgt;
-		else
-			return [];
 	}
 
-	if($i['id'] != $i['parent']) {
+	if($i['mid'] != $i['parent_mid']) {
 		$reply = true;
-		$ret['inReplyTo'] = ((strpos($i['parent_mid'],'http') === 0) ? $i['parent_mid'] : z_root() . '/item/' . urlencode($i['parent_mid']));
+		$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
 		$recips = get_iconfig($i['parent'], 'activitypub', 'recips');
 	}
 
@@ -434,7 +514,10 @@ function asencode_activity($i) {
 	if($i['item_private']) {
 		if($reply && ! $item_owner) {
 
-			$dm = ((in_array($i['author']['xchan_url'], $recips['to'])) ? true : false);
+			$dm = true;
+
+			if(isset($recips['to']))
+				$dm = ((in_array($i['author']['xchan_url'], $recips['to'])) ? true : false);
 
 			$reply_url = (($dm) ? $i['owner']['xchan_url'] : $followers_url);
 			$reply_addr = (($i['owner']['xchan_addr']) ? $i['owner']['xchan_addr'] : $i['owner']['xchan_name']);
@@ -459,7 +542,7 @@ function asencode_activity($i) {
 		if($reply) {
 			$ret['to'][] = $i['owner']['xchan_url'];
 
-			if(in_array(ACTIVITY_PUBLIC_INBOX, $recips['to'])) {
+			if(isset($recips['to']) && in_array(ACTIVITY_PUBLIC_INBOX, $recips['to'])) {
 				//visible in public timelines
 				$ret['to'][] = ACTIVITY_PUBLIC_INBOX;
 				$ret['cc'][] = $followers_url;
@@ -545,6 +628,14 @@ function asencode_person($p) {
 	if(! $p['xchan_url'])
 		return [];
 
+	$i = [];
+	$r = q("SELECT resource_id FROM photo WHERE photo_usage = %d AND uid = %d LIMIT 1",
+		intval(PHOTO_COVER),
+		intval($p['channel_id'])
+	);
+	if($r)
+		$i = $r[0];
+
 	$ret = [];
 
 	$ret['type']  = 'Person';
@@ -555,10 +646,19 @@ function asencode_person($p) {
 	$ret['icon']  = [
 		'type'      => 'Image',
 		'mediaType' => (($p['xchan_photo_mimetype']) ? $p['xchan_photo_mimetype'] : 'image/png' ),
-		'url'       => $p['xchan_photo_l'],
+		'url'       => $p['xchan_photo_l'] . '?_rnd=' . random_string(8),
 		'height'    => 300,
 		'width'     => 300,
         ];
+	if($i) {
+		$ret['image']  = [
+			'type'      => 'Image',
+			'mediaType' => (($i['mimetype']) ? $p['mimetype'] : 'image/png' ),
+			'url'       => z_root() . '/photo/' . $i['resource_id'] . '-7',
+			'height'    => 435,
+			'width'     => 1200,
+		];
+	}
 	$ret['url'] = [
 		'type'      => 'Link',
 		'mediaType' => 'text/html',
@@ -623,6 +723,10 @@ function activity_mapper($verb) {
 		'http://activitystrea.ms/schema/1.0/tag'       => 'Add',
 		'http://activitystrea.ms/schema/1.0/follow'    => 'Follow',
 		'http://activitystrea.ms/schema/1.0/unfollow'  => 'Unfollow',
+		'http://purl.org/zot/activity/attendyes'       => 'Accept',
+		'http://purl.org/zot/activity/attendno'        => 'Reject',
+		'http://purl.org/zot/activity/attendmaybe'     => 'TentativeAccept'
+
 	];
 
 
@@ -951,7 +1055,7 @@ function as_actor_store($url,$person_obj) {
 	if(! is_array($person_obj))
 		return;
 
-    $icon = '';
+	$icon = '';
 	$name = $person_obj['name'];
 	if(! $name)
 		$name = $person_obj['preferredUsername'];
@@ -1035,6 +1139,7 @@ function as_actor_store($url,$person_obj) {
 			dbescdate(datetime_convert()),
 			dbesc($url)
 		);
+
 	}
 
 	if($collections) {
@@ -1086,7 +1191,6 @@ function as_create_action($channel,$observer_hash,$act) {
 	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video', 'Image', 'Event' ])) {
 		as_create_note($channel,$observer_hash,$act);
 	}
-
 
 }
 
@@ -1180,7 +1284,34 @@ function as_create_note($channel,$observer_hash,$act) {
 	if($act->obj['diaspora:guid'])
 		$s['uuid'] = $act->obj['diaspora:guid'];
 	$s['mid'] = urldecode($act->obj['id']);
-	$s['plink'] = urldecode($act->obj['id']);
+
+	if(in_array($act->obj['type'],[ 'Note','Article','Page' ])) {
+		$ptr = null;
+
+		if(array_key_exists('url',$act->obj)) {
+			if(is_array($act->obj['url'])) {
+				if(array_key_exists(0,$act->obj['url'])) {				
+					$ptr = $act->obj['url'];
+				}
+				else {
+					$ptr = [ $act->obj['url'] ];
+				}
+				foreach($ptr as $vurl) {
+					if(array_key_exists('mediaType',$vurl) && $vurl['mediaType'] === 'text/html') {
+						$s['plink'] = $vurl['href'];
+						break;
+					}
+				}
+			}
+			elseif(is_string($act->obj['url'])) {
+				$s['plink'] = $act->obj['url'];
+			}
+		}
+	}
+
+	if(! $s['plink']) {
+		$s['plink'] = $s['mid'];
+	}
 
 
 	if($act->data['published']) {
@@ -1217,6 +1348,12 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
 	$s['app']      = t('ActivityPub');
 
+	if($act->obj['type'] === 'Event') {
+		$ev = as_bb_content($content,'event');
+		if($ev) {
+			$s['obj_type'] = ACTIVITY_OBJ_EVENT;
+		}
+	}
 
 	if($channel['channel_system']) {
 		if(! \Zotlabs\Lib\MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
@@ -1499,6 +1636,10 @@ function as_like_note($channel,$observer_hash,$act) {
 
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
+	$s['uuid'] = '';
+	// Friendica sends the diaspora guid in a nonstandard field via AP
+	if($act->obj['diaspora:guid'])
+		$s['uuid'] = $act->obj['diaspora:guid'];
 	$s['mid'] = $act->id;
 
 	if(! $s['parent_mid'])
@@ -1610,7 +1751,7 @@ function as_bb_content($content,$field) {
 
 	if(is_array($content[$field])) {
 		foreach($content[$field] as $k => $v) {
-			$ret .= '[language=' . $k . ']' . html2bbcode($v) . '[/language]';
+			$ret .= '[language=' . $k . ']' . html2bbcode($v, ['cache' => true ]) . '[/language]';
 		}
 	}
 	else {
@@ -1628,23 +1769,25 @@ function as_get_content($act) {
 	$content = [];
 	$event = null;
 
-	if($act['type'] === 'Event') {
+	if(array_key_exists('type', $act) && ($act['type'] === 'Event')) {
 		$adjust = false;
 		$event = [];
 		$event['event_hash'] = $act['id'];
-		if(array_key_exists('startTime',$act) && strpos($act['startTime'],-1,1) === 'Z') {
-			$adjust = true;
-			$event['adjust'] = 1;
-			$event['dtstart'] = datetime_convert('UTC','UTC',$event['startTime'] . (($adjust) ? '' : 'Z')); 
+		if(array_key_exists('startTime',$act)) {
+			if(substr($act['startTime'],-1,1) === 'Z') {
+				$adjust = true;
+				$event['adjust'] = 1;
+			}
+			$event['dtstart'] = datetime_convert('UTC','UTC',$act['startTime'] . (($adjust) ? '' : 'Z')); 
 		}
 		if(array_key_exists('endTime',$act)) {
-			$event['dtend'] = datetime_convert('UTC','UTC',$event['endTime'] . (($adjust) ? '' : 'Z')); 
+			$event['dtend'] = datetime_convert('UTC','UTC',$act['endTime'] . (($adjust) ? '' : 'Z')); 
  		}
 		else {
 			$event['nofinish'] = true;
 		}
 	}
-
+	
 	foreach([ 'name', 'summary', 'content' ] as $a) {
 		if(($x = as_get_textfield($act,$a)) !== false) {
 			$content[$a] = $x;
@@ -1652,10 +1795,13 @@ function as_get_content($act) {
 	}
 
 	if($event) {
-		$event['summary'] = $content['summary'];
+		$event['summary'] = (($content['summary']) ? $content['summary'] : $content['name']);
 		$event['description'] = $content['content'];
 		if($event['summary'] && $event['dtstart']) {
 			$content['event'] = $event;
+		}
+		if(! $content['content']) {
+			$content['content'] = format_event_bbcode($content['event']);
 		}
 	}
 
