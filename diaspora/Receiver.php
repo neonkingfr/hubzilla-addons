@@ -705,8 +705,22 @@ class Diaspora_Receiver {
 	function comment() {
 
 		$guid = notags($this->get_property('guid'));
+		if(! $guid) {
+			logger('diaspora_comment: missing guid' . print_r($this->msg, true), LOGGER_DEBUG);
+			return;
+		}
+
 		$parent_guid = notags($this->get_property('parent_guid'));
+		if(! $parent_guid) {
+			logger('diaspora_comment: missing parent_guid' . print_r($this->msg, true), LOGGER_DEBUG);
+			return;
+		}
+
 		$diaspora_handle = notags($this->get_author());
+		if(! $diaspora_handle) {
+			logger('diaspora_comment: missing author' . print_r($this->msg, true), LOGGER_DEBUG);
+			return;
+		}
 
 		$created_at = ((!empty($this->xmlbase['created_at'])) 
 			? datetime_convert('UTC','UTC',$this->get_property('created_at')) : datetime_convert());
@@ -719,7 +733,9 @@ class Diaspora_Receiver {
 			? notags($this->get_property('thread_parent_guid')) : '');
 
 		$text = $this->get_body();
+
 		$author_signature = notags($this->get_property('author_signature'));
+
 		$parent_author_signature = notags($this->get_property('parent_author_signature'));
 
 		$xchan = find_diaspora_person_by_handle($diaspora_handle);
@@ -1423,8 +1439,19 @@ class Diaspora_Receiver {
 			logger('diaspora_like: missing guid' . print_r($this->msg, true), LOGGER_DEBUG);
 			return;
 		}
+
 		$parent_guid = notags($this->get_property('parent_guid'));
+		if(! $parent_guid) {
+			logger('diaspora_like: missing parent_guid' . print_r($this->msg, true), LOGGER_DEBUG);
+			return;
+		}
+
 		$diaspora_handle = notags($this->get_author());
+		if(! $diaspora_handle) {
+			logger('diaspora_like: missing author' . print_r($this->msg, true), LOGGER_DEBUG);
+			return;
+		}
+
 		$target_type = notags($this->get_ptype());
 		$positive = notags($this->get_property('positive'));
 		$author_signature = notags($this->get_property('author_signature'));
