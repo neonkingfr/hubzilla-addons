@@ -198,7 +198,8 @@ function gallery_prepare_body(&$arr) {
 					rowHeight: '$row_height',
 					lastRow: '$last_row',
 					justifyThreshold: 0.5,
-					border: 0
+					border: 0,
+					margins: 3
 				}).on('jg.complete', function(e){ justifiedGalleryActive = false; setTimeout(scrollToItem, 100); });
 			}
 		</script>
