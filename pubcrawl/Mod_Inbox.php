@@ -62,7 +62,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 			pubcrawl_import_author($arr);
 
-			if(isset($arr['result'])) {
+			if(! empty($arr['result'])) {
 				$x['hash'] = $arr['result'];
 			}
 			else {
