@@ -659,11 +659,8 @@ function asencode_person($p) {
 			'width'     => 1200,
 		];
 	}
-	$ret['url'] = [
-		'type'      => 'Link',
-		'mediaType' => 'text/html',
-		'href'      => $p['xchan_url']
-	];
+
+	$ret['url'] = $p['xchan_url'];
 
 	$c = channelx_by_hash($p['xchan_hash']);
 
