@@ -455,7 +455,7 @@ class Diaspora_Receiver {
 		$tgroup = tgroup_check($this->importer['channel_id'],$datarray);
 		
 		if((! $this->importer['system']) && (! perm_is_allowed($this->importer['channel_id'],$xchan['xchan_hash'],'send_stream')) && (! $tgroup) && (! $found_tags)) {
-			logger('diaspora_post: Ignoring this author.');
+			logger('diaspora_post: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
 
@@ -672,7 +672,7 @@ class Diaspora_Receiver {
 		$tgroup = tgroup_check($this->importer['channel_id'],$datarray);
 
 		if((! $this->importer['system']) && (! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'send_stream')) && (! $tgroup)) {
-			logger('diaspora_reshare: Ignoring this author.');
+			logger('diaspora_reshare: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
 		if($this->importer['system']) {
@@ -1005,7 +1005,7 @@ class Diaspora_Receiver {
 			$allowed = true;
 
 		if((! $this->importer['system']) && (! $pubcomment) && (! $allowed) && (! $tgroup)) {
-			logger('diaspora_comment: Ignoring this author.');
+			logger('diaspora_comment: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
 
@@ -1078,7 +1078,7 @@ class Diaspora_Receiver {
 
 
 		if(! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'post_mail')) {
-			logger('diaspora_conversation: Ignoring this author.');
+			logger('diaspora_conversation: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
 
@@ -1261,7 +1261,7 @@ class Diaspora_Receiver {
 		}
 
 		if(! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'post_mail')) {
-			logger('Ignoring this author.');
+			logger('Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
 
@@ -1399,7 +1399,7 @@ class Diaspora_Receiver {
 		}
 
 		if((! $this->importer['system']) && (! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'send_stream'))) {
-			logger('diaspora_photo: Ignoring this author.');
+			logger('diaspora_photo: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
 
@@ -1474,7 +1474,7 @@ class Diaspora_Receiver {
 	
 
 		if((! $this->importer['system']) && (! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'post_comments'))) {
-			logger('diaspora_like: Ignoring this author.');
+			logger('diaspora_like: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
 
