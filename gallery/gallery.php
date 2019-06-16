@@ -103,7 +103,7 @@ function gallery_prepare_body(&$arr) {
 	$arr['html'] = mb_convert_encoding($arr['html'], 'HTML-ENTITIES', "UTF-8");
 
 	// LIBXML_HTML_NOIMPLIED does not work well without a parent element.
-	// We a parent div here and will remove it again later
+	// We will add a parent div here and will remove it again later.
 	@$dom->loadHTML('<div>' . $arr['html'] . '</div>', LIBXML_HTML_NODEFDTD | LIBXML_HTML_NOIMPLIED);
 
 	$xp = new DOMXPath($dom);
@@ -166,22 +166,18 @@ function gallery_prepare_body(&$arr) {
 		case 1:
 			$row_height = 300;
 			$last_row = 'justify';
-			$margins = 0;
 			break;
 		case 2:
 			$row_height = 240;
 			$last_row = 'justify';
-			$margins = 3;
 			break;
 		case 3:
 			$row_height = 180;
 			$last_row = 'justify';
-			$margins = 3;
 			break;
 		default:
 			$row_height = 120;
 			$last_row = 'nojustify';
-			$margins = 3;
 	}
 
 	$js = <<<EOF
@@ -202,8 +198,8 @@ function gallery_prepare_body(&$arr) {
 					rowHeight: '$row_height',
 					lastRow: '$last_row',
 					justifyThreshold: 0.5,
-					margins: $margins,
-					border: 0
+					border: 0,
+					margins: 3
 				}).on('jg.complete', function(e){ justifiedGalleryActive = false; setTimeout(scrollToItem, 100); });
 			}
 		</script>
