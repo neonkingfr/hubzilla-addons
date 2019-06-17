@@ -62,11 +62,12 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 			pubcrawl_import_author($arr);
 
-			if($arr['result']) {
+			if(! empty($arr['result'])) {
 				$x['hash'] = $arr['result'];
 			}
 			else {
-				$x['address'] = $AS->obj['attributedTo'];
+				logger('pubcrawl_import_author failed for announce activity');
+				return;
 			}
 
 			$AS->sharee = xchan_fetch($x);

@@ -537,7 +537,7 @@ function chess_delete_game($game_id, $channel) {
 	if (!$items) {
 		return array('items' => null, 'status' => false);
 	} else {
-		$drop = drop_item($items[0]['id'], false, DROPITEM_NORMAL, true);
+		$drop = drop_item($items[0]['id'], false, DROPITEM_NORMAL);
 		return array('items' => $items, 'status' => (($drop === 1) ? true : false));
 	}
 }
