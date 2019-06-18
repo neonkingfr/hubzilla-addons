@@ -98,7 +98,7 @@ function photocache_isgrid($url) {
 	if(photocache_mode_key('grid'))
 		return false;
 		
-	is_matrix_url($url);
+	return is_matrix_url($url);
 }
 
 
