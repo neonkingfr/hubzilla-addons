@@ -95,26 +95,10 @@ function photocache_mode_key($key) {
  */	
 function photocache_isgrid($url) {
 
-	static $isgrid = [];
-
 	if(photocache_mode_key('grid'))
 		return false;
-	
-	$url = parse_url($url, PHP_URL_HOST);
-	
-	if(array_key_exists($url, $isgrid))
-		return true;
-	
-	$r = q("SELECT hubloc_id FROM hubloc WHERE hubloc_host = '%s' AND hubloc_network LIKE '%s' LIMIT 1",
-		dbesc($url),
-		dbesc('zot%')
-	);
-	if($r) {
-		$isgrid[$url] = true;
-		return true;
-	}
-
-	return false;
+		
+	is_matrix_url($url);
 }
 
 
