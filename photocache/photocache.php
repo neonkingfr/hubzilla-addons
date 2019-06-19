@@ -238,7 +238,7 @@ function photocache_url(&$cache = array()) {
 	}
 	
 	$exp = strtotime($r['expires']);
-	$url = (($exp - 60 < time()) ? htmlspecialchars_decode($r['display_path']) : '');
+	$url = (($exp - 60 < time()) ? html_entity_decode($r['display_path'], ENT_QUOTES) : '');
 	
 	if($url) {
 		// Get data from remote server 		
