@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.7
+ * Version: 0.2.8
  * Author: Max Kostikov
  * Maintainer: max@kostikov.co
  * MinVersion: 3.9.5
@@ -94,16 +94,27 @@ function photocache_mode_key($key) {
  *
  */	
 function photocache_isgrid($url) {
-	
-	if(strpos($url, z_root()) === 0)
-		return true;
+
+	static $isgrid = [];
+
 	if(photocache_mode_key('grid'))
 		return false;
-	$r = q("SELECT * FROM hubloc WHERE hubloc_host = '%s' AND hubloc_network LIKE '%s' LIMIT 1",
-		dbesc(parse_url($url, PHP_URL_HOST)),
+	
+	$url = parse_url($url, PHP_URL_HOST);
+	
+	if(array_key_exists($url, $isgrid))
+		return true;
+	
+	$r = q("SELECT hubloc_id FROM hubloc WHERE hubloc_host = '%s' AND hubloc_network LIKE '%s' LIMIT 1",
+		dbesc($url),
 		dbesc('zot%')
 	);
-	return ($r ? true : false);
+	if($r) {
+		$isgrid[$url] = true;
+		return true;
+	}
+
+	return false;
 }
 
 
