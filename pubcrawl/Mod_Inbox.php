@@ -193,6 +193,8 @@ class Inbox extends \Zotlabs\Web\Controller {
 						break;
 					}
 				case 'Delete':
+					as_delete_action($channel,$observer_hash,$AS);
+					break;
 				case 'Add':
 				case 'Remove':
 					break;

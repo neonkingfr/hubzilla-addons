@@ -1,6 +1,7 @@
 <?php
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Daemon\Master;
 
 require_once('include/event.php');
 
@@ -440,13 +441,6 @@ function asencode_activity($i) {
 	$ret   = [];
 	$reply = false;
 
-	if(intval($i['item_deleted'])) {
-		$ret['type'] = 'Tombstone';
-		$ret['formerType'] = activity_obj_mapper($i['obj_type']);
-		$ret['id'] = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
-		return $ret;
-	}
-
 	$ret['type'] = activity_mapper($i['verb']);
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/activity/' . urlencode($i['mid']));
 
@@ -571,6 +565,20 @@ function asencode_activity($i) {
 			$ret['object']['cc'] = $ret['cc'];
 		if(isset($ret['tag']))
 			$ret['object']['tag'] = $ret['tag'];
+	}
+
+	if(intval($i['item_deleted'])) {
+		$del_ret['type'] = 'Delete';
+		$del_ret['actor'] = $actor;
+		$del_ret['formerType'] = activity_obj_mapper($i['obj_type']);
+		$del_ret['id'] = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
+		$del_ret['to'] = $ret['to'];
+		$del_ret['object'] = [
+			'id' => $del_ret['id'],
+			'type' => 'Tombstone'
+		];
+
+		return $del_ret;
 	}
 
 	return $ret;
@@ -865,7 +873,7 @@ function as_follow($channel,$act) {
 				// Send an Accept back to them
 
 				set_abconfig($channel['channel_id'],$person_obj['id'],'pubcrawl','their_follow_id', $their_follow_id);
-				\Zotlabs\Daemon\Master::Summon([ 'Notifier', 'permission_accept', $contact['abook_id'] ]);
+				Master::Summon([ 'Notifier', 'permission_accept', $contact['abook_id'] ]);
 				return;
 
 			case 'Accept':
@@ -972,9 +980,9 @@ function as_follow($channel,$act) {
 
 			if($my_perms && $automatic) {
 				// send an Accept for this Follow activity
-				\Zotlabs\Daemon\Master::Summon([ 'Notifier', 'permission_accept', $new_connection[0]['abook_id'] ]);
+				Master::Summon([ 'Notifier', 'permission_accept', $new_connection[0]['abook_id'] ]);
 				// Send back a Follow notification to them
-				\Zotlabs\Daemon\Master::Summon([ 'Notifier', 'permission_create', $new_connection[0]['abook_id'] ]);
+				Master::Summon([ 'Notifier', 'permission_create', $new_connection[0]['abook_id'] ]);
 			}
 
 			$clone = array();
@@ -1187,6 +1195,16 @@ function as_create_action($channel,$observer_hash,$act) {
 
 	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video', 'Image', 'Event' ])) {
 		as_create_note($channel,$observer_hash,$act);
+	}
+
+}
+
+function as_delete_action($channel,$observer_hash,$act) {
+
+	hz_syslog(print_r($act, true));
+
+	if(in_array($act->obj['type'], [ 'Tombstone' ])) {
+		as_delete_note($channel,$observer_hash,$act);
 	}
 
 }
@@ -1449,7 +1467,7 @@ function as_create_note($channel,$observer_hash,$act) {
 		if($parent) {
 			if($s['owner_xchan'] === $channel['channel_hash']) {
 				// We are the owner of this conversation, so send all received comments back downstream
-				Zotlabs\Daemon\Master::Summon(array('Notifier','comment-import',$x['item_id']));
+				Master::Summon(array('Notifier','comment-import',$x['item_id']));
 			}
 			$r = q("select * from item where id = %d limit 1",
 				intval($x['item_id'])
@@ -1711,8 +1729,45 @@ function as_like_note($channel,$observer_hash,$act) {
 	if($result['success']) {
 		// if the message isn't already being relayed, notify others
 		if(intval($parent_item['item_origin']))
-				Zotlabs\Daemon\Master::Summon(array('Notifier','comment-import',$result['item_id']));
-			sync_an_item($channel['channel_id'],$result['item_id']);
+			Master::Summon(array('Notifier','comment-import',$result['item_id']));
+		sync_an_item($channel['channel_id'],$result['item_id']);
+	}
+
+	return;
+}
+
+function as_delete_note($channel,$observer_hash,$act) {
+
+	$uid = $channel['channel_id'];
+	$mid = urldecode($act->obj['id']);
+
+	$r = q("SELECT * FROM item WHERE mid = '%s' and uid = %d LIMIT 1",
+		dbesc($mid),
+		intval($uid)
+	);
+
+	$i = $r[0];
+
+	if($channel['channel_id'] == 55) {
+		hz_syslog(print_r($observer_hash,true));
+		hz_syslog(print_r($i,true));
+	}
+
+	if($i['author_xchan'] !== $observer_hash)
+		return;
+
+	if($r) {
+		$stage = DROPITEM_NORMAL;
+
+		// If we are the conversation owner, propagate the delete
+		if(in_array($i['owner_xchan'], [$channel['channel_hash'], $channel['channel_portable_id']]))
+			$stage = DROPITEM_PHASE1;
+
+		drop_item($i['id'],false, $stage);
+
+		if($stage === DROPITEM_PHASE1) {
+			Master::Summon(['Notifier', 'drop', $i['id']]);
+		}
 	}
 
 	return;
