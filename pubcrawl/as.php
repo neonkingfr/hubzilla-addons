@@ -570,13 +570,10 @@ function asencode_activity($i) {
 	if(intval($i['item_deleted'])) {
 		$del_ret['type'] = 'Delete';
 		$del_ret['actor'] = $actor;
-		$del_ret['formerType'] = activity_obj_mapper($i['obj_type']);
-		$del_ret['id'] = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
+		$del_ret['id'] = $ret['id'];
 		$del_ret['to'] = $ret['to'];
-		$del_ret['object'] = [
-			'id' => $del_ret['id'],
-			'type' => 'Tombstone'
-		];
+		$del_ret['cc'] = $ret['cc'];
+		$del_ret['object'] = $ret['object'];
 
 		return $del_ret;
 	}
@@ -1201,11 +1198,7 @@ function as_create_action($channel,$observer_hash,$act) {
 
 function as_delete_action($channel,$observer_hash,$act) {
 
-	hz_syslog(print_r($act, true));
-
-	if(in_array($act->obj['type'], [ 'Tombstone' ])) {
-		as_delete_note($channel,$observer_hash,$act);
-	}
+	as_delete_note($channel,$observer_hash,$act);
 
 }
 
@@ -1739,7 +1732,10 @@ function as_like_note($channel,$observer_hash,$act) {
 function as_delete_note($channel,$observer_hash,$act) {
 
 	$uid = $channel['channel_id'];
-	$mid = urldecode($act->obj['id']);
+	if(is_array($act->obj))
+		$mid = urldecode($act->obj['id']);
+	else
+		$mid = urldecode($act->obj);
 
 	$r = q("SELECT * FROM item WHERE mid = '%s' and uid = %d LIMIT 1",
 		dbesc($mid),
@@ -1747,11 +1743,6 @@ function as_delete_note($channel,$observer_hash,$act) {
 	);
 
 	$i = $r[0];
-
-	if($channel['channel_id'] == 55) {
-		hz_syslog(print_r($observer_hash,true));
-		hz_syslog(print_r($i,true));
-	}
 
 	if($i['author_xchan'] !== $observer_hash)
 		return;
