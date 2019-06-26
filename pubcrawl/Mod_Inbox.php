@@ -14,16 +14,6 @@ class Inbox extends \Zotlabs\Web\Controller {
 			$sys_disabled = true;
 		}
 
-		$is_public = false;
-
-		if(argc() == 1 || argv(1) === '[public]') {
-			$is_public = true;
-		}
-		else {
-			$channels = [ channelx_by_nick(argv(1)) ];
-		}
-
-
 		$data = file_get_contents('php://input');
 		if(! $data)
 			return;
@@ -45,7 +35,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		if($AS->type == 'Update' && $AS->obj['type'] == 'Person') {
 			$x['recipient']['xchan_network'] = 'activitypub';
-			$x['recipient']['xchan_hash'] = $AS->obj['id'];
+			$x['recipient']['xchan_hash'] = $observer_hash;
 			pubcrawl_permissions_update($x);
 			return;
 		}
@@ -79,20 +69,35 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		}
 
-		if($is_public) {
+		$is_public = false;
 
+		if(argc() == 1 || argv(1) === '[public]') {
+			$is_public = true;
+		}
+		else {
+			$channels = [ channelx_by_nick(argv(1)) ];
+		}
+
+
+		if($is_public) {
 			$parent = ((is_array($AS->obj) && array_key_exists('inReplyTo',$AS->obj)) ? urldecode($AS->obj['inReplyTo']) : '');
 
 			if($parent) {
-				//this is a comment - deliver to everybody who owns the parent
+				// this is a comment - deliver to everybody who owns the parent 
 				$channels = q("SELECT * from channel where channel_id in ( SELECT uid from item where ( mid = '%s' OR mid = '%s' ) ) and channel_address != '%s'",
 					dbesc($parent),
 					dbesc(basename($parent)),
 					dbesc(str_replace(z_root() . '/channel/', '', $observer_hash))
 				);
+				// in case we receive a comment to a parent we do not have yet
+				// deliver to anybody following $AS->actor and let it fetch the parent
+				if(! $channels) {
+					$channels = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network = 'activitypub' and xchan_hash = '%s' ) and channel_removed = 0 ",
+						dbesc($observer_hash)
+					);
+				}
 			}
 			else {
-
 				// Pleroma sends follow activities to the publicInbox and therefore requires special handling.
 
 				if($AS->type === 'Follow' && $AS->obj && $AS->obj['type'] === 'Person') {
@@ -102,7 +107,6 @@ class Inbox extends \Zotlabs\Web\Controller {
 				}
 				else {
 					// deliver to anybody following $AS->actor
-
 					$channels = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network = 'activitypub' and xchan_hash = '%s' ) and channel_removed = 0 ",
 						dbesc($observer_hash)
 					);

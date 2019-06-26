@@ -2,6 +2,8 @@
 
 use Zotlabs\Lib\Apps;
 use Zotlabs\Daemon\Master;
+use Zotlabs\Lib\Activity;
+use Zotlabs\Lib\ActivityStreams;
 
 require_once('include/event.php');
 
@@ -1152,7 +1154,6 @@ function as_actor_store($url,$person_obj) {
 		dbesc($url)
 	);
 
-
 	$m = parse_url($url);
 	if($m) {
 		$hostname = $m['host'];
@@ -1186,7 +1187,6 @@ function as_actor_store($url,$person_obj) {
 	);
 
 }
-
 
 function as_create_action($channel,$observer_hash,$act) {
 
@@ -1228,9 +1228,7 @@ function as_vid_sort($a,$b) {
 	return (($a['width'] > $b['width']) ? -1 : 1);
 }
 
-function as_create_note($channel,$observer_hash,$act) {
-
-	$s = [];
+function as_create_note($channel,$observer_hash,$act,$s = [],$fetch_parents = true) {
 
 	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
 	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
@@ -1239,40 +1237,18 @@ function as_create_note($channel,$observer_hash,$act) {
 	$pubstream = ((is_array($act->obj) && array_key_exists('to', $act->obj) && in_array(ACTIVITY_PUBLIC_INBOX, $act->obj['to'])) ? true : false);
 	$is_sys_channel = is_sys_channel($channel['channel_id']);
 
-	$parent = ((array_key_exists('inReplyTo',$act->obj)) ? urldecode($act->obj['inReplyTo']) : '');
-	if($parent) {
+	$parent = ((array_key_exists('inReplyTo',$act->obj)) ? urldecode($act->obj['inReplyTo']) : false);
 
-		$r = q("select * from item where uid = %d and ( mid = '%s' or  mid = '%s' ) limit 1",
-			intval($channel['channel_id']),
-			dbesc($parent),
-			dbesc(basename($parent))
-		);
-
-		if(! $r) {
-			logger('parent not found.');
-			return;
-		}
-
-		if($r[0]['owner_xchan'] === $channel['channel_hash']) {
-			if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
-				logger('no comment permission.');
-				return;
-			}
-		}
-
-		$s['parent_mid'] = $r[0]['mid'];
-		$s['owner_xchan'] = $r[0]['owner_xchan'];
-		$s['author_xchan'] = $observer_hash;
-
-	}
-	else {
+	if(!$parent) {
 		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
 			logger('no permission');
 			return;
 		}
-		$s['owner_xchan'] = $s['author_xchan'] = $observer_hash;
+		$s['owner_xchan'] = $observer_hash;
 	}
-	
+
+	$s['author_xchan'] = $observer_hash;
+
 	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
 		dbesc($observer_hash),
 		intval($channel['channel_id'])
@@ -1288,9 +1264,11 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
 	$s['uuid'] = '';
+
 	// Friendica sends the diaspora guid in a nonstandard field via AP
 	if($act->obj['diaspora:guid'])
 		$s['uuid'] = $act->obj['diaspora:guid'];
+
 	$s['mid'] = urldecode($act->obj['id']);
 
 	if(in_array($act->obj['type'],[ 'Note','Article','Page' ])) {
@@ -1321,7 +1299,6 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['plink'] = $s['mid'];
 	}
 
-
 	if($act->data['published']) {
 		$s['created'] = datetime_convert('UTC','UTC',$act->data['published']);
 	}
@@ -1341,9 +1318,8 @@ function as_create_note($channel,$observer_hash,$act) {
 	if(! $s['edited'])
 		$s['edited'] = $s['created'];
 
-
 	if(! $s['parent_mid'])
-		$s['parent_mid'] = $s['mid'];
+		$s['parent_mid'] = $parent ? $parent : $s['mid'];
 
 	$summary = as_bb_content($content,'summary');
 
@@ -1370,7 +1346,6 @@ function as_create_note($channel,$observer_hash,$act) {
 		}
 	}
 
-
 	if($abook) {
 		if(! post_is_importable($s,$abook[0])) {
 			logger('post is filtered');
@@ -1380,6 +1355,48 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	if($act->obj['conversation']) {
 		set_iconfig($s,'ostatus','conversation',$act->obj['conversation'],1);
+	}
+
+	if($parent) {
+		$p = q("select parent_mid, owner_xchan from item where mid = '%s' and uid = %d limit 1",
+			dbesc($s['parent_mid']),
+			intval($s['uid'])
+		);
+		if(! $p) {
+			$a = (($fetch_parents) ? Activity::fetch_and_store_parents($channel,$act,$s) : false);
+
+			if($a) {
+				$p = q("select parent_mid, owner_xchan from item where mid = '%s' and uid = %d limit 1",
+					dbesc($s['parent_mid']),
+					intval($s['uid'])
+				);
+			}
+			else {
+				logger('could not fetch parents');
+				return;
+
+				// @TODO we maybe could accept these is we formatted the body correctly with share_bb()
+				// or at least provided a link to the object
+				// if(in_array($act->type,[ 'Like','Dislike' ])) {
+				//	return;
+				// }
+
+				// @TODO do we actually want that?
+				// if no parent was fetched, turn into a top-level post
+
+				// turn into a top level post
+				// $s['parent_mid'] = $s['mid'];
+				// $s['thr_parent'] = $s['mid'];
+			}
+		}
+		if($p[0]['parent_mid'] !== $s['parent_mid']) {
+			$s['thr_parent'] = $s['parent_mid'];
+		}
+		else {
+			$s['thr_parent'] = $p[0]['parent_mid'];
+		}
+		$s['parent_mid'] = $p[0]['parent_mid'];
+		$s['owner_xchan'] = $p[0]['owner_xchan'];
 	}
 
 	$a = asdecode_taxonomy($act->obj);
