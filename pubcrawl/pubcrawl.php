@@ -16,6 +16,7 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Web\HTTPSig;
 
 require_once('addon/pubcrawl/as.php');
 
@@ -411,11 +412,10 @@ function pubcrawl_channel_mod_init($x) {
 
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$hash = \Zotlabs\Web\HTTPSig::generate_digest($ret,false);
-		$headers['Digest'] = 'SHA-256=' . $hash;  
-		\Zotlabs\Web\HTTPSig::create_sig('',$headers,$chan['channel_prvkey'],z_root() . '/channel/' . $chan['channel_address'],true);
+		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
+		HTTPSig::set_headers($h);
 		echo $ret;
-		logger('channel: ' . $ret, LOGGER_DATA);
 		killme();
 	}
 }
@@ -630,6 +630,8 @@ function pubcrawl_queue_message($msg,$sender,$recip,$message_id = '') {
     $hash = random_string();
 
     logger('queue: ' . $hash . ' ' . $dest_url, LOGGER_DEBUG);
+	logger('queueMsg: ' . jindent($msg));
+	
 	queue_insert(array(
         'hash'       => $hash,
         'account_id' => $sender['channel_account_id'],
@@ -900,12 +902,11 @@ function pubcrawl_profile_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$hash = \Zotlabs\Web\HTTPSig::generate_digest($ret,false);
-		$headers['Digest'] = 'SHA-256=' . $hash;  
-		\Zotlabs\Web\HTTPSig::create_sig('',$headers,$chan['channel_prvkey'],z_root() . '/channel/' . $chan['channel_address'],true);
+		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
+		HTTPSig::set_headers($h);
 		echo $ret;
 		killme();
-
 	}
 }
 
@@ -936,7 +937,7 @@ function pubcrawl_item_mod_init($x) {
 
 		// process an authenticated fetch
 
-		$sigdata = \Zotlabs\Zot6\HTTPSig::verify(EMPTY_STR);
+		$sigdata = HTTPSig::verify(EMPTY_STR);
 		if($sigdata['portable_id'] && $sigdata['header_valid']) {
 			$portable_id = $sigdata['portable_id'];
 			observer_auth($portable_id);
@@ -1014,12 +1015,11 @@ function pubcrawl_item_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$hash = \Zotlabs\Web\HTTPSig::generate_digest($ret,false);
-		$headers['Digest'] = 'SHA-256=' . $hash;  
-		\Zotlabs\Web\HTTPSig::create_sig('',$headers,$chan['channel_prvkey'],z_root() . '/channel/' . $chan['channel_address'],true);
+		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
+		HTTPSig::set_headers($h);
 		echo $ret;
 		killme();
-
 	}
 }
 
@@ -1064,9 +1064,9 @@ function pubcrawl_thing_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$hash = \Zotlabs\Web\HTTPSig::generate_digest($ret,false);
-		$headers['Digest'] = 'SHA-256=' . $hash;  
-		\Zotlabs\Web\HTTPSig::create_sig('',$headers,$chan['channel_prvkey'],z_root() . '/channel/' . $chan['channel_address'],true);
+		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
+		HTTPSig::set_headers($h);
 		echo $ret;
 		killme();
 	}
@@ -1114,9 +1114,9 @@ function pubcrawl_locs_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$hash = \Zotlabs\Web\HTTPSig::generate_digest($ret,false);
-		$headers['Digest'] = 'SHA-256=' . $hash;  
-		\Zotlabs\Web\HTTPSig::create_sig('',$headers,$chan['channel_prvkey'],z_root() . '/channel/' . $chan['channel_address'],true);
+		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
+		HTTPSig::set_headers($h);
 		echo $ret;
 		killme();
 	}
@@ -1163,12 +1163,11 @@ function pubcrawl_follow_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$hash = \Zotlabs\Web\HTTPSig::generate_digest($ret,false);
-		$headers['Digest'] = 'SHA-256=' . $hash;  
-		\Zotlabs\Web\HTTPSig::create_sig('',$headers,$chan['channel_prvkey'],z_root() . '/channel/' . $chan['channel_address'],true);
+		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
+		HTTPSig::set_headers($h);
 		echo $ret;
 		killme();
-
 	}
 }
 
@@ -1190,11 +1189,10 @@ function pubcrawl_queue_deliver(&$b) {
 		$headers = [];
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$ret = $outq['outq_msg'];
-		$hash = \Zotlabs\Web\HTTPSig::generate_digest($ret,false);
-		$headers['Digest'] = 'SHA-256=' . $hash;  
-		$xhead = \Zotlabs\Web\HTTPSig::create_sig('',$headers,$channel['channel_prvkey'],z_root() . '/channel/' . $channel['channel_address'],false);
-	
-		$result = z_post_url($outq['outq_posturl'],$outq['outq_msg'],$retries,[ 'headers' => $xhead ]);
+		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$xhead = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
+
+$result = z_post_url($outq['outq_posturl'],$outq['outq_msg'],$retries,[ 'headers' => $xhead ]);
 
 		if($result['success'] && $result['return_code'] < 300) {
 			logger('deliver: queue post success to ' . $outq['outq_posturl'], LOGGER_DEBUG);

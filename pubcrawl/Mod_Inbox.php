@@ -1,6 +1,8 @@
 <?php
 namespace Zotlabs\Module;
 
+use Zotlabs\Web\HTTPSig;
+
 
 class Inbox extends \Zotlabs\Web\Controller {
 
@@ -20,7 +22,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		logger('inbox_activity: ' . jindent($data), LOGGER_DATA);
 
-		\Zotlabs\Web\HTTPSig::verify($data);
+		HTTPSig::verify($data);
 
 		$AS = new \Zotlabs\Lib\ActivityStreams($data);
 

@@ -1,5 +1,7 @@
 <?php
 
+use Zotlabs\Web\HTTPSig;
+
 require_once('include/cli_startup.php');
 require_once('include/attach.php');
 require_once('include/import.php');
@@ -21,8 +23,7 @@ $hz_server = urldecode($argv[3]);
 	$headers = [];
 	$headers['X-API-Token'] = random_string();
 	$headers['X-API-Request'] = $hz_server . '/api/z/1.0/file/export?f=&file_id=' . $attach_id;
-	$headers = \Zotlabs\Web\HTTPSig::create_sig('',$headers,$channel['channel_prvkey'],
-		'acct:' . $channel['channel_address'] . '@' . \App::get_hostname(),false,true,'sha512');
+	$headers = HTTPSig::create_sig($headers,$channel['channel_prvkey'], 'acct:' . channel_reddress($channel),true,'sha512');
 		
 	$x = z_fetch_url($hz_server . '/api/z/1.0/file/export?f=&file_id=' . $attach_id,false,$redirects,[ 'headers' => $headers ]);
 
