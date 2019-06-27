@@ -4,7 +4,7 @@ namespace Zotlabs\Module;
 
 use App;
 use Zotlabs\Lib\Apps;
-use Zotlabs\Zot6\HTTPSig;
+use Zotlabs\Web\HTTPSig;
 use Zotlabs\Web\Controller;
 
 class Content_import extends Controller {

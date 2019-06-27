@@ -1,6 +1,8 @@
 <?php
 namespace Zotlabs\Module;
 
+use Zotlabs\Web\HTTPSig;
+
 require_once('include/zot.php');
 require_once('library/jsonld/jsonld.php');
 
@@ -32,7 +34,7 @@ class Ap_probe extends \Zotlabs\Web\Controller {
 
 				$o .= '<pre>' . htmlspecialchars($x['body']) . '</pre>' . EOL;
 				
-				$o .= 'verify returns: ' . str_replace("\n",EOL,print_r(\Zotlabs\Web\HTTPSig::verify($x),true)) . EOL;
+				$o .= 'verify returns: ' . str_replace("\n",EOL,print_r(HTTPSig::verify($x),true)) . EOL;
 				$text = $x['body'];
 			}
 			else {
