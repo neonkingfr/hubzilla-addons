@@ -7,6 +7,7 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Web\Controller;
 
 require_once('addon/diaspora/util.php'); // needed for diaspora_build_relay_tags()
+require_once('addon/diaspora/diaspora.php'); // needed for diaspora_init_relay()
 
 class Diaspora extends Controller {
 
@@ -58,6 +59,8 @@ class Diaspora extends Controller {
 			$o .= $desc;
 			return $o;
 		}
+
+		diaspora_init_relay();
 
 		$pubcomments  = get_pconfig(local_channel(),'system','diaspora_public_comments',1);
 		$hijacking    = get_pconfig(local_channel(),'system','prevent_tag_hijacking');
