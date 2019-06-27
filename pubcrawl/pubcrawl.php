@@ -1182,7 +1182,7 @@ function pubcrawl_queue_deliver(&$b) {
 	if($outq['outq_driver'] === 'pubcrawl') {
 		$b['handled'] = true;
 
-		$channel = channelx_by_n($outq['outq_channel']);
+		$chan = channelx_by_n($outq['outq_channel']);
 
 		$retries = 0;
 
