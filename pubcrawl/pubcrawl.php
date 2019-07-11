@@ -717,7 +717,7 @@ function pubcrawl_connection_remove(&$x) {
 				z_root() . ZOT_APSCHEMA_REV
 			]], 
 			[
-				'id'    => z_root() . '/follow/' . $recip[0]['abook_id'] . '#Undo',
+				'id'    => z_root() . '/follow/' . $recip[0]['abook_id'] . '#undo',
 				'type'  => 'Undo',
 				'actor' => $p,
 				'object'     => [
@@ -772,7 +772,7 @@ function pubcrawl_permissions_create(&$x) {
 			z_root() . ZOT_APSCHEMA_REV
 		]], 
 		[
-			'id'     => z_root() . '/follow/' . $x['recipient']['abook_id'],
+			'id'     => z_root() . '/follow/' . $x['recipient']['abook_id'] . '#follow',
 			'type'   => 'Follow',
 			'actor'  => $p,
 			'object' => $x['recipient']['xchan_url'],
@@ -838,7 +838,7 @@ function pubcrawl_permissions_accept(&$x) {
 			z_root() . ZOT_APSCHEMA_REV
 		]], 
 		[
-			'id'     => z_root() . '/follow/' . $x['recipient']['abook_id'],
+			'id'     => z_root() . '/follow/' . $x['recipient']['abook_id']  . '#accept',
 			'type'   => 'Accept',
 			'actor'  => $p,
 			'object' => [
@@ -869,6 +869,13 @@ function pubcrawl_permissions_accept(&$x) {
 		
 	$x['success'] = true;
 
+	$perms = \Zotlabs\Access\PermissionRoles::role_perms('social');
+	$their_perms = \Zotlabs\Access\Permissions::FilledPerms($perms['perms_connect']);
+
+	// We accepted their follow request - set default permissions
+	foreach($their_perms as $k => $v) {
+		set_abconfig($x['sender']['channel_id'],$x['recipient']['abook_xchan'],'their_perms',$k,$v);
+	}
 }
 
 
@@ -1127,6 +1134,8 @@ function pubcrawl_locs_mod_init($x) {
 function pubcrawl_follow_mod_init($x) {
 
 	if(pubcrawl_is_as_request() && argc() == 2) {
+
+
 		$abook_id = intval(argv(1));
 		if(! $abook_id)
 			return;
@@ -1152,7 +1161,7 @@ function pubcrawl_follow_mod_init($x) {
 				z_root() . ZOT_APSCHEMA_REV
 			]], 
 			[
-				'id'     => z_root() . '/follow/' . $r[0]['abook_id'],
+				'id'     => z_root() . '/follow/' . $r[0]['abook_id'] . '#follow',
 				'type'   => 'Follow',
 				'actor'  => $actor,
 				'object' => $r[0]['xchan_url']

@@ -831,7 +831,7 @@ function as_follow($channel,$act) {
 		$their_follow_id  = $act->id;
 	}
 	elseif($act->type === 'Accept') {
-		$my_follow_id = z_root() . '/follow/' . $contact['id'];
+		$my_follow_id = z_root() . '/follow/' . $contact['id'] . '#accept';
 	}
 
 	if(is_array($person_obj)) {
@@ -868,8 +868,8 @@ function as_follow($channel,$act) {
 					return;
 				}
 
-				// We've already approved them or followed them first
-				// Send an Accept back to them
+-                               // We've already approved them or followed them first
+-                               // Send an Accept back to them
 
 				set_abconfig($channel['channel_id'],$person_obj['id'],'pubcrawl','their_follow_id', $their_follow_id);
 				Master::Summon([ 'Notifier', 'permission_accept', $contact['abook_id'] ]);
@@ -877,9 +877,10 @@ function as_follow($channel,$act) {
 
 			case 'Accept':
 
-				// They accepted our Follow request - set default permissions
-
+				// They accepted our Follow request - set default permissions (except for send_stream)
 				foreach($their_perms as $k => $v) {
+					if($k === 'send_stream')
+						$v = 0; // send_stream will be set once we accept their follow request 
 					set_abconfig($channel['channel_id'],$contact['abook_xchan'],'their_perms',$k,$v);
 				}
 
@@ -1041,7 +1042,6 @@ function as_unfollow($channel,$act) {
 			$my_perms = \Zotlabs\Access\Permissions::FilledPerms($x['perms_connect']);
 
 			// remove all permissions they provided
-
 			foreach($my_perms as $k => $v) {
 				del_abconfig($channel['channel_id'],$r[0]['xchan_hash'],'their_perms',$k);
 			}
