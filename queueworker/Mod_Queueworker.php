@@ -30,6 +30,10 @@ class Queueworker extends Controller {
 		$maxworkerage = ($maxworkerage > 100) ? $maxworkerage : 300;
 		set_config('queueworker','queueworker_max_age',$maxworkerage);
 
+		$queueworkersleep = intval($_POST['queue_worker_sleep']);
+		$queueworkersleep = ($queueworkersleep > 100) ? $queueworkersleep : 100;
+		set_config('queueworker','queue_worker_sleep',$queueworkersleep);
+
 		goaway(z_root().'/queueworker');
 	}
 
@@ -91,6 +95,19 @@ class Queueworker extends Controller {
 			]
 		]);
 
+                $queueworkersleep = get_config('queueworker','queue_worker_sleep');
+                $queueworkersleep = ($queueworkersleep > 100) ? $queueworkersleep : 100;
+		set_config('queueworker','queue_worker_sleep',$queueworkersleep);
+
+		$sc .= replace_macros(get_markup_template('field_input.tpl'), [
+			'$field' => [
+				'queue_worker_sleep',
+				t('Pause before starting next task: (microseconds.  Minimum 100 = .0001 seconds)'),
+				$queueworkersleep,
+				'',
+				$paths
+			]
+		]);
 
 		$tpl = get_markup_template('settings_addon.tpl');
 		$content .= replace_macros($tpl, [

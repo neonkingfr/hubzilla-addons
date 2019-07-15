@@ -20,6 +20,7 @@ class QueueWorkerUtils {
 	public static $queueworker = null;
 	public static $maxworkers = 0;
 	public static $workermaxage = 0;
+	public static $workersleep = 100;
 
   	public static function check_min_version ($platform,$minver) {
       		switch ($platform) {
@@ -321,6 +322,7 @@ class QueueWorkerUtils {
 			self::$workermaxage = (self::$workermaxage > 120) ? self::$workermaxage : 300;
 		}
 		q("update workerq set workerq_reservationid = null where workerq_processtimeout < %s", db_utcnow());
+		usleep(self::$workersleep); 
 		$workers = q("select distinct workerq_reservationid from workerq");
 		$workers = isset($workers) ? intval(count($workers)) : 1;
 		logger("WORKERCOUNT: $workers",LOGGER_DEBUG);
@@ -334,6 +336,7 @@ class QueueWorkerUtils {
 
 	
 		$wid = uniqid('',true);
+		usleep(mt_rand(500000,3000000)); //Sleep .5 - 3 seconds before creating a new worker.
 		$workers = self::GetWorkerCount();
 		if ($workers >= self::$maxworkers) {
 			logger("Too many active workers ($workers) max = ".self::$maxworkers,LOGGER_DEBUG);
@@ -376,9 +379,9 @@ class QueueWorkerUtils {
 	}
 
         static public function Process() {
-                $workersleep = get_config('queueworker','queue_worker_sleep');
-                $workersleep = (intval($workersleep) > 2) ? intval($workersleep) : 2;
-		sleep($workersleep); 
+                self::$workersleep = get_config('queueworker','queue_worker_sleep');
+                self::$workersleep = (intval($workersleep) > 100) ? intval($workersleep) : 100;
+		
                 if (!self::GetWorkerID()) {
                         logger('Unable to get worker ID. Exiting.',LOGGER_DEBUG);
                         killme();
