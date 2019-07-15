@@ -291,25 +291,25 @@ class QueueWorkerUtils {
 		
         		$r = q("select * from workerq where workerq_data = '%s'",
                 		dbesc(self::maybejson($workerinfo)));
-        		if ($r) {
-                		logger("Ignoring duplicate workerq task",LOGGER_DEBUG);
-                		return;
-        		}
+        		if (!$r) {
 
-			self::qbegin('workerq');
-			$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
-				intval($priority),
-				dbesc(self::maybejson($workinfo)));
-			self::qcommit();
-			if (!$r) {
-				logger("Insert failed: ".json_encode($workinfo),LOGGER_DEBUG);
-				return;
-			}
-			logger('INSERTED: '.self::maybejson($workinfo),LOGGER_DEBUG);
+				self::qbegin('workerq');
+				$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
+					intval($priority),
+					dbesc(self::maybejson($workinfo)));
+				self::qcommit();
+				if (!$r) {
+					logger("Insert failed: ".json_encode($workinfo),LOGGER_DEBUG);
+					return;
+				}
+				logger('INSERTED: '.self::maybejson($workinfo),LOGGER_DEBUG);
+			} else {
+                		logger("Duplicate task - do not insert.",LOGGER_DEBUG);
+        		}
 		}
 		$argv=[];
 		$arr=['argv'=>$argv];
-                self::Process();
+               	self::Process();
 	}
 
 	static public function GetWorkerCount() {
