@@ -249,7 +249,6 @@ class QueueWorkerUtils {
 		if ($argv[0]!='Queueworker') {
 
 			$priority = 0; //Default priority @TODO allow reprioritization
-
 			$workinfo = ['argc'=>$argc,'argv'=>$argv];
 		
         		$r = q("select * from workerq where workerq_data = '%s'",
@@ -411,12 +410,14 @@ class QueueWorkerUtils {
 				}
 
                                 $jobs++;
+				logger("Workinfo: ".$workitem[0]['workerq_data'],LOGGER_DEBUG);
                                 $workinfo = self::maybeunjson($workitem[0]['workerq_data']);
-                                $argc = $workinfo['argc'];
                                 $argv = $workinfo['argv'];
                                 logger('Master: process: ' . json_encode($argv),LOGGER_DEBUG);
 
                                 $cls = '\\Zotlabs\\Daemon\\' . $argv[0];
+				$argv = flatten_array_recursive($argv);
+				$argc = count($argv);
                                 $cls::run($argc,$argv);
                                 //@FIXME: Right now we assume that if we get a return, everything is OK.
                                 //At some point we may want to test whether the run returns true/false
