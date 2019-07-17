@@ -681,7 +681,7 @@ function asencode_person($p) {
 		$ret['endpoints']   = [ 'sharedInbox' => z_root() . '/inbox' ];
 
 		$ret['publicKey'] = [
-			'id'           => $p['xchan_url'] . '/public_key_pem',
+			'id'           => $p['xchan_url'],
 			'owner'        => $p['xchan_url'],
 			'publicKeyPem' => $p['xchan_pubkey']
 		];
