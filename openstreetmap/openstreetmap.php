@@ -53,21 +53,10 @@ function openstreetmap_location($a, &$item) {
 	 * ?mlat=lat&mlon=lon for markers.
 	 */
 
-	$tmsserver = get_config('openstreetmap', 'tmsserver');
-	if(! $tmsserver)
-		$tmsserver = 'http://www.openstreetmap.org';
-
-	$nomserver = get_config('openstreetmap', 'nomserver');
-	if(! $nomserver)
-		$nomserver = 'http://nominatim.openstreetmap.org/search.php';
-
-	$zoom = get_config('openstreetmap', 'zoom');
-	if(! $zoom)
-		$zoom = 16;
-
-	$marker = get_config('openstreetmap', 'marker');
-	if(! $marker)
-		$marker = 0;
+	$tmsserver = get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org');
+	$nomserver = get_config('openstreetmap', 'nomserver', 'https://nominatim.openstreetmap.org/search.php');
+	$zoom = get_config('openstreetmap', 'zoom', 16);
+	$marker = get_config('openstreetmap', 'marker', 1);
 
 	$location = '';
 	$coord = '';
@@ -98,11 +87,7 @@ function openstreetmap_location($a, &$item) {
 
 
 function openstreetmap_generate_named_map(&$a,&$b) {
-
-
-	$nomserver = get_config('openstreetmap', 'nomserver');
-	if(! $nomserver)
-		$nomserver = 'http://nominatim.openstreetmap.org/search.php';
+	$nomserver = get_config('openstreetmap', 'nomserver', 'https://nominatim.openstreetmap.org/search.php');
 	$args = '?q=' . urlencode($b['location']) . '&format=json';
 
 	$x = z_fetch_url($nomserver . $args);
@@ -118,21 +103,9 @@ function openstreetmap_generate_named_map(&$a,&$b) {
 }
 
 function openstreetmap_generate_map(&$a,&$b) {
-
-	$tmsserver = get_config('openstreetmap', 'tmsserver');
-	if(! $tmsserver)
-		$tmsserver = 'http://www.openstreetmap.org';
-	if(strpos(z_root(),'https:') !== false)
-		$tmsserver = str_replace('http:','https:',$tmsserver);
-
-
-	$zoom = get_config('openstreetmap', 'zoom');
-	if(! $zoom)
-		$zoom = 16;
-
-	$marker = get_config('openstreetmap', 'marker');
-	if(! $marker)
-		$marker = 0;
+	$tmsserver = get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org');
+	$zoom = get_config('openstreetmap', 'zoom', 16);
+	$marker = get_config('openstreetmap', 'marker', 1);
 
 	$lat = $b['lat']; // round($b['lat'], 5);
 	$lon = $b['lon']; // round($b['lon'], 5);
@@ -152,18 +125,10 @@ function openstreetmap_generate_map(&$a,&$b) {
 
 function openstreetmap_plugin_admin(&$a, &$o) {
 	$t = get_markup_template("admin.tpl", "addon/openstreetmap/");
-	$tmsserver = get_config('openstreetmap', 'tmsserver');
-	if(! $tmsserver)
-		$tmsserver = 'http://www.openstreetmap.org';
-	$nomserver = get_config('openstreetmap', 'nomserver');
-	if(! $nomserver)
-		$nomserver = 'http://nominatim.openstreetmap.org/search.php';
-	$zoom = get_config('openstreetmap', 'zoom');
-	if(! $zoom)
-		$zoom = 16;
-	$marker = get_config('openstreetmap', 'marker');
-	if(! $marker)
-		$marker = 0;
+	$tmsserver = get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org');
+	$nomserver = get_config('openstreetmap', 'nomserver', 'https://nominatim.openstreetmap.org/search.php');
+	$zoom = get_config('openstreetmap', 'zoom', 16);
+	$marker = get_config('openstreetmap', 'marker', 1);
 
 	$o = replace_macros($t, array(
 			'$submit' => t('Submit'),
@@ -176,8 +141,8 @@ function openstreetmap_plugin_admin(&$a, &$o) {
 function openstreetmap_plugin_admin_post(&$a) {
 	$urltms = ((x($_POST, 'tmsserver')) ? notags(trim($_POST['tmsserver'])) : '');
 	$urlnom = ((x($_POST, 'nomserver')) ? notags(trim($_POST['nomserver'])) : '');
-	$zoom = ((x($_POST, 'zoom')) ? intval(trim($_POST['zoom'])) : '16');
-	$marker = ((x($_POST, 'marker')) ? intval(trim($_POST['marker'])) : '0');
+	$zoom = ((x($_POST, 'zoom')) ? intval(trim($_POST['zoom'])) : 16);
+	$marker = ((x($_POST, 'marker')) ? intval(trim($_POST['marker'])) : 1);
 	set_config('openstreetmap', 'tmsserver', $urltms);
 	set_config('openstreetmap', 'nomserver', $urlnom);
 	set_config('openstreetmap', 'zoom', $zoom);
