@@ -1675,12 +1675,11 @@ function as_like_note($channel,$observer_hash,$act) {
 	$s['uid'] = $channel['channel_id'];
 	$s['uuid'] = '';
 	// Friendica sends the diaspora guid in a nonstandard field via AP
-	if($act->obj['diaspora:guid'])
-		$s['uuid'] = $act->obj['diaspora:guid'];
+	if($act->data['diaspora:guid'])
+		$s['uuid'] = $act->data['diaspora:guid'];
 
 	if(! $s['parent_mid'])
 		$s['parent_mid'] = $s['mid'];
-	
 
 	$post_type = (($parent_item['resource_type'] === 'photo') ? t('photo') : t('status'));
 
@@ -1705,6 +1704,7 @@ function as_like_note($channel,$observer_hash,$act) {
 		'content' => $parent_item['body'],
 		'created' => $parent_item['created'],
 		'edited'  => $parent_item['edited'],
+		'diaspora:guid' => $parent_item['uuid'],
 		'author'  => array(
 			'name'     => $item_author['xchan_name'],
 			'address'  => $item_author['xchan_addr'],
