@@ -317,6 +317,8 @@ function asencode_item($i) {
 		$ret['tag']       = $t;
 	}
 
+
+
 	$a = asencode_attachment($i);
 	if($a) {
 		$ret['attachment'] = $a;
@@ -372,9 +374,9 @@ function asencode_taxonomy($item) {
 		foreach($item['term'] as $t) {
 			switch($t['ttype']) {
 				case TERM_HASHTAG:
-					// An id is required so if we don't have a url in the taxonomy, ignore it and keep going.
+					// href is required so if we don't have a url in the taxonomy, ignore it and keep going.
 					if($t['url']) {
-						$ret[] = [ 'id' => $t['url'], 'name' => '#' . $t['term'] ];
+						$ret[] = [ 'type' => 'Hashtag', 'href' => $t['url'], 'name' => '#' . $t['term'] ];
 					}
 					break;
 
@@ -565,8 +567,6 @@ function asencode_activity($i) {
 			$ret['object']['to'] = $ret['to'];
 		if(isset($ret['cc']))
 			$ret['object']['cc'] = $ret['cc'];
-		if(isset($ret['tag']))
-			$ret['object']['tag'] = $ret['tag'];
 	}
 
 	if(intval($i['item_deleted'])) {
@@ -1228,7 +1228,9 @@ function as_vid_sort($a,$b) {
 	return (($a['width'] > $b['width']) ? -1 : 1);
 }
 
-function as_create_note($channel,$observer_hash,$act,$s = [],$fetch_parents = true) {
+function as_create_note($channel,$observer_hash,$act) {
+
+	$s = [];
 
 	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
 	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
@@ -1363,8 +1365,7 @@ function as_create_note($channel,$observer_hash,$act,$s = [],$fetch_parents = tr
 			intval($s['uid'])
 		);
 		if(! $p) {
-			$a = (($fetch_parents) ? Activity::fetch_and_store_parents($channel,$act,$s) : false);
-
+			$a = Activity::fetch_and_store_parents($channel, $act, $s);
 			if($a) {
 				$p = q("select parent_mid, owner_xchan from item where mid = '%s' and uid = %d limit 1",
 					dbesc($s['parent_mid']),
@@ -1617,25 +1618,36 @@ function as_like_note($channel,$observer_hash,$act) {
 
 	$s = [];
 
-	$parent = $act->obj['id'];
+	$s['parent_mid'] = $act->obj['id'];
+	if(! $s['parent_mid'])
+		return;
+
+	$s['mid'] = $act->id;
 
 	if($act->type === 'Like')
 		$s['verb'] = ACTIVITY_LIKE;
 	if($act->type === 'Dislike')
 		$s['verb'] = ACTIVITY_DISLIKE;
 
-	if(! $parent)
-		return;
-
 	$r = q("select * from item where uid = %d and ( mid = '%s' or  mid = '%s' ) limit 1",
 		intval($channel['channel_id']),
-		dbesc($parent),
-		dbesc(urldecode(basename($parent)))
+		dbesc($s['parent_mid']),
+		dbesc(urldecode(basename($s['parent_mid'])))
 	);
 
 	if(! $r) {
-		logger('parent not found.');
-		return;
+		$p = Activity::fetch_and_store_parents($channel,$act,$s);
+		if($p) {
+			$r = q("select * from item where uid = %d and ( mid = '%s' or  mid = '%s' ) limit 1",
+				intval($channel['channel_id']),
+				dbesc($s['parent_mid']),
+				dbesc(urldecode(basename($s['parent_mid'])))
+			);
+			if(! $r) {
+				logger('parent not found.');
+				return;
+			}
+		}
 	}
 
 	xchan_query($r);
@@ -1665,7 +1677,6 @@ function as_like_note($channel,$observer_hash,$act) {
 	// Friendica sends the diaspora guid in a nonstandard field via AP
 	if($act->obj['diaspora:guid'])
 		$s['uuid'] = $act->obj['diaspora:guid'];
-	$s['mid'] = $act->id;
 
 	if(! $s['parent_mid'])
 		$s['parent_mid'] = $s['mid'];
@@ -1713,7 +1724,7 @@ function as_like_note($channel,$observer_hash,$act) {
 
 	$ulink = '[url=' . $item_author['xchan_url'] . ']' . $item_author['xchan_name'] . '[/url]';
 	$alink = '[url=' . $parent_item['author']['xchan_url'] . ']' . $parent_item['author']['xchan_name'] . '[/url]';
-	$plink = '[url='. z_root() . '/display/' . urlencode($act->id) . ']' . $post_type . '[/url]';
+	$plink = '[url='. z_root() . '/display/' . gen_link_id($act->id) . ']' . $post_type . '[/url]';
 	$s['body'] =  sprintf( $bodyverb, $ulink, $alink, $plink );
 
 	$s['app']  = t('ActivityPub');
