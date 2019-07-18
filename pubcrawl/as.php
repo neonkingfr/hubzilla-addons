@@ -312,7 +312,7 @@ function asencode_item($i) {
 	else
 		return [];
 
-	$t = asencode_taxonomy($i);
+	$t = Activity::asencode_taxonomy($i);
 	if($t) {
 		$ret['tag']       = $t;
 	}
@@ -378,6 +378,10 @@ function asencode_taxonomy($item) {
 					if($t['url']) {
 						$ret[] = [ 'type' => 'Hashtag', 'href' => $t['url'], 'name' => '#' . $t['term'] ];
 					}
+					break;
+
+				case TERM_FORUM:
+					$ret[] = [ 'type' => 'Mention', 'href' => $t['url'], 'name' => '!' . $t['term'] ];
 					break;
 
 				case TERM_MENTION:
@@ -1400,7 +1404,7 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['owner_xchan'] = $p[0]['owner_xchan'];
 	}
 
-	$a = asdecode_taxonomy($act->obj);
+	$a = Activity::asdecode_taxonomy($act->obj);
 	if($a) {
 		$s['term'] = $a;
 	}
@@ -1558,7 +1562,7 @@ function as_announce_note($channel,$observer_hash,$act) {
 		set_iconfig($s,'ostatus','conversation',$act->obj['conversation'],1);
 	}
 
-	$a = asdecode_taxonomy($act->obj);
+	$a = Activity::asdecode_taxonomy($act->obj);
 	if($a) {
 		$s['term'] = $a;
 	}
