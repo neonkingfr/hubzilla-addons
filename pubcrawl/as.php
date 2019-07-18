@@ -312,7 +312,7 @@ function asencode_item($i) {
 	else
 		return [];
 
-	$t = Activity::asencode_taxonomy($i);
+	$t = Activity::encode_taxonomy($i);
 	if($t) {
 		$ret['tag']       = $t;
 	}
@@ -1404,7 +1404,7 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['owner_xchan'] = $p[0]['owner_xchan'];
 	}
 
-	$a = Activity::asdecode_taxonomy($act->obj);
+	$a = Activity::decode_taxonomy($act->obj);
 	if($a) {
 		$s['term'] = $a;
 	}
@@ -1562,7 +1562,7 @@ function as_announce_note($channel,$observer_hash,$act) {
 		set_iconfig($s,'ostatus','conversation',$act->obj['conversation'],1);
 	}
 
-	$a = Activity::asdecode_taxonomy($act->obj);
+	$a = Activity::decode_taxonomy($act->obj);
 	if($a) {
 		$s['term'] = $a;
 	}
