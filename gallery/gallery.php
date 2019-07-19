@@ -177,7 +177,7 @@ function gallery_prepare_body(&$arr) {
 			break;
 		default:
 			$row_height = 120;
-			$last_row = 'nojustify';
+			$last_row = 'hide';
 	}
 
 	$js = <<<EOF
