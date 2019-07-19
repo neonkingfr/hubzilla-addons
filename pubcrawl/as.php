@@ -881,10 +881,10 @@ function as_follow($channel,$act) {
 
 			case 'Accept':
 
-				// They accepted our Follow request - set default permissions (except for send_stream)
+				// They accepted our Follow request - set default permissions (except for send_stream and post_wall)
 				foreach($their_perms as $k => $v) {
-					if($k === 'send_stream')
-						$v = 0; // send_stream will be set once we accept their follow request 
+					if(in_array($k, ['send_stream', 'post_wall']))
+						$v = 0; // Those will be set once we accept their follow request
 					set_abconfig($channel['channel_id'],$contact['abook_xchan'],'their_perms',$k,$v);
 				}
 
