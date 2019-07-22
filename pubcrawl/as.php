@@ -1236,9 +1236,7 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	$s = [];
 
-	$announce = false;
-	if($act->type === 'Announce')
-		$announce = true;
+	$announce = (($act->type === 'Announce') ? true  : false);
 
 	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
 	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
@@ -1338,7 +1336,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	
 	$s['title']    = as_bb_content($content,'name');
 	$s['body']     = $summary . as_bb_content($content,'content');
-	$s['verb']     = ACTIVITY_POST;
+	$s['verb']     = (($announce) ? ACTIVITY_SHARE : ACTIVITY_POST);
 	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
 	$s['app']      = t('ActivityPub');
 
