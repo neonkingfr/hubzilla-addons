@@ -244,20 +244,14 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 function pubcrawl_import_author(&$b) {
 
-	if(! $b['author']['url'])
-		return;
-
 	$url = $b['author']['url'];
 
-	// let somebody upgrade from an 'unknown' connection which has no xchan_addr
-	$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_url = '%s' limit 1",
+	if(! $url)
+		return;
+
+	$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' and xchan_network = 'activitypub' limit 1",
 		dbesc($url)
 	);
-	if(! $r) {
-		$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' limit 1",
-			dbesc($url)
-		);
-	}
 	if($r) {
 		logger('in_cache: ' . $r[0]['xchan_name'], LOGGER_DATA);
 		$b['result'] = $r[0]['xchan_hash'];
@@ -267,14 +261,9 @@ function pubcrawl_import_author(&$b) {
 	$x = discover_by_webbie($url);
 
 	if($x) {
-		$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_url = '%s' limit 1",
+		$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' limit 1",
 			dbesc($url)
 		);
-		if(! $r) {
-			$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' limit 1",
-				dbesc($url)
-			);
-		}
 		if($r) {
 			$b['result'] = $r[0]['xchan_hash'];
 			return;

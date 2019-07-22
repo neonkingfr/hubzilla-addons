@@ -206,7 +206,8 @@ class Inbox extends \Zotlabs\Web\Controller {
 					break;
 
 				case 'Announce':
-					as_announce_action($channel,$observer_hash,$AS);
+					as_create_action($channel,$observer_hash,$AS);
+					//as_announce_action($channel,$observer_hash,$AS);
 					break;
 				default:
 					break;
