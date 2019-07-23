@@ -872,8 +872,8 @@ function as_follow($channel,$act) {
 					return;
 				}
 
--                               // We've already approved them or followed them first
--                               // Send an Accept back to them
+				// We've already approved them or followed them first
+				// Send an Accept back to them
 
 				set_abconfig($channel['channel_id'],$person_obj['id'],'pubcrawl','their_follow_id', $their_follow_id);
 				Master::Summon([ 'Notifier', 'permission_accept', $contact['abook_id'] ]);

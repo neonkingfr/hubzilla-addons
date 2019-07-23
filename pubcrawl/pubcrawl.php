@@ -37,6 +37,7 @@ function pubcrawl_load() {
 		'permissions_accept'         => 'pubcrawl_permissions_accept',
 		'connection_remove'          => 'pubcrawl_connection_remove',
 		'post_local_end'             => 'pubcrawl_post_local_end',
+		'notifier_process'           => 'pubcrawl_notifier_process',
 		'notifier_hub'               => 'pubcrawl_notifier_hub',
 		'channel_links'              => 'pubcrawl_channel_links',
 		'personal_xrd'               => 'pubcrawl_personal_xrd',
@@ -407,6 +408,35 @@ function pubcrawl_channel_mod_init($x) {
 		echo $ret;
 		killme();
 	}
+}
+
+function pubcrawl_notifier_process(&$arr) {
+
+	if(! $arr['relay_to_owner'])
+		return;
+
+	if($arr['target_item']['item_private'])
+		return;
+
+	if($arr['parent_item']['owner']['xchan_network'] !== 'activitypub')
+		return;
+
+	if($arr['parent_item']['author']['xchan_network'] !== 'activitypub')
+		return;
+
+	if(! Apps::addon_app_installed($arr['channel']['channel_id'],'pubcrawl'))
+		return;
+
+	// If the parent is an announce activity, add the author to the recipients
+	if($arr['parent_item']['verb'] == ACTIVITY_SHARE) {
+		$arr['env_recips'][] = [
+			'guid'     => $arr['parent_item']['author']['xchan_guid'],
+			'guid_sig' => $arr['parent_item']['author']['xchan_guid_sig'],
+			'hash'     => $arr['parent_item']['author']['xchan_hash']
+		];
+		$arr['recipients'][] = '\'' . $arr['parent_item']['author']['xchan_hash'] . '\'';
+	}
+
 }
 
 function pubcrawl_notifier_hub(&$arr) {
