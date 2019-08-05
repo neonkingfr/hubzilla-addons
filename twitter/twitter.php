@@ -9,6 +9,7 @@
  * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  *
  * Copyright (c) 2011-2013 Tobias Diekershoff, Michael Vogel
+ * Copyright (c) 2013-2019 Hubzilla Developers
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -170,7 +171,7 @@ function short_link ($url) {
 /**
  * @brief Shorten message intelligent using bulit-in functions
  */
-function twitter_shortenmsg($b, $shortlink = false) {
+function twitter_shortenmsg($b, $shortlink = true) {
 	require_once("include/api.php");
 	require_once("include/bbcode.php");
 	require_once("include/html2plain.php");
@@ -182,6 +183,11 @@ function twitter_shortenmsg($b, $shortlink = false) {
 	$body = $b["body"];
 	if ($b["title"] != "")
 		$body = $b["title"] . " : \n" . $body;
+
+	logger('tw_0: ' . $body);
+	
+	// Check if this is reshare
+	$body = preg_replace("/\[share author='([^\'\+]+)\+?([^\']+)?[^\]]+\](.*)\[\/share\]/ism", "from $1 $2\n\n$3", $body);
 
 	// Looking for the first image
 	$image = '';
@@ -218,8 +224,10 @@ function twitter_shortenmsg($b, $shortlink = false) {
 	$msg = trim($msg);
 
 	$msglink = $b["plink"];
-	if ($links == 1)
+	if ($links > 0)
 		$msglink = trim(htmlspecialchars_decode($urls[0][0]), "?.,:;!");
+
+	logger('tw_1: ' . $msg . '; msglink: ' . $msglink . '; img: ' . $image);
 
 	// If the message is short enough we send it and embed a picture if necessary it
 	if (strlen($msg) <= ($max_char - 20)) {
@@ -275,6 +283,8 @@ function twitter_shortenmsg($b, $shortlink = false) {
 		$msg = str_replace("  ", " ", $msg);
 
 	$msg = trim($msg);
+	
+	logger('tw_2: ' . $msg . '; link: ' . $orig_link . '; img: ' . $image);
 	
 	if ($image == $orig_link) 
 		return([ "msg" => $msg, "image" => $orig_link ]);
