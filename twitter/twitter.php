@@ -2,7 +2,7 @@
 /**
  * Name: Twitter Connector
  * Description: Relay public postings to a connected Twitter account
- * Version: 1.3
+ * Version: 1.3.1
  * Author: Tobias Diekershoff <https://f.diekershoff.de/profile/tobias>
  * Author: Michael Vogel <https://pirati.ca/profile/heluecht>
  * Author: Mike Macgirvin <https://zothub.com/channel/mike>
@@ -184,8 +184,6 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	if ($b["title"] != "")
 		$body = $b["title"] . " : \n" . $body;
 
-	logger('tw_0: ' . $body);
-	
 	// Check if this is reshare
 	$body = preg_replace("/\[share author='([^\'\+]+)\+?([^\']+)?[^\]]+\](.*)\[\/share\]/ism", "from $1 $2\n\n$3", $body);
 
@@ -226,8 +224,6 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	$msglink = $b["plink"];
 	if ($links > 0)
 		$msglink = trim(htmlspecialchars_decode($urls[0][0]), "?.,:;!");
-
-	logger('tw_1: ' . $msg . '; msglink: ' . $msglink . '; img: ' . $image);
 
 	// If the message is short enough we send it and embed a picture if necessary it
 	if (strlen($msg) <= ($max_char - 20)) {
@@ -283,8 +279,6 @@ function twitter_shortenmsg($b, $shortlink = true) {
 		$msg = str_replace("  ", " ", $msg);
 
 	$msg = trim($msg);
-	
-	logger('tw_2: ' . $msg . '; link: ' . $orig_link . '; img: ' . $image);
 	
 	if ($image == $orig_link) 
 		return([ "msg" => $msg, "image" => $orig_link ]);
@@ -484,7 +478,7 @@ function twitter_post_hook(&$a,&$b) {
 //			if ($iscomment)
 //				$post["in_reply_to_status_id"] = substr($orig_post["uri"], 9);
 
-			logger('twitt send, result: ' . print_r($result, true), LOGGER_DEBUG);
+			logger('Tweet send result: ' . print_r($result, true), LOGGER_DEBUG);
 			
 			if ($result->errors || $result->error) {
 				logger('Send to Twitter failed: "' . print_r($result->errors, true) . '"');
