@@ -183,8 +183,6 @@ function twitter_shortenmsg($b, $shortlink = false) {
 	if ($b["title"] != "")
 		$body = $b["title"] . " : \n" . $body;
 
-	logger('tw_0: ' . $body);
-
 	// Looking for the first image
 	$image = '';
 	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $images))
@@ -222,8 +220,6 @@ function twitter_shortenmsg($b, $shortlink = false) {
 	$msglink = $b["plink"];
 	if ($links == 1)
 		$msglink = trim(htmlspecialchars_decode($urls[0][0]), "?.,:;!");
-
-	logger('tw_1: ' . $msg . '; msglink: ' . $msglink . '; img: ' . $image);
 
 	// If the message is short enough we send it and embed a picture if necessary it
 	if (strlen($msg) <= ($max_char - 20)) {
@@ -279,8 +275,6 @@ function twitter_shortenmsg($b, $shortlink = false) {
 		$msg = str_replace("  ", " ", $msg);
 
 	$msg = trim($msg);
-	
-	logger('tw_2: ' . $msg . '; link: ' . $orig_link . '; img: ' . $image);
 	
 	if ($image == $orig_link) 
 		return([ "msg" => $msg, "image" => $orig_link ]);
