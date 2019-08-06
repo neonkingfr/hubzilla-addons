@@ -208,8 +208,11 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	// Removing link bookmark icon
 	$msg = str_replace("#^", "", $msg);
 	
-	// Find first URL
-	preg_match('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/is', $msg, $matches);
+	// Choose first URL or if not exist message plink 	
+	if (preg_match('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/is', $msg, $matches))
+		$msglink = htmlspecialchars_decode($matches[1], "?.,:;!");
+	else
+		$msglink = $b["plink"];
 	
 	// Removing all URLs
 	$msg = preg_replace('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/i', "", $msg);
@@ -223,11 +226,6 @@ function twitter_shortenmsg($b, $shortlink = true) {
 		$msg = str_replace("  ", " ", $msg);
 	
 	$msg = trim($msg);
-
-	if (empty($matches))
-		$msglink = $b["plink"];
-	else
-		$msglink = htmlspecialchars_decode($matches[1], "?.,:;!");
 
 	// If the message is short enough we send it and embed a picture if necessary it
 	if (strlen($msg . " " . $msglink) <= $max_char)
