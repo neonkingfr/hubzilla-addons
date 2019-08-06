@@ -451,7 +451,9 @@ function twitter_post_hook(&$a,&$b) {
 			logger('Tweet send result: ' . print_r($result, true), LOGGER_DEBUG);
 			
 			if ($result->httpstatus != 200) {
-				logger('Send to Twitter failed: "' . print_r($result->errors, true) . '"');
+				logger('Send to Twitter failed with HTTP status code ' . $result->httpstatus . '; error message: "' . print_r($result->errors, true) . '"');
+			
+			logger('twitter post completed');
 
 //				// Workaround: Remove the picture link so that the post can be reposted without it
 //				$msg .= " ".$image;
