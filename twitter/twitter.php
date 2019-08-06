@@ -202,7 +202,7 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	$msg = html_entity_decode($msg, ENT_QUOTES, 'UTF-8');
 
 	// Remove found image link
-	$msg = preg_replace($image, "", $msg);
+	$msg = str_replace($image, "", $msg);
 
 	// Removing multiple newlines
 	while (strpos($msg, "\n\n\n") !== false)
