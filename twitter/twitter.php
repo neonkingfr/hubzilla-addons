@@ -192,10 +192,10 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $matches))
 		$image = htmlspecialchars_decode($matches[2]);
 	
-//	// Choose first URL or if not exist message plink 	
-//	if (preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]/is', $body, $matches))
-//		$msglink = htmlspecialchars_decode(trim($matches[1], "?.,:;!"));
-//	else
+	// Choose first URL if no image found or use message plink 	
+	if (empty($image) && preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]/is', $body, $matches))
+		$msglink = htmlspecialchars_decode(trim($matches[1], "?.,:;!"));
+	else
 		$msglink = $b["plink"];
 
 	// Add some newlines so that the message could be cut better
