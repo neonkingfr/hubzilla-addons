@@ -182,14 +182,14 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	$body = $b["body"];
 	if ($b["title"] != "")
 		$body = $b["title"] . " : \n" . $body;
-	
+
 	// Check if this is reshare
 	$body = preg_replace("/\[share author='([^\'\+]+)\+?([^\']+)?[^\]]+\](.*)\[\/share\]/ism", "from $1 $2\n\n$3", $body);
 
 	// Looking for the first image
 	$image = '';
-	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $images))
-		$image = htmlspecialchars_decode($images[2]);
+	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $matches))
+		$image = htmlspecialchars_decode($matches[2]);
 
 	// Add some newlines so that the message could be cut better
 	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
@@ -201,8 +201,17 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	$msg = trim(html2plain($html, 0, true));
 	$msg = html_entity_decode($msg, ENT_QUOTES, 'UTF-8');
 
-	// Remove found image link
+	// Removing found image link
 	$msg = str_replace($image, "", $msg);
+
+	// Removing link bookmark icon
+	$msg = str_replace("#^", "", $msg);
+	
+	// Find first URL
+	preg_match('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/is', $msg, $matches);
+	
+	// Removing all URLs
+	$msg = preg_replace('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/i', "", $msg);
 
 	// Removing multiple newlines
 	while (strpos($msg, "\n\n\n") !== false)
@@ -212,38 +221,23 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	while (strpos($msg, "  ") !== false)
 		$msg = str_replace("  ", " ", $msg);
 	
-	// Removing link bookmark icon
-	$msg = preg_replace("/#\^/", "", $msg);
-	
-	// Find all URLs
-	$links = preg_match_all('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/i', $msg, $urls, PREG_SET_ORDER);
-	
-	// Removing URLs
-	$msg = preg_replace('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/i', "", $msg);
-
 	$msg = trim($msg);
 
-	$msglink = $b["plink"];
-	if ($links > 0)
-		$msglink = trim(htmlspecialchars_decode($urls[0][0]), "?.,:;!");
+	if (empty($matches))
+		$msglink = $b["plink"];
+	else
+		$msglink = htmlspecialchars_decode($matches[1], "?.,:;!");
 
 	// If the message is short enough we send it and embed a picture if necessary it
-	if (strlen($msg) <= ($max_char - 20))
+	if (strlen($msg . " " . $msglink) <= $max_char)
 			return([ "msg" => $msg . " " . $msglink, "image" => $image ]);
 
 	// Shorten links if enabled
 	if ($shortlink && strlen($msglink) > 20)
 		$msglink = short_link($msglink);
 
-	// Preserve the link
-	$orig_link = $msglink;
-
-	// Just replace the message link with a 22 character long string
-	// Twitter calculates with this length
-	if (trim($msglink) != '')
-		$msglink = "1234567890123456789012";
-
-	if (strlen(trim($msg . " " . $msglink)) > $max_char) {
+	// Shorten message
+	if (strlen($msg . " " . $msglink) > $max_char) {
 		
 		$msg = substr($msg, 0, ($max_char) - (strlen($msglink)));
 		$lastchar = substr($msg, -1);
@@ -253,34 +247,15 @@ function twitter_shortenmsg($b, $shortlink = true) {
 			$msg = substr($msg, 0, $pos);
 		else if ($lastchar != "\n")
 			$msg = substr($msg, 0, -3)."...";
-
-		// if the post contains a picture and a link then the system tries to cut the post earlier.
-		// So the link and the picture can be posted.
-		if (($image != "") && ($orig_link != $image)) {
-			$msg2 = substr($msg, 0, ($max_char - 20) - (strlen($msglink)));
-			$lastchar = substr($msg2, -1);
-			$msg2 = substr($msg2, 0, -1);
-			$pos = strrpos($msg2, "\n");
-			if ($pos > 0)
-				$msg = substr($msg2, 0, $pos);
-			else if ($lastchar == "\n")
-				$msg = trim($msg2);
-		}
 	}
 	
 	// Removing multiple spaces - again
 	while (strpos($msg, "  ") !== false)
 		$msg = str_replace("  ", " ", $msg);
-
+	
 	$msg = trim($msg);
-	
-	if ($image == $orig_link) 
-		return([ "msg" => $msg, "image" => $orig_link ]);
-	
-	if ($image != "" && strlen($msg . " " . $msglink) <= ($max_char - 20))
-		return([ "msg" => $msg . " " . $orig_link, "image" => $image ]);
-	else
-		return([ "msg" => $msg . " " . $orig_link, "image" => "" ]);
+
+	return([ "msg" => $msg . " " . $msglink, "image" => $image ]);
 }
 
 
@@ -474,7 +449,7 @@ function twitter_post_hook(&$a,&$b) {
 
 			logger('Tweet send result: ' . print_r($result, true), LOGGER_DEBUG);
 			
-			if ($result->errors || $result->error) {
+			if ($result->httpstatus != 200) {
 				logger('Send to Twitter failed: "' . print_r($result->errors, true) . '"');
 
 //				// Workaround: Remove the picture link so that the post can be reposted without it
