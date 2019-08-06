@@ -2,7 +2,7 @@
 /**
  * Name: Twitter Connector
  * Description: Relay public postings to a connected Twitter account
- * Version: 1.3.1
+ * Version: 1.3.2
  * Author: Tobias Diekershoff <https://f.diekershoff.de/profile/tobias>
  * Author: Michael Vogel <https://pirati.ca/profile/heluecht>
  * Author: Mike Macgirvin <https://zothub.com/channel/mike>
@@ -183,39 +183,33 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	$body = $b["body"];
 	if ($b["title"] != "")
 		$body = $b["title"] . " : \n" . $body;
-
+	
 	// Check if this is reshare
-	$body = preg_replace("/\[share author='([^\'\+]+)\+?([^\']+)?[^\]]+\](.*)\[\/share\]/ism", "from $1 $2\n\n$3", $body);
+	$body = preg_replace("/\[share author='([^\'\+]+)\+?([^\']+)?[^\]]+\](.*)\[\/share\]/ism", "&#9851; $1 $2\n\n$3", $body);
 
 	// Looking for the first image
 	$image = '';
 	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $matches))
 		$image = htmlspecialchars_decode($matches[2]);
+	
+//	// Choose first URL or if not exist message plink 	
+//	if (preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]/is', $body, $matches))
+//		$msglink = htmlspecialchars_decode(trim($matches[1], "?.,:;!"));
+//	else
+		$msglink = $b["plink"];
 
 	// Add some newlines so that the message could be cut better
 	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
+	
+	// Removing URL bookmark
+	$body = str_replace("#^", "", $body);
 
 	// At first convert the text to html
-	$html = bbcode($body, [ 'tryoembed' => false ]);
+	$msg = bbcode($body, [ 'tryoembed' => false ]);
 
 	// Then convert it to plain text
-	$msg = trim(html2plain($html, 0, true));
+	$msg = trim(html2plain($msg, 0, true));
 	$msg = html_entity_decode($msg, ENT_QUOTES, 'UTF-8');
-
-	// Removing found image link
-	$msg = str_replace($image, "", $msg);
-
-	// Removing link bookmark icon
-	$msg = str_replace("#^", "", $msg);
-	
-	// Choose first URL or if not exist message plink 	
-	if (preg_match('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/is', $msg, $matches))
-		$msglink = htmlspecialchars_decode($matches[1], "?.,:;!");
-	else
-		$msglink = $b["plink"];
-	
-	// Removing all URLs
-	$msg = preg_replace('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/i', "", $msg);
 
 	// Removing multiple newlines
 	while (strpos($msg, "\n\n\n") !== false)
@@ -238,14 +232,10 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	// Shorten message
 	if (strlen($msg . " " . $msglink) > $max_char) {
 		
-		$msg = substr($msg, 0, ($max_char) - (strlen($msglink)));
-		$lastchar = substr($msg, -1);
+		$msg = substr($msg, 0, ($max_char - strlen($msglink)));
 		$msg = substr($msg, 0, -1);
-		$pos = strrpos($msg, "\n");
-		if ($pos > 0)
-			$msg = substr($msg, 0, $pos);
-		else if ($lastchar != "\n")
-			$msg = substr($msg, 0, -3)."...";
+		if (substr($msg, -1) != "\n")
+			$msg = substr($msg, 0, strrpos($msg, " ")) . "...";
 	}
 	
 	// Removing multiple spaces - again
@@ -253,7 +243,7 @@ function twitter_shortenmsg($b, $shortlink = true) {
 		$msg = str_replace("  ", " ", $msg);
 	
 	$msg = trim($msg);
-
+	
 	return([ "msg" => $msg . " " . $msglink, "image" => $image ]);
 }
 
@@ -450,8 +440,8 @@ function twitter_post_hook(&$a,&$b) {
 			
 			if ($result->httpstatus != 200) {
 				logger('Send to Twitter failed with HTTP status code ' . $result->httpstatus . '; error message: "' . print_r($result->errors, true) . '"');
-			
-			logger('twitter post completed');
+				
+			logger('twitter post completed', LOGGER_INFO);
 
 //				// Workaround: Remove the picture link so that the post can be reposted without it
 //				$msg .= " ".$image;
