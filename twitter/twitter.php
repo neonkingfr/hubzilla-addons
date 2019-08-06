@@ -62,7 +62,7 @@
  *     App::$config['twitter']['consumerkey'] = 'your consumer_key here';
  *     App::$config['twitter']['consumersecret'] = 'your consumer_secret here';
  *
- *     Requirements: PHP5, curl [Slinky library]
+ *     Requirements: PHP5, curl [Slinky library], Codebird PHP library
  */
 
 use Zotlabs\Lib\Apps;
@@ -437,13 +437,13 @@ function twitter_post_hook(&$a,&$b) {
 			
 			$post = [ 'status' => $msg ];
 			
-			// Post image if provided
+			// Post with image if provided
 			if($image != '') {
-				$result = $cb->media_upload([ 'media' => $image ]);
-				$post['media_ids'] = $result->media_id_string;
+				$post['media[]'] = $image;
+				$result = $cb->statuses_updateWithMedia($post);
 			}
-			
-			$result = $cb->statuses_update($post);
+			else
+				$result = $cb->statuses_update($post);
 
 //			if ($iscomment)
 //				$post["in_reply_to_status_id"] = substr($orig_post["uri"], 9);
