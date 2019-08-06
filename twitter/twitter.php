@@ -2,14 +2,13 @@
 /**
  * Name: Twitter Connector
  * Description: Relay public postings to a connected Twitter account
- * Version: 1.3.1
+ * Version: 1.3
  * Author: Tobias Diekershoff <https://f.diekershoff.de/profile/tobias>
  * Author: Michael Vogel <https://pirati.ca/profile/heluecht>
  * Author: Mike Macgirvin <https://zothub.com/channel/mike>
  * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  *
  * Copyright (c) 2011-2013 Tobias Diekershoff, Michael Vogel
- * Copyright (c) 2013-2019 Hubzilla Developers
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -183,7 +182,7 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	$body = $b["body"];
 	if ($b["title"] != "")
 		$body = $b["title"] . " : \n" . $body;
-
+	
 	// Check if this is reshare
 	$body = preg_replace("/\[share author='([^\'\+]+)\+?([^\']+)?[^\]]+\](.*)\[\/share\]/ism", "from $1 $2\n\n$3", $body);
 
@@ -202,6 +201,9 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	$msg = trim(html2plain($html, 0, true));
 	$msg = html_entity_decode($msg, ENT_QUOTES, 'UTF-8');
 
+	// Remove found image link
+	$msg = preg_replace($image, "", $msg);
+
 	// Removing multiple newlines
 	while (strpos($msg, "\n\n\n") !== false)
 		$msg = str_replace("\n\n\n", "\n\n", $msg);
@@ -212,11 +214,11 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	
 	// Removing link bookmark icon
 	$msg = preg_replace("/#\^/", "", $msg);
-
+	
 	// Find all URLs
 	$links = preg_match_all('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/i', $msg, $urls, PREG_SET_ORDER);
 	
-	// Remove all URLs
+	// Removing URLs
 	$msg = preg_replace('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/i', "", $msg);
 
 	$msg = trim($msg);
@@ -226,21 +228,13 @@ function twitter_shortenmsg($b, $shortlink = true) {
 		$msglink = trim(htmlspecialchars_decode($urls[0][0]), "?.,:;!");
 
 	// If the message is short enough we send it and embed a picture if necessary it
-	if (strlen($msg) <= ($max_char - 20)) {
-		if( $image != $msglink)
+	if (strlen($msg) <= ($max_char - 20))
 			return([ "msg" => $msg . " " . $msglink, "image" => $image ]);
-		else
-			return([ "msg" => $msg . " " . $msglink, "image" => "" ]);
-	}
 
 	// Shorten links if enabled
-	if ($shortlink) {
-		if(strlen($msglink) > 20)
-			$msglink = short_link($msglink);
-		if(strlen($image) > 20)
-			$image = short_link($image);
-	}
-	
+	if ($shortlink && strlen($msglink) > 20)
+		$msglink = short_link($msglink);
+
 	// Preserve the link
 	$orig_link = $msglink;
 
