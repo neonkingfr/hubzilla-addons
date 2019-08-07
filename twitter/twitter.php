@@ -184,19 +184,21 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	if ($b["title"] != "")
 		$body = $b["title"] . " : \n" . $body;
 	
-	// Check if this is reshare
-	$body = preg_replace("/\[share author='([^\'\+]+)\+?([^\']+)?[^\]]+\](.*)\[\/share\]/ism", "&#9851; $1 $2\n\n$3", $body);
+	// Check if this is a reshare
+	if(preg_match("/\[share author='([^\']+)/i", $body, $matches)) {
+		$author = str_replace("+", " ", $matches[1]);
+		$body = preg_replace("/\[share[^\]]+\](.*)\[\/share\]/ism", "&#9851; $author\n\n$1", $body);
+	}
 
 	// Looking for the first image
 	$image = '';
 	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $matches))
-		$image = htmlspecialchars_decode($matches[2]);
+		$image = $matches[2];
 	
-	// Choose first URL if no image found or use message plink 	
-	if (empty($image) && preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]/is', $body, $matches))
-		$msglink = htmlspecialchars_decode(trim($matches[1], "?.,:;!"));
-	else
-		$msglink = $b["plink"];
+	// Choose first URL 
+	$link = '';
+	if (preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]/is', $body, $matches))
+		$link = trim($matches[1], "?.,:;!");
 
 	// Add some newlines so that the message could be cut better
 	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
@@ -210,16 +212,28 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	// Then convert it to plain text
 	$msg = trim(html2plain($msg, 0, true));
 	$msg = html_entity_decode($msg, ENT_QUOTES, 'UTF-8');
+	
+	// Remove URLs
+	$msg = preg_replace("/https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+/", "", $msg);
 
 	// Removing multiple newlines
 	while (strpos($msg, "\n\n\n") !== false)
 		$msg = str_replace("\n\n\n", "\n\n", $msg);
-
+	
 	// Removing multiple spaces
 	while (strpos($msg, "  ") !== false)
 		$msg = str_replace("  ", " ", $msg);
 	
 	$msg = trim($msg);
+	
+	// Add URL if exist and no image found
+	if (empty($image) && $link != '') {
+		if ($shortlink && strlen($link) > 20)
+			$link = short_link($link);
+		$msg .= " " . $link;
+	}
+	
+	$msglink = $b["plink"];
 
 	// If the message is short enough we send it and embed a picture if necessary it
 	if (strlen($msg . " " . $msglink) <= $max_char)
@@ -237,13 +251,7 @@ function twitter_shortenmsg($b, $shortlink = true) {
 		if (substr($msg, -1) != "\n")
 			$msg = substr($msg, 0, strrpos($msg, " ")) . "...";
 	}
-	
-	// Removing multiple spaces - again
-	while (strpos($msg, "  ") !== false)
-		$msg = str_replace("  ", " ", $msg);
-	
-	$msg = trim($msg);
-	
+
 	return([ "msg" => $msg . " " . $msglink, "image" => $image ]);
 }
 
