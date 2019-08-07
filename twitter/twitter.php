@@ -198,7 +198,7 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	// Choose first URL 
 	$link = '';
 	if (preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]/is', $body, $matches))
-		$link = trim($matches[1], "?.,:;!");
+		$link = rtrim($matches[1], "?.,:;!");
 
 	// Add some newlines so that the message could be cut better
 	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
@@ -228,8 +228,14 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	
 	// Add URL if exist and no image found
 	if (empty($image) && $link != '') {
+		
 		if ($shortlink && strlen($link) > 20)
 			$link = short_link($link);
+		if (strlen($msg . " " . $link) > ($max_char - 23)) {
+			$msg = trim(substr($msg, 0, ($max_char - strlen($link))));
+			if (substr($msg, -1) != "\n")
+				$msg = rtrim(substr($msg, 0, strrpos($msg, " ")), "?.,:;!-") . "...";
+		}
 		$msg .= " " . $link;
 	}
 	
@@ -249,7 +255,7 @@ function twitter_shortenmsg($b, $shortlink = true) {
 		$msg = substr($msg, 0, ($max_char - strlen($msglink)));
 		$msg = substr($msg, 0, -1);
 		if (substr($msg, -1) != "\n")
-			$msg = substr($msg, 0, strrpos($msg, " ")) . "...";
+			$msg = rtrim(substr($msg, 0, strrpos($msg, " ")), "?.,:;!-") . "...";
 	}
 
 	return([ "msg" => $msg . " " . $msglink, "image" => $image ]);
@@ -306,9 +312,7 @@ function twitter_post_hook(&$a,&$b) {
     if($b['parent'] != $b['id'])
         return;
 
-
 	logger('twitter post invoked');
-
 
 	load_pconfig($b['uid'], 'twitter');
 
@@ -331,10 +335,10 @@ function twitter_post_hook(&$a,&$b) {
 
 		require_once('include/bbcode.php');
 
-		// In theory max char is 280 but T. uses t.co to make links 
+		// In theory max char is 140 but T. uses t.co to make links 
 		// longer so we give them 10 characters extra
 		if (!$intelligent_shortening) {
-			$max_char = intval(get_pconfig($b['uid'], 'twitter', 'tweet_length', 280)) - 10; // max. length for a tweet-
+			$max_char = intval(get_pconfig($b['uid'],'twitter','tweet_length',280)) - 10; // max. length for a tweet-
 			
 			// we will only work with up to two times the length of the dent 
 			// we can later send to Twitter. This way we can "gain" some 
@@ -432,7 +436,7 @@ function twitter_post_hook(&$a,&$b) {
 			$cb->setToken($otoken, $osecret);
 			
 			$post = [ 'status' => $msg ];
-			
+
 			// Post image if provided
 			if($image != '') {
 				$result = $cb->media_upload([ 'media' => $image ]);
