@@ -177,7 +177,7 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	require_once("include/html2plain.php");
 
 	// Give Twitter extra 3 chars to be sure that post will fit to their limits
-	$max_char = get_pconfig($b['uid'], 'twitter', 'tweet_length', 140) - 3;
+	$max_char = get_pconfig($b['uid'], 'twitter', 'tweet_length', 280) - 3;
 
 	// Add title at the top if exist
 	$body = $b["body"];
@@ -331,10 +331,10 @@ function twitter_post_hook(&$a,&$b) {
 
 		require_once('include/bbcode.php');
 
-		// In theory max char is 140 but T. uses t.co to make links 
+		// In theory max char is 280 but T. uses t.co to make links 
 		// longer so we give them 10 characters extra
 		if (!$intelligent_shortening) {
-			$max_char = intval(get_pconfig($b['uid'],'twitter','tweet_length',140)) - 10; // max. length for a tweet-
+			$max_char = intval(get_pconfig($b['uid'], 'twitter', 'tweet_length', 280)) - 10; // max. length for a tweet-
 			
 			// we will only work with up to two times the length of the dent 
 			// we can later send to Twitter. This way we can "gain" some 
