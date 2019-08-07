@@ -169,15 +169,33 @@ function short_link ($url) {
 
 
 /**
+ * @brief Cut message and add link
+ */
+function twitter_short_message(&$msg, $link, $limit, $shortlink = true) {
+	
+	if ($shortlink && strlen($link) > 20)
+			$link = short_link($link);
+	
+	if (strlen($msg . " " . $link) > $limit) {
+		$msg = substr($msg, 0, ($limit - strlen($link)));
+		if (substr($msg, -1) != "\n")
+			$msg = rtrim(substr($msg, 0, strrpos($msg, " ")), "?.,:;!-") . "...";
+	}
+	
+	$msg .= " " . $link;
+}
+
+
+/**
  * @brief Shorten message intelligent using bulit-in functions
  */
-function twitter_shortenmsg($b, $shortlink = true) {
+function twitter_shortenmsg($b) {
 	require_once("include/api.php");
 	require_once("include/bbcode.php");
 	require_once("include/html2plain.php");
 
-	// Give Twitter extra 3 chars to be sure that post will fit to their limits
-	$max_char = get_pconfig($b['uid'], 'twitter', 'tweet_length', 280) - 3;
+	// Give Twitter extra 10 chars to be sure that post will fit to their limits
+	$max_char = get_pconfig($b['uid'], 'twitter', 'tweet_length', 280) - 10;
 
 	// Add title at the top if exist
 	$body = $b["body"];
@@ -227,17 +245,8 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	$msg = trim($msg);
 	
 	// Add URL if exist and no image found
-	if (empty($image) && $link != '') {
-		
-		if ($shortlink && strlen($link) > 20)
-			$link = short_link($link);
-		if (strlen($msg . " " . $link) > ($max_char - 23)) {
-			$msg = trim(substr($msg, 0, ($max_char - strlen($link))));
-			if (substr($msg, -1) != "\n")
-				$msg = rtrim(substr($msg, 0, strrpos($msg, " ")), "?.,:;!-") . "...";
-		}
-		$msg .= " " . $link;
-	}
+	if (empty($image) && $link != '')
+		twitter_short_message($msg, $link, $max_char - 23);
 	
 	$msglink = $b["plink"];
 
@@ -245,20 +254,10 @@ function twitter_shortenmsg($b, $shortlink = true) {
 	if (strlen($msg . " " . $msglink) <= $max_char)
 			return([ "msg" => $msg . " " . $msglink, "image" => $image ]);
 
-	// Shorten links if enabled
-	if ($shortlink && strlen($msglink) > 20)
-		$msglink = short_link($msglink);
-
 	// Shorten message
-	if (strlen($msg . " " . $msglink) > $max_char) {
-		
-		$msg = substr($msg, 0, ($max_char - strlen($msglink)));
-		$msg = substr($msg, 0, -1);
-		if (substr($msg, -1) != "\n")
-			$msg = rtrim(substr($msg, 0, strrpos($msg, " ")), "?.,:;!-") . "...";
-	}
+	twitter_short_message($msg, $msglink, $max_char);
 
-	return([ "msg" => $msg . " " . $msglink, "image" => $image ]);
+	return([ "msg" => $msg, "image" => $image ]);
 }
 
 
@@ -453,7 +452,7 @@ function twitter_post_hook(&$a,&$b) {
 			if ($result->httpstatus != 200) {
 				logger('Send to Twitter failed with HTTP status code ' . $result->httpstatus . '; error message: "' . print_r($result->errors, true) . '"');
 				
-			logger('twitter post completed', LOGGER_INFO);
+			logger('twitter post completed');
 
 //				// Workaround: Remove the picture link so that the post can be reposted without it
 //				$msg .= " ".$image;
@@ -628,4 +627,3 @@ function twitter_expand_entities($a, $body, $item, $no_tags = false, $dontinclud
 	}
 	return(array("body" => $body, "tags" => $tags));
 }
-
