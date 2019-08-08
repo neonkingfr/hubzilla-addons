@@ -307,6 +307,9 @@ function twitter_post_hook(&$a,&$b) {
 
     if(! strstr($b['postopts'],'twitter'))
         return;
+        
+	if(! intval(get_pconfig($b['uid'],'twitter','post_by_default')))
+		return;
 
     if($b['parent'] != $b['id'])
         return;
