@@ -138,7 +138,7 @@ function photocache_hash($str, $alg = 'sha256') {
 		return logger('invalid channel ID received ' . $s['uid'], LOGGER_DEBUG);
 	
 	$matches = null;
-	$cnt = preg_match_all("/\<img(.+?)src=([\"|'])(https?\:.*?)\\2(.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
+	$cnt = preg_match_all("/\<img(.+?)src=([\"'])(https?\:.*?)\\2(.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
 	if($cnt) {
 		$ph = photo_factory('');
 		foreach ($matches as $match) {
