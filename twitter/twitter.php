@@ -179,7 +179,7 @@ function twitter_short_message(&$msg, $link, $limit, $shortlink = true) {
 	if (strlen($msg . " " . $link) > $limit) {
 		$msg = substr($msg, 0, ($limit - strlen($link)));
 		if (substr($msg, -1) != "\n")
-			$msg = rtrim(substr($msg, 0, strrpos($msg, " ")), "?.,:;!-)") . "...";
+			$msg = rtrim(substr($msg, 0, strrpos($msg, " ")), "?.,:;!-") . "...";
 	}
 	
 	$msg .= " " . $link;
