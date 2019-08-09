@@ -211,12 +211,12 @@ function twitter_shortenmsg($b) {
 	// Looking for the first image
 	$image = '';
 	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $matches))
-		$image = $matches[2];
+		$image = html_entity_decode($matches[2]);
 	
 	// Choose first URL 
 	$link = '';
 	if (preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]/is', $body, $matches))
-		$link = $matches[1];
+		$link = html_entity_decode($matches[1]);
 
 	// Add some newlines so that the message could be cut better
 	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
