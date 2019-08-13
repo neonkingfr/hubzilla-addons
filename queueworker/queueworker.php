@@ -6,7 +6,7 @@ use Zotlabs\Extend\Hook;
 
 /**
  * Name: queueworker
- * Description: EXPERIMENTAL Queue work queue for backgrounded tasks
+ * Description: Next generation queue worker for backgrounded tasks (BETA)
  * Version: 0.8.0
  * Author: Matthew Dent <dentm42@dm42.net>
  * MinVersion: 4.2.1
