@@ -98,7 +98,7 @@ function gravatar_get_profile_photo($a, &$b) {
 	}
 	$i = z_fetch_url($url);
     if ($i['success']) {
-        $b['mimetype'] = 'image/jpg';
+        $b['mimetype'] = 'image/jpeg';
         $b['data'] = $i['body'];
     }
 }

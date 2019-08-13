@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.7
+ * Version: 0.2.8
  * Author: Max Kostikov
  * Maintainer: max@kostikov.co
  * MinVersion: 3.9.5
@@ -94,16 +94,11 @@ function photocache_mode_key($key) {
  *
  */	
 function photocache_isgrid($url) {
-	
-	if(strpos($url, z_root()) === 0)
-		return true;
+
 	if(photocache_mode_key('grid'))
 		return false;
-	$r = q("SELECT * FROM hubloc WHERE hubloc_host = '%s' AND hubloc_network LIKE '%s' LIMIT 1",
-		dbesc(parse_url($url, PHP_URL_HOST)),
-		dbesc('zot%')
-	);
-	return ($r ? true : false);
+		
+	return is_matrix_url($url);
 }
 
 
@@ -143,7 +138,7 @@ function photocache_hash($str, $alg = 'sha256') {
 		return logger('invalid channel ID received ' . $s['uid'], LOGGER_DEBUG);
 	
 	$matches = null;
-	$cnt = preg_match_all("/\<img(.+?)src=([\"|'])(https?\:.*?)\\2(.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
+	$cnt = preg_match_all("/\<img(.+?)src=([\"'])(https?\:.*?)\\2(.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
 	if($cnt) {
 		$ph = photo_factory('');
 		foreach ($matches as $match) {
@@ -243,7 +238,7 @@ function photocache_url(&$cache = array()) {
 	}
 	
 	$exp = strtotime($r['expires']);
-	$url = (($exp - 60 < time()) ? htmlspecialchars_decode($r['display_path']) : '');
+	$url = (($exp - 60 < time()) ? html_entity_decode($r['display_path'], ENT_QUOTES) : '');
 	
 	if($url) {
 		// Get data from remote server 		
@@ -316,7 +311,7 @@ function photocache_url(&$cache = array()) {
 				$oldsize = $r['filesize'];
 					
 				if($orig_width >= $minres || $orig_height >= $minres) {
-					$path = 'store/[data]/[cache]/' .  substr($r['xchan'],0,2) . '/' . substr($r['xchan'],2,2);
+					$path = 'store/[data]/[cache]/' .  substr($r['xchan'],0,1) . '/' . substr($r['xchan'],1,1);
 					$os_path = $path . '/' . $r['xchan'];
 					$r['os_syspath'] = $os_path;
 					if(! is_dir($path))

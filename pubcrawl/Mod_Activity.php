@@ -1,6 +1,7 @@
 <?php
 namespace Zotlabs\Module;
 
+use Zotlabs\Web\HTTPSig;
 
 class Activity extends \Zotlabs\Web\Controller {
 
@@ -47,9 +48,9 @@ class Activity extends \Zotlabs\Web\Controller {
 
 			$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 			$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-			$hash = \Zotlabs\Web\HTTPSig::generate_digest($ret,false);
-			$headers['Digest'] = 'SHA-256=' . $hash;  
-			\Zotlabs\Web\HTTPSig::create_sig('',$headers,$chan['channel_prvkey'],z_root() . '/channel/' . $chan['channel_address'],true);
+			$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+			$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
+			HTTPSig::set_headers($h);
 			echo $ret;
 			killme();
 

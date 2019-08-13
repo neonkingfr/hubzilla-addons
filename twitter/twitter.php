@@ -2,13 +2,14 @@
 /**
  * Name: Twitter Connector
  * Description: Relay public postings to a connected Twitter account
- * Version: 1.2
+ * Version: 1.3.2
  * Author: Tobias Diekershoff <https://f.diekershoff.de/profile/tobias>
  * Author: Michael Vogel <https://pirati.ca/profile/heluecht>
  * Author: Mike Macgirvin <https://zothub.com/channel/mike>
- * Maintainer: none
+ * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  *
  * Copyright (c) 2011-2013 Tobias Diekershoff, Michael Vogel
+ * Copyright (c) 2013-2019 Hubzilla Developers
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -92,6 +93,7 @@ function twitter_unload() {
 	logger("uninstalled twitter");
 }
 
+
 function twitter_jot_nets(&$a,&$b) {
 	if(! local_channel())
 		return;
@@ -106,6 +108,7 @@ function twitter_jot_nets(&$a,&$b) {
 	$selected = ((intval($tw_defpost) == 1) ? ' checked="checked" ' : '');
 	$b .= '<div class="profile-jot-net"><input type="checkbox" name="twitter_enable"' . $selected . ' value="1" /> <img src="addon/twitter/twitter.png" /> ' . t('Post to Twitter') . '</div>';
 }
+
 
 function twitter_post_local(&$a,&$b) {
 
@@ -135,6 +138,10 @@ function twitter_post_local(&$a,&$b) {
 
 }
 
+
+/**
+ * @brief Shorten URL using Slinky library
+ */
 if (! function_exists('short_link')) {
 function short_link ($url) {
     require_once('library/slinky.php');
@@ -160,209 +167,99 @@ function short_link ($url) {
     return $slinky->short();
 } };
 
-function twitter_shortenmsg($b, $shortlink = false) {
+
+/**
+ * @brief Cut message and add link
+ */
+function twitter_short_message(&$msg, $link, $limit, $shortlink = true) {
+	
+	if ($shortlink && strlen($link) > 20)
+			$link = short_link($link);
+	
+	if (strlen($msg . " " . $link) > $limit) {
+		$msg = substr($msg, 0, ($limit - strlen($link)));
+		if (substr($msg, -1) != "\n")
+			$msg = rtrim(substr($msg, 0, strrpos($msg, " ")), "?.,:;!-") . "...";
+	}
+	
+	$msg .= " " . $link;
+}
+
+
+/**
+ * @brief Shorten message intelligent using bulit-in functions
+ */
+function twitter_shortenmsg($b) {
 	require_once("include/api.php");
 	require_once("include/bbcode.php");
 	require_once("include/html2plain.php");
 
-	$max_char = get_pconfig($b['uid'],'twitter','tweet_length',140);
+	// Give Twitter extra 10 chars to be sure that post will fit to their limits
+	$max_char = get_pconfig($b['uid'], 'twitter', 'tweet_length', 280) - 10;
 
-//	$b['body'] = bb_CleanPictureLinks($b['body']);
-
-	// Looking for the first image
-//	$cleaned_body = api_clean_plain_items($b['body']);
-	$cleaned_body = $b['body'];
-	$image = '';
-	if(preg_match("/\[img\=([0-9]*)x([0-9]*)\](.*?)\[\/img\]/is",$cleaned_body,$matches))
-		$image = $matches[3];
-
-	if ($image == '')
-		if(preg_match("/\[img\](.*?)\[\/img\]/is",$cleaned_body,$matches))
-			$image = $matches[1];
-
-	$multipleimages = (strpos($cleaned_body, "[img") != strrpos($cleaned_body, "[img"));
-
-	// When saved into the database the content is sent through htmlspecialchars
-	// That means that we have to decode all image-urls
-	$image = htmlspecialchars_decode($image);
-
+	// Add title at the top if exist
 	$body = $b["body"];
 	if ($b["title"] != "")
-		$body = $b["title"]."\n\n".$body;
-
-	if (strpos($body, "[bookmark") !== false) {
-		// splitting the text in two parts:
-		// before and after the bookmark
-		$pos = strpos($body, "[bookmark");
-		$body1 = substr($body, 0, $pos);
-		$body2 = substr($body, $pos);
-
-		// Removing all quotes after the bookmark
-		// they are mostly only the content after the bookmark.
-		$body2 = preg_replace("/\[quote\=([^\]]*)\](.*?)\[\/quote\]/ism",'',$body2);
-		$body2 = preg_replace("/\[quote\](.*?)\[\/quote\]/ism",'',$body2);
-		$body = $body1.$body2;
+		$body = $b["title"] . " : \n" . $body;
+	
+	// Check if this is a reshare
+	if(preg_match("/\[share author='([^\']+)/i", $body, $matches)) {
+		$author = str_replace("+", " ", $matches[1]);
+		$body = preg_replace("/\[share[^\]]+\](.*)\[\/share\]/ism", "&#9851; $author\n\n$1", $body);
 	}
 
+	// Looking for the first image
+	$image = '';
+	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $matches))
+		$image = html_entity_decode($matches[2]);
+	
+	// Choose first URL 
+	$link = '';
+	if (preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]/is', $body, $matches))
+		$link = html_entity_decode($matches[1]);
+
 	// Add some newlines so that the message could be cut better
-	$body = str_replace(array("[quote", "[bookmark", "[/bookmark]", "[/quote]"),
-			array("\n[quote", "\n[bookmark", "[/bookmark]\n", "[/quote]\n"), $body);
-
-	// remove the recycle signs and the names since they aren't helpful on twitter
-	// recycle 1
-	$recycle = html_entity_decode("&#x2672; ", ENT_QUOTES, 'UTF-8');
-	$body = preg_replace( '/'.$recycle.'\[url\=(\w+.*?)\](\w+.*?)\[\/url\]/i', "\n", $body);
-	// recycle 2 (Test)
-	$recycle = html_entity_decode("&#x25CC; ", ENT_QUOTES, 'UTF-8');
-	$body = preg_replace( '/'.$recycle.'\[url\=(\w+.*?)\](\w+.*?)\[\/url\]/i', "\n", $body);
-
-	// remove the share element
-	//$body = preg_replace("/\[share(.*?)\](.*?)\[\/share\]/ism","\n\n$2\n\n",$body);
+	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
+	
+	// Removing URL bookmark
+	$body = str_replace("#^", "", $body);
 
 	// At first convert the text to html
-	$html = bbcode($body, [ 'tryoembed' => false ]);
+	$msg = bbcode($body, [ 'tryoembed' => false ]);
 
 	// Then convert it to plain text
-	$msg = trim(html2plain($html, 0, true));
-	$msg = html_entity_decode($msg,ENT_QUOTES,'UTF-8');
+	$msg = trim(html2plain($msg, 0, true));
+	$msg = html_entity_decode($msg, ENT_QUOTES, 'UTF-8');
+	
+	// Remove URLs
+	$msg = preg_replace("/https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+/", "", $msg);
 
 	// Removing multiple newlines
 	while (strpos($msg, "\n\n\n") !== false)
 		$msg = str_replace("\n\n\n", "\n\n", $msg);
-
+	
 	// Removing multiple spaces
 	while (strpos($msg, "  ") !== false)
 		$msg = str_replace("  ", " ", $msg);
-
-	$origmsg = trim($msg);
-
-	// Removing URLs
-	$msg = preg_replace('/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/i', "", $msg);
-
+	
 	$msg = trim($msg);
+	
+	// Add URL if exist and no image found
+	if (empty($image) && $link != '')
+		twitter_short_message($msg, $link, $max_char - 23);
+	
+	$msglink = $b["plink"];
 
-	$link = '';
-	// look for bookmark-bbcode and handle it with priority
-	if(preg_match("/\[bookmark\=([^\]]*)\](.*?)\[\/bookmark\]/is",$b['body'],$matches))
-		$link = $matches[1];
+	// If the message is short enough we send it and embed a picture if necessary it
+	if (strlen($msg . " " . $msglink) <= $max_char)
+			return([ "msg" => $msg . " " . $msglink, "image" => $image ]);
 
-	$multiplelinks = (strpos($b['body'], "[bookmark") != strrpos($b['body'], "[bookmark"));
+	// Shorten message
+	twitter_short_message($msg, $msglink, $max_char);
 
-	// If there is no bookmark element then take the first link
-//	if ($link == '') {
-//		$links = collecturls($html);
-
-//		foreach($links AS $singlelink) {
-//			$img_str = fetch_url($singlelink);
-
-//			$tempfile = tempnam(get_config("system","temppath"), "cache");
-//			file_put_contents($tempfile, $img_str);
-//			$mime = image_type_to_mime_type(exif_imagetype($tempfile));
-//			unlink($tempfile);
-
-//			if (substr($mime, 0, 6) == "image/") {
-//				$image = $singlelink;
-//				unset($links[$singlelink]);
-//			}
-//		}
-
-//		if (sizeof($links) > 0) {
-//			reset($links);
-//			$link = current($links);
-//		}
-//		$multiplelinks = (sizeof($links) > 1);
-//	}
-
-	$msglink = "";
-	if ($multiplelinks)
-		$msglink = $b["plink"];
-	else if ($link != "")
-		$msglink = $link;
-	else if ($multipleimages)
-		$msglink = $b["plink"];
-	else if ($image != "")
-		$msglink = $image;
-
-	if (($msglink == "") and strlen($msg) > $max_char)
-		$msglink = $b["plink"];
-
-	// If the message is short enough then don't modify it.
-	if ((strlen($origmsg) <= $max_char) AND ($msglink == ""))
-		return(array("msg"=>$origmsg, "image"=>""));
-
-	// If the message is short enough and contains a picture then post the picture as well
-	if ((strlen($origmsg) <= ($max_char - 23)) AND strpos($origmsg, $msglink))
-		return(array("msg"=>$origmsg, "image"=>$image));
-
-	// If the message is short enough and the link exists in the original message don't modify it as well
-	// -3 because of the bad shortener of twitter
-	if ((strlen($origmsg) <= ($max_char - 3)) AND strpos($origmsg, $msglink))
-		return(array("msg"=>$origmsg, "image"=>""));
-
-	// Preserve the unshortened link
-	$orig_link = $msglink;
-
-	// Just replace the message link with a 22 character long string
-	// Twitter calculates with this length
-	if (trim($msglink) <> '')
-		$msglink = "1234567890123456789012";
-
-	if (strlen(trim($msg." ".$msglink)) > ($max_char)) {
-		$msg = substr($msg, 0, ($max_char) - (strlen($msglink)));
-		$lastchar = substr($msg, -1);
-		$msg = substr($msg, 0, -1);
-		$pos = strrpos($msg, "\n");
-		if ($pos > 0)
-			$msg = substr($msg, 0, $pos);
-		else if ($lastchar != "\n")
-			$msg = substr($msg, 0, -3)."...";
-
-		// if the post contains a picture and a link then the system tries to cut the post earlier.
-		// So the link and the picture can be posted.
-		if (($image != "") AND ($orig_link != $image)) {
-			$msg2 = substr($msg, 0, ($max_char - 20) - (strlen($msglink)));
-			$lastchar = substr($msg2, -1);
-			$msg2 = substr($msg2, 0, -1);
-			$pos = strrpos($msg2, "\n");
-			if ($pos > 0)
-				$msg = substr($msg2, 0, $pos);
-			else if ($lastchar == "\n")
-				$msg = trim($msg2);
-		}
-
-	}
-	// Removing multiple spaces - again
-	while (strpos($msg, "  ") !== false)
-		$msg = str_replace("  ", " ", $msg);
-
-	$msg = trim($msg);
-
-	// Removing multiple newlines
-	//while (strpos($msg, "\n\n") !== false)
-	//	$msg = str_replace("\n\n", "\n", $msg);
-
-	// Looking if the link points to an image
-	$img_str = fetch_url($orig_link);
-
-//	$tempfile = tempnam(get_config("system","temppath"), "cache");
-//	file_put_contents($tempfile, $img_str);
-//	$mime = image_type_to_mime_type(exif_imagetype($tempfile));
-//	unlink($tempfile);
-
-	if (($image == $orig_link) OR (substr($mime, 0, 6) == "image/"))
-		return(array("msg"=>$msg, "image"=>$orig_link));
-	else if (($image != $orig_link) AND ($image != "") AND (strlen($msg." ".$msglink) <= ($max_char - 23))) {
-		if ($shortlink)
-			$orig_link = short_link($orig_link);
-
-		return(array("msg"=>$msg." ".$orig_link, "image"=>$image));
-	} else {
-		if ($shortlink)
-			$orig_link = short_link($orig_link);
-
-		return(array("msg"=>$msg." ".$orig_link, "image"=>""));
-	}
+	return([ "msg" => $msg, "image" => $image ]);
 }
+
 
 function twitter_action($a, $uid, $pid, $action) {
 
@@ -379,7 +276,7 @@ function twitter_action($a, $uid, $pid, $action) {
 
 	$post = array('id' => $pid);
 
-	logger("twitter_action '".$action."' ID: ".$pid." data: " . print_r($post, true), LOGGER_DATA);
+	logger("twitter_action '" . $action . "' ID: " . $pid . " data: " . print_r($post, true), LOGGER_DATA);
 
 	switch ($action) {
 		case "delete":
@@ -392,8 +289,9 @@ function twitter_action($a, $uid, $pid, $action) {
 			$result = $cb->favorites_destroy($post);
 			break;
 	}
-	logger("twitter_action '".$action."' send, result: " . print_r($result, true), LOGGER_DEBUG);
+	logger("twitter_action '" . $action . "' send, result: " . print_r($result, true), LOGGER_DEBUG);
 }
+
 
 function twitter_post_hook(&$a,&$b) {
 
@@ -409,13 +307,14 @@ function twitter_post_hook(&$a,&$b) {
 
     if(! strstr($b['postopts'],'twitter'))
         return;
+        
+	if(! intval(get_pconfig($b['uid'],'twitter','post_by_default')))
+		return;
 
     if($b['parent'] != $b['id'])
         return;
 
-
 	logger('twitter post invoked');
-
 
 	load_pconfig($b['uid'], 'twitter');
 
@@ -427,50 +326,51 @@ function twitter_post_hook(&$a,&$b) {
 
 	// Global setting overrides this
 	if (get_config('twitter','intelligent_shortening'))
-                $intelligent_shortening = get_config('twitter','intelligent_shortening');
+		$intelligent_shortening = get_config('twitter','intelligent_shortening');
 
 	if($ckey && $csecret && $otoken && $osecret) {
 		logger('twitter: we have customer key and oauth stuff, going to send.', LOGGER_DEBUG);
 
-		// If it's a repeated message from twitter then do a native retweet and exit
+//		// If it's a repeated message from twitter then do a native retweet and exit
 //		if (twitter_is_retweet($a, $b['uid'], $b['body']))
 //			return;
 
-		require_once('library/twitteroauth.php');
 		require_once('include/bbcode.php');
-		$tweet = new TwitterOAuth($ckey,$csecret,$otoken,$osecret);
 
-                // in theory max char is 140 but T. uses t.co to make links 
-                // longer so we give them 10 characters extra
+		// In theory max char is 140 but T. uses t.co to make links 
+		// longer so we give them 10 characters extra
 		if (!$intelligent_shortening) {
-			$max_char = intval(get_pconfig($b['uid'],'twitter','tweet_length',140)) - 10; // max. length for a tweet
-	                // we will only work with up to two times the length of the dent 
-	                // we can later send to Twitter. This way we can "gain" some 
-	                // information during shortening of potential links but do not 
-	                // shorten all the links in a 200000 character long essay.
-	                if (! $b['title']=='') {
-	                    $tmp = $b['title'] . ' : '. $b['body'];
-	//                    $tmp = substr($tmp, 0, 4*$max_char);
-	                } else {
-	                    $tmp = $b['body']; // substr($b['body'], 0, 3*$max_char);
-	                }
-	                // if [url=bla][img]blub.png[/img][/url] get blub.png
-	                $tmp = preg_replace( '/\[url\=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]\[img\](\\w+.*?)\\[\\/img\]\\[\\/url\]/i', '$2', $tmp);
-	                $tmp = preg_replace( '/\[zrl\=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]\[zmg\](\\w+.*?)\\[\\/zmg\]\\[\\/zrl\]/i', '$2', $tmp);
-	                // preserve links to images, videos and audios
-	                $tmp = preg_replace( '/\[img\=([0-9]*)x([0-9]*)\](.*?)\[\/img\]/ism', '$3', $tmp);
-	                $tmp = preg_replace( '/\[\\/?img(\\s+.*?\]|\])/i', '', $tmp);
-	                $tmp = preg_replace( '/\[zmg\=([0-9]*)x([0-9]*)\](.*?)\[\/zmg\]/ism', '$3', $tmp);
-	                $tmp = preg_replace( '/\[\\/?zmg(\\s+.*?\]|\])/i', '', $tmp);
-	                $tmp = preg_replace( '/\[\\/?video(\\s+.*?\]|\])/i', '', $tmp);
-	                $tmp = preg_replace( '/\[\\/?youtube(\\s+.*?\]|\])/i', '', $tmp);
-	                $tmp = preg_replace( '/\[\\/?vimeo(\\s+.*?\]|\])/i', '', $tmp);
-	                $tmp = preg_replace( '/\[\\/?audio(\\s+.*?\]|\])/i', '', $tmp);
-	                $linksenabled = get_pconfig($b['uid'],'twitter','post_taglinks');
-	                // if a #tag is linked, don't send the [url] over to SN
-	                // that is, don't send if the option is not set in the
-	                // connector settings
-	                if ($linksenabled=='0') {
+			$max_char = intval(get_pconfig($b['uid'],'twitter','tweet_length',280)) - 10; // max. length for a tweet-
+			
+			// we will only work with up to two times the length of the dent 
+			// we can later send to Twitter. This way we can "gain" some 
+			// information during shortening of potential links but do not 
+			// shorten all the links in a 200000 character long essay.
+			if (! $b['title']=='')
+				$tmp = $b['title'] . " : \n". $b['body']; //substr($tmp, 0, 4 * $max_char);
+			else
+				$tmp = $b['body']; //substr($b['body'], 0, 3 * $max_char);
+				
+			// if [url=bla][img]blub.png[/img][/url] get blub.png
+			$tmp = preg_replace( '/\[url\=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]\[img\](\\w+.*?)\\[\\/img\]\\[\\/url\]/i', '$2', $tmp);
+			$tmp = preg_replace( '/\[zrl\=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]\[zmg\](\\w+.*?)\\[\\/zmg\]\\[\\/zrl\]/i', '$2', $tmp);
+				
+			// preserve links to images, videos and audios
+			$tmp = preg_replace( '/\[img\=([0-9]*)x([0-9]*)\](.*?)\[\/img\]/ism', '$3', $tmp);
+			$tmp = preg_replace( '/\[\\/?img(\\s+.*?\]|\])/i', '', $tmp);
+			$tmp = preg_replace( '/\[zmg\=([0-9]*)x([0-9]*)\](.*?)\[\/zmg\]/ism', '$3', $tmp);
+			$tmp = preg_replace( '/\[\\/?zmg(\\s+.*?\]|\])/i', '', $tmp);
+			$tmp = preg_replace( '/\[\\/?video(\\s+.*?\]|\])/i', '', $tmp);
+			$tmp = preg_replace( '/\[\\/?youtube(\\s+.*?\]|\])/i', '', $tmp);
+			$tmp = preg_replace( '/\[\\/?vimeo(\\s+.*?\]|\])/i', '', $tmp);
+			$tmp = preg_replace( '/\[\\/?audio(\\s+.*?\]|\])/i', '', $tmp);
+			
+			$linksenabled = get_pconfig($b['uid'],'twitter','post_taglinks');
+			
+			// if a #tag is linked, don't send the [url] over to SN
+			// that is, don't send if the option is not set in the
+			// connector settings
+			if ($linksenabled=='0') {
 				// #-tags
 				$tmp = preg_replace( '/#\[url\=(\w+.*?)\](\w+.*?)\[\/url\]/i', '#$2', $tmp);
 				// @-mentions
@@ -478,25 +378,26 @@ function twitter_post_hook(&$a,&$b) {
 				$tmp = preg_replace( '/#\[zrl\=(\w+.*?)\](\w+.*?)\[\/zrl\]/i', '#$2', $tmp);
 				// @-mentions
 				$tmp = preg_replace( '/@\[zrl\=(\w+.*?)\](\w+.*?)\[\/zrl\]/i', '@$2', $tmp);
-				// recycle 1
-	                }
-	                $tmp = preg_replace( '/\[url\=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\](\w+.*?)\[\/url\]/i', '$2 $1', $tmp);
-
-	                // find all http or https links in the body of the entry and
-	                // apply the shortener if the link is longer then 20 characters
-	                if (( strlen($tmp)>$max_char ) && ( $max_char > 0 )) {
-	                    preg_match_all ( '/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/i', $tmp, $allurls  );
-	                    foreach ($allurls as $url) {
-	                        foreach ($url as $u) {
-	                            if (strlen($u)>20) {
-	                                $sl = short_link($u);
-	                                $tmp = str_replace( $u, $sl, $tmp );
-	                            }
-	                        }
-	                    }
-	                }
-	                // ok, all the links we want to send out are save, now strip 
-	                // away the remaining bbcode
+			}
+			
+			$tmp = preg_replace( '/\[url\=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\](\w+.*?)\[\/url\]/i', '$2 $1', $tmp);
+			
+			// find all http or https links in the body of the entry and
+			// apply the shortener if the link is longer then 20 characters
+			if (strlen($tmp) > $max_char && $max_char > 0) {
+				preg_match_all ( '/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/i', $tmp, $allurls);
+				foreach ($allurls as $url) {
+					foreach ($url as $u) {
+						if (strlen($u) > 20) {
+							$sl = short_link($u);
+							$tmp = str_replace( $u, $sl, $tmp );
+						}
+					}
+				}
+			}
+					
+			// ok, all the links we want to send out are save, now strip 
+			// away the remaining bbcode
 			//$msg = strip_tags(bbcode($tmp, false, false));
 			$msg = bbcode($tmp, false, false);
 			$msg = str_replace(array('<br>','<br />'),"\n",$msg);
@@ -508,7 +409,7 @@ function twitter_post_hook(&$a,&$b) {
 				$shortlink = short_link( $b['plink'] );
 				// the new message will be shortened such that "... $shortlink"
 				// will fit into the character limit
-				$msg = nl2br(substr($msg, 0, $max_char-strlen($shortlink)-4));
+				$msg = nl2br(substr($msg, 0, $max_char-strlen($shortlink) - 4));
         	                $msg = str_replace(array('<br>','<br />'),' ',$msg);
 	                        $e = explode(' ', $msg);
 	                        //  remove the last word from the cut down message to 
@@ -520,82 +421,58 @@ function twitter_post_hook(&$a,&$b) {
 
 			$msg = trim($msg);
 			$image = "";
-		} else {
+		} 
+		else {
 			$msgarr = twitter_shortenmsg($b);
-                        $msg = $msgarr["msg"];
-                        $image = $msgarr["image"];
+			$msg = $msgarr["msg"];
+			$image = $msgarr["image"];
 		}
 
-		// and now tweet it :-)
-//		if(strlen($msg) and ($image != "")) {
-//			$img_str = z_fetch_url($image);
+		// Tweet it!
+		if(strlen($msg)) {
 
-//			$tempfile = tempnam(get_config("system","temppath"), "cache");
-//			file_put_contents($tempfile, $img_str);
+			require_once("addon/twitter/codebird.php");
 
-			// Twitter had changed something so that the old library doesn't work anymore
-			// so we are using a new library for twitter
-			// To-Do:
-			// Switching completely to this library with all functions
-		        require_once("addon/twitter/codebird.php");
+			$cb = \Codebird\Codebird::getInstance();
+			$cb->setConsumerKey($ckey, $csecret);
+			$cb->setToken($otoken, $osecret);
+			
+			$post = [ 'status' => $msg ];
 
-//			$cb = \Codebird\Codebird::getInstance();
-//			$cb->setConsumerKey($ckey, $csecret);
-//			$cb->setToken($otoken, $osecret);
-
-//			$post = array('status' => $msg, 'media[]' => $tempfile);
+			// Post image if provided
+			if($image != '') {
+				$result = $cb->media_upload([ 'media' => $image ]);
+				$post['media_ids'] = $result->media_id_string;
+			}
+			
+			$result = $cb->statuses_update($post);
 
 //			if ($iscomment)
 //				$post["in_reply_to_status_id"] = substr($orig_post["uri"], 9);
 
-//			$result = $cb->statuses_updateWithMedia($post);
-//			unlink($tempfile);
+			logger('Tweet send result: ' . print_r($result, true), LOGGER_DEBUG);
+			
+			if ($result->httpstatus != 200) {
+				logger('Send to Twitter failed with HTTP status code ' . $result->httpstatus . '; error message: "' . print_r($result->errors, true) . '"');
+				
+			logger('twitter post completed');
 
-//			logger('twitter_post_with_media send, result: ' . print_r($result, true), LOGGER_DEBUG);
-//			if ($result->errors OR $result->error) {
-//				logger('Send to Twitter failed: "' . print_r($result->errors, true) . '"');
-
-				// Workaround: Remove the picture link so that the post can be reposted without it
+//				// Workaround: Remove the picture link so that the post can be reposted without it
 //				$msg .= " ".$image;
 //				$image = "";
-//			} elseif ($iscomment) {
+//			} 
+//			elseif ($iscomment) {
 //				logger('twitter_post: Update extid '.$result->id_str." for post id ".$b['id']);
 //				q("UPDATE item SET extid = '%s', body = '%s' WHERE id = %d",
 //					dbesc("twitter::".$result->id_str),
 //					dbesc($result->text),
 //					intval($b['id'])
 //				);
-//			}
-//		}
-
-		if(strlen($msg) and ($image == "")) {
-			$url = 'statuses/update';
-			$post = array('status' => $msg);
-
-			if ($iscomment)
-				$post["in_reply_to_status_id"] = substr($orig_post["uri"], 9);
-
-			$result = $tweet->post($url, $post);
-			logger('twitter_post send, result: ' . print_r($result, true), LOGGER_DEBUG);
-			if ($result->errors) {
-				logger('Send to Twitter failed: "' . print_r($result->errors, true) . '"');
-
-			} 
-//		elseif ($iscomment) {
-//				logger('twitter_post: Update extid '.$result->id_str." for post id ".$b['id']);
-//				q("UPDATE item SET extid = '%s' WHERE id = %d",
-//					dbesc("twitter::".$result->id_str),
-//					intval($b['id'])
-//				);
-				//q("UPDATE item SET extid = '%s', body = '%s' WHERE id = %d",
-				//	dbesc("twitter::".$result->id_str),
-				//	dbesc($result->text),
-				//	intval($b['id'])
-				//);
-//			}
+			}
 		}
 	}
 }
+
 
 function twitter_plugin_admin_post(&$a){
 	$consumerkey	=	((x($_POST,'consumerkey'))		? notags(trim($_POST['consumerkey']))	: '');
@@ -604,6 +481,8 @@ function twitter_plugin_admin_post(&$a){
 	set_config('twitter','consumersecret',$consumersecret);
 	info( t('Settings updated.'). EOL );
 }
+
+
 function twitter_plugin_admin(&$a, &$o){
 logger('Twitter admin');
 	$t = get_markup_template( "admin.tpl", "addon/twitter/" );
@@ -615,7 +494,6 @@ logger('Twitter admin');
                 '$consumersecret' => array('consumersecret', t('Consumer Secret'),  get_config('twitter', 'consumersecret' ), '')
 	));
 }
-
 
 
 function twitter_expand_entities($a, $body, $item, $no_tags = false, $dontincludemedia) {
@@ -752,4 +630,3 @@ function twitter_expand_entities($a, $body, $item, $no_tags = false, $dontinclud
 	}
 	return(array("body" => $body, "tags" => $tags));
 }
-

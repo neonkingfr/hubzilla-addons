@@ -8,6 +8,7 @@
  * Maintainer: Mike Macgirvin <mike@macgirvin.com>
  */
 
+use Zotlabs\Web\HTTPSig;
 
 function hzfiles_install() {}
 function hzfiles_uninstall() {}
@@ -33,8 +34,7 @@ function hzfiles_post(&$a) {
 	$headers = [];
 	$headers['X-API-Token'] = random_string();
 	$headers['X-API-Request'] = $hz_server . '/api/z/1.0/files?f=&since=' . urlencode($since) . '&until=' . urlencode($until);
-	$headers = \Zotlabs\Web\HTTPSig::create_sig('',$headers,$channel['channel_prvkey'],
-		'acct:' . $channel['channel_address'] . '@' . \App::get_hostname(),false,true,'sha512');
+	$headers = HTTPSig::create_sig($headers,$channel['channel_prvkey'], 'acct:' . channel_reddress($channel),true,'sha512');
 		
 	$x = z_fetch_url($hz_server . '/api/z/1.0/files?f=&since=' . urlencode($since) . '&until=' . urlencode($until),false,$redirects,[ 'headers' => $headers ]);
 

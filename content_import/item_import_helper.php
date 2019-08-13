@@ -1,6 +1,6 @@
 <?php
 
-use Zotlabs\Zot6\HTTPSig;
+use Zotlabs\Web\HTTPSig;
 
 require_once('include/cli_startup.php');
 require_once('include/attach.php');

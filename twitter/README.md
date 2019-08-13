@@ -5,7 +5,7 @@ Original main authors Tobias Diekershoff and Michael Vogel. Adapted for the Hubz
 
 With this addon for the Hubzilla you can give your hub members the possibility to post
 their *public* messages to Twitter. The messages will be strapped their rich
-context and shortened to 140 characters length if necessary. If shortening of
+context and shortened to 280 characters length if necessary. If shortening of
 the message was performed a link will be added to the tweet pointing to the
 original message on your hub.
 
@@ -29,20 +29,22 @@ After you registered the application you get an OAuth API key / secret
 pair that identifies your app, you will need them for configuration.
 
 The inclusion of a shorturl for the original posting in cases when the
-message was longer than 140 characters requires it, that you have *PHP5+* and
+message was longer than 140 characters requires it, that you have *PHP7.1+* and
 *curl* on your server.
 
 Where to find
 -------------
 
-In the [Hubzilla-addons git repository /twitter/](https://github.com/redmatrix/hubzilla-addons/tree/master/twitter). This directory 
+In the [Hubzilla-addons git repository /twitter/](https://framagit.org/hubzilla/addons/tree/master/twitter). This directory 
 contains all required PHP files (including the [Twitter OAuth library][1] by Abraham
-Williams, MIT licensed and the [Slinky library][2] by Beau Lebens, BSD license),
+Williams, MIT licensed, the [Slinky library][2] by Beau Lebens, BSD license and
+[codebird-php library][3] under GPL license),
 a CSS file for styling of the user configuration and an image to _Sign in with
 Twitter_.
 
 [1]: https://github.com/abraham/twitteroauth
 [2]: http://dentedreality.com.au/projects/slinky/
+[3]: https://github.com/jublo/codebird-php
 
 Configuration
 =============
@@ -67,18 +69,26 @@ Alternative Configuration
 
 * Go to the root of your Hubzilla installation and type after the prompt:
 
-     util/config system addon
+     `util/config system addon`
 
 * Press enter. You get a list of active addons. To activate this addon you have to add Twitter to this list and press enter:
 
-     util/config system addon "plugin 1, plugin 2, etc, twitter"
+     `util/config system addon "plugin 1, plugin 2, etc, twitter"`
 
 * Afterwards you need to add your OAuth API key / secret pair the same way (without the single quotes):
 
-     util/config twitter consumerkey 'your API KEY here' 
+     `util/config twitter consumerkey 'your API KEY here'` 
 
-     util/config twitter consumersecret 'your API SECRET here'
+     `util/config twitter consumersecret 'your API SECRET here'`
 
+Intelligent shortnening
+-----------------------
+
+This addon contains intelligent shortener which converts your posts in tweets depend on their contents in most representative view. 
+
+* To enable this mode use the following console command.
+
+     `util/config twitter.intelligent_shortening 1`
 
 Connector Options for the Channel
 =================================
@@ -101,10 +111,10 @@ After this step was successful the user now has the following config options.
 License
 =======
 
-The _Twitter Connector_ is licensed under the [3-clause BSD license][3] see 
+The Twitter Connector is licensed under the [3-clause BSD license][4] see 
 the
 LICENSE file in the addons directory.
 
-[3]: http://opensource.org/licenses/BSD-3-Clause
+[4]: http://opensource.org/licenses/BSD-3-Clause
 
 

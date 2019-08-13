@@ -6,18 +6,21 @@ use Zotlabs\Extend\Hook;
 
 /**
  * Name: queueworker
- * Description: EXPERIMENTAL Queue work queue for backgrounded tasks
- * Version: 0.2.0
+ * Description: Next generation queue worker for backgrounded tasks (BETA)
+ * Version: 0.8.0
  * Author: Matthew Dent <dentm42@dm42.net>
- * MinVersion: 3.8.7
+ * MinVersion: 4.2.1
  */
 
 class QueueWorkerUtils {
 
- 	public static $queueworker_version = '0.2.0';
-	public static $hubzilla_minver = '3.8.7';
+ 	public static $queueworker_version = '0.8.0';
+	public static $hubzilla_minver = '4.2.1';
 	public static $queueworker_dbver = 1;
 	public static $queueworker = null;
+	public static $maxworkers = 0;
+	public static $workermaxage = 0;
+	public static $workersleep = 100;
 
   	public static function check_min_version ($platform,$minver) {
       		switch ($platform) {
@@ -124,7 +127,7 @@ class QueueWorkerUtils {
 			foreach ($sql as $query) {
 				$r = q($query);
 				if (!$r) {
-					logger ('dbUpgrade/Install Error (query): '.$query);
+					logger ('dbUpgrade/Install Error (query): '.$query,LOGGER_NORMAL);
 					return UPDATE_FAILED;
 				}
 			}
@@ -237,35 +240,92 @@ class QueueWorkerUtils {
 		return;
 
 	}
+
+
+	public static function MasterSummon(&$arr) {
+		
+		$argv=$arr['argv'];
+		$argc=count($argv);
+		if ($argv[0]!='Queueworker') {
+
+			$priority = 0; //Default priority @TODO allow reprioritization
+			$workinfo = ['argc'=>$argc,'argv'=>$argv];
+		
+        		$r = q("select * from workerq where workerq_data = '%s'",
+                		dbesc(self::maybejson($workerinfo)));
+        		if ($r) {
+                		logger("Ignoring duplicate workerq task",LOGGER_DEBUG);
+                		return;
+        		}
+	
+			self::qbegin('workerq');
+			$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
+				intval($priority),
+				dbesc(self::maybejson($workinfo)));
+			self::qcommit();
+			if (!$r) {
+				logger("INSERT FAILED",LOGGER_DEBUG);
+				return;
+			}
+			logger('INSERTED: '.self::maybejson($workinfo),LOGGER_DEBUG);
+		}
+		$argv=[];
+		$arr=['argv'=>$argv];
+		$workers=self::GetWorkerCount();
+		if ($workers < self::$maxworkers) {
+			logger("Less than max active workers ($workers) max = ".self::$maxworkers.".",LOGGER_DEBUG);
+			$phpbin = get_config('system','phpbin','php');
+			proc_run($phpbin,'Zotlabs/Daemon/Master.php',['Queueworker']);
+		}
+	}
+
 	public static function MasterRelease(&$arr) {
 		
 		$argv=$arr['argv'];
 		$argc=count($argv);
+		if ($argv[0] != 'Queueworker') {
+			$priority = 0; //Default priority @TODO allow reprioritization
 
-		$priority = 0; //Default priority @TODO allow reprioritization
-
-		$workinfo = ['argc'=>$argc,'argv'=>$argv];
+			$workinfo = ['argc'=>$argc,'argv'=>$argv];
 		
-        $r = q("select * from workerq where workerq_data = '%s'",
-                dbesc(self::maybejson($workerinfo)));
-        if ($r) {
-                logger("Ignoring duplicate workerq task");
-                return;
-        }
+        		$r = q("select * from workerq where workerq_data = '%s'",
+                		dbesc(self::maybejson($workerinfo)));
+        		if (!$r) {
 
-		self::qbegin('workerq');
-		$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
-			intval($priority),
-			dbesc(self::maybejson($workinfo)));
-		self::qcommit();
-		if (!$r) {
-			logger("INSERT FAILED");
-			return;
+				self::qbegin('workerq');
+				$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
+					intval($priority),
+					dbesc(self::maybejson($workinfo)));
+				self::qcommit();
+				if (!$r) {
+					logger("Insert failed: ".json_encode($workinfo),LOGGER_DEBUG);
+					return;
+				}
+				logger('INSERTED: '.self::maybejson($workinfo),LOGGER_DEBUG);
+			} else {
+                		logger("Duplicate task - do not insert.",LOGGER_DEBUG);
+        		}
 		}
-		logger('INSERTED: '.self::maybejson($workinfo),LOGGER_DEBUG);
 		$argv=[];
 		$arr=['argv'=>$argv];
-                self::Process();
+               	self::Process();
+	}
+
+	static public function GetWorkerCount() {
+		if (self::$maxworkers == 0) {
+			self::$maxworkers = get_config('queueworker','max_queueworkers',4);
+			self::$maxworkers = (self::$maxworkers > 3) ? self::$maxworkers : 4;
+		}
+		if (self::$workermaxage == 0) {
+			self::$workermaxage = get_config('queueworker','max_queueworker_age');
+			self::$workermaxage = (self::$workermaxage > 120) ? self::$workermaxage : 300;
+		}
+		q("update workerq set workerq_reservationid = null where workerq_processtimeout < %s", db_utcnow());
+		usleep(self::$workersleep); 
+		$workers = q("select distinct workerq_reservationid from workerq");
+		$workers = isset($workers) ? intval(count($workers)) : 1;
+		logger("WORKERCOUNT: $workers",LOGGER_DEBUG);
+		return intval($workers);
 	}
 
 	static public function GetWorkerID() {
@@ -273,27 +333,22 @@ class QueueWorkerUtils {
 			return self::$queueworker;
 		}
 
-		$maxworkers = get_config('queueworker','max_queueworkers',4);
-		$maxworkers = ($maxworkers > 3) ? $maxworkers : 4;
-		$workermaxage = get_config('queueworker','max_queueworker_age');
-		$workermaxage = ($workermaxage > 120) ? $workermaxage : 300;
 	
 		$wid = uniqid('',true);
-		q("update workerq set workerq_reservationid = null where workerq_processtimeout < %s", db_utcnow());
-		$workers = q("select distinct workerq_reservationid from workerq");
-		if (count($workers) > $maxworkers) {
-			logger("Too many active workers",LOGGER_DEBUG);
+		usleep(mt_rand(500000,3000000)); //Sleep .5 - 3 seconds before creating a new worker.
+		$workers = self::GetWorkerCount();
+		if ($workers >= self::$maxworkers) {
+			logger("Too many active workers ($workers) max = ".self::$maxworkers,LOGGER_DEBUG);
 			return false;
 		}
 		
-		self::$queueworker=$wid;
+		self::$queueworker = $wid;
 		
 		return $wid;
         }
 
 	static private function getworkid() {
-		$workermaxage = get_config('queueworker','max_queueworker_age');
-		$workermaxage = ($workermaxage > 120) ? $workermaxage : 300;
+		self::GetWorkerCount();
 
 		self::qbegin('workerq');
 		$work = q("select workerq_id from workerq 
@@ -309,31 +364,32 @@ class QueueWorkerUtils {
                 $work = q("update workerq set workerq_reservationid='%s', workerq_processtimeout = %s + interval %s where workerq_id = %d",
                         self::$queueworker,
 			db_utcnow(),
-			db_quoteinterval($workermaxage." SECOND"),
+			db_quoteinterval(self::$workermaxage." SECOND"),
                         intval($id));
 
 		if (!$work) {
 			self::qrollback();
-			logger("Could not update");
+			logger("Could not update workerq.",LOGGER_DEBUG);
 			return false;
 		}
+		logger("GOTWORK: ".json_encode($work), LOGGER_DEBUG);
 		self::qcommit();
 		return $id;
 	}
 
         static public function Process() {
-
+                self::$workersleep = get_config('queueworker','queue_worker_sleep');
+                self::$workersleep = (intval($workersleep) > 100) ? intval($workersleep) : 100;
+		
                 if (!self::GetWorkerID()) {
+                        logger('Unable to get worker ID. Exiting.',LOGGER_DEBUG);
                         killme();
                 }
-
-                $workersleep = get_config('queueworker','queue_worker_sleep');
-                $workersleep = ($workersleep > 2) ? $workersleep : 2;
 
                 $jobs = 0;
 		$workid = self::getworkid();
                 while ($workid) {
-                        sleep ($workersleep);
+                        sleep ($workersleep); 
 			// @FIXME:  Currently $workersleep is a fixed value.  It may be a good idea
 			//          to implement a "backoff" instead - based on load average or some
 			//	    other metric.
@@ -344,13 +400,24 @@ class QueueWorkerUtils {
 			self::qcommit();
 
                         if (isset($workitem[0])) {
+
+				// At least SOME work to do.... in case there's more, let's ramp up workers.
+				$workers=self::GetWorkerCount();
+				if ($workers < self::$maxworkers) {
+					logger("Less than max active workers ($workers) max = ".self::$maxworkers.".",LOGGER_DEBUG);
+					$phpbin = get_config('system','phpbin','php');
+					proc_run($phpbin,'Zotlabs/Daemon/Master.php',['Queueworker']);
+				}
+
                                 $jobs++;
+				logger("Workinfo: ".$workitem[0]['workerq_data'],LOGGER_DEBUG);
                                 $workinfo = self::maybeunjson($workitem[0]['workerq_data']);
-                                $argc = $workinfo['argc'];
                                 $argv = $workinfo['argv'];
                                 logger('Master: process: ' . json_encode($argv),LOGGER_DEBUG);
 
                                 $cls = '\\Zotlabs\\Daemon\\' . $argv[0];
+				$argv = flatten_array_recursive($argv);
+				$argc = count($argv);
                                 $cls::run($argc,$argv);
                                 //@FIXME: Right now we assume that if we get a return, everything is OK.
                                 //At some point we may want to test whether the run returns true/false
@@ -363,8 +430,7 @@ class QueueWorkerUtils {
                                         $workid);
 				self::qcommit();
                         } else {
-				logger("NO WORKITEM!");
-                                break;
+				logger("NO WORKITEM!",LOGGER_DEBUG);
                         }
 			$workid = self::getworkid();
                 }
@@ -415,7 +481,7 @@ class QueueWorkerUtils {
 	}
 
 	static public function install() {
-		logger ('Install start.',LOGGER_DEBUG);
+		logger ('Install start.');
 		if (QueueWorkerUtils::dbUpgrade () == UPDATE_FAILED) {
 			notice ('QueueWorker Install error - Abort installation.'.EOL);
 			logger ('Install error - Abort installation.');
@@ -440,6 +506,7 @@ function queueworker_uninstall() {
 function queueworker_load(){
         // HOOK REGISTRATION
 	Hook::register('daemon_master_release',__FILE__,'QueueWorkerUtils::MasterRelease',1,0);
+	Hook::register('daemon_master_summon',__FILE__,'QueueWorkerUtils::MasterSummon',1,0);
 
 	Route::register(dirname(__FILE__).'/Mod_Queueworker.php','queueworker');
 

@@ -1,6 +1,9 @@
 <?php
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Daemon\Master;
+use Zotlabs\Lib\Activity;
+use Zotlabs\Lib\ActivityStreams;
 
 require_once('include/event.php');
 
@@ -309,10 +312,12 @@ function asencode_item($i) {
 	else
 		return [];
 
-	$t = asencode_taxonomy($i);
+	$t = Activity::encode_taxonomy($i);
 	if($t) {
 		$ret['tag']       = $t;
 	}
+
+
 
 	$a = asencode_attachment($i);
 	if($a) {
@@ -369,10 +374,14 @@ function asencode_taxonomy($item) {
 		foreach($item['term'] as $t) {
 			switch($t['ttype']) {
 				case TERM_HASHTAG:
-					// An id is required so if we don't have a url in the taxonomy, ignore it and keep going.
+					// href is required so if we don't have a url in the taxonomy, ignore it and keep going.
 					if($t['url']) {
-						$ret[] = [ 'id' => $t['url'], 'name' => '#' . $t['term'] ];
+						$ret[] = [ 'type' => 'Hashtag', 'href' => $t['url'], 'name' => '#' . $t['term'] ];
 					}
+					break;
+
+				case TERM_FORUM:
+					$ret[] = [ 'type' => 'Mention', 'href' => $t['url'], 'name' => '!' . $t['term'] ];
 					break;
 
 				case TERM_MENTION:
@@ -439,13 +448,6 @@ function asencode_activity($i) {
 
 	$ret   = [];
 	$reply = false;
-
-	if(intval($i['item_deleted'])) {
-		$ret['type'] = 'Tombstone';
-		$ret['formerType'] = activity_obj_mapper($i['obj_type']);
-		$ret['id'] = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
-		return $ret;
-	}
 
 	$ret['type'] = activity_mapper($i['verb']);
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/activity/' . urlencode($i['mid']));
@@ -569,8 +571,17 @@ function asencode_activity($i) {
 			$ret['object']['to'] = $ret['to'];
 		if(isset($ret['cc']))
 			$ret['object']['cc'] = $ret['cc'];
-		if(isset($ret['tag']))
-			$ret['object']['tag'] = $ret['tag'];
+	}
+
+	if(intval($i['item_deleted'])) {
+		$del_ret['type'] = 'Delete';
+		$del_ret['actor'] = $actor;
+		$del_ret['id'] = $ret['id'];
+		$del_ret['to'] = $ret['to'];
+		$del_ret['cc'] = $ret['cc'];
+		$del_ret['object'] = $ret['object'];
+
+		return $del_ret;
 	}
 
 	return $ret;
@@ -674,7 +685,7 @@ function asencode_person($p) {
 		$ret['endpoints']   = [ 'sharedInbox' => z_root() . '/inbox' ];
 
 		$ret['publicKey'] = [
-			'id'           => $p['xchan_url'] . '/public_key_pem',
+			'id'           => $p['xchan_url'],
 			'owner'        => $p['xchan_url'],
 			'publicKeyPem' => $p['xchan_pubkey']
 		];
@@ -824,7 +835,7 @@ function as_follow($channel,$act) {
 		$their_follow_id  = $act->id;
 	}
 	elseif($act->type === 'Accept') {
-		$my_follow_id = z_root() . '/follow/' . $contact['id'];
+		$my_follow_id = z_root() . '/follow/' . $contact['id'] . '#accept';
 	}
 
 	if(is_array($person_obj)) {
@@ -865,14 +876,15 @@ function as_follow($channel,$act) {
 				// Send an Accept back to them
 
 				set_abconfig($channel['channel_id'],$person_obj['id'],'pubcrawl','their_follow_id', $their_follow_id);
-				\Zotlabs\Daemon\Master::Summon([ 'Notifier', 'permission_accept', $contact['abook_id'] ]);
+				Master::Summon([ 'Notifier', 'permission_accept', $contact['abook_id'] ]);
 				return;
 
 			case 'Accept':
 
-				// They accepted our Follow request - set default permissions
-
+				// They accepted our Follow request - set default permissions (except for send_stream and post_wall)
 				foreach($their_perms as $k => $v) {
+					if(in_array($k, ['send_stream', 'post_wall']))
+						$v = 0; // Those will be set once we accept their follow request
 					set_abconfig($channel['channel_id'],$contact['abook_xchan'],'their_perms',$k,$v);
 				}
 
@@ -972,9 +984,9 @@ function as_follow($channel,$act) {
 
 			if($my_perms && $automatic) {
 				// send an Accept for this Follow activity
-				\Zotlabs\Daemon\Master::Summon([ 'Notifier', 'permission_accept', $new_connection[0]['abook_id'] ]);
+				Master::Summon([ 'Notifier', 'permission_accept', $new_connection[0]['abook_id'] ]);
 				// Send back a Follow notification to them
-				\Zotlabs\Daemon\Master::Summon([ 'Notifier', 'permission_create', $new_connection[0]['abook_id'] ]);
+				Master::Summon([ 'Notifier', 'permission_create', $new_connection[0]['abook_id'] ]);
 			}
 
 			$clone = array();
@@ -1034,7 +1046,6 @@ function as_unfollow($channel,$act) {
 			$my_perms = \Zotlabs\Access\Permissions::FilledPerms($x['perms_connect']);
 
 			// remove all permissions they provided
-
 			foreach($my_perms as $k => $v) {
 				del_abconfig($channel['channel_id'],$r[0]['xchan_hash'],'their_perms',$k);
 			}
@@ -1147,7 +1158,6 @@ function as_actor_store($url,$person_obj) {
 		dbesc($url)
 	);
 
-
 	$m = parse_url($url);
 	if($m) {
 		$hostname = $m['host'];
@@ -1182,12 +1192,17 @@ function as_actor_store($url,$person_obj) {
 
 }
 
-
 function as_create_action($channel,$observer_hash,$act) {
 
 	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video', 'Image', 'Event' ])) {
 		as_create_note($channel,$observer_hash,$act);
 	}
+
+}
+
+function as_delete_action($channel,$observer_hash,$act) {
+
+	as_delete_note($channel,$observer_hash,$act);
 
 }
 
@@ -1221,6 +1236,8 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	$s = [];
 
+	$announce = (($act->type === 'Announce') ? true  : false);
+
 	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
 	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
 	// This is not part of the activitypub protocol - we might change this to show all public posts in pubstream at some point.
@@ -1228,40 +1245,18 @@ function as_create_note($channel,$observer_hash,$act) {
 	$pubstream = ((is_array($act->obj) && array_key_exists('to', $act->obj) && in_array(ACTIVITY_PUBLIC_INBOX, $act->obj['to'])) ? true : false);
 	$is_sys_channel = is_sys_channel($channel['channel_id']);
 
-	$parent = ((array_key_exists('inReplyTo',$act->obj)) ? urldecode($act->obj['inReplyTo']) : '');
-	if($parent) {
+	$parent = ((array_key_exists('inReplyTo',$act->obj) && !$announce) ? urldecode($act->obj['inReplyTo']) : false);
 
-		$r = q("select * from item where uid = %d and ( mid = '%s' or  mid = '%s' ) limit 1",
-			intval($channel['channel_id']),
-			dbesc($parent),
-			dbesc(basename($parent))
-		);
-
-		if(! $r) {
-			logger('parent not found.');
-			return;
-		}
-
-		if($r[0]['owner_xchan'] === $channel['channel_hash']) {
-			if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
-				logger('no comment permission.');
-				return;
-			}
-		}
-
-		$s['parent_mid'] = $r[0]['mid'];
-		$s['owner_xchan'] = $r[0]['owner_xchan'];
-		$s['author_xchan'] = $observer_hash;
-
-	}
-	else {
-		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
+	if(!$parent) {
+		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream && $announce)) {
 			logger('no permission');
 			return;
 		}
-		$s['owner_xchan'] = $s['author_xchan'] = $observer_hash;
+		$s['owner_xchan'] = $observer_hash;
 	}
-	
+
+	$s['author_xchan'] = (($announce) ? $act->obj['attributedTo'] : $observer_hash);
+
 	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
 		dbesc($observer_hash),
 		intval($channel['channel_id'])
@@ -1277,9 +1272,11 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
 	$s['uuid'] = '';
+
 	// Friendica sends the diaspora guid in a nonstandard field via AP
 	if($act->obj['diaspora:guid'])
 		$s['uuid'] = $act->obj['diaspora:guid'];
+
 	$s['mid'] = urldecode($act->obj['id']);
 
 	if(in_array($act->obj['type'],[ 'Note','Article','Page' ])) {
@@ -1310,7 +1307,6 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['plink'] = $s['mid'];
 	}
 
-
 	if($act->data['published']) {
 		$s['created'] = datetime_convert('UTC','UTC',$act->data['published']);
 	}
@@ -1330,9 +1326,8 @@ function as_create_note($channel,$observer_hash,$act) {
 	if(! $s['edited'])
 		$s['edited'] = $s['created'];
 
-
 	if(! $s['parent_mid'])
-		$s['parent_mid'] = $s['mid'];
+		$s['parent_mid'] = $parent ? $parent : $s['mid'];
 
 	$summary = as_bb_content($content,'summary');
 
@@ -1341,7 +1336,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	
 	$s['title']    = as_bb_content($content,'name');
 	$s['body']     = $summary . as_bb_content($content,'content');
-	$s['verb']     = ACTIVITY_POST;
+	$s['verb']     = (($announce) ? ACTIVITY_SHARE : ACTIVITY_POST);
 	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
 	$s['app']      = t('ActivityPub');
 
@@ -1359,7 +1354,6 @@ function as_create_note($channel,$observer_hash,$act) {
 		}
 	}
 
-
 	if($abook) {
 		if(! post_is_importable($s,$abook[0])) {
 			logger('post is filtered');
@@ -1371,7 +1365,48 @@ function as_create_note($channel,$observer_hash,$act) {
 		set_iconfig($s,'ostatus','conversation',$act->obj['conversation'],1);
 	}
 
-	$a = asdecode_taxonomy($act->obj);
+	if($parent) {
+		$p = q("select parent_mid, owner_xchan from item where mid = '%s' and uid = %d limit 1",
+			dbesc($s['parent_mid']),
+			intval($s['uid'])
+		);
+		if(! $p) {
+			$a = Activity::fetch_and_store_parents($channel, $act, $s);
+			if($a) {
+				$p = q("select parent_mid, owner_xchan from item where mid = '%s' and uid = %d limit 1",
+					dbesc($s['parent_mid']),
+					intval($s['uid'])
+				);
+			}
+			else {
+				logger('could not fetch parents');
+				return;
+
+				// @TODO we maybe could accept these is we formatted the body correctly with share_bb()
+				// or at least provided a link to the object
+				// if(in_array($act->type,[ 'Like','Dislike' ])) {
+				//	return;
+				// }
+
+				// @TODO do we actually want that?
+				// if no parent was fetched, turn into a top-level post
+
+				// turn into a top level post
+				// $s['parent_mid'] = $s['mid'];
+				// $s['thr_parent'] = $s['mid'];
+			}
+		}
+		if($p[0]['parent_mid'] !== $s['parent_mid']) {
+			$s['thr_parent'] = $s['parent_mid'];
+		}
+		else {
+			$s['thr_parent'] = $p[0]['parent_mid'];
+		}
+		$s['parent_mid'] = $p[0]['parent_mid'];
+		$s['owner_xchan'] = $p[0]['owner_xchan'];
+	}
+
+	$a = Activity::decode_taxonomy($act->obj);
 	if($a) {
 		$s['term'] = $a;
 	}
@@ -1449,7 +1484,7 @@ function as_create_note($channel,$observer_hash,$act) {
 		if($parent) {
 			if($s['owner_xchan'] === $channel['channel_hash']) {
 				// We are the owner of this conversation, so send all received comments back downstream
-				Zotlabs\Daemon\Master::Summon(array('Notifier','comment-import',$x['item_id']));
+				Master::Summon(array('Notifier','comment-import',$x['item_id']));
 			}
 			$r = q("select * from item where id = %d limit 1",
 				intval($x['item_id'])
@@ -1529,7 +1564,7 @@ function as_announce_note($channel,$observer_hash,$act) {
 		set_iconfig($s,'ostatus','conversation',$act->obj['conversation'],1);
 	}
 
-	$a = asdecode_taxonomy($act->obj);
+	$a = Activity::decode_taxonomy($act->obj);
 	if($a) {
 		$s['term'] = $a;
 	}
@@ -1589,25 +1624,36 @@ function as_like_note($channel,$observer_hash,$act) {
 
 	$s = [];
 
-	$parent = $act->obj['id'];
+	$s['parent_mid'] = $act->obj['id'];
+	if(! $s['parent_mid'])
+		return;
+
+	$s['mid'] = $act->id;
 
 	if($act->type === 'Like')
 		$s['verb'] = ACTIVITY_LIKE;
 	if($act->type === 'Dislike')
 		$s['verb'] = ACTIVITY_DISLIKE;
 
-	if(! $parent)
-		return;
-
 	$r = q("select * from item where uid = %d and ( mid = '%s' or  mid = '%s' ) limit 1",
 		intval($channel['channel_id']),
-		dbesc($parent),
-		dbesc(urldecode(basename($parent)))
+		dbesc($s['parent_mid']),
+		dbesc(urldecode(basename($s['parent_mid'])))
 	);
 
 	if(! $r) {
-		logger('parent not found.');
-		return;
+		$p = Activity::fetch_and_store_parents($channel,$act,$s);
+		if($p) {
+			$r = q("select * from item where uid = %d and ( mid = '%s' or  mid = '%s' ) limit 1",
+				intval($channel['channel_id']),
+				dbesc($s['parent_mid']),
+				dbesc(urldecode(basename($s['parent_mid'])))
+			);
+			if(! $r) {
+				logger('parent not found.');
+				return;
+			}
+		}
 	}
 
 	xchan_query($r);
@@ -1635,13 +1681,11 @@ function as_like_note($channel,$observer_hash,$act) {
 	$s['uid'] = $channel['channel_id'];
 	$s['uuid'] = '';
 	// Friendica sends the diaspora guid in a nonstandard field via AP
-	if($act->obj['diaspora:guid'])
-		$s['uuid'] = $act->obj['diaspora:guid'];
-	$s['mid'] = $act->id;
+	if($act->data['diaspora:guid'])
+		$s['uuid'] = $act->data['diaspora:guid'];
 
 	if(! $s['parent_mid'])
 		$s['parent_mid'] = $s['mid'];
-	
 
 	$post_type = (($parent_item['resource_type'] === 'photo') ? t('photo') : t('status'));
 
@@ -1666,6 +1710,7 @@ function as_like_note($channel,$observer_hash,$act) {
 		'content' => $parent_item['body'],
 		'created' => $parent_item['created'],
 		'edited'  => $parent_item['edited'],
+		'diaspora:guid' => $parent_item['uuid'],
 		'author'  => array(
 			'name'     => $item_author['xchan_name'],
 			'address'  => $item_author['xchan_addr'],
@@ -1685,7 +1730,7 @@ function as_like_note($channel,$observer_hash,$act) {
 
 	$ulink = '[url=' . $item_author['xchan_url'] . ']' . $item_author['xchan_name'] . '[/url]';
 	$alink = '[url=' . $parent_item['author']['xchan_url'] . ']' . $parent_item['author']['xchan_name'] . '[/url]';
-	$plink = '[url='. z_root() . '/display/' . urlencode($act->id) . ']' . $post_type . '[/url]';
+	$plink = '[url='. z_root() . '/display/' . gen_link_id($act->id) . ']' . $post_type . '[/url]';
 	$s['body'] =  sprintf( $bodyverb, $ulink, $alink, $plink );
 
 	$s['app']  = t('ActivityPub');
@@ -1711,8 +1756,43 @@ function as_like_note($channel,$observer_hash,$act) {
 	if($result['success']) {
 		// if the message isn't already being relayed, notify others
 		if(intval($parent_item['item_origin']))
-				Zotlabs\Daemon\Master::Summon(array('Notifier','comment-import',$result['item_id']));
-			sync_an_item($channel['channel_id'],$result['item_id']);
+			Master::Summon(array('Notifier','comment-import',$result['item_id']));
+		sync_an_item($channel['channel_id'],$result['item_id']);
+	}
+
+	return;
+}
+
+function as_delete_note($channel,$observer_hash,$act) {
+
+	$uid = $channel['channel_id'];
+	if(is_array($act->obj))
+		$mid = urldecode($act->obj['id']);
+	else
+		$mid = urldecode($act->obj);
+
+	$r = q("SELECT * FROM item WHERE mid = '%s' and uid = %d LIMIT 1",
+		dbesc($mid),
+		intval($uid)
+	);
+
+	$i = $r[0];
+
+	if($i['author_xchan'] !== $observer_hash)
+		return;
+
+	if($r) {
+		$stage = DROPITEM_NORMAL;
+
+		// If we are the conversation owner, propagate the delete
+		if(in_array($i['owner_xchan'], [$channel['channel_hash'], $channel['channel_portable_id']]))
+			$stage = DROPITEM_PHASE1;
+
+		drop_item($i['id'],false, $stage);
+
+		if($stage === DROPITEM_PHASE1) {
+			Master::Summon(['Notifier', 'drop', $i['id']]);
+		}
 	}
 
 	return;
