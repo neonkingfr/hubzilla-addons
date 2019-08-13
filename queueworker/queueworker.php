@@ -204,7 +204,7 @@ class QueueWorkerUtils {
 				q('LOCK TABLE '.$tablename.' WRITE');
 				break;
 
-			case DBTYPE_POSTGRESQL:
+			case DBTYPE_POSTGRES:
 				q('BEGIN');
 				q('LOCK TABLE '.$tablename.' IN ACCESS EXCLUSIVE MODE');
 				break;
@@ -219,7 +219,7 @@ class QueueWorkerUtils {
 				q("COMMIT");
 				break;
 
-			case DBTYPE_POSTGRESQL:
+			case DBTYPE_POSTGRES:
 				q("COMMIT");
 				break;
 		}
@@ -233,7 +233,7 @@ class QueueWorkerUtils {
 				q("UNLOCK TABLES");
 				break;
 
-			case DBTYPE_POSTGRESQL:
+			case DBTYPE_POSTGRES:
 				q("ROLLBACK");
 				break;
 		}
