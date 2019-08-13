@@ -88,7 +88,7 @@ This addon contains intelligent shortener which converts your posts in tweets de
 
 * To enable this mode use the following console command.
 
-     `util/config twitter.intelligent_shortening 1`
+     `util/config twitter intelligent_shortening 1`
 
 Connector Options for the Channel
 =================================
