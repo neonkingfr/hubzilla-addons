@@ -252,7 +252,7 @@ class QueueWorkerUtils {
 			$workinfo = ['argc'=>$argc,'argv'=>$argv];
 		
         		$r = q("select * from workerq where workerq_data = '%s'",
-                		dbesc(self::maybejson($workerinfo)));
+                		dbesc(self::maybejson($workinfo)));
         		if ($r) {
                 		logger("Ignoring duplicate workerq task",LOGGER_DEBUG);
                 		return;
