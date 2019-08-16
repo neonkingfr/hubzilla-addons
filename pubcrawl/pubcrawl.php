@@ -37,6 +37,7 @@ function pubcrawl_load() {
 		'permissions_accept'         => 'pubcrawl_permissions_accept',
 		'connection_remove'          => 'pubcrawl_connection_remove',
 		'post_local_end'             => 'pubcrawl_post_local_end',
+		'notifier_process'           => 'pubcrawl_notifier_process',
 		'notifier_hub'               => 'pubcrawl_notifier_hub',
 		'channel_links'              => 'pubcrawl_channel_links',
 		'personal_xrd'               => 'pubcrawl_personal_xrd',
@@ -244,20 +245,14 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 function pubcrawl_import_author(&$b) {
 
-	if(! $b['author']['url'])
-		return;
-
 	$url = $b['author']['url'];
 
-	// let somebody upgrade from an 'unknown' connection which has no xchan_addr
-	$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_url = '%s' limit 1",
+	if(! $url)
+		return;
+
+	$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' and xchan_network = 'activitypub' limit 1",
 		dbesc($url)
 	);
-	if(! $r) {
-		$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' limit 1",
-			dbesc($url)
-		);
-	}
 	if($r) {
 		logger('in_cache: ' . $r[0]['xchan_name'], LOGGER_DATA);
 		$b['result'] = $r[0]['xchan_hash'];
@@ -267,14 +262,9 @@ function pubcrawl_import_author(&$b) {
 	$x = discover_by_webbie($url);
 
 	if($x) {
-		$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_url = '%s' limit 1",
+		$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' limit 1",
 			dbesc($url)
 		);
-		if(! $r) {
-			$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' limit 1",
-				dbesc($url)
-			);
-		}
 		if($r) {
 			$b['result'] = $r[0]['xchan_hash'];
 			return;
@@ -418,6 +408,35 @@ function pubcrawl_channel_mod_init($x) {
 		echo $ret;
 		killme();
 	}
+}
+
+function pubcrawl_notifier_process(&$arr) {
+
+	if(! $arr['relay_to_owner'])
+		return;
+
+	if($arr['target_item']['item_private'])
+		return;
+
+	if($arr['parent_item']['owner']['xchan_network'] !== 'activitypub')
+		return;
+
+	if($arr['parent_item']['author']['xchan_network'] !== 'activitypub')
+		return;
+
+	if(! Apps::addon_app_installed($arr['channel']['channel_id'],'pubcrawl'))
+		return;
+
+	// If the parent is an announce activity, add the author to the recipients
+	if($arr['parent_item']['verb'] == ACTIVITY_SHARE) {
+		$arr['env_recips'][] = [
+			'guid'     => $arr['parent_item']['author']['xchan_guid'],
+			'guid_sig' => $arr['parent_item']['author']['xchan_guid_sig'],
+			'hash'     => $arr['parent_item']['author']['xchan_hash']
+		];
+		$arr['recipients'][] = '\'' . $arr['parent_item']['author']['xchan_hash'] . '\'';
+	}
+
 }
 
 function pubcrawl_notifier_hub(&$arr) {
@@ -717,7 +736,7 @@ function pubcrawl_connection_remove(&$x) {
 				z_root() . ZOT_APSCHEMA_REV
 			]], 
 			[
-				'id'    => z_root() . '/follow/' . $recip[0]['abook_id'] . '#Undo',
+				'id'    => z_root() . '/follow/' . $recip[0]['abook_id'] . '#undo',
 				'type'  => 'Undo',
 				'actor' => $p,
 				'object'     => [
@@ -772,7 +791,7 @@ function pubcrawl_permissions_create(&$x) {
 			z_root() . ZOT_APSCHEMA_REV
 		]], 
 		[
-			'id'     => z_root() . '/follow/' . $x['recipient']['abook_id'],
+			'id'     => z_root() . '/follow/' . $x['recipient']['abook_id'] . '#follow',
 			'type'   => 'Follow',
 			'actor'  => $p,
 			'object' => $x['recipient']['xchan_url'],
@@ -838,7 +857,7 @@ function pubcrawl_permissions_accept(&$x) {
 			z_root() . ZOT_APSCHEMA_REV
 		]], 
 		[
-			'id'     => z_root() . '/follow/' . $x['recipient']['abook_id'],
+			'id'     => z_root() . '/follow/' . $x['recipient']['abook_id']  . '#accept',
 			'type'   => 'Accept',
 			'actor'  => $p,
 			'object' => [
@@ -869,6 +888,13 @@ function pubcrawl_permissions_accept(&$x) {
 		
 	$x['success'] = true;
 
+	$perms = \Zotlabs\Access\PermissionRoles::role_perms('social');
+	$their_perms = \Zotlabs\Access\Permissions::FilledPerms($perms['perms_connect']);
+
+	// We accepted their follow request - set default permissions
+	foreach($their_perms as $k => $v) {
+		set_abconfig($x['sender']['channel_id'],$x['recipient']['abook_xchan'],'their_perms',$k,$v);
+	}
 }
 
 
@@ -1127,6 +1153,8 @@ function pubcrawl_locs_mod_init($x) {
 function pubcrawl_follow_mod_init($x) {
 
 	if(pubcrawl_is_as_request() && argc() == 2) {
+
+
 		$abook_id = intval(argv(1));
 		if(! $abook_id)
 			return;
@@ -1152,7 +1180,7 @@ function pubcrawl_follow_mod_init($x) {
 				z_root() . ZOT_APSCHEMA_REV
 			]], 
 			[
-				'id'     => z_root() . '/follow/' . $r[0]['abook_id'],
+				'id'     => z_root() . '/follow/' . $r[0]['abook_id'] . '#follow',
 				'type'   => 'Follow',
 				'actor'  => $actor,
 				'object' => $r[0]['xchan_url']
@@ -1182,7 +1210,7 @@ function pubcrawl_queue_deliver(&$b) {
 	if($outq['outq_driver'] === 'pubcrawl') {
 		$b['handled'] = true;
 
-		$channel = channelx_by_n($outq['outq_channel']);
+		$chan = channelx_by_n($outq['outq_channel']);
 
 		$retries = 0;
 

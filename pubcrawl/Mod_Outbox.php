@@ -1,7 +1,7 @@
 <?php
 namespace Zotlabs\Module;
 
-use zotlabs\Web\HTTPSig;
+use Zotlabs\Web\HTTPSig;
 
 class Outbox extends \Zotlabs\Web\Controller {
 

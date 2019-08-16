@@ -195,7 +195,7 @@ function gallery_prepare_body(&$arr) {
 				justifiedGalleryActive = true;
 				$('#gallery-wrapper-$id').justifiedGallery({
 					captions: false,
-					rowHeight: '$row_height',
+					rowHeight: $row_height,
 					lastRow: '$last_row',
 					justifyThreshold: 0.5,
 					border: 0,
