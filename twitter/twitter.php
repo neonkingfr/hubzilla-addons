@@ -242,7 +242,7 @@ function twitter_shortenmsg($b) {
 	while (strpos($msg, "  ") !== false)
 		$msg = str_replace("  ", " ", $msg);
 	
-	$msg = trim($msg);
+	$msg = trim(urldecode($msg));
 	
 	// Add URL if exist and no image found
 	if (empty($image) && $link != '')
