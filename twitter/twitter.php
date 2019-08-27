@@ -232,7 +232,7 @@ function twitter_shortenmsg($b) {
 	$msg = html_entity_decode($msg, ENT_QUOTES, 'UTF-8');
 	
 	// Remove URLs
-	$msg = preg_replace("/https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+/", "", $msg);
+	$msg = preg_replace("/https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,\@]+/", "", $msg);
 
 	// Removing multiple newlines
 	while (strpos($msg, "\n\n\n") !== false)
