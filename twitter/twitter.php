@@ -215,7 +215,7 @@ function twitter_shortenmsg($b) {
 	
 	// Choose first URL 
 	$link = '';
-	if (preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]/is', $body, $matches))
+	if (preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,\@]+)\]/is', $body, $matches))
 		$link = html_entity_decode($matches[1]);
 
 	// Add some newlines so that the message could be cut better
@@ -436,6 +436,7 @@ function twitter_post_hook(&$a,&$b) {
 			$cb = \Codebird\Codebird::getInstance();
 			$cb->setConsumerKey($ckey, $csecret);
 			$cb->setToken($otoken, $osecret);
+			$cb->setTimeout(20000);
 			
 			$post = [ 'status' => $msg ];
 
