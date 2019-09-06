@@ -215,8 +215,8 @@ function twitter_shortenmsg($b) {
 	
 	// Choose first URL 
 	$link = '';
-	if (preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,\@]+)\]/is', $body, $matches))
-		$link = html_entity_decode($matches[1]);
+	if (preg_match('/\[(url=|o?embed\])(https?\:\/\/[^\]\[]+)/is', $body, $matches))
+		$link = html_entity_decode($matches[2]);
 
 	// Add some newlines so that the message could be cut better
 	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
