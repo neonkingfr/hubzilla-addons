@@ -6,7 +6,7 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Web\Controller;
 use Zotlabs\Storage;
 
-class Flashcards extends \Zotlabs\Web\Controller {
+class Flashcards extends Controller {
     
     private $boxesDir;
     private $is_owner;
@@ -16,7 +16,6 @@ class Flashcards extends \Zotlabs\Web\Controller {
 
     function init() {
         // Determine which channel's flashcards to display to the observer
-        logger('init()');
         $nick = null;
         if (argc() > 1) {
             $nick = argv(1); // if the channel name is in the URL, use that
@@ -35,8 +34,8 @@ class Flashcards extends \Zotlabs\Web\Controller {
             notice(t('Profile Unavailable.') . EOL);
             goaway(z_root());
         }
-
-        profile_load($nick);
+        
+        $this->owner = channelx_by_nick($nick);
         
 //        $this->flashcards_merge_test();
     }
@@ -45,11 +44,6 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
         head_add_css('/addon/flashcards/view/css/flashcards.css');
 
-        if (observer_prohibited(true)) {
-            logger('observer prohibited');
-            return login();
-        }
-
         $desc = 'This addon app provides a learning software for your channel.';
 
         $text = '<div class="section-content-info-wrapper">' . $desc . '</div>';
@@ -57,8 +51,9 @@ class Flashcards extends \Zotlabs\Web\Controller {
         $status = $this->permChecks();
         
         if(! $status['status']) {
+            logger('observer prohibited');
             notice($status['errormsg'] . EOL);
-            return $text;
+            goaway(z_root());
         }
 
         $o = replace_macros(get_markup_template('flashcards.tpl','addon/flashcards'),array(
@@ -128,14 +123,14 @@ class Flashcards extends \Zotlabs\Web\Controller {
     
     private function permChecks() {
 
-        if (observer_prohibited(true)) {
-            return array('status' => false, 'errormsg' => 'observer prohibited');
-        }
-        
-        $owner_uid = \App::$profile_uid;
+        $owner_uid = $this->owner['channel_id'];
 
         if (!$owner_uid) {
             return array('status' => false, 'errormsg' => 'No owner profil');
+        }
+
+        if (observer_prohibited(true)) {
+            return array('status' => false, 'errormsg' => 'observer prohibited');
         }
 
         if(! Apps::addon_app_installed($owner_uid,'flashcards')) { 
@@ -149,8 +144,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
         if (perm_is_allowed($owner_uid, get_observer_hash(), 'write_storage')) {
             $this->canWrite = true;
         }
-        
-        $this->owner = channelx_by_n($owner_uid);        
+               
         $this->observer = \App::get_observer();
         
         logger('observer = ' . $this->observer['xchan_addr'] . ', owner = ' . $this->owner['xchan_addr']);
