@@ -1081,11 +1081,13 @@ function as_actor_store($url,$person_obj) {
 			$icon = $person_obj['icon'];
 	}
 
-	if(is_array($person_obj['url']) && array_key_exists('href', $person_obj['url']))
-		$profile = $person_obj['url']['href'];
-	else
-		$profile = $url;
-
+        if(array_key_exists('url', $person_obj))
+            if(is_array($person_obj['url']) && array_key_exists('href', $person_obj['url']))
+                $profile = $person_obj['url']['href'];
+            else
+                $profile = $person_obj['url'];
+        else
+            $profile = $url;
 
 	$inbox = $person_obj['inbox'];
 
