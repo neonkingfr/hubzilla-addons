@@ -86,10 +86,9 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 			if($parent) {
 				// this is a comment - deliver to everybody who owns the parent 
-				$channels = q("SELECT * from channel where channel_id in ( SELECT uid from item where ( mid = '%s' OR mid = '%s' ) ) and channel_address != '%s'",
+				$channels = q("SELECT * FROM channel WHERE channel_id IN ( SELECT uid FROM item WHERE mid = '%s' OR mid = '%s' )",
 					dbesc($parent),
-					dbesc(basename($parent)),
-					dbesc(str_replace(z_root() . '/channel/', '', $observer_hash))
+					dbesc(basename($parent))
 				);
 				// in case we receive a comment to a parent we do not have yet
 				// deliver to anybody following $AS->actor and let it fetch the parent
