@@ -437,6 +437,21 @@ function pubcrawl_notifier_process(&$arr) {
 		$arr['recipients'][] = '\'' . $arr['parent_item']['author']['xchan_hash'] . '\'';
 	}
 
+	// deliver to local subscribers directly
+	$r = q("SELECT channel_guid, channel_guid_sig, channel_hash FROM channel WHERE channel_id IN ( SELECT abook_channel FROM abook WHERE abook_xchan = '%s' AND abook_channel != %d )",
+		dbesc($arr['target_item']['owner_xchan']),
+		intval($arr['channel']['channel_id'])
+	);
+	if($r) {
+		foreach($r as $rr) {
+			$arr['env_recips'][] = [
+				'guid'     => $rr['channel_guid'],
+				'guid_sig' => $rr['channel_guid_sig'],
+				'hash'     => $rr['channel_hash']
+			];
+			$arr['recipients'][] = '\'' . $rr['channel_hash'] . '\'';
+		}
+	}
 }
 
 function pubcrawl_notifier_hub(&$arr) {
