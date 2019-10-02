@@ -1,0 +1,17 @@
+.wfheading {
+	font-size:2.5em;
+}
+
+.wfcontent {
+	font-size:1.2em;
+}
+
+.wfmeta-container {
+	flex-wrap:wrap;
+	display:flex;
+}
+
+.wfmeta-item {
+	flex:1 0 auto;
+	align:self-auto;
+}
