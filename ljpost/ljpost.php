@@ -41,8 +41,7 @@ function ljpost_jot_nets(&$a,&$b) {
 
 	$lj_defpost = get_pconfig(local_channel(),'ljpost','post_by_default');
         $selected = ((intval($lj_defpost) == 1) ? ' checked="checked" ' : '');
-        $b .= '<div class="profile-jot-net"><input type="checkbox" name="ljpost_enable" ' . $selected . ' value="1" /> '
-            . t('Post to Livejournal') . '</div>';
+        $b .= '<div class="profile-jot-net"><input type="checkbox" name="ljpost_enable" ' . $selected . ' value="1" /> <i class="fa fa-pencil-square-o fa-lg" aria-hidden="true"></i> ' . t('Post to Livejournal') . '</div>';
 }
 
 function ljpost_post_local(&$a,&$b) {
