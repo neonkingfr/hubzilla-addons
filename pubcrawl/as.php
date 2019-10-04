@@ -55,6 +55,17 @@ function asfetch_event($x) {
 		$ev = bbtoevent($x['content']);
 		if($ev) {
 
+			if($t)
+				$tz = get_iconfig($t[0]['id'],'event','timezone','UTC');
+			if(! $tz)
+				$tz = 'UTC';
+					
+			$ev['dtstart'] = datetime_convert($tz,'UTC',$ev['dtstart'], ATOM_TIME);
+			if (! $ev['nofinish']) {
+				$ev['dtend'] = datetime_convert($tz,'UTC',$ev['dtend'], ATOM_TIME);
+			}
+				
+
 			$actor = null;
 			if(array_key_exists('author',$x) && array_key_exists('link',$x['author'])) {
 				$actor = $x['author']['link'][0]['href'];
@@ -1877,8 +1888,8 @@ function as_get_content($act) {
 		if($event['summary'] && $event['dtstart']) {
 			$content['event'] = $event;
 		}
-		if(! $content['content']) {
-			$content['content'] = format_event_bbcode($content['event']);
+		if(strpos($content['content'],"[event-") === false) {
+			$content['content'] .= "\n" . format_event_bbcode($content['event']);
 		}
 	}
 
