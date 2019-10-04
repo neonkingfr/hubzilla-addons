@@ -106,7 +106,7 @@ function twitter_jot_nets(&$a,&$b) {
 
 	$tw_defpost = get_pconfig(local_channel(),'twitter','post_by_default');
 	$selected = ((intval($tw_defpost) == 1) ? ' checked="checked" ' : '');
-	$b .= '<div class="profile-jot-net"><input type="checkbox" name="twitter_enable"' . $selected . ' value="1" /> <img src="addon/twitter/twitter.png" /> ' . t('Post to Twitter') . '</div>';
+	$b .= '<div class="profile-jot-net"><input type="checkbox" name="twitter_enable"' . $selected . ' value="1" /> <i class="fa fa-twitter fa-lg" aria-hidden="true"></i> ' . t('Post to Twitter') . '</div>';
 }
 
 
@@ -215,8 +215,8 @@ function twitter_shortenmsg($b) {
 	
 	// Choose first URL 
 	$link = '';
-	if (preg_match('/\[url=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]/is', $body, $matches))
-		$link = html_entity_decode($matches[1]);
+	if (preg_match('/\[(url=|o?embed\])(https?\:\/\/[^\]\[]+)/is', $body, $matches))
+		$link = html_entity_decode($matches[2]);
 
 	// Add some newlines so that the message could be cut better
 	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
@@ -232,7 +232,7 @@ function twitter_shortenmsg($b) {
 	$msg = html_entity_decode($msg, ENT_QUOTES, 'UTF-8');
 	
 	// Remove URLs
-	$msg = preg_replace("/https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+/", "", $msg);
+	$msg = preg_replace("/https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,\@]+/", "", $msg);
 
 	// Removing multiple newlines
 	while (strpos($msg, "\n\n\n") !== false)
@@ -436,6 +436,7 @@ function twitter_post_hook(&$a,&$b) {
 			$cb = \Codebird\Codebird::getInstance();
 			$cb->setConsumerKey($ckey, $csecret);
 			$cb->setToken($otoken, $osecret);
+			$cb->setTimeout(20000);
 			
 			$post = [ 'status' => $msg ];
 
