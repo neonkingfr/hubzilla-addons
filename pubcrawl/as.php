@@ -56,7 +56,7 @@ function asfetch_event($x) {
 		if($ev) {
 
 			if(! $ev['timezone'])
-				$tz = 'UTC';
+				$ev['timezone'] = 'UTC';
 					
 			$actor = null;
 			if(array_key_exists('author',$x) && array_key_exists('link',$x['author'])) {
@@ -67,14 +67,14 @@ function asfetch_event($x) {
 				'id'        => z_root() . '/event/' . $ev['event_hash'],
 				'summary'   => bbcode($ev['summary'], [ 'cache' => true ]),
 				// RFC3339 Section 4.3
-				'startTime' => (($ev['adjust']) ? datetime_convert($tz,'UTC',$ev['dtstart'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtstart'],'Y-m-d\\TH:i:s-00:00')),
+				'startTime' => (($ev['adjust']) ? datetime_convert($ev['timezone'],'UTC',$ev['dtstart'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtstart'],'Y-m-d\\TH:i:s-00:00')),
 				'content'   => bbcode($ev['description'], [ 'cache' => true ]),
 				'location'  => [ 'type' => 'Place', 'content' => bbcode($ev['location'], [ 'cache' => true ]) ],
 				'source'    => [ 'content' => format_event_bbcode($ev), 'mediaType' => 'text/bbcode' ],
 				'actor'     => $actor,
 			];
 			if(! $ev['nofinish']) {
-				$y['endTime'] = (($ev['adjust']) ? datetime_convert($tz,'UTC',$ev['dtend'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtend'],'Y-m-d\\TH:i:s-00:00'));
+				$y['endTime'] = (($ev['adjust']) ? datetime_convert($ev['timezone'],'UTC',$ev['dtend'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtend'],'Y-m-d\\TH:i:s-00:00'));
 			}
 				
 			// copy attachments from the passed object - these are already formatted for ActivityStreams
