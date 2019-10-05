@@ -1,7 +1,6 @@
-version: 1
+version: 1.1
 url: $baseurl/ljpost
 requires: local_channel
 name: Livejournal Crosspost Connector
 photo: icon:pencil-square-o
 categories: Networking
-
