@@ -18,9 +18,10 @@ class Ljpost extends Controller {
 
 		check_form_security_token_redirectOnErr('ljpost', 'ljpost');
 
-		set_pconfig(local_channel(),'ljpost','post_by_default',intval($_POST['lj_bydefault']));
 		set_pconfig(local_channel(),'ljpost','lj_username',trim($_POST['lj_username']));
 		set_pconfig(local_channel(),'ljpost','lj_password',z_obscure(trim($_POST['lj_password'])));
+		set_pconfig(local_channel(),'ljpost','post_by_default',intval($_POST['lj_by_default']));
+		set_pconfig(local_channel(),'ljpost','post_wall2wall',intval($_POST['lj_wall2wall']));
 	}
 
 
@@ -39,11 +40,10 @@ class Ljpost extends Controller {
 		}
 
 		/* Get the current state of our config variables */
-
-		$def_enabled = get_pconfig(local_channel(),'ljpost','post_by_default');
-
-		$def_checked = (($def_enabled) ? 1 : false);
-
+		$ljpost_on = get_pconfig(local_channel(),'ljpost','post_by_default');
+		if(! $ljpost_on)
+			set_pconfig(local_channel(),'ljpost','post_wall2wall',false);
+		
 		$lj_username = get_pconfig(local_channel(), 'ljpost', 'lj_username');
 		$lj_password = z_unobscure(get_pconfig(local_channel(), 'ljpost', 'lj_password'));
 
@@ -59,8 +59,13 @@ class Ljpost extends Controller {
 		));
 
 		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
-			'$field'	=> array('lj_bydefault', t('Post to Livejournal by default'), $def_checked, '', array(t('No'),t('Yes'))),
+			'$field'	=> array('lj_by_default', t('Post to Livejournal by default'), ($ljpost_on ? 1 : false), '', array(t('No'),t('Yes'))),
 		));
+		
+		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
+			'$field'	=> array('lj_wall2wall', t('Send wall-to-wall posts to Livejournal'), (get_pconfig(local_channel(),'ljpost','post_wall2wall') ? 1 : false), '', array(t('No'),t('Yes'))),
+		));
+
 
 		$tpl = get_markup_template("settings_addon.tpl");
 

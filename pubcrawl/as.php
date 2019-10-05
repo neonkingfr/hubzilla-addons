@@ -1878,7 +1878,7 @@ function as_get_content($act) {
 	}
 
 	if($event) {
-		$event['summary'] = (($content['summary']) ? $content['summary'] : $content['name']);
+		$event['summary'] = (($content['name']) ? $content['name'] : $content['summary']);
 		$event['description'] = $content['content'];
 		if($event['summary'] && $event['dtstart']) {
 			$content['event'] = $event;

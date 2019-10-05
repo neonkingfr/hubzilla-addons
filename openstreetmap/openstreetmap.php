@@ -54,7 +54,13 @@ function openstreetmap_location($a, &$item) {
 	 */
 
 	$tmsserver = get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org');
+	if(! $tmsserver)
+		$tmsserver = 'https://www.openstreetmap.org';
+
 	$nomserver = get_config('openstreetmap', 'nomserver', 'https://nominatim.openstreetmap.org/search.php');
+	if(! $nomserver)
+		$nomserver = 'https://nominatim.openstreetmap.org/search.php';
+
 	$zoom = get_config('openstreetmap', 'zoom', 16);
 	$marker = get_config('openstreetmap', 'marker', 1);
 
@@ -88,6 +94,9 @@ function openstreetmap_location($a, &$item) {
 
 function openstreetmap_generate_named_map(&$a,&$b) {
 	$nomserver = get_config('openstreetmap', 'nomserver', 'https://nominatim.openstreetmap.org/search.php');
+	if(! $nomserver)
+		$nomserver = 'https://nominatim.openstreetmap.org/search.php';
+
 	$args = '?q=' . urlencode($b['location']) . '&format=json';
 
 	$x = z_fetch_url($nomserver . $args);
@@ -104,6 +113,9 @@ function openstreetmap_generate_named_map(&$a,&$b) {
 
 function openstreetmap_generate_map(&$a,&$b) {
 	$tmsserver = get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org');
+	if(! $tmsserver)
+		$tmsserver = 'https://www.openstreetmap.org';
+
 	$zoom = get_config('openstreetmap', 'zoom', 16);
 	$marker = get_config('openstreetmap', 'marker', 1);
 
@@ -125,8 +137,15 @@ function openstreetmap_generate_map(&$a,&$b) {
 
 function openstreetmap_plugin_admin(&$a, &$o) {
 	$t = get_markup_template("admin.tpl", "addon/openstreetmap/");
+
 	$tmsserver = get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org');
+	if(! $tmsserver)
+		$tmsserver = 'https://www.openstreetmap.org';
+
 	$nomserver = get_config('openstreetmap', 'nomserver', 'https://nominatim.openstreetmap.org/search.php');
+	if(! $nomserver)
+		$nomserver = 'https://nominatim.openstreetmap.org/search.php';
+
 	$zoom = get_config('openstreetmap', 'zoom', 16);
 	$marker = get_config('openstreetmap', 'marker', 1);
 
