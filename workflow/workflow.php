@@ -28,6 +28,7 @@ function workflow_load() {
 	Hook::register('item_custom_display',$hookfile,'Workflow_Utils::item_custom_display',1,30000);
 	Hook::register('customitem_deliver',$hookfile,'Workflow_Utils::customitem_deliver',1,30000);
 	Hook::register('permissions_list',$hookfile,'Workflow_Utils::permissions_list',1,30000);
+	Hook::register('permission_limits_get',$hookfile,'Workflow_Utils::permission_limits_get',1,30000);
         Hook::register('dropdown_extras', 'addon/workflow/workflow.php', 'Workflow_Utils::dropdown_extras',1,30000);
         Hook::register('page_header', 'addon/workflow/workflow.php', 'Workflow_Utils::page_header',1,30000);
         Hook::register('page_end', 'addon/workflow/workflow.php', 'Workflow_Utils::page_end',1,30000);
@@ -42,15 +43,16 @@ function workflow_load() {
 	Hook::register('item_store_update_before',$hookfile,'Workflow_Utils::item_custom_store',1,30999);
 	Hook::register('content_security_policy',__FILE__,'Workflow_Utils::content_security_policy',1,1000);
 	Hook::register('decode_note',__FILE__,'Workflow_Utils::decode_note',1,1000);
+	Hook::register('workflow_display_list_headers',__FILE__,'Workflow_Utils::basicfilter_display_header',1,1000);
+	Hook::register('workflow_toolbar',__FILE__,'Workflow_Utils::toolbar_header',1,1000);
 	Route::register('addon/workflow/Mod_Workflow.php','workflow');
 	Route::register('addon/workflow/Settings/Mod_WorkflowSettings.php','settings/workflow');
 }
 
 function workflow_unload() {
-	Hook::unregister_by_file('addon/workflow/workflow.php');
-	Route::unregister_by_file('addon/workflow/Mod_Workflow.php');
-	Route::unregister_by_file('addon/workflow/Settings/Mod_WorkflowSettings.php');
-	Route::unregister_by_file('addon/workflow/Mod_WorkflowSettings.php');
+	Hook::unregister_by_file(__FILE__);
+	Route::unregister_by_file(dirname(__FILE__).'/Mod_Workflow.php');
+	Route::unregister_by_file(dirname(__FILE__).'/Mod_WorkflowSettings.php');
 }
 
 class Workflow_Utils {
@@ -185,6 +187,16 @@ class Workflow_Utils {
 		return;
 	}
 
+	public static function permission_limits_get(&$arr) {
+		if ($arr['permission']=='workflow_user') {
+			$newarr = $arr;
+			$newarr['value']=128;
+			$arr=$newarr;
+		}
+		return;
+	}
+
+
 	public static function permissions_list(&$arr) {
 	    $uid = local_channel();
 	    if (!Apps::addon_app_installed($uid,'workflow')) { return; }
@@ -268,7 +280,6 @@ class Workflow_Utils {
 				$wfchan['name']='Local';
 				$wfchan['wfaddr'] = z_root().'/workflow/'.substr($local['xchan_addr'],0,strpos($local['xchan_addr'],'@'));
 				$remoteworkflows[$local['xchan_hash']] = $wfchan;
-logger("RWF: ".print_r($remoteworkflows,true));
 			}
 		}
 		return $remoteworkflows;
@@ -594,7 +605,6 @@ logger("RWF: ".print_r($remoteworkflows,true));
 					//$iconfigwhere .= ' and '.$catkey.$val;
 
 					$iconfigjoins .= ' left outer join iconfig as '.$astable.' on (item.id = '.$astable.'.iid and '.$astable.".cat='workflow' and ".$astable.".k='".$key."')";
-// select item.id,iconfig_e506138a.v as item_id from item left outer join iconfig as iconfig_e506138a on (item.id = iconfig_e506138a.iid and iconfig_e506138a.cat='workflow' and iconfig_e506138a.k='priority') where item.uid = 5 and item.mid=item.parent_mid and item.obj_type = 'http://purl.org/dm42/as/workflow#workflow' AND item_deleted = 0 order by COALESCE(iconfig_e506138a.v,1) desc;
 					if (isset($params['orderby'])) {
 						$orderinfo='';
 						$default=$params['orderby']['default'];
@@ -734,18 +744,7 @@ logger("RWF: ".print_r($remoteworkflows,true));
 
 		$ownerchan = channelx_by_n(App::$profile_uid);
 		$searchvars = [
-			'uid'=>App::$profile_uid,
-/*
-			'iconfig'=>[
-				'priority'=> [
-					'orderby' => [
-						'type'=>'int',
-						'default'=>'1',
-						'order'=>'desc'
-					]
-				]
-			]
-*/
+			'uid'=>App::$profile_uid
 		];
 
 		$vars=[];
@@ -814,6 +813,62 @@ logger("RWF: ".print_r($remoteworkflows,true));
 		});
 		$vars['items']=$itemlist;
 
+		$headerrows=[ 
+			'items' => $items,
+			'rows' => []
+		];
+		$vars['toolbar'] = self::get_toolbar($items);
+		call_hooks('workflow_display_headers',$headerrows);
+		call_hooks('workflow_display_list_headers',$headerrows);
+		$rows = $headerrows['rows'];
+
+		$vars['headerextras']='';
+		foreach($rows as $row) {
+			if (is_array($row)) {
+				foreach($row as $head) {
+					$vars['headerextras'].="<div class='row'>".$head."</div>";
+				}
+			} else {
+				$vars['headerextras'].="<div class='row'>".$row."</div>";
+			}
+		}
+
+		$tpl = get_markup_template('workflow_list.tpl','addon/workflow');
+        	$o = replace_macros($tpl,$vars);
+		return $o;
+	}
+
+	public static function get_toolbar($items) {
+		$hookinfo = [
+			'items' => $items,
+			'tools' => []
+			];
+
+		call_hooks('workflow_toolbar',$hookinfo);
+
+		usort($hookinfo['tools'],function($a,$b) {
+			$aprio = isset($a['priority']) ? intval($a['priority']) : 1000;
+			$bprio = isset($b['priority']) ? intval($b['priority']) : 1000;
+
+			if (intval(@$aprio) == intval(@$bprio)) {
+				return 0;
+			}
+
+			$ret = (intval(@$aprio) > intval(@$bprio)) ? 1 : -1;
+			return $ret;
+		});
+
+		$tools = $hookinfo['tools'];
+		$toolhtml = '';
+		foreach($tools as $tool) {
+				$toolhtml .= $tool['tool'];
+		}
+
+		return "<div class='col-12' style='background-color:#000;font-color:#fff;'>".$toolhtml."</div>";
+	}
+
+	public static function basicfilter_display_header (&$rows) {
+
 		$basicfilters = "<div class='panel'>";
 		$basicfilters .= "<div role='tab' id='basicfilters'>";
 		$basicfilters .= "<h4><a data-toggle='collapse' data-target='#basicfilters-collapse' href='#' class='collapsed' aria-expanded='false'>Search Parameters</a></h4>";
@@ -856,13 +911,32 @@ logger("RWF: ".print_r($remoteworkflows,true));
 		$basicfilters .= "</form>";
 		$basicfilters .= "</div>";
 		$basicfilters .= "</div>";
-		$vars['headerextras']='<div>'.$basicfilters.'</div>';
-		$tpl = get_markup_template('workflow_list.tpl','addon/workflow');
-        	$o = replace_macros($tpl,$vars);
-		return $o;
+
+		$newrows = $rows['rows'];
+		$newrows[500][] = $basicfilters;
+		$rows = [
+			'items' => $rows['items'],
+			'rows' => $newrows
+			];
 	}
 
-	public function maybeunjson ($value) {
+	static public function toolbar_header(&$hookinfo) {
+		$newhookinfo = $hookinfo;
+		$tools = $hookinfo['tools'];
+
+		$tool = '';
+		$tool .= "<div class='workflow-toolbar-item'><a href='#' onclick='workflowShowNewItemForm(\"\",\"\"); return false;' title='Add Issue'><i class='generic-icons-nav fa fa-fw fa-plus'></i>Add Issue</a></div>";
+
+		$newhookinfo['tools'][] = [
+			'tool' => $tool,
+			'priority' => 50
+		];
+
+		$hookinfo = $newhookinfo;
+		return;
+	}
+
+	static public function maybeunjson ($value) {
 
     		if (is_array($value)) {
         	return $value;
@@ -1296,15 +1370,15 @@ logger("RWF: ".print_r($remoteworkflows,true));
 		$act = $hookinfo['act'];
 		$s = $hookinfo['s'];
 
-		if ($act->obj['obj_type'] != WORKFLOW_ACTIVITY_OBJ_TYPE) {
+		if ($act->obj['type'] != WORKFLOW_ACTIVITY_OBJ_TYPE) {
 			return;
 		}
 
 		if (isset($act->obj['https://purl.org/dm42/as/workflow#workflowmeta']) && is_array($act->obj['https://purl.org/dm42/as/workflow#workflowmeta'])) {
 
-		foreach($act->obj['https://purl.org/dm42/as/workflow#workflowmeta']['@value'] as $k=>$v) {
-			IConfig::Set($s,'workflow',$k,$v,1);
-		}
+			foreach($act->obj['https://purl.org/dm42/as/workflow#workflowmeta']['@value'] as $k=>$v) {
+				IConfig::Set($s,'workflow',$k,$v,1);
+			}
 
 		} else {
 			return;
@@ -1368,12 +1442,10 @@ logger("RWF: ".print_r($remoteworkflows,true));
 		}
 		$items[0]['allow_cid'] = '<'.implode('><',$allow).'>';
 
-		$itemstore=item_store_update($items[0],false,$dosync);
+		$itemstore=item_store_update($items[0]);
 
-		if ($dosync) {
-			sync_an_item($uid,$itemstore['item_id']);
-			Master::Summon([ 'Notifier','activity',$itemstore['item_id'] ]);
-		}
+		sync_an_item($itemowneruid,$itemstore['item_id']);
+		Master::Summon([ 'Notifier','activity',$itemstore['item_id'] ]);
 
 		return true;
 	}
@@ -1714,8 +1786,7 @@ logger("RWF: ".print_r($remoteworkflows,true));
 			$success = true;
 
 			if ($success) {
-logger("SYNC");
-				sync_an_item($channel['channel_id'],$itemstore['item_id']);
+				sync_an_item($uid,$itemstore['item_id']);
 				Master::Summon([ 'Notifier','activity',$itemstore['item_id'] ]);
 				json_return_and_die(['html'=>'<script>window.workflowiframeCloseModal();</script>']);
 			} else {
@@ -1852,6 +1923,20 @@ logger("SYNC");
 			if (IConfig::Set($items[0], 'workflow', 'task_history', $historyinfo, false) === false) {
 				logger("Unable to save workflow history: ".$historyinfo);
 			}
+			$success = self::update_item($item);
+
+			if ($success) {
+				json_return_and_die(['html'=>'<script>window.workflowiframeCloseModal();</script>']);
+			} else {
+				json_return_and_die(['html'=>'<h2>Error</h2>There was an error processing your request.']);
+			}
+		}
+
+		json_return_and_die(['html'=> self::basic_form($action,'getmodal_getiframecontent',$content,false,$data)]);
+	}
+
+
+	public static function update_item($item) {
 
 			$items = [$item];
 
@@ -1864,7 +1949,7 @@ logger("SYNC");
 			$obj = self::encode_workflow_object($items[0]);
 			//$obj = Activity::encode_item($items[0]);
 			//$obj['https://purl.org/dm42/as/workflow#workflowmeta'] = self::encode_workflow_meta_jsonld($items[0]);
-			$items[0]['obj']=json_encode($items[0]);
+			$items[0]['obj']=$obj;
 
 
 			unset($items[0]['author']);
@@ -1881,18 +1966,17 @@ logger("SYNC");
 
 			$itemstore = item_store_update($items[0],false,true);
 
-			$success = true;
+			$success = $itemstore['success'];
 
 			if ($success) {
-				sync_an_item($channel['channel_id'],$itemstore['item_id']);
+				logger("Item update succeeded.");
+				sync_an_item(App::$profile_uid,$itemstore['item_id']);
 				Master::Summon([ 'Notifier','activity',$itemstore['item_id'] ]);
-				json_return_and_die(['html'=>'<script>window.workflowiframeCloseModal();</script>']);
 			} else {
-				json_return_and_die(['html'=>'<h2>Error</h2>There was an error processing your request.']);
+				logger("Item Update Failed.");
 			}
-		}
 
-		json_return_and_die(['html'=> self::basic_form($action,'getmodal_getiframecontent',$content,false,$data)]);
+			return $success;
 	}
 
 	public static function form_addlink($data) {
@@ -2254,7 +2338,6 @@ logger("SYNC");
 				self::update(App::$profile_uid,$requestdata['observer'],$data);
 				break;
 			case 'getmodal_getiframe':
-logger("REQUESTDATA: ".print_r($requestdata,true));
 				return self::getmodal_getiframe($requestdata);
 				break;
 			case 'getmodal_linkiframe':
