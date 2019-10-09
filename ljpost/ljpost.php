@@ -126,10 +126,11 @@ function ljpost_send(&$a,&$b) {
 		}
 		
 		$title = $b['title'];
+		// Replace URL bookmark
+		$post = str_replace("#^[", "&#128279 [", $post);
 		$post = bbcode($b['body']);
 		$post = xmlify($post);
-		// Replace URL bookmark
-		$post = str_replace("#^", "&#128278 ", $post);
+
 		$tags = ljpost_get_tags($b['tag']);
 		
 		$date = datetime_convert('UTC',$tz,$b['created'],'Y-m-d H:i:s');
