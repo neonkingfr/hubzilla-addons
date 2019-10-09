@@ -2,9 +2,9 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.8
- * Author: Max Kostikov
- * Maintainer: max@kostikov.co
+ * Version: 0.2.9
+ * Author: Max Kostikov <https://tiksi.net/channel/kostikov>
+ * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  * MinVersion: 3.9.5
  */
 
@@ -199,7 +199,7 @@ function photocache_url(&$cache = array()) {
 		intval(PHOTO_CACHE)
 	);
 	if(! $r)
-		return logger('unknown resource id ' . $cache['resid'], LOGGER_DEBUG);
+		return logger('unknown resource id ' . $cache['resid'], LOGGER_DEBUG, LOG_INFO);
 	
 	$r = $r[0];
 	
@@ -212,7 +212,7 @@ function photocache_url(&$cache = array()) {
 
 	logger('info: processing ' . $cache['resid'] . ' (' . $r['display_path'] .') for ' . $r['uid']  . ' (min. ' . $minres . ' px)', LOGGER_DEBUG);
 	
-	if($r['height'] == 0) {
+	if($r['size'] == 0) {
 		// If new resource id
 		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND height > %d ORDER BY filesize DESC LIMIT 1",
 			dbesc($r['xchan']),
@@ -299,6 +299,10 @@ function photocache_url(&$cache = array()) {
 			if($ph->is_valid()) {
 				$orig_width = $ph->getWidth();
 				$orig_height = $ph->getHeight();
+				
+				$oldsize = $r['filesize'];
+				$oldwidth = $r['width'];
+				$oldheight = $r['height']; 
 			
 				if($orig_width > 1024 || $orig_height > 1024) {
 					$ph->scaleImage(1024);
@@ -308,15 +312,13 @@ function photocache_url(&$cache = array()) {
 				$r['width'] = $ph->getWidth();
 				$r['height'] = $ph->getHeight();
 
-				$oldsize = $r['filesize'];
-					
 				if($orig_width >= $minres || $orig_height >= $minres) {
 					$path = 'store/[data]/[cache]/' .  substr($r['xchan'],0,1) . '/' . substr($r['xchan'],1,1);
 					$os_path = $path . '/' . $r['xchan'];
 					$r['os_syspath'] = $os_path;
 					if(! is_dir($path))
-					if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
-						return logger('could not create path ' . $path, LOGGER_DEBUG);
+					    if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
+						    return logger('could not create path ' . $path, LOGGER_DEBUG);
 					if(is_file($os_path))
 						@unlink($os_path);
 					if(! $ph->saveImage($os_path))
@@ -331,7 +333,7 @@ function photocache_url(&$cache = array()) {
 					logger('image saved: ' . $os_path . '; ' . $r['mimetype'] . ', ' . $r['width'] . 'w x ' . $r['height'] . 'h, ' . $r['filesize'] . ' bytes', LOGGER_DEBUG);
 				}
 				
-				if($oldsize != $r['filesize']) {
+				if($oldsize != $r['filesize'] || $oldwidth != $r['width'] || $oldheight != $r['height']) {
 					// Update image data for cached links on change
 					$x = q("UPDATE photo SET filesize = %d, height = %d, width = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > %d",
 						intval($r['filesize']),
