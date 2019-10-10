@@ -127,8 +127,8 @@ function ljpost_send(&$a,&$b) {
 		
 		$title = $b['title'];
 		// Replace URL bookmark
-		$post = str_replace("#^[", "&#128279 [", $post);
-		$post = bbcode($b['body']);
+		$post = str_replace("#^[", "&#128279 [", $b['body']);
+		$post = bbcode($post);
 		$post = xmlify($post);
 
 		$tags = ljpost_get_tags($b['tag']);
