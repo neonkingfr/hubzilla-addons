@@ -408,7 +408,7 @@ class Workflow_Utils {
 				} else {
 				        $relurl = $rellink.'&zid='.get_my_address();
 				}
-				$items[$itemidx]['related'][$idx]['jsondata'] = json_encode(['iframeurl'=>$relurl,'action'=>'getmodal_getiframe']);
+				$items[$itemidx]['related'][$idx]['jsondata'] = json_encode(['iframeurl'=>$relurl,'action'=>'getmodal_getiframe','raw'=>'raw']);
 				$items[$itemidx]['related'][$idx]['jsoneditdata'] = json_encode(['action'=>'form_addlink','uuid'=>$uuid,'iframeurl'=>$posturl,'relatedlink'=>$related['relatedlink']]);
 				$items[$itemidx]['related'][$idx]['action'] = 'getmodal_getiframe';
 				$items[$itemidx]['related'][$idx]['relurl'] = $relurl;
@@ -449,6 +449,16 @@ class Workflow_Utils {
 
 		$itemmeta=$hookinfo['itemmeta'];
 
+		$maindata = '';
+
+		$contentvars = [
+			'iframeurl' => $items[0]['related'][$idx]['relurl'].'?zid='.get_my_address(),
+			'$title' => t('Workflow'),
+		];
+
+		$maindata = replace_macros(get_markup_template('workflowiframe.tpl','addon/workflow'), $contentvars);
+
+
 		$tpl = get_markup_template('workflow_display.tpl','addon/workflow');
 		$vars = [
 			'$posturl' => z_root().'/workflow/'.$channel['channel_address'],
@@ -456,6 +466,7 @@ class Workflow_Utils {
 			'$body' =>$body,
 			'$itemmeta'=>$itemmeta,
 			'$items'=>$items,
+			'$maindata' => $maindata,
 			'$myzid'=>get_my_address(),
 			'$addlinkmiscdata'=>json_encode(['action'=>'form_addlink','uuid'=>$uuid,'iframeurl'=>$posturl]),
 			'$addlinkaction'=>'getmodal_getiframe',
@@ -1003,8 +1014,12 @@ class Workflow_Utils {
 				'$title' => t('Workflow'),
 			];
 
-			$contentvars = ['content' => replace_macros(get_markup_template('workflowiframe.tpl','addon/workflow'), $contentvars)];
-			$retval = ['html' => replace_macros(get_markup_template('workflowmodal_skel.tpl','addon/workflow'), $contentvars)];
+			if (isset($data['raw']) && $data['raw']=='raw') {
+				$retval = ['html' => replace_macros(get_markup_template('workflowiframe.tpl','addon/workflow'), $contentvars)];
+			} else {
+				$contentvars = ['content' => replace_macros(get_markup_template('workflowiframe.tpl','addon/workflow'), $contentvars)];
+				$retval = ['html' => replace_macros(get_markup_template('workflowmodal_skel.tpl','addon/workflow'), $contentvars)];
+			}
 
 			return $retval;
 		}
