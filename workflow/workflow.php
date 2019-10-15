@@ -450,13 +450,16 @@ class Workflow_Utils {
 		$itemmeta=$hookinfo['itemmeta'];
 
 		$maindata = '';
+		if (isset($items[0]['related']) && is_array($items[0]['related'])) {
+			$related = $items[0]['related'];
+			$relitem = array_shift($related);
+			$contentvars = [
+				'iframeurl' => $relitem['relurl'].'?zid='.get_my_address(),
+				'$title' => t('Workflow'),
+			];
 
-		$contentvars = [
-			'iframeurl' => $items[0]['related'][$idx]['relurl'].'?zid='.get_my_address(),
-			'$title' => t('Workflow'),
-		];
-
-		$maindata = replace_macros(get_markup_template('workflowiframe.tpl','addon/workflow'), $contentvars);
+			$maindata = replace_macros(get_markup_template('workflowiframe.tpl','addon/workflow'), $contentvars);
+		}
 
 		Hook::insert('workflow_toolbar','Workflow_Utils::toolbar_backtoworkflow',1,1000);
 		$toolbar = self::get_toolbar($items);
