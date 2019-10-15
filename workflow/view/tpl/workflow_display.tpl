@@ -1,4 +1,9 @@
 <div class="content-fluid">
+<div class="workflow toolbar">
+        <div class="workflow toolbar row">
+                {{$toolbar}}
+        </div>
+</div>
 <div class="row">
 	<div class="col-xs-12 col-sm-6 col-md-9">
 		<div class="row">

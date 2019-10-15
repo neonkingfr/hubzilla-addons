@@ -458,11 +458,14 @@ class Workflow_Utils {
 
 		$maindata = replace_macros(get_markup_template('workflowiframe.tpl','addon/workflow'), $contentvars);
 
+		Hook::insert('workflow_toolbar','Workflow_Utils::toolbar_backtoworkflow',1,1000);
+		$toolbar = self::get_toolbar($items);
 
 		$tpl = get_markup_template('workflow_display.tpl','addon/workflow');
 		$vars = [
 			'$posturl' => z_root().'/workflow/'.$channel['channel_address'],
 			//'$posturl' => $posturl,
+			'$toolbar' => $toolbar,
 			'$body' =>$body,
 			'$itemmeta'=>$itemmeta,
 			'$items'=>$items,
@@ -802,6 +805,11 @@ class Workflow_Utils {
 
 		call_hooks('dm42workflow_display_list_search',$searchvars);
 
+		$observer = channelx_by_hash(get_observer_hash());
+		if (isset($observer['channel_id']) && $observer['channel_id'] != App::$profile_uid) {
+			$owner = channelx_by_n(App::$profile_uid);
+			$searchvars['owner_xchan'] = $owner['channel_hash'];
+		}
 		$vars=[];
 		$items = self::get_items($searchvars,get_observer_hash());
 		$itemlist = [];
@@ -872,6 +880,8 @@ class Workflow_Utils {
 			'items' => $items,
 			'rows' => []
 		];
+
+		Hook::insert('workflow_toolbar','Workflow_Utils::toolbar_backtoworkflow',1,1000);
 		$vars['toolbar'] = self::get_toolbar($items);
 		call_hooks('workflow_display_headers',$headerrows);
 		call_hooks('workflow_display_list_headers',$headerrows);
@@ -973,6 +983,46 @@ class Workflow_Utils {
 			'items' => $rows['items'],
 			'rows' => $newrows
 			];
+	}
+
+	static public function toolbar_backtoworkflow(&$hookinfo) {
+		$newhookinfo = $hookinfo;
+		$tools = $hookinfo['tools'];
+		$channel = channelx_by_n(App::$profile_uid);
+
+		$tool = '';
+		if (local_channel() != App::$profile_uid) {
+			$url = z_root().'/workflow/'.$channel['channel_address'];
+
+			$tool .= "<div class='workflow-toolbar-item'><a href='".$url."' title='Local Task List'><i class='generic-icons-nav fa fa-fw fa-tasks'></i>Local Task List</a></div>";
+		}
+
+		if ( $observer = get_observer_hash() ) {
+			$channel = channelx_by_hash ($observer);
+			$hublocs = q("select * from hubloc where hubloc_hash = '%s' and hubloc_deleted = 0 and hubloc_network in ('zot','zot6') order by hubloc_url ",
+                		dbesc($observer)
+        		);
+
+			foreach ($hublocs as $hub) {
+				if ($hub['hubloc_primary']) 
+					break;
+			}
+
+			//$url = z_root().'/workflow/'.$channel['channel_address'];
+			$url = $hub['hubloc_url'].'/workflow/'.substr($hub['hubloc_addr'],0,strpos($hub['hubloc_addr'],'@'));
+
+			$tool .= "<div class='workflow-toolbar-item'><a href='".$url."' title='My Task List'><i class='generic-icons-nav fa fa-fw fa-tasks'></i>My Task List</a></div>";
+		}
+
+		if ($tool) {
+			$newhookinfo['tools'][] = [
+				'tool' => $tool,
+				'priority' => 1
+			];
+		}
+
+		$hookinfo = $newhookinfo;
+		return;
 	}
 
 	static public function toolbar_header(&$hookinfo) {
