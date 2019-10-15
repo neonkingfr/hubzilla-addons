@@ -15,3 +15,8 @@
 	flex:1 0 auto;
 	align:self-auto;
 }
+
+.workflow-toolbar-item {
+	display:inline-block;
+	padding-right:10px;
+}
