@@ -540,18 +540,20 @@ class Workflow_Utils {
 				$uuids = 'and item.uuid = \''.dbesc($searchvars['uuid']).'\'';
 			}
 		}
-		if (isset($searchvars['owner'])) {
-			if (is_array($searchvars['owner'])) {
+
+		if (isset($searchvars['owner_xchan'])) {
+			if (is_array($searchvars['owner_xchan'])) {
 				$owners = [];
-				foreach ($searchvars['owner'] as $owner) {
+				foreach ($searchvars['owner_xchan'] as $owner) {
 					$owners[] = $owner;
 				}
+				$owners = implode("','",$owners);
+			} else {
+				$owners = $searchvars['owner_xchan'];
 			}
 
-			if (count($owners)) {
-				$owners = implode('','',$owners);
-				$ownersearch = "item.owner in ('".$owners."')";
-			}
+			
+			$ownersearch = " and item.owner_xchan in ('".$owners."')";
 		}
 
 		$limit = '';
@@ -606,7 +608,7 @@ class Workflow_Utils {
 
 
 						if (isset($params['type']) && $params['type']=='int') {
-							$val = ' and CAST('.$astable.'.v as INT) '.$comparitor.' CAST("'.dbesc($value).'" as INT)';
+							$val = ' and CAST('.$astable.'.v as INTEGER) '.$comparitor.' CAST("'.dbesc($value).'" as INTEGER)';
 						} else {
 							$val = ' and '.$astable.'.v '.$comparitor.' "'.dbesc($value).'"';
 						}
@@ -615,7 +617,8 @@ class Workflow_Utils {
 
 					//$iconfigwhere .= ' and '.$catkey.$val;
 
-					$iconfigjoins .= ' left outer join iconfig as '.$astable.' on (item.id = '.$astable.'.iid and '.$astable.".cat='workflow' and ".$astable.".k='".$key."')";
+					//$iconfigjoins .= ' left outer join iconfig as '.$astable.' on (item.id = '.$astable.'.iid and '.$astable.".cat='workflow' and ".$astable.".k='".$key."'".$val.")";
+					$iconfigjoins .= ' inner join iconfig as '.$astable.' on (item.id = '.$astable.'.iid and '.$astable.".cat='workflow' and ".$astable.".k='".$key."'".$val.")";
 					if (isset($params['orderby'])) {
 						$orderinfo='';
 						$default=$params['orderby']['default'];
@@ -651,6 +654,23 @@ class Workflow_Utils {
 		}
 
 		$permissions = permissions_sql($uid,$observer,'item');
+
+		if (isset($searchvars['includepublic']) && $searchvars['includepublic']) {
+			$permissions = substr($permissions,5);
+			$publicitemlist = q("select iid from iconfig where uid=%d and cat='workflow' and k='ispublic' and v=%d",
+				$uid,
+				1);
+
+			if ($publicitemlist) {
+				$publicitems=[];
+				foreach ($publicitemlist as $pi) {
+					$publicitems[] = $pi['iid'];
+				}
+				$publicitems = implode(',',$publicitems);
+				$permissions = 'AND ( ('.$permissions.') OR (item.id in ('.$publicitems.')) )';
+			}
+		}
+
 		$query = "select item.id as item_id from item $iconfigjoins where item.uid = $uid and item.mid=item.parent_mid and $objtype $itemtype $uuids $permissions $ownersearch $iconfigwhere $deleted $orderby $limit $offset";
 
 		$itemids = q($query);
@@ -699,6 +719,26 @@ class Workflow_Utils {
 		$newhookinfo = $hookinfo;
 		$newhookinfo['items'] = $newitems;
 		$hookinfo=$newhookinfo;
+	}
+
+	public static function display_list_basicsearch(&$searchvars) {
+		$newsearch = $searchvars;
+
+		if (isset($_REQUEST["workflows"])) {
+			$newsearch['owner_xchan']=array_unique($_REQUEST["workflows"]);
+		}
+
+		$minpriority = isset($_REQUEST["minpriority"]) ? intval($_REQUEST["minpriority"]) : 1;
+		if ($minpriority > 1) {
+			$newsearch['iconfig']['priority'] = [
+				'comparison' => 'gteq',
+				'type' => 'int',
+				'value' => $minpriority
+			];
+		}
+
+
+		$searchvars=$newsearch;
 	}
 
 	public static function display_list_basicfilter(&$hookinfo) {
@@ -757,6 +797,10 @@ class Workflow_Utils {
 		$searchvars = [
 			'uid'=>App::$profile_uid
 		];
+
+		Hook::insert('dm42workflow_display_list_search','Workflow_Utils::display_list_basicsearch',1,30000);
+
+		call_hooks('dm42workflow_display_list_search',$searchvars);
 
 		$vars=[];
 		$items = self::get_items($searchvars,get_observer_hash());
