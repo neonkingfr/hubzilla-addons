@@ -33,6 +33,7 @@ function workflow_load() {
         Hook::register('page_header', 'addon/workflow/workflow.php', 'Workflow_Utils::page_header',1,30000);
         Hook::register('page_end', 'addon/workflow/workflow.php', 'Workflow_Utils::page_end',1,30000);
 	Hook::register('workflow_get_items_filter',__FILE__,'Workflow_Utils::get_items_filter_related',1,1000);
+	Hook::register('workflow_get_items_filter',__FILE__,'Workflow_Utils::get_items_filter_iconfig',1,2000);
 	Hook::register('activity_mapper',__FILE__,'Workflow_Utils::activity_mapper',1,1000);
 	Hook::register('activity_decode_mapper',__FILE__,'Workflow_Utils::activity_mapper',1,1000);
 	Hook::register('activity_obj_mapper',__FILE__,'Workflow_Utils::activity_obj_mapper',1,1000);
@@ -45,19 +46,26 @@ function workflow_load() {
 	Hook::register('decode_note',__FILE__,'Workflow_Utils::decode_note',1,1000);
 	Hook::register('workflow_display_list_headers',__FILE__,'Workflow_Utils::basicfilter_display_header',1,1000);
 	Hook::register('workflow_toolbar',__FILE__,'Workflow_Utils::toolbar_header',1,1000);
+	Hook::register('prepare_body_final',__FILE__,'Workflow_Utils::prepare_body_final',1,1000);
 	Route::register('addon/workflow/Mod_Workflow.php','workflow');
 	Route::register('addon/workflow/Settings/Mod_WorkflowSettings.php','settings/workflow');
 }
 
 function workflow_unload() {
+	$hookdir = 'addon/workflow';
+	$hookfile = 'addon/workflow/workflow.php';
 	Hook::unregister_by_file(__FILE__);
+	Hook::unregister_by_file($hookfile);
 	Route::unregister_by_file(dirname(__FILE__).'/Mod_Workflow.php');
 	Route::unregister_by_file(dirname(__FILE__).'/Mod_WorkflowSettings.php');
+	Route::unregister_by_file($hookdir.'/Mod_Workflow.php');
+	Route::unregister_by_file($hookdir.'/Mod_WorkflowSettings.php');
 }
 
 class Workflow_Utils {
 
 	private static $cspframesrcs=[];
+	private static $related_to_wfitems = [];
 
 	public static function item_stored(&$arr) {
 		return;
@@ -323,6 +331,20 @@ class Workflow_Utils {
 		}
 	}
 
+	private static function queryvars_stripzid($url) {
+				        //$relurl = $rellink.'&zid='.get_my_address();
+
+		if (! strpos($url,'?')) {
+			return $url;
+		}
+
+		$cleanquery = parse_url($url,PHP_URL_QUERY);
+		$cleanquery = strip_zids($cleanquery);
+		$cleanquery = strip_owt($cleanquery);
+		$cleanquery = strip_zats($cleanquery);
+		$returl = substr($url,0,(strpos($url,'?'))).'?'.$cleanquery;
+		return $returl;
+	}
 
 	public static function display() {
 
@@ -483,6 +505,64 @@ class Workflow_Utils {
 		return $o;
 	}
 
+	private static function wfitems_with_relatedlink($uid,$link) {
+		// self::$related_to_wfitems = [ [uid]=>[[link]=> { [ %wfitem% ] || null } ] ]
+
+		if (!local_channel()) {
+			return null;
+		}
+
+		$link = self::queryvars_stripzid($link);
+
+		// Use a small memory cache to speed things up.
+
+		if (array_key_exists($link,self::$related_to_wfitems[$uid])) {
+			return self::$related_to_wfitems[$uid][$link];
+		}
+
+		$iconfig_k = 'link:related:'.md5($link);
+logger("LINK: ".$link);
+		$searchvars = [
+			'uid'=>$uid,
+			'iconfig'=>[
+				$iconfig_k => [
+					'comparison' => 'notnull'
+				]
+			]
+		];
+
+		$wfitems = self::get_items($searchvars,get_observer_hash());
+
+		self::$related_to_wfitems[$uid][$link]=$wfitems;
+		return self::$related_to_wfitems[$uid][$link];
+	}
+
+	public static function prepare_body_final(&$prep_arr) {
+
+		$uid = local_channel();
+
+		if (!$uid || (!Apps::addon_app_installed($uid,'workflow'))) {
+			return;
+		}
+
+		$arr = $prep_arr;
+
+		$related = self::wfitems_with_relatedlink($uid,$arr['item']['plink']);
+
+		$templatevars = [
+			'relateditems' => $related
+		];
+		if ($related) {
+//logger("RELATED: ".print_r($related,true));
+			$tpl = get_markup_template('workflow_prepare_body_related.tpl','addon/workflow');
+        		$relatedhtml = replace_macros($tpl,$templatevars);
+			$arr['html'] .= $relatedhtml;
+		} 
+
+		$prep_arr = $arr;
+		return;
+	}
+
 	public static function get() {
 
 		$uid = App::$profile_uid;
@@ -523,6 +603,8 @@ class Workflow_Utils {
 	}
 
 	private static function get_items($searchvars,$observer = null,$do_callhooks = true) {
+
+logger("SEARCHVARS: ".print_r($searchvars,true));
 
 		$ownersearch = '';
 		$itemtype = '';
@@ -590,7 +672,7 @@ class Workflow_Utils {
 
 		if (isset($searchvars['iconfig'])) {
 			$iconfigtables = [];
-			$valid_comparitors = ['like'=>'like','gt'=>'>','lt'=>'<','eq'=>'=','in'=>'in','notin'=>'not in','gteq'=>'>=','lteq'=>'<=','neq'=>'<>','nlike'=>'not like'];
+			$valid_comparitors = ['like'=>'like','gt'=>'>','lt'=>'<','eq'=>'=','in'=>'in','notin'=>'not in','gteq'=>'>=','lteq'=>'<=','neq'=>'<>','nlike'=>'not like','notnull'=>'is not null'];
 			if (is_array($searchvars['iconfig'])) {
 				foreach ($searchvars['iconfig'] as $key => $params) {
 
@@ -611,12 +693,16 @@ class Workflow_Utils {
 
 						$comparitor = $valid_comparitors[$comparitor];
 						$value = $params['value'];
+					
 
-
-						if (isset($params['type']) && $params['type']=='int') {
+						if ((isset($params['type']) && $params['type']=='int') && ($comparitor != 'is not null'))  {
 							$val = ' and CAST('.$astable.'.v as INTEGER) '.$comparitor.' CAST("'.dbesc($value).'" as INTEGER)';
 						} else {
-							$val = ' and '.$astable.'.v '.$comparitor.' "'.dbesc($value).'"';
+							if ($comparitor == 'is not null') {
+								$val = ' and '.$astable.'.v '.$comparitor;
+							} else {
+								$val = ' and '.$astable.'.v '.$comparitor.' "'.dbesc($value).'"';
+							}
 						}
 
 					}
@@ -678,8 +764,9 @@ class Workflow_Utils {
 		}
 
 		$query = "select item.id as item_id from item $iconfigjoins where item.uid = $uid and item.mid=item.parent_mid and $objtype $itemtype $uuids $permissions $ownersearch $iconfigwhere $deleted $orderby $limit $offset";
-
+logger("QUERY: ".$query);
 		$itemids = q($query);
+//logger("ITEMIDS: ".json_encode($itemids));
 
 		if ($itemids) {
 			$ids = [];
@@ -718,6 +805,40 @@ class Workflow_Utils {
 				if (count($related_links)) {
 					$item['related'] = $related_links;
 				}
+
+			}
+			$newitems[] = $item;
+		}
+		$newhookinfo = $hookinfo;
+		$newhookinfo['items'] = $newitems;
+		$hookinfo=$newhookinfo;
+	}
+
+	public static function get_items_filter_iconfig(&$hookinfo) {
+		if (!isset($hookinfo['items'])) { return; }
+		$observer = (isset($hookinfo['observer'])) ? $hookinfo['observer'] : null;
+		$newitems = [];
+		while ($item = array_shift($hookinfo['items'])) {
+			$workflow_data=[];
+			if (isset($item['iconfig'])) {
+				foreach($item['iconfig'] as $icfg) {
+					if ($icfg['cat'] != 'workflow') {
+						continue;
+					}
+					if (strpos($icfg['k'],'link:related:') !== false) {
+						continue;
+					}
+
+					if (isset($workflow_data[$icfg['k']])) {
+						if (!is_array($workflow_data[$icfg['k']])) {
+							$workflow_data[$icfg['k']] = [ $workflow_data[$icfg['k']] ];
+						}
+						$workflow_data[$icfg['k']][] = self::maybeunjson($icfg['v']);
+					} else {
+						$workflow_data[$icfg['k']] = self::maybeunjson($icfg['v']);
+					}
+				}
+				$item['workflowdata'] = $workflow_data;
 
 			}
 			$newitems[] = $item;
@@ -942,6 +1063,7 @@ class Workflow_Utils {
 		$basicfilters .= "<h4><a data-toggle='collapse' data-target='#basicfilters-collapse' href='#' class='collapsed' aria-expanded='false'>Search Parameters</a></h4>";
 		$basicfilters .= "</div>";
 		$basicfilters .= "<div id='basicfilters-collapse' class='collapse' role='tabpanel' aria-labelledby='basicfilters' data-parent='#basicfilters' style='z-index:100;position:absolute;background-color:#fff;padding:4px 20px 4px 20px;border:solid 4px black;'>";
+		$basicfilters .= "<div id='basicfilters-tool' style='float:right;'><a data-toggle='collapse' data-target='#basicfilters-collapse' class='btn btn-outline-secondary btn-sm border-0' style='margin-right:-25px;margin-top:-10px;' href='#'><i class='fa fa-close'></i></a></div>";
 		$basicfilters .= "<form method='get'>";
 		$minprio = isset($_REQUEST['minpriority']) ? intval($_REQUEST['minpriority']) : 1;
 		$assigned = (isset($_REQUEST['assigned']) && is_array($_REQUEST['assigned'])) ? $_REQUEST['assigned'] : [];
@@ -1554,6 +1676,11 @@ class Workflow_Utils {
 		}
 		$items[0]['allow_cid'] = '<'.implode('><',$allow).'>';
 
+		unset($items[0]['owner']);
+		unset($items[0]['author']);
+		unset($items[0]['item_id']);
+		unset($items[0]['cancel']);
+
 		$itemstore=item_store_update($items[0]);
 
 		sync_an_item($itemowneruid,$itemstore['item_id']);
@@ -1643,6 +1770,9 @@ class Workflow_Utils {
 			$allow[] = $hash;
 		}
 		$items[0]['allow_cid'] = '<'.implode('><',$allow).'>';
+//logger("STORING: ".print_r($items[0],true));
+		unset($items[0]['owner']);
+		unset($items[0]['author']);
 
 		$itemstore=item_store_update($items[0],false,true);
 
@@ -2390,6 +2520,11 @@ class Workflow_Utils {
 				$allow[] = $hash;
 			}
 			$items[0]['allow_cid'] = '<'.implode('><',$allow).'>';
+
+			unset($orig['author']);
+			unset($orig['owner']);
+			unset($orig['item_id']);
+			unset($orig['cancel']);
 
 			$itemstore = item_store_update($orig);
 		}
