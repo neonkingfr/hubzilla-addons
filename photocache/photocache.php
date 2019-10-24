@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.9
+ * Version: 0.2.10
  * Author: Max Kostikov <https://tiksi.net/channel/kostikov>
  * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  * MinVersion: 3.9.5
@@ -332,21 +332,13 @@ function photocache_url(&$cache = array()) {
 					logger('image saved: ' . $os_path . '; ' . $r['mimetype'] . ', ' . $r['width'] . 'w x ' . $r['height'] . 'h, ' . $r['filesize'] . ' bytes', LOGGER_DEBUG);
 				}
 				
-				if($oldsize != $r['filesize'] || $oldwidth != $r['width'] || $oldheight != $r['height']) {
-					// Update image data for cached links on change
-					$x = q("UPDATE photo SET filesize = %d, height = %d, width = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > 0",
-						intval($r['filesize']),
-						intval($r['height']),
-						intval($r['width']),
-						dbesc($r['xchan']),
-						intval(PHOTO_CACHE)
-					);
-				}
+				if($oldsize != $r['filesize'] || $oldwidth != $r['width'] || $oldheight != $r['height'])
+				    $sql_extra = ", filesize = " . intval($r['filesize']) . ", height = " . intval($r['height']) . ", width = " . intval($r['width']);
 			}
 		}
 
 		// Update metadata on any change
-		$x = q("UPDATE photo SET edited = '%s', expires = '%s' WHERE xchan = '%s' AND filesize > 0 AND photo_usage = %d",
+		$x = q("UPDATE photo SET edited = '%s', expires = '%s' $sql_extra WHERE xchan = '%s' AND filesize > 0 AND photo_usage = %d",
 			dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
 			dbescdate($r['expires']),
 			dbesc($r['xchan']),
