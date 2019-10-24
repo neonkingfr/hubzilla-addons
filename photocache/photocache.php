@@ -202,7 +202,7 @@ function photocache_url(&$cache = array()) {
 		return logger('unknown resource id ' . $cache['resid'], LOGGER_DEBUG, LOG_INFO);
 	
 	$r = $r[0];
-	
+
 	$cache_mode = array();
 	photocache_mode($cache_mode);
 		
@@ -212,12 +212,11 @@ function photocache_url(&$cache = array()) {
 
 	logger('info: processing ' . $cache['resid'] . ' (' . $r['display_path'] .') for ' . $r['uid']  . ' (min. ' . $minres . ' px)', LOGGER_DEBUG);
 	
-	if($r['size'] == 0) {
+	if($r['filesize'] == 0) {
 		// If new resource id
-		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND height > %d ORDER BY filesize DESC LIMIT 1",
+		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND height > 0 ORDER BY filesize DESC LIMIT 1",
 			dbesc($r['xchan']),
-			intval(PHOTO_CACHE),
-			0
+			intval(PHOTO_CACHE)
 		);
 		if($k) {
 			// If photo already was cached for other user just duplicate it
@@ -335,24 +334,22 @@ function photocache_url(&$cache = array()) {
 				
 				if($oldsize != $r['filesize'] || $oldwidth != $r['width'] || $oldheight != $r['height']) {
 					// Update image data for cached links on change
-					$x = q("UPDATE photo SET filesize = %d, height = %d, width = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > %d",
+					$x = q("UPDATE photo SET filesize = %d, height = %d, width = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > 0",
 						intval($r['filesize']),
 						intval($r['height']),
 						intval($r['width']),
 						dbesc($r['xchan']),
-						intval(PHOTO_CACHE),
-						0
+						intval(PHOTO_CACHE)
 					);
 				}
 			}
 		}
 
 		// Update metadata on any change
-		$x = q("UPDATE photo SET edited = '%s', expires = '%s' WHERE xchan = '%s' AND height > %d AND photo_usage = %d",
+		$x = q("UPDATE photo SET edited = '%s', expires = '%s' WHERE xchan = '%s' AND height > 0 AND photo_usage = %d",
 			dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
 			dbescdate($r['expires']),
 			dbesc($r['xchan']),
-			0,
 			intval(PHOTO_CACHE)
 		);
 	}
