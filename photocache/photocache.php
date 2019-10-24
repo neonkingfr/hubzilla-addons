@@ -214,7 +214,7 @@ function photocache_url(&$cache = array()) {
 	
 	if($r['filesize'] == 0) {
 		// If new resource id
-		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND height > 0 ORDER BY filesize DESC LIMIT 1",
+		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND filesize > 0 ORDER BY filesize DESC LIMIT 1",
 			dbesc($r['xchan']),
 			intval(PHOTO_CACHE)
 		);
@@ -346,7 +346,7 @@ function photocache_url(&$cache = array()) {
 		}
 
 		// Update metadata on any change
-		$x = q("UPDATE photo SET edited = '%s', expires = '%s' WHERE xchan = '%s' AND height > 0 AND photo_usage = %d",
+		$x = q("UPDATE photo SET edited = '%s', expires = '%s' WHERE xchan = '%s' AND filesize > 0 AND photo_usage = %d",
 			dbescdate(($r['edited'] ? $r['edited'] : datetime_convert())),
 			dbescdate($r['expires']),
 			dbesc($r['xchan']),
