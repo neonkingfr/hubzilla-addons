@@ -457,6 +457,9 @@ function asencode_activity($i) {
 
 	if($i['title'])
 		$ret['title'] = html2plain(bbcode($i['title'], ['cache' => true ]));
+		
+	// Remove URL bookmark
+	$i['body'] = str_replace("#^[", "[", $i['body']);
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);
 	if($i['created'] !== $i['edited'])
