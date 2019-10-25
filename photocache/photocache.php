@@ -212,7 +212,7 @@ function photocache_url(&$cache = array()) {
 
 	logger('info: processing ' . $cache['resid'] . ' (' . $r['display_path'] .') for ' . $r['uid']  . ' (min. ' . $minres . ' px)', LOGGER_DEBUG);
 	
-	if($r['filesize'] == 0) {
+	if($r['height'] == 0) {
 		// If new resource id
 		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND filesize > 0 ORDER BY filesize DESC LIMIT 1",
 			dbesc($r['xchan']),
