@@ -207,7 +207,7 @@ function photocache_url(&$cache = []) {
 	
 	if($cache['item']['filesize'] == 0) {
 		// If new resource id
-		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND filesize > 0 ORDER BY filesize DESC LIMIT 1",
+		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND height > 0 ORDER BY filesize DESC LIMIT 1",
 			dbesc($cache['item']['xchan']),
 			intval(PHOTO_CACHE)
 		);
