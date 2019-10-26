@@ -338,9 +338,9 @@ function photocache_url(&$cache = []) {
 
 		// Update metadata on any change
 		$x = q("UPDATE photo SET height = %d, width = %d, edited = '%s', expires = '%s' WHERE xchan = '%s' AND photo_usage = %d AND height > 0",
-			dbescdate(($cache['item']['edited'] ? $cache['item']['edited'] : datetime_convert())),
 			intval($cache['item']['height']),
 			intval($cache['item']['width']),
+			dbescdate(($cache['item']['edited'] ? $cache['item']['edited'] : datetime_convert())),
 			dbescdate($cache['item']['expires']),
 			dbesc($cache['item']['xchan']),
 			intval(PHOTO_CACHE)
