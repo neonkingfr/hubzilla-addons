@@ -231,7 +231,7 @@ function photocache_url(&$cache = []) {
 	}
 		
 	$exp = strtotime($cache['item']['expires']);
-	// fetch image if cache time is expired or we need to cache it and wasn't cached yet
+	// fetch the image if the cache has expired or we need to cache and it has not yet been done
 	$url = ((($exp - 60 < time()) || (($cache['item']['height'] >= $minres || $cache['item']['width'] >= $minres) && $cache['item']['filesize'] == 0)) ? html_entity_decode($cache['item']['display_path'], ENT_QUOTES) : '');
 	
 	if($url) {
@@ -279,7 +279,7 @@ function photocache_url(&$cache = []) {
 			$cache['item']['edited'] = gmdate('Y-m-d H:i:s', strtotime($hdrs['last-modified']));
 
 		if($i['success']) {
-			// New data (HTTP 200)
+			// New data received (HTTP 200)
 			$type = guess_image_type($cache['item']['display_path'], $i['header']);
 			if(strpos($type, 'image') === false)
 				return logger('wrong image type detected ' . $type, LOGGER_DEBUG);
@@ -303,41 +303,38 @@ function photocache_url(&$cache = []) {
 
 				$cache['item']['width'] = $ph->getWidth();
 				$cache['item']['height'] = $ph->getHeight();
+				$cache['item']['filesize'] = strlen($ph->imageString());
 
-				if($orig_width >= $minres || $orig_height >= $minres) {
-					$path = 'store/[data]/[cache]/' .  substr($cache['item']['xchan'],0,1) . '/' . substr($cache['item']['xchan'],1,1);
-					$os_path = $path . '/' . $cache['item']['xchan'];
-					$cache['item']['os_syspath'] = $os_path;
-					if(! is_dir($path))
-					    if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
-						    return logger('could not create path ' . $path, LOGGER_DEBUG);
-					if(is_file($os_path))
-						@unlink($os_path);
-					if(! $ph->saveImage($os_path))
-						return logger('could not save file ' . $os_path, LOGGER_DEBUG);
-				
-					$cache['item']['filesize'] = strlen($ph->imageString());
-
-					if($oldsize == 0) {
-						// if this is first seen image
-						if(! $ph->save($cache['item'], true))
-							logger('can not save image in database', LOGGER_DEBUG);
-					}
-					elseif($oldsize != $cache['item']['filesize']) {
-						// update 
-						$x = q("UPDATE photo SET filesize = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > 0",
-							intval($cache['item']['filesize']),
-							dbesc($cache['item']['xchan']),
-							intval(PHOTO_CACHE)
-						);						
-					}
-															
-					logger('image saved: ' . $os_path . '; ' . $cache['item']['mimetype'] . ', ' . $cache['item']['width'] . 'w x ' . $cache['item']['height'] . 'h, ' . $cache['item']['filesize'] . ' bytes', LOGGER_DEBUG);
+				$path = 'store/[data]/[cache]/' .  substr($cache['item']['xchan'],0,1) . '/' . substr($cache['item']['xchan'],1,1);
+				$os_path = $path . '/' . $cache['item']['xchan'];
+				$cache['item']['os_syspath'] = $os_path;
+				if(! is_dir($path))
+				    if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
+					    return logger('could not create path ' . $path, LOGGER_DEBUG);
+				if(is_file($os_path))
+					@unlink($os_path);
+				if(! $ph->saveImage($os_path))
+					return logger('could not save file ' . $os_path, LOGGER_DEBUG);
+			
+				if($oldsize == 0) {
+					// if this is first seen image
+					if(! $ph->save($cache['item'], true))
+						logger('can not save image in database', LOGGER_DEBUG);
 				}
+				elseif($oldsize != $cache['item']['filesize']) {
+					// update 
+					$x = q("UPDATE photo SET filesize = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > 0",
+						intval($cache['item']['filesize']),
+						dbesc($cache['item']['xchan']),
+						intval(PHOTO_CACHE)
+					);						
+				}
+															
+				logger('image saved: ' . $os_path . '; ' . $cache['item']['mimetype'] . ', ' . $cache['item']['width'] . 'w x ' . $cache['item']['height'] . 'h, ' . $cache['item']['filesize'] . ' bytes', LOGGER_DEBUG);
 			}
 		}
 
-		// Update metadata on any change
+		// Update metadata on any change (including HTTP 304)
 		$x = q("UPDATE photo SET height = %d, width = %d, edited = '%s', expires = '%s' WHERE xchan = '%s' AND photo_usage = %d AND height > 0",
 			intval($cache['item']['height']),
 			intval($cache['item']['width']),
