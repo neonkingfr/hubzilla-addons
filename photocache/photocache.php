@@ -326,6 +326,8 @@ function photocache_url(&$cache = []) {
 				        @unlink($os_path);
 				    if(! $ph->saveImage($os_path))
 				        return logger('could not save file ' . $os_path, LOGGER_DEBUG);
+					
+					logger('image saved: ' . $os_path . '; ' . $cache['item']['mimetype'] . ', ' . $cache['item']['width'] . 'w x ' . $cache['item']['height'] . 'h, ' . $cache['item']['filesize'] . ' bytes', LOGGER_DEBUG);
 				}
 				
 				if($k && $oldsize == 0) {
@@ -341,8 +343,6 @@ function photocache_url(&$cache = []) {
 						intval(PHOTO_CACHE)
 					);						
 				}
-															
-				logger('image saved: ' . $os_path . '; ' . $cache['item']['mimetype'] . ', ' . $cache['item']['width'] . 'w x ' . $cache['item']['height'] . 'h, ' . $cache['item']['filesize'] . ' bytes', LOGGER_DEBUG);
 			}
 		}
 
