@@ -311,26 +311,29 @@ function photocache_url(&$cache = []) {
 				$cache['item']['width'] = $ph->getWidth();
 				$cache['item']['height'] = $ph->getHeight();
 				$cache['item']['filesize'] = strlen($ph->imageString());
-				
 				$cache['item']['description'] = (array_key_exists('etag', $hdrs) ? $hdrs['etag'] : '');
-
-				$path = 'store/[data]/[cache]/' .  substr($cache['item']['xchan'],0,1) . '/' . substr($cache['item']['xchan'],1,1);
-				$os_path = $path . '/' . $cache['item']['xchan'];
-				$cache['item']['os_syspath'] = $os_path;
-				if(! is_dir($path))
-				    if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
-					    return logger('could not create path ' . $path, LOGGER_DEBUG);
-				if(is_file($os_path))
-					@unlink($os_path);
-				if(! $ph->saveImage($os_path))
-					return logger('could not save file ' . $os_path, LOGGER_DEBUG);
-			
-				if(($cache['item']['width'] >= $minres || $cache['item']['height'] >= $minres) && $oldsize == 0) {
+				
+				$k = ((($cache['item']['width'] >= $minres || $cache['item']['height'] >= $minres) && $oldsize == 0) ? true : false); 
+				
+				if($k || $oldsize != 0) {
+				    $path = 'store/[data]/[cache]/' .  substr($cache['item']['xchan'],0,1) . '/' . substr($cache['item']['xchan'],1,1);
+				    $os_path = $path . '/' . $cache['item']['xchan'];
+				    $cache['item']['os_syspath'] = $os_path;
+				    if(! is_dir($path))
+				        if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
+				            return logger('could not create path ' . $path, LOGGER_DEBUG);
+				    if(is_file($os_path))
+				        @unlink($os_path);
+				    if(! $ph->saveImage($os_path))
+				        return logger('could not save file ' . $os_path, LOGGER_DEBUG);
+				}
+				
+				if($k && $oldsize == 0) {
 					// if this is first seen image
 					if(! $ph->save($cache['item'], true))
 						logger('can not save image in database', LOGGER_DEBUG);
 				}
-				elseif($oldsize != $cache['item']['filesize']) {
+				elseif($oldsize != 0 && $oldsize != $cache['item']['filesize']) {
 					// update 
 					$x = q("UPDATE photo SET filesize = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > 0",
 						intval($cache['item']['filesize']),
