@@ -157,7 +157,7 @@ function photocache_hash($str, $alg = 'sha256') {
 			);
 			if(! $r) {
 				// Create new empty link. Data will be fetched on link open.
-				$r = array (
+				$r = [
 					'aid' => $x['channel_account_id'],
 					'uid' => $s['uid'],
 					'xchan' => $hash,
@@ -168,7 +168,7 @@ function photocache_hash($str, $alg = 'sha256') {
 					'photo_usage' => PHOTO_CACHE,
 					'os_storage' => 1,
 					'display_path' => $match[3]
-				);
+				];
 				if(! $ph->save($r, true))
 					logger('can not create new link in database', LOGGER_DEBUG);
 			}
@@ -243,7 +243,7 @@ function photocache_url(&$cache = []) {
 			if(! empty($cache['item']['description']))
 				$hdrs[] = "If-None-Match: " . $cache['item']['description'];
 		}
-		$i = z_fetch_url($url, true, 0, $hdrs);
+		$i = z_fetch_url($url, true, 0, [ 'headers' => $hdrs ]);
 	
 		if((! $i['success']) && $i['return_code'] != 304)
 			return logger('photo could not be fetched (HTTP code ' . $i['return_code'] . ')', LOGGER_DEBUG);
