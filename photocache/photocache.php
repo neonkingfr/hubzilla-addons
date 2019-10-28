@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.11
+ * Version: 0.2.12
  * Author: Max Kostikov <https://tiksi.net/channel/kostikov>
  * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  * MinVersion: 3.9.5
@@ -196,7 +196,7 @@ function photocache_url(&$cache = []) {
 	if(empty($cache))
 		return logger('undefined resource', LOGGER_DEBUG, LOG_INFO);
 	
-	$cache_mode = array();
+	$cache_mode = [];
 	photocache_mode($cache_mode);
 		
 	$minres = intval(get_pconfig($cache['item']['uid'], 'photocache', 'cache_minres'));
@@ -205,7 +205,7 @@ function photocache_url(&$cache = []) {
 
 	logger('info: processing ' . $cache['item']['resource_id'] . ' (' . $cache['item']['display_path'] .') for ' . $cache['item']['uid']  . ' (min. ' . $minres . ' px)', LOGGER_DEBUG);
 	
-	if($cache['item']['filesize'] == 0) {
+	if($cache['item']['height'] == 0) {
 		// If new resource id
 		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND height > 0 ORDER BY filesize DESC LIMIT 1",
 			dbesc($cache['item']['xchan']),
@@ -229,18 +229,19 @@ function photocache_url(&$cache = []) {
 			logger('info: duplicate ' . $cache['item']['resource_id'] . ' data from cache for ' . $k[0]['uid'], LOGGER_DEBUG);
 		}
 	}
-	
+		
 	$exp = strtotime($cache['item']['expires']);
-	$url = (($exp - 60 < time()) ? html_entity_decode($cache['item']['display_path'], ENT_QUOTES) : '');
+	// fetch image if cache time is expired or we need to cache it and wasn't cached yet
+	$url = ((($exp - 60 < time()) || (($cache['item']['height'] >= $minres || $cache['item']['width'] >= $minres) && $cache['item']['filesize'] == 0)) ? html_entity_decode($cache['item']['display_path'], ENT_QUOTES) : '');
 	
 	if($url) {
 		// Get data from remote server 		
-		$i = z_fetch_url($url, true, 0, ($cache['item']['filesize'] > 0 ? array('headers' => array("If-Modified-Since: " . gmdate("D, d M Y H:i:s", $exp . "Z") . " GMT")) : array()));
+		$i = z_fetch_url($url, true, 0, ($cache['item']['filesize'] > 0 ? [ 'headers' => [ "If-Modified-Since: " . gmdate("D, d M Y H:i:s", $exp . "Z") . " GMT" ] ] : []));
 	
 		if((! $i['success']) && $i['return_code'] != 304)
 			return logger('photo could not be fetched (HTTP code ' . $i['return_code'] . ')', LOGGER_DEBUG);
 	
-		$hdrs = array();
+		$hdrs = [];
 		$h = explode("\n", $i['header']);
 		foreach ($h as $l) {
 			list($t,$v) = array_map("trim", explode(":", trim($l), 2));
