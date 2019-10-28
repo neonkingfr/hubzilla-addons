@@ -325,7 +325,7 @@ function photocache_url(&$cache = []) {
 				if(! $ph->saveImage($os_path))
 					return logger('could not save file ' . $os_path, LOGGER_DEBUG);
 			
-				if($oldsize == 0) {
+				if(($cache['item']['width'] >= $minres || $cache['item']['height'] >= $minres) && $oldsize == 0) {
 					// if this is first seen image
 					if(! $ph->save($cache['item'], true))
 						logger('can not save image in database', LOGGER_DEBUG);
