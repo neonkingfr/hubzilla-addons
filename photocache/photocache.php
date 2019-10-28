@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.12
+ * Version: 0.2.13
  * Author: Max Kostikov <https://tiksi.net/channel/kostikov>
  * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  * MinVersion: 3.9.5
@@ -217,6 +217,7 @@ function photocache_url(&$cache = []) {
 				$cache['item']['os_syspath'] = dbunescbin($k[0]['content']);
 				$cache['item']['filesize'] = $k[0]['filesize'];
 			}
+			$cache['item']['description'] = $k[0]['description'];
 			$cache['item']['edited'] = $k[0]['edited'];
 			$cache['item']['expires'] = $k[0]['expires'];
 			$cache['item']['mimetype'] = $k[0]['mimetype'];
@@ -235,8 +236,14 @@ function photocache_url(&$cache = []) {
 	$url = ((($exp - 60 < time()) || (($cache['item']['height'] >= $minres || $cache['item']['width'] >= $minres) && $cache['item']['filesize'] == 0)) ? html_entity_decode($cache['item']['display_path'], ENT_QUOTES) : '');
 	
 	if($url) {
-		// Get data from remote server 		
-		$i = z_fetch_url($url, true, 0, ($cache['item']['filesize'] > 0 ? [ 'headers' => [ "If-Modified-Since: " . gmdate("D, d M Y H:i:s", $exp . "Z") . " GMT" ] ] : []));
+		// Get data from remote server
+		$hdrs = [];
+		if($cache['item']['filesize'] > 0) {
+			$hdrs[] = "If-Modified-Since: " . gmdate("D, d M Y H:i:s", $exp . "Z") . " GMT";
+			if(! empty($cache['item']['description']))
+				$hdrs[] = "If-None-Match: " . $cache['item']['description'];
+		}
+		$i = z_fetch_url($url, true, 0, $hdrs);
 	
 		if((! $i['success']) && $i['return_code'] != 304)
 			return logger('photo could not be fetched (HTTP code ' . $i['return_code'] . ')', LOGGER_DEBUG);
@@ -304,6 +311,8 @@ function photocache_url(&$cache = []) {
 				$cache['item']['width'] = $ph->getWidth();
 				$cache['item']['height'] = $ph->getHeight();
 				$cache['item']['filesize'] = strlen($ph->imageString());
+				
+				$cache['item']['description'] = (array_key_exists('etag', $hdrs) ? $hdrs['etag'] : '');
 
 				$path = 'store/[data]/[cache]/' .  substr($cache['item']['xchan'],0,1) . '/' . substr($cache['item']['xchan'],1,1);
 				$os_path = $path . '/' . $cache['item']['xchan'];
@@ -335,9 +344,10 @@ function photocache_url(&$cache = []) {
 		}
 
 		// Update metadata on any change (including HTTP 304)
-		$x = q("UPDATE photo SET height = %d, width = %d, edited = '%s', expires = '%s' WHERE xchan = '%s' AND photo_usage = %d AND height > 0",
+		$x = q("UPDATE photo SET height = %d, width = %d, description = '%s', edited = '%s', expires = '%s' WHERE xchan = '%s' AND photo_usage = %d AND height > 0",
 			intval($cache['item']['height']),
 			intval($cache['item']['width']),
+			dbesc($cache['item']['description']),
 			dbescdate(($cache['item']['edited'] ? $cache['item']['edited'] : datetime_convert())),
 			dbescdate($cache['item']['expires']),
 			dbesc($cache['item']['xchan']),
