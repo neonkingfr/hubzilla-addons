@@ -330,7 +330,7 @@ function photocache_url(&$cache = []) {
 					logger('image saved: ' . $os_path . '; ' . $cache['item']['mimetype'] . ', ' . $cache['item']['width'] . 'w x ' . $cache['item']['height'] . 'h, ' . $cache['item']['filesize'] . ' bytes', LOGGER_DEBUG);
 				}
 				
-				if($k && $oldsize == 0) {
+				if($k) {
 					// if this is first seen image
 					if(! $ph->save($cache['item'], true))
 						logger('can not save image in database', LOGGER_DEBUG);
