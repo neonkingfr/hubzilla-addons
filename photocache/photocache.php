@@ -239,7 +239,7 @@ function photocache_url(&$cache = []) {
 		
 	$exp = strtotime($cache['item']['expires']);
 	// fetch the image if the cache has expired or we need to cache and it has not yet been done
-	$url = ((($cache['item']['height'] >= $minres || $cache['item']['width'] >= $minres) && ($exp - 60 < time() || $cache['item']['filesize'] == 0)) ? html_entity_decode($cache['item']['display_path'], ENT_QUOTES) : '');
+	$url = (($cache['item']['height'] == 0) || ((($cache['item']['height'] >= $minres || $cache['item']['width'] >= $minres) && ($exp - 60 < time() || $cache['item']['filesize'] == 0))) ? html_entity_decode($cache['item']['display_path'], ENT_QUOTES) : '');
 	
 	if($url) {
 		// Get data from remote server
