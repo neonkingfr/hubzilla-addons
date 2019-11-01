@@ -316,12 +316,12 @@ function photocache_url(&$cache = []) {
 
 				$cache['item']['width'] = $ph->getWidth();
 				$cache['item']['height'] = $ph->getHeight();
-				$cache['item']['filesize'] = strlen($ph->imageString());
 				$cache['item']['description'] = (array_key_exists('etag', $hdrs) ? $hdrs['etag'] : '');
 				
 				$k = ((($cache['item']['width'] >= $minres || $cache['item']['height'] >= $minres) && $oldsize == 0) ? true : false); 
 				
 				if($k || $oldsize != 0) {
+				    $cache['item']['filesize'] = strlen($ph->imageString());
 				    $path = 'store/[data]/[cache]/' .  substr($cache['item']['xchan'],0,1) . '/' . substr($cache['item']['xchan'],1,1);
 				    $os_path = $path . '/' . $cache['item']['xchan'];
 				    $cache['item']['os_syspath'] = $os_path;
