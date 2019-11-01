@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.13
+ * Version: 0.2.14
  * Author: Max Kostikov <https://tiksi.net/channel/kostikov>
  * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  * MinVersion: 3.9.5
@@ -31,6 +31,12 @@ function photocache_unload() {
 	Hook::unregister('cache_url_hook', 'addon/photocache/photocache.php', 'photocache_url');
 	Hook::unregister('cache_body_hook', 'addon/photocache/photocache.php', 'photocache_body');
 	Route::unregister('addon/photocache/Mod_Photocache.php', 'photocache');
+
+	$x = q("UPDATE photo SET expires = '%s' WHERE photo_usage = %d",
+	    dbesc(NULL_DATE),
+	    intval(PHOTO_CACHE)
+	);
+	logger('All cached photos was marked as expired and will be removed', LOGGER_DEBUG);
 	
 	logger('Photo Cache is unloaded');
 }
