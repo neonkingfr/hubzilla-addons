@@ -350,6 +350,8 @@ function photocache_url(&$cache = []) {
 					);						
 				}
 			}
+			else
+			    return logger('fetched photo ' . $url . ' is invalid', LOGGER_DEBUG);
 		}
 
 		// Update metadata on any change (including HTTP 304)
