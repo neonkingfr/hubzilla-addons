@@ -31,8 +31,7 @@ function photocache_unload() {
 	Hook::unregister('cache_url_hook', 'addon/photocache/photocache.php', 'photocache_url');
 	Hook::unregister('cache_body_hook', 'addon/photocache/photocache.php', 'photocache_body');
 	Route::unregister('addon/photocache/Mod_Photocache.php', 'photocache');
-	
-	// 
+
 	$x = q("UPDATE photo SET expires = '%s' WHERE photo_usage = %d",
 	    dbesc(NULL_DATE),
 	    intval(PHOTO_CACHE)
