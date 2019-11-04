@@ -399,10 +399,12 @@ function pubcrawl_channel_mod_init($x) {
 
 		$headers = [];
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
-
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
+
 		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
 		HTTPSig::set_headers($h);
 		echo $ret;
@@ -943,7 +945,10 @@ function pubcrawl_profile_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
+
 		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
 		HTTPSig::set_headers($h);
 		echo $ret;
@@ -1056,7 +1061,10 @@ function pubcrawl_item_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
+
 		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
 		HTTPSig::set_headers($h);
 		echo $ret;
@@ -1105,7 +1113,10 @@ function pubcrawl_thing_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
+
 		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
 		HTTPSig::set_headers($h);
 		echo $ret;
@@ -1155,7 +1166,10 @@ function pubcrawl_locs_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
+
 		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
 		HTTPSig::set_headers($h);
 		echo $ret;
@@ -1206,7 +1220,10 @@ function pubcrawl_follow_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
+
 		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
 		HTTPSig::set_headers($h);
 		echo $ret;
@@ -1232,7 +1249,10 @@ function pubcrawl_queue_deliver(&$b) {
 		$headers = [];
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$ret = $outq['outq_msg'];
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$headers['(request-target)'] = 'post ' . get_request_string($outq['outq_posturl']);
+
 		$xhead = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
 
 $result = z_post_url($outq['outq_posturl'],$outq['outq_msg'],$retries,[ 'headers' => $xhead ]);
