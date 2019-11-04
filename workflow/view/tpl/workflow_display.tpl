@@ -1,4 +1,9 @@
 <div class="content-fluid">
+<div class="workflow toolbar">
+        <div class="workflow toolbar row">
+                {{$toolbar}}
+        </div>
+</div>
 <div class="row">
 	<div class="col-xs-12 col-sm-6 col-md-9">
 		<div class="row">
@@ -15,6 +20,9 @@
 		<div class="col-12 workflow wfcontent">
 			{{$body.html}}
 		</div></div>
+		<div class="row" style="min-height:500px;">
+			<div id="workflowDisplayMain" class="col-12 workflow wfmainiframe" style="height:max-height;border:solid 1px;padding:0px;">{{$maindata}}</div>
+		</div>
 	</div>
 	<div class="col-xs-12 col-sm-6 col-md-3">
 		<div class="workflow wfsidebar">
@@ -23,7 +31,10 @@
 				{{foreach $items.0.related as $related}}
 					<div class="workflow wfrelatedlink">
 						<b>{{if $related.title}}{{$related.title}}{{else}}{{$related.relatedlink|wordwrap:18:" ":true}}{{/if}}</b><br>
+						<!--
 						<a href="#" class='workflow-showmodal-iframe' onclick="return false;" data-posturl='{{$posturl}}' data-action='{{$related.action}}' data-miscdata='{{$related.jsondata}}' data-toggle="tooltip" title="pop-up"><i class='fa fa-window-restore'></i></a>
+						-->
+						<a href="#" class='workflow-showmain-iframe' onclick="return false;" data-posturl='{{$posturl}}' data-action='{{$related.action}}' data-miscdata='{{$related.jsondata}}' data-toggle="tooltip" title="pop-up"><i class='fa fa-window-restore'></i></a>
  						<a href="{{$related.relurl}}" target="{{$related.uniq}}" data-toggle="tooltip" title="new window"><i class="fa fa-external-link"></i></a>
  						<a href="#" onclick='return false;' class="workflow-showmodal-iframe" data-posturl='{{$posturl}}' data-action='{{$addlinkaction}}' data-miscdata='{{$related.jsoneditdata}}' data-toggle="tooltip" title="edit"><i class="fa fa-pencil"></i></a>
 						<br>

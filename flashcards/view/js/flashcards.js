@@ -296,6 +296,9 @@ class Box {
             "private_switch_learn_all": false,
             "private_hasChanged": false,
             "private_block": false,
+            "private_autosave": true,
+            "private_show_card_sort": false,
+            "private_sort_default": true,
             "cards": []
         };
     }
@@ -405,6 +408,9 @@ class Box {
         this.content.private_sortReverse = this.checkBoolean(this.content.private_sortReverse, false);
         this.content.private_switch_learn_direction = this.checkBoolean(this.content.private_switch_learn_direction, false);
         this.content.private_switch_learn_all = this.checkBoolean(this.content.private_switch_learn_all, false);
+        this.content.private_autosave = this.checkBoolean(this.content.private_autosave, true);
+        this.content.private_show_card_sort = this.checkBoolean(this.content.private_show_card_sort, false);
+        this.content.private_sort_default = this.checkBoolean(this.content.private_sort_default, true);
         var i;
         for (i = 0; i < this.content.private_visibleColumns.length; i++) {
             var defaultBool = false;
@@ -492,6 +498,9 @@ class Box {
         s += this.content.private_visibleColumns;
         s += this.content.private_switch_learn_direction;
         s += this.content.private_switch_learn_all;
+        s += this.content.private_autosave;
+        s += this.content.private_show_card_sort;
+        s += this.content.private_sort_default;
         s += this.content.private_block;
         return s;
     }
@@ -697,7 +706,7 @@ class Box {
             }
         }
         if (isOwnBox) {
-            var keysPrivate = ['cardsDecks', 'cardsDeckWaitExponent', 'cardsRepetitionsPerDeck', 'private_block', 'private_sortColumn', 'private_sortReverse', 'private_filter', 'private_visibleColumns', 'private_switch_learn_direction', 'private_switch_learn_all', 'lastChangedPrivateMetaData'];
+            var keysPrivate = ['cardsDecks', 'cardsDeckWaitExponent', 'cardsRepetitionsPerDeck', 'private_block', 'private_sortColumn', 'private_sortReverse', 'private_filter', 'private_visibleColumns', 'private_switch_learn_direction', 'private_switch_learn_all', 'private_autosave', 'private_show_card_sort', 'private_sort_default', 'lastChangedPrivateMetaData'];
             if (this.content.lastChangedPrivateMetaData !== boxRemote.content.lastChangedPrivateMetaData) {
                 var i;
                 for (i = 0; i < keysPrivate.length; i++) {
@@ -902,9 +911,11 @@ var sortReversOrder = false;
 var timezoneOffsetMilliseconds = 0;
 
 function setShareButton() {
+    var hasUploads = 0;
     $("#button_share_box").css({'color': ''});
     if (box.hasChanges()) {
         $("#button_share_box").css({'color': 'red'});
+        hasUploads = 1;
     }
     var counter = 0;
     if (box.content.cards) {
@@ -922,8 +933,10 @@ function setShareButton() {
         logger.log('Share button: ' + counter + ' card with changes');
         $("#button_share_box_counter").html('<sup>' + counter + '</sup>');
         $("#button_share_box").css({'color': 'red'});
+        hasUploads = 1;
     }
     $("#button_share_box").show();
+    return hasUploads;
 }
 
 function loadStartPage() {
@@ -932,11 +945,12 @@ function loadStartPage() {
 }
 
 function conductGUIelements(action) {
+    var hasUploads = 0;
     if (action === 'learn-next' || action == 'learn-show-other-side') {
         $("#button_share_box").hide();
     } else {
         fillInputsBox();
-        setShareButton();
+        hasUploads = setShareButton();
     }
     if (action !== 'list-boxes') {
         $("#button_flashcards_list_close").hide();
@@ -1079,6 +1093,9 @@ function conductGUIelements(action) {
         $("#panel_flashcards_cards").show();
     }
     fixTitleLength();
+    if(hasUploads === 1 && box.content.private_autosave) {
+        uploadBox();
+    }
 }
 
 function fillInputsBox() {
@@ -1099,6 +1116,9 @@ function fillInputsBox() {
 function fillInputsSettings() {
     $('#flashcards-switch-learn-directions').prop('checked', box.content.private_switch_learn_direction);
     $('#flashcards-switch-learn-all').prop('checked', box.content.private_switch_learn_all);
+    $('#flashcards-autosave').prop('checked', box.content.private_autosave);
+    $('#flashcards-card-sort').prop('checked', box.content.private_show_card_sort);
+    $('#flashcards-default-sort').prop('checked', box.content.private_sort_default);
     $("#flashcards-learn-system-decks").val(box.content.cardsDecks);
     $("#flashcards-learn-system-deck-repetitions").val(box.content.cardsRepetitionsPerDeck);
     $("#flashcards-learn-system-exponent").val(box.content.cardsDeckWaitExponent);
@@ -1144,31 +1164,33 @@ function createTable(reload) {
             }
         }
         html += '</tr>';
-        html += '<tr>';
-        var i;
-        for (i = 0; i < 11; i++) {
-            if (box.content.private_visibleColumns[i]) {
-                html += '<th scope="col">';
-                // html += box.content.cardsColumnName[i];
-                // html += '<br>';
-                html += '<span>';
-                if (box.content.private_sortColumn == i) {
-                    if (!box.content.private_sortReverse) {
-                        html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
-                        html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
+        if(box.content.private_show_card_sort) {            
+            html += '<tr>';
+            var i;
+            for (i = 0; i < 11; i++) {
+                if (box.content.private_visibleColumns[i]) {
+                    html += '<th scope="col">';
+                    // html += box.content.cardsColumnName[i];
+                    // html += '<br>';
+                    html += '<span>';
+                    if (box.content.private_sortColumn == i) {
+                        if (!box.content.private_sortReverse) {
+                            html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
+                            html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
+                        } else {
+                            html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '"></i>';
+                            html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
+                        }
                     } else {
                         html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '"></i>';
-                        html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
+                        html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
                     }
-                } else {
-                    html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '"></i>';
-                    html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
+                    html += '</span>';
+                    html += '</th>';
                 }
-                html += '</span>';
-                html += '</th>';
             }
+            html += '</tr>';
         }
-        html += '</tr>';
         logger.log('creating table body...');
         html += createCardRows();
         html += '</table>';
@@ -1433,6 +1455,9 @@ function saveBoxSettings() {
         // settings
         box.content.private_switch_learn_direction = $('#flashcards-switch-learn-directions').prop('checked');
         box.content.private_switch_learn_all = $('#flashcards-switch-learn-all').prop('checked');
+        box.content.private_autosave = $('#flashcards-autosave').prop('checked');
+        box.content.private_show_card_sort= $('#flashcards-card-sort').prop('checked');
+        box.content.private_sort_default = $('#flashcards-default-sort').prop('checked');
         box.content.cardsDecks = $('#flashcards-learn-system-decks').val();
         box.content.cardsRepetitionsPerDeck = $('#flashcards-learn-system-deck-repetitions').val();
         box.content.cardsDeckWaitExponent = $('#flashcards-learn-system-exponent').val();
@@ -1454,6 +1479,10 @@ $(document).on("input", "#flashcards_box_description", function () {
 });
 
 $(document).on("click", "#button_flashcards_learn_play", function () {
+    if(box.content.private_sort_default) {
+        box.sortBy(0, false);
+        box.sortBy(6, false);
+    }
     learnNext(true);
 });
 
@@ -1747,12 +1776,15 @@ function visualiseLearnSystem() {
 }
 
 $(document).on("click", "#button_flashcards_settings_default", function () {
-    // $('#flashcards-switch-learn-directions').prop('checked', false);
+    $('#flashcards-autosave').prop('checked', true);
+    $('#flashcards-card-sort').prop('checked', false);
+    $('#flashcards-default-sort').prop('checked', true);
+    $('#flashcards-switch-learn-all').prop('checked', false);
     $("#flashcards-learn-system-decks").val('7');
     $("#flashcards-learn-system-deck-repetitions").val('3');
     $("#flashcards-learn-system-exponent").val('3');
     $('input.flashcards-column-visibility').each(function (i, checkbox) {
-        if (i == 1 || i == 2 || i == 3 || i == 4) {
+        if (i == 1 || i == 2) {
             $($(this)).prop('checked', true);
         } else {
             $($(this)).prop('checked', false);
@@ -2126,6 +2158,9 @@ function test_box_validate() {
     testBox.content.private_sortReverse = true;
     testBox.content.private_switch_learn_direction = false;
     testBox.content.private_switch_learn_all = true;
+    testBox.content.private_autosave = true;
+    testBox.content.private_show_card_sort = true;
+    testBox.content.private_sort_default = true;
     testBox.content.private_block = true;
     testBox.validate();
     if (testBox.content.private_sortReverse !== true) {
@@ -2137,12 +2172,24 @@ function test_box_validate() {
     if (testBox.content.private_switch_learn_all !== true) {
         return false;
     }
+    if (testBox.content.private_autosave !== true) {
+        return false;
+    }
+    if (testBox.content.private_autosave !== true) {
+        return false;
+    }
+    if (testBox.content.private_show_card_sort !== true) {
+        return false;
+    }
     if (testBox.content.private_block !== true) {
         return false;
     }
     testBox.content.private_sortReverse = "true";
     testBox.content.private_switch_learn_direction = "false";
     testBox.content.private_switch_learn_all = "true";
+    testBox.content.private_autosave = "true";
+    testBox.content.private_show_card_sort = "true";
+    testBox.content.private_sort_default = "true";
     testBox.content.private_block = "true";
     testBox.validate();
     if (testBox.content.private_sortReverse !== true) {
@@ -2154,12 +2201,24 @@ function test_box_validate() {
     if (testBox.content.private_switch_learn_all !== true) {
         return false;
     }
+    if (testBox.content.private_autosave !== true) {
+        return false;
+    }
+    if (testBox.content.private_show_card_sort !== true) {
+        return false;
+    }
+    if (testBox.content.private_sort_default !== true) {
+        return false;
+    }
     if (testBox.content.private_block !== true) {
         return false;
     }
     testBox.content.private_sortReverse = "";
     testBox.content.private_switch_learn_direction = 0;
     testBox.content.private_switch_learn_all = "hallo";
+    testBox.content.private_autosave = "hallo";
+    testBox.content.private_show_card_sort = "hallo";
+    testBox.content.private_sort_default = "hallo";
     testBox.content.private_block = "nonsense";
     testBox.validate();
     if (testBox.content.private_sortReverse !== false) {
@@ -2169,6 +2228,15 @@ function test_box_validate() {
         return false;
     }
     if (testBox.content.private_switch_learn_all !== false) {
+        return false;
+    }
+    if (testBox.content.private_autosave !== true) {
+        return false;
+    }
+    if (testBox.content.private_show_card_sort !== false) {
+        return false;
+    }
+    if (testBox.content.private_sort_default !== true) {
         return false;
     }
     if (testBox.content.private_block !== false) {

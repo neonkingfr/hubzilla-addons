@@ -46,7 +46,7 @@ function ljpost_jot_nets(&$a,&$b) {
 	$lj_defpost = get_pconfig(local_channel(),'ljpost','post_by_default');
 	
 	$selected = ((intval($lj_defpost) == 1) ? ' checked="checked" ' : '');
-	$b .= '<div class="profile-jot-net"><input type="checkbox" name="ljpost_enable" ' . $selected . ' value="1" /> <i class="fa fa-pencil-square-o fa-lg" aria-hidden="true"></i> ' . t('Post to Livejournal') . '</div>';
+	$b .= '<div class="profile-jot-net"><input type="checkbox" name="ljpost_enable" ' . $selected . ' value="1" /> <i class="fa fa-pencil-square-o fa-2x" aria-hidden="true"></i> ' . t('Post to Livejournal') . '</div>';
 }
 
 
@@ -126,8 +126,11 @@ function ljpost_send(&$a,&$b) {
 		}
 		
 		$title = $b['title'];
-		$post = bbcode($b['body']);
+		// Replace URL bookmark
+		$post = str_replace("#^[", "&#128279 [", $b['body']);
+		$post = bbcode($post);
 		$post = xmlify($post);
+
 		$tags = ljpost_get_tags($b['tag']);
 		
 		$date = datetime_convert('UTC',$tz,$b['created'],'Y-m-d H:i:s');

@@ -1,4 +1,4 @@
-function workflowOffsiteIFrame( posturl, action, miscdata ) {
+function workflowOffsiteIFrame( posturl, action, miscdata, id ) {
 
 	var postdata = {
 			action: action,
@@ -12,8 +12,12 @@ function workflowOffsiteIFrame( posturl, action, miscdata ) {
 		dataType: 'json',
 		success: function (data) {
 			if (data.html) {
-				$('#workflowModal').html(data.html);
-				$('#workflowModal').modal('show');
+				$(id).html(data.html);
+				if (id == '#workflowModal') {
+					$('#workflowModal').modal('show');
+				} else {
+					$(id).show();
+				}
 			}},
 		error: function (req, status, err) {
 			alert('There was an error processing the request.' + status + err);
@@ -118,13 +122,22 @@ $(document).ready(function() {
 		workflowOffsiteIFrame( 
 			$(this).data('posturl'),
 			$(this).data('action'),
-			$(this).data('miscdata') );
+			$(this).data('miscdata'),
+			'#workflowModal' );
+	});
+	$(document).on("click",".workflow-showmain-iframe",function () {
+		workflowOffsiteIFrame( 
+			$(this).data('posturl'),
+			$(this).data('action'),
+			$(this).data('miscdata'),
+			'#workflowDisplayMain' );
 	});
 	$(document).on("click","#workflow-addlink-plus",function () {
 		workflowOffsiteIFrame( 
 			$('#workflow-addlink-plus').data('posturl'),
 			$('#workflow-addlink-plus').data('action'),
-			$('#workflow-addlink-plus').data('miscdata') );
+			$('#workflow-addlink-plus').data('miscdata'),
+			'#workflowModal' );
 	});
 
 });

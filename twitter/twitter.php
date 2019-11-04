@@ -106,7 +106,7 @@ function twitter_jot_nets(&$a,&$b) {
 
 	$tw_defpost = get_pconfig(local_channel(),'twitter','post_by_default');
 	$selected = ((intval($tw_defpost) == 1) ? ' checked="checked" ' : '');
-	$b .= '<div class="profile-jot-net"><input type="checkbox" name="twitter_enable"' . $selected . ' value="1" /> <i class="fa fa-twitter fa-lg" aria-hidden="true"></i> ' . t('Post to Twitter') . '</div>';
+	$b .= '<div class="profile-jot-net"><input type="checkbox" name="twitter_enable"' . $selected . ' value="1" /> <i class="fa fa-twitter fa-2x" aria-hidden="true"></i> ' . t('Post to Twitter') . '</div>';
 }
 
 
@@ -220,9 +220,9 @@ function twitter_shortenmsg($b) {
 
 	// Add some newlines so that the message could be cut better
 	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
-	
-	// Removing URL bookmark
-	$body = str_replace("#^", "", $body);
+
+	// Remove URL bookmark
+	$body = str_replace("#^[", "[", $body);
 
 	// At first convert the text to html
 	$msg = bbcode($body, [ 'tryoembed' => false ]);
@@ -441,9 +441,15 @@ function twitter_post_hook(&$a,&$b) {
 			$post = [ 'status' => $msg ];
 
 			// Post image if provided
-			if($image != '') {
-				$result = $cb->media_upload([ 'media' => $image ]);
-				$post['media_ids'] = $result->media_id_string;
+			if(! empty($image)) {
+			    try {
+				    $result = $cb->media_upload([ 'media' => $image ]);
+			    }
+			    catch (Exception $e) {
+			        logger('Send to Twitter failed with error "' . $e->getMessage() . '"');
+			        return;
+			    }
+			    $post['media_ids'] = $result->media_id_string;
 			}
 			
 			$result = $cb->statuses_update($post);

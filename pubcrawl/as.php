@@ -457,6 +457,9 @@ function asencode_activity($i) {
 
 	if($i['title'])
 		$ret['title'] = html2plain(bbcode($i['title'], ['cache' => true ]));
+		
+	// Remove URL bookmark
+	$i['body'] = str_replace("#^[", "[", $i['body']);
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);
 	if($i['created'] !== $i['edited'])
@@ -1254,7 +1257,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	$parent = ((array_key_exists('inReplyTo',$act->obj) && !$announce) ? urldecode($act->obj['inReplyTo']) : false);
 
 	if(!$parent) {
-		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream && $announce)) {
+		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
 			logger('no permission');
 			return;
 		}
