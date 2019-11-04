@@ -99,21 +99,6 @@
 				</div>
 			</div>
 			<div class="row">
-				<div class="col-sm-12">
-					<label><input type="checkbox" id="flashcards-switch-learn-directions"> Switch learn direction. </label>
-				</div>
-			</div>
-			<div class="row">
-				<div class="col-sm-12">
-					<label><input type="checkbox" id="flashcards-switch-learn-all"> Learn all displayed cards no matter wether due to learn or not. </label>
-				</div>
-			</div>
-			<div class="row">
-				<div class="col-sm-12">
-					<hr/>
-				</div>
-			</div>
-			<div class="row">
 				<div class="col-sm-10">
 					Restore all settings below to default values
 				</div>
@@ -128,7 +113,53 @@
 			</div>
 			<div class="row">
 				<div class="col-sm-12">
+					<label><input type="checkbox" id="flashcards-autosave"> Automatically upload changes (sync) </label>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12">
+					<label><input type="checkbox" id="flashcards-card-sort"> Show sortation </label>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12">
+					<hr/>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12">
+					<h4>How to learn</h4>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12">
+					<hr/>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12">
+					<label><input type="checkbox" id="flashcards-switch-learn-directions"> Switch learn direction (sides of cards) </label>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12">
+					<label><input type="checkbox" id="flashcards-default-sort"> Always start to learn with first box (Leitner default)</label>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12">
+					<label><input type="checkbox" id="flashcards-switch-learn-all"> Learn all displayed cards no matter wether due to learn or not </label>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12">
+					<hr/>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12">
 					<h4>Adapt the Learn System</h4>
+                                        <br>
 				</div>
 			</div>
 			<div class="row">
