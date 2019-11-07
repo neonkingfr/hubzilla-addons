@@ -8,7 +8,7 @@
 				<input class="form-control form-control-sm" type="text" name="qty-{{$item.id}}" value="{{$item.order_qty}}" style="width: 4em;float:left;">
 				<div class="input-group-append">
 					<button class="btn btn-sm btn-primary" type="submit" name="Submit" value="{{$item.item_sku}}">Update Quantity</button>
-					<button class="btn btn-sm btn-outline-danger btn-outline border-0" type="submit" name="delsku" value="{{$item.item_sku}}" title="Remove from cart"><i class="fa fa-remove"></i></button>
+					<button class="btn btn-sm btn-outline-danger btn-outline" type="submit" name="delsku" value="{{$item.item_sku}}" title="Remove from cart"><i class="fa fa-remove"></i></button>
 				</div>
 			</div>
 		</form>

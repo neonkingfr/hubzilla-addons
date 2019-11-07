@@ -9,6 +9,7 @@
 		<table class="w-100">
 			<tr>
 				<th></th>
+				<th></th>
 				<th>Description</th>
 				<th>Price each {{if $currencysymbol}}({{$currencysymbol}}){{/if}}</th>
 				<th></th>
@@ -23,6 +24,7 @@
 					</form>
 
 				</td>
+				<td>{{if $item.item_photo_url}}<img src="{{$item.item_photo_url}}" style="max-height: 2.5rem; max-width: 2.5rem">{{/if}}</td>
 				<td>{{$item.item_desc}}</td>
 				<td>{{$item.item_price}}</td>
 				<td>{{if $item.order_qty}}<i class="fa fa-shopping-cart"></i> {{$item.order_qty}}{{/if}}</td>

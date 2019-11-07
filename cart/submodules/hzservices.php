@@ -98,6 +98,7 @@ class Cart_hzservices {
         $catalog[$item["item_sku"]] = Array("item_sku"=>$item["item_sku"],
           "item_desc"=>$item["item_description"],
           "item_price"=>$item["item_price"],
+          "item_photo_url"=>$item["item_photo_url"],
           "item_type"=>"hzservices",
           "item_activate_commands"=>$item["activate_commands"],
           "item_deactivate_commands"=>$item["deactivate_commands"],
@@ -197,6 +198,7 @@ class Cart_hzservices {
     }
     $item["item_description"] = isset($_POST["item_description"]) ? $_POST["item_description"] : $item["item_description"];
     $item["item_price"] = isset($_POST["item_price"]) ? $_POST["item_price"]+0 : $item["item_price"];
+    $item["item_photo_url"] = isset($_POST["item_photo_url"]) ? $_POST["item_photo_url"] : $item["item_photo_url"];
     $item["item_active"] = isset($_POST["item_active"]) ? true : false;
     $item["item_locked"] = isset($_POST["item_locked"]) ? true : false;
     $skus[$sku]=$item;
@@ -635,7 +637,7 @@ class Cart_hzservices {
     $skus = get_pconfig(local_channel(),'cart-hzservices','skus');
     $items = $skus ? cart_maybeunjson($skus) : Array();
 
-    $item= isset ($items[$sku]) ? $items[$sku] : Array("item_sku"=>$sku,"locked"=>0,"item_description"=>"New Item","item_price"=>0,"item_active"=>false);
+    $item= isset ($items[$sku]) ? $items[$sku] : Array("item_sku"=>$sku,"locked"=>0,"item_description"=>"New Item","item_price"=>0,"item_photo_url"=>"","item_active"=>false);
 
     $formelements["submit"]=t("Submit");
     $formelements["uri"]=strtok($_SERVER["REQUEST_URI"],'?').'?SKU='.$sku;
@@ -654,6 +656,9 @@ class Cart_hzservices {
     $formelements["itemdetails"].= replace_macros(get_markup_template('field_input.tpl'), array(
                 '$field'	=> array('item_price', t('Price'),
                 (isset($item["item_price"]) ? $item["item_price"] : "0.00"))));
+    $formelements["itemdetails"].= replace_macros(get_markup_template('field_input.tpl'), array(
+                '$field'	=> array('item_photo_url', t('Photo URL'),
+                (isset($item["item_photo_url"]) ? $item["item_photo_url"] : ''))));
     $formelements["itemactivation"].= "<h3><u>Channel Commands</u></h3>\n";
     $formelements["itemactivation"].= replace_macros(get_markup_template('field_radio.tpl'), array(
    				     '$field'	=> array('cmd', t('Add buyer to privacy group'),

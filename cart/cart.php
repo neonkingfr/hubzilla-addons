@@ -26,36 +26,27 @@ use Zotlabs\Extend\Route;
 
 
 class Cart {
-  public static $cart_version="0.9.0";
-  public static $seller;
-  public static $buyer;
+	public static $cart_version="0.9.0";
+	public static $seller;
+	public static $buyer;
 
-  public static function check_min_version ($platform,$minver) {
-      switch ($platform) {
-          case 'hubzilla':
-              $curver = STD_VERSION;
-              break;
-          case 'cart':
-              $curver = Cart::$cart_version;
-              break;
-          default:
-              return false;
-    }
+	public static function check_min_version($platform,$minver) {
+		switch ($platform) {
+			case 'hubzilla':
+				$curver = STD_VERSION;
+				break;
+			case 'cart':
+				$curver = Cart::$cart_version;
+				break;
+			default:
+				return false;
+		}
 
-    $checkver = explode ('.',$minver);
-    $ver = explode ('.',$curver);
-
-    $major = (intval($checkver[0]) <= intval($ver[0]));
-    $minor = (intval($checkver[1]) <= intval($ver[1]));
-    $patch = (intval($checkver[2]) <= intval($ver[2]));
-
-    if ($major && $minor && $patch) {
-         return true;
-    } else {
-         return false;
-    }
-    
-  }
+		if(version_compare($curver, $minver) >= 0)
+			return true;
+		
+		return false;
+	}
 
   public static function get_seller_id() {
         return (isset(\App::$profile["profile_uid"]) && \App::$profile["profile_uid"] != null) ? \App::$profile["profile_uid"] : Cart::$seller["channel_id"];
@@ -811,6 +802,7 @@ function cart_calc_totals(&$hookdata) {
 	$subtotal=0;
 	$taxtotal=0;
 	$ordertotal=0;
+
 	foreach ($items as $key=>$item) {
 		$linetotal=floatval($item["item_qty"])*floatval($item["item_price"]);
 		$hookdata["order"]["items"][$key]["extended"]=$linetotal;
@@ -1161,6 +1153,7 @@ function cart_load(){
         // WIDGET REGISTRATION
         if (Cart::check_min_version ('hubzilla','3.7.1')) {
                 Zotlabs\Extend\Widget::register('addon/cart/widgets/cartbutton.php','cartbutton');
+                Zotlabs\Extend\Widget::register('addon/cart/widgets/catalogitem.php','catalogitem');
         }
 
 	//$manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
@@ -1187,6 +1180,7 @@ function cart_unload(){
         // WIDGET UNREGISTRATION
         if (Cart::check_min_version ('hubzilla','3.7.1')) {
                 Zotlabs\Extend\Widget::unregister('addon/cart/widgets/cartbutton.php','cartbutton');
+                Zotlabs\Extend\Widget::unregister('addon/cart/widgets/catalogitem.php','catalogitem');
         }
 
 	Route::unregister('addon/cart/Settings/Cart.php','settings/cart');
