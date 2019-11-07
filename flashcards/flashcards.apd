@@ -1,4 +1,4 @@
-version: 2.01
+version: 2.02
 url: $baseurl/flashcards/$nick
 requires: local_channel
 name: Flashcards
