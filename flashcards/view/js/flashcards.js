@@ -299,8 +299,11 @@ class Box {
             "private_autosave": true,
             "private_show_card_sort": false,
             "private_sort_default": true,
+            "private_search_convenient": true,
             "cards": []
         };
+        // not persistant search string for convenient search
+        this.search = "";
     }
     /**
      * load content from local storage
@@ -411,6 +414,7 @@ class Box {
         this.content.private_autosave = this.checkBoolean(this.content.private_autosave, true);
         this.content.private_show_card_sort = this.checkBoolean(this.content.private_show_card_sort, false);
         this.content.private_sort_default = this.checkBoolean(this.content.private_sort_default, true);
+        this.content.private_search_convenient = this.checkBoolean(this.content.private_search_convenient, true);
         var i;
         for (i = 0; i < this.content.private_visibleColumns.length; i++) {
             var defaultBool = false;
@@ -501,6 +505,7 @@ class Box {
         s += this.content.private_autosave;
         s += this.content.private_show_card_sort;
         s += this.content.private_sort_default;
+        s += this.content.private_search_convenient;
         s += this.content.private_block;
         return s;
     }
@@ -580,73 +585,113 @@ class Box {
         this.sortBy(this.content.private_sortColumn, this.content.private_sortReverse);
     }
     getCardsArrayFiltered(filterArray) {
-        if (filterArray) {
-            this.content.private_filter = filterArray;
-        } else {
-            filterArray = this.content.private_filter;
-        }
-        logger.log('Filter cards array with filter array = ' + filterArray + '...');
-        // Is filter empty?
-        var l;
-        var isFilterEmpty = true;
-        for (l = 0; l < filterArray.length; l++) {
-            if (filterArray[l].trim() != "") {
-                isFilterEmpty = false
-            }
-        }
-        if (isFilterEmpty) {
-            return this.content.cards;
-        }
         var filtered = [];
-        // iterate all cards
-        var i;
-        for (i = 0; i < this.content.cards.length; i++) {
-            var card = this.content.cards[i];
-            var aWordFound = false;
-            var aWordNotFound = false;
-            // iterate columns
-            var j;
-            for (j = 0; j < filterArray.length; j++) {
-                if (aWordNotFound) {
-                    break;
-                }
-                if (filterArray[j] == "") {
-                    // ignore if a column has no search string
-                    continue;
-                }
-
-                if (j == 0 || j == 5 || j == 9) {
-                    // Date-Time Search
-                    if (card.content[j] != 0) { // ignore if time is 0 = 1970-01-01
-                        var localTimeString = new Date(card.content[j]).toLocaleString();
-                        var value = filterArray[j];
-                        if (localTimeString.toLocaleLowerCase().includes(value.toLocaleLowerCase())) {
-                            aWordFound = true;
-                        } else {
-                            aWordNotFound = true;
-                            break;
+        if(this.search !== "") {
+            logger.log('Using convenient search with search string = ' + this.search + '...');
+            for (i = 0; i < this.content.cards.length; i++) {
+                var card = this.content.cards[i];
+                var cardContent = "";
+                var j;
+                for(j = 1; j < 5; j++) {
+                    if(card.content[j].length > 0) {
+                        if (cardContent.length > 0) {
+                            cardContent += " ";
                         }
+                        cardContent += card.content[j];
                     }
-                } else {
-                    // String search: make a search with AND for every word in a search string
-                    var parts = filterArray[j].split(" ");
-                    var k;
-                    for (k = 0; k < parts.length; k++) {
-                        var value = parts[k].trim();
-                        if (value == "") {
-                            continue;
-                        }
-                        if (!card.content[j].toString().toLocaleLowerCase().includes(value.toLocaleLowerCase())) {
-                            aWordNotFound = true;
-                            break;
-                        } else {
-                            aWordFound = true;
-                        }
+                }
+                if(cardContent.length < 1) {
+                    break; // should never happen
+                }
+                var aWordFound = false;
+                var aWordNotFound = false;
+                // String search: make a search with AND for every word in a search string
+                var parts = this.search.split(" ");
+                var k;
+                for (k = 0; k < parts.length; k++) {
+                    var value = parts[k].trim();
+                    if (value == "") {
+                        continue;
                     }
+                    if (! cardContent.toString().toLocaleLowerCase().includes(value.toLocaleLowerCase())) {
+                        aWordNotFound = true;
+                        break;
+                    } else {
+                        aWordFound = true;
+                    }
+                }
+                if (aWordFound && !aWordNotFound) {
+                    filtered.push(card);
                 }
             }
-            if (aWordFound && !aWordNotFound) {
-                filtered.push(card);
+        } else {            
+            if (filterArray) {
+                this.content.private_filter = filterArray;
+            } else {
+                filterArray = this.content.private_filter;
+            }
+            logger.log('Filter cards array with filter array = ' + filterArray + '...');
+            // Is filter empty?
+            var l;
+            var isFilterEmpty = true;
+            for (l = 0; l < filterArray.length; l++) {
+                if (filterArray[l].trim() != "") {
+                    isFilterEmpty = false
+                }
+            }
+            if (isFilterEmpty) {
+                return this.content.cards;
+            }
+            // iterate all cards
+            var i;
+            for (i = 0; i < this.content.cards.length; i++) {
+                var card = this.content.cards[i];
+                var aWordFound = false;
+                var aWordNotFound = false;
+                // iterate columns
+                var j;
+                for (j = 0; j < filterArray.length; j++) {
+                    if (aWordNotFound) {
+                        break;
+                    }
+                    if (filterArray[j] == "") {
+                        // ignore if a column has no search string
+                        continue;
+                    }
+
+                    if (j == 0 || j == 5 || j == 9) {
+                        // Date-Time Search
+                        if (card.content[j] != 0) { // ignore if time is 0 = 1970-01-01
+                            var localTimeString = new Date(card.content[j]).toLocaleString();
+                            var value = filterArray[j];
+                            if (localTimeString.toLocaleLowerCase().includes(value.toLocaleLowerCase())) {
+                                aWordFound = true;
+                            } else {
+                                aWordNotFound = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        // String search: make a search with AND for every word in a search string
+                        var parts = filterArray[j].split(" ");
+                        var k;
+                        for (k = 0; k < parts.length; k++) {
+                            var value = parts[k].trim();
+                            if (value == "") {
+                                continue;
+                            }
+                            if (!card.content[j].toString().toLocaleLowerCase().includes(value.toLocaleLowerCase())) {
+                                aWordNotFound = true;
+                                break;
+                            } else {
+                                aWordFound = true;
+                            }
+                        }
+                    }
+                }
+                if (aWordFound && !aWordNotFound) {
+                    filtered.push(card);
+                }
             }
         }
         return filtered;
@@ -706,7 +751,7 @@ class Box {
             }
         }
         if (isOwnBox) {
-            var keysPrivate = ['cardsDecks', 'cardsDeckWaitExponent', 'cardsRepetitionsPerDeck', 'private_block', 'private_sortColumn', 'private_sortReverse', 'private_filter', 'private_visibleColumns', 'private_switch_learn_direction', 'private_switch_learn_all', 'private_autosave', 'private_show_card_sort', 'private_sort_default', 'lastChangedPrivateMetaData'];
+            var keysPrivate = ['cardsDecks', 'cardsDeckWaitExponent', 'cardsRepetitionsPerDeck', 'private_block', 'private_sortColumn', 'private_sortReverse', 'private_filter', 'private_visibleColumns', 'private_switch_learn_direction', 'private_switch_learn_all', 'private_autosave', 'private_show_card_sort', 'private_sort_default', 'private_search_convenient', 'lastChangedPrivateMetaData'];
             if (this.content.lastChangedPrivateMetaData !== boxRemote.content.lastChangedPrivateMetaData) {
                 var i;
                 for (i = 0; i < keysPrivate.length; i++) {
@@ -910,6 +955,8 @@ var sortByColumn = 0;
 var sortReversOrder = false;
 var timezoneOffsetMilliseconds = 0;
 
+var blockEditBox = false;
+
 function setShareButton() {
     var hasUploads = 0;
     $("#button_share_box").css({'color': ''});
@@ -955,6 +1002,7 @@ function conductGUIelements(action) {
     if (action !== 'list-boxes') {
         $("#button_flashcards_list_close").hide();
         $("#panel_cloud_boxes_1").hide();
+        blockEditBox = false;
     }
     if (action === 'start') {
         $("#panel_box_navigation").show();
@@ -982,7 +1030,7 @@ function conductGUIelements(action) {
             $('#panel_box_attributes').collapse("hide");
             $("#panel_flashcards_cards_actions").show();
             $("#panel_flashcards_cards").show();
-            showCards(false);
+            showCards();
         }
     }
     if (action === 'edit-box') {
@@ -1006,7 +1054,7 @@ function conductGUIelements(action) {
         $("#button_flashcards_save_box").hide();
         $("#panel_flashcards_cards_actions").show();
         $("#panel_flashcards_cards").show();
-        showCards(true);
+        showCards();
     }
     if (action === 'edit-card') {
         $("#flashcards_panel_card_header").show();
@@ -1027,7 +1075,7 @@ function conductGUIelements(action) {
         $("#panel_flashcards_cards_actions").show();
         $("#panel_flashcards_cards").show();
         $("#button_flashcards_new_card").css({'color': ''});
-        showCards(false);
+        showCards();
     }
     if (action === 'learn-next') {
         $("#panel_box_navigation").hide();
@@ -1074,7 +1122,7 @@ function conductGUIelements(action) {
         $("#panel_flashcards_cards_actions").show();
         $("#panel_flashcards_cards").show();
         unsetLearnButtonsToFixedPosition();
-        showCards(false);
+        showCards();
     }
     if (action === 'list-boxes') {
         $("#flashcards_navbar_brand").html("Your Cloud Boxes");
@@ -1085,8 +1133,10 @@ function conductGUIelements(action) {
         $('#panel_flashcards_permissions').collapse("hide");
         $("#panel_flashcards_cards_actions").hide();
         $("#panel_flashcards_cards").hide();
+        $("#panel_box_navigation").show();
         $("#panel_cloud_boxes_1").show();
-        $("#button_flashcards_list_close").show();
+        //$("#button_flashcards_list_close").show();
+        blockEditBox = true;
     }
     if (action === 'list-close') {
         $("#panel_flashcards_cards_actions").show();
@@ -1119,6 +1169,7 @@ function fillInputsSettings() {
     $('#flashcards-autosave').prop('checked', box.content.private_autosave);
     $('#flashcards-card-sort').prop('checked', box.content.private_show_card_sort);
     $('#flashcards-default-sort').prop('checked', box.content.private_sort_default);
+    $('#flashcards-convenient-search').prop('checked', box.content.private_search_convenient);
     $("#flashcards-learn-system-decks").val(box.content.cardsDecks);
     $("#flashcards-learn-system-deck-repetitions").val(box.content.cardsRepetitionsPerDeck);
     $("#flashcards-learn-system-exponent").val(box.content.cardsDeckWaitExponent);
@@ -1132,15 +1183,15 @@ function fillInputsSettings() {
     $("#fc_leitner_calculation").html(result[2]);
 }
 
-function showCards(reload) {
+function showCards() {
     logger.log('showCards()...');
     box.sort();
-    createTable(reload);
+    createTable();
     setCardsStatus();
     logger.log('tables created, showCards() is finished');
 }
 
-function createTable(reload) {
+function createTable() {
     var html = "";
     if (box.content.cards == null) {
         return;
@@ -1149,10 +1200,10 @@ function createTable(reload) {
         removeRows();
         return;
     }
-    if ($('#flashcards_table').length < 1 || reload) {
-        logger.log('creating table head...');
-        html += '<table class="table" id="flashcards_table">';
-        html += getColumnElements();
+    logger.log('creating table head...');
+    html += '<table class="table" id="flashcards_table">';
+    html += getColumnElements();
+    if(! box.content.private_search_convenient) {
         html += '<tr>';
         var i;
         for (i = 0; i < 11; i++) {
@@ -1164,40 +1215,38 @@ function createTable(reload) {
             }
         }
         html += '</tr>';
-        if(box.content.private_show_card_sort) {            
-            html += '<tr>';
-            var i;
-            for (i = 0; i < 11; i++) {
-                if (box.content.private_visibleColumns[i]) {
-                    html += '<th scope="col">';
-                    // html += box.content.cardsColumnName[i];
-                    // html += '<br>';
-                    html += '<span>';
-                    if (box.content.private_sortColumn == i) {
-                        if (!box.content.private_sortReverse) {
-                            html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
-                            html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
-                        } else {
-                            html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '"></i>';
-                            html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
-                        }
+    }
+    if(box.content.private_show_card_sort) {            
+        html += '<tr>';
+        var i;
+        for (i = 0; i < 11; i++) {
+            if (box.content.private_visibleColumns[i]) {
+                html += '<th scope="col">';
+                // html += box.content.cardsColumnName[i];
+                // html += '<br>';
+                html += '<span>';
+                if (box.content.private_sortColumn == i) {
+                    if (!box.content.private_sortReverse) {
+                        html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
+                        html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
                     } else {
                         html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '"></i>';
-                        html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
+                        html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
                     }
-                    html += '</span>';
-                    html += '</th>';
+                } else {
+                    html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '"></i>';
+                    html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
                 }
+                html += '</span>';
+                html += '</th>';
             }
-            html += '</tr>';
         }
-        logger.log('creating table body...');
-        html += createCardRows();
-        html += '</table>';
-        $('#panel_flashcards_cards').html(html);
-    } else {
-        replaceRows();
+        html += '</tr>';
     }
+    logger.log('creating table body...');
+    html += createCardRows();
+    html += '</table>';
+    $('#panel_flashcards_cards').html(html);
 }
 function removeRows() {
     logger.log('removeRows() remove all rows first...');
@@ -1274,6 +1323,16 @@ function setCardsStatus() {
         html += filteredCards.length + ' out of ' + l;
     }
     $('#span_flashcards_cards_actions_status').html(html);
+    if(l > 0) {
+        if(box.content.private_search_convenient) {
+            $('#button_flashcards_search_cards').show();
+        } else {
+            $('#button_flashcards_search_cards').hide();
+            $('#input_flashcards_search_cards').hide();
+            $('#input_flashcards_search_cards').val("");
+            box.search = "";
+        }
+    }
     var due = 0;
     var i;
     for (i = 0; i < filteredCards.length; i++) {
@@ -1458,6 +1517,7 @@ function saveBoxSettings() {
         box.content.private_autosave = $('#flashcards-autosave').prop('checked');
         box.content.private_show_card_sort= $('#flashcards-card-sort').prop('checked');
         box.content.private_sort_default = $('#flashcards-default-sort').prop('checked');
+        box.content.private_search_convenient = $('#flashcards-convenient-search').prop('checked');
         box.content.cardsDecks = $('#flashcards-learn-system-decks').val();
         box.content.cardsRepetitionsPerDeck = $('#flashcards-learn-system-deck-repetitions').val();
         box.content.cardsDeckWaitExponent = $('#flashcards-learn-system-exponent').val();
@@ -1480,8 +1540,12 @@ $(document).on("input", "#flashcards_box_description", function () {
 
 $(document).on("click", "#button_flashcards_learn_play", function () {
     if(box.content.private_sort_default) {
+        var tmpIndex = box.content.private_sortColumn;
+        var tempRevers = box.content.private_sortReverse;
         box.sortBy(0, false);
         box.sortBy(6, false);
+        box.content.private_sortColumn = tmpIndex;
+        box.content.private_sortReverse = tempRevers;
     }
     learnNext(true);
 });
@@ -1779,6 +1843,7 @@ $(document).on("click", "#button_flashcards_settings_default", function () {
     $('#flashcards-autosave').prop('checked', true);
     $('#flashcards-card-sort').prop('checked', false);
     $('#flashcards-default-sort').prop('checked', true);
+    $('#flashcards-convenient-search').prop('checked', true);
     $('#flashcards-switch-learn-all').prop('checked', false);
     $("#flashcards-learn-system-decks").val('7');
     $("#flashcards-learn-system-deck-repetitions").val('3');
@@ -1796,14 +1861,14 @@ $(document).on("click", "#button_flashcards_settings_default", function () {
 $(document).on("click", "i.fa-sort-asc", function () {
     box.content.private_sortColumn = parseInt($(this).attr("sortCol"));
     box.content.private_sortReverse = false;
-    showCards(false);
+    showCards();
     colorSortArrow();
 });
 
 $(document).on("click", "i.fa-sort-desc", function () {
     box.content.private_sortColumn = parseInt($(this).attr("sortCol"));
     box.content.private_sortReverse = true;
-    showCards(false);
+    showCards();
     colorSortArrow();
 });
 
@@ -1831,7 +1896,27 @@ $(document).on("input", "input.cards-filter", function () {
     $('input.cards-filter').each(function (i, obj) {
         box.content.private_filter[$(this).attr('filterCol')] = $(this).val();
     });
-    showCards(false);
+    showCards();
+});
+
+$(document).on("input", "#input_flashcards_search_cards", function () {
+    logger.log('Some input in field for convenient search. Clear column filter');
+    var searchStr = $('#input_flashcards_search_cards').val();
+    var l = searchStr.length;
+    var lastChar = searchStr.substring(searchStr.length - 1)
+    if (l > 2 && lastChar !== " ") {
+        box.content.private_filter = ["", "", "", "", "", "", "", "", "", "", ""];
+        box.search = searchStr;
+        showCards();
+    } else {
+        if(box.search.length > 0 && l === 0) {
+            // User deleted the search string
+            box.search = "";
+            showCards();
+        }
+        logger.log('Search string less than 3 characters: ' + searchStr);
+        return;
+    }
 });
 
 $(document).on("click", "#button_flashcards_new_card", function () {
@@ -1852,6 +1937,9 @@ $(document).on("click", ".flashcards-table-row", function () {
 
 $(document).on("click", "#flashcards_navbar_brand", function () {
     logger.log('Clicked on title in navbar');
+    if(blockEditBox) {
+        return;
+    }
     if ($('#button_flashcards_save_box').is(':visible')) {
         saveBoxSettings();
     } else {
@@ -1860,6 +1948,9 @@ $(document).on("click", "#flashcards_navbar_brand", function () {
 });
 $(document).on("click", "#flashcards_edit_box", function () {
     logger.log('Clicked on flashcards_edit_box');
+    if(blockEditBox) {
+        return;
+    }
     conductGUIelements('edit-box');
 });
 
@@ -1954,7 +2045,7 @@ function createBoxList(boxes) {
 $(document).on("click", "#run_unit_tests", function () {
     logger.log('clicked run unit tests');
     test_run();
-    showCards(true);
+    showCards();
 });
 
 $(window).on('resize', function () {
@@ -2019,6 +2110,14 @@ function showACLbutton() {
         $("#flashcards_perms").hide();
     }
 }
+
+$(document).on("click", "#button_flashcards_search_cards", function () {
+    if($("#input_flashcards_search_cards").is(":visible")) {
+        $('#input_flashcards_search_cards').hide(); 
+    } else {
+        $('#input_flashcards_search_cards').show();        
+    }
+})
 
 //------------------------
 // ###
@@ -2161,6 +2260,7 @@ function test_box_validate() {
     testBox.content.private_autosave = true;
     testBox.content.private_show_card_sort = true;
     testBox.content.private_sort_default = true;
+    testBox.content.private_search_convenient = true;
     testBox.content.private_block = true;
     testBox.validate();
     if (testBox.content.private_sortReverse !== true) {
@@ -2181,6 +2281,12 @@ function test_box_validate() {
     if (testBox.content.private_show_card_sort !== true) {
         return false;
     }
+    if (testBox.content.private_sort_default !== true) {
+        return false;
+    }
+    if (testBox.content.private_search_convenient !== true) {
+        return false;
+    }
     if (testBox.content.private_block !== true) {
         return false;
     }
@@ -2190,6 +2296,7 @@ function test_box_validate() {
     testBox.content.private_autosave = "true";
     testBox.content.private_show_card_sort = "true";
     testBox.content.private_sort_default = "true";
+    testBox.content.private_search_convenient = "true";
     testBox.content.private_block = "true";
     testBox.validate();
     if (testBox.content.private_sortReverse !== true) {
@@ -2210,6 +2317,9 @@ function test_box_validate() {
     if (testBox.content.private_sort_default !== true) {
         return false;
     }
+    if (testBox.content.private_search_convenient !== true) {
+        return false;
+    }
     if (testBox.content.private_block !== true) {
         return false;
     }
@@ -2219,6 +2329,7 @@ function test_box_validate() {
     testBox.content.private_autosave = "hallo";
     testBox.content.private_show_card_sort = "hallo";
     testBox.content.private_sort_default = "hallo";
+    testBox.content.private_search_convenient = "hallo";
     testBox.content.private_block = "nonsense";
     testBox.validate();
     if (testBox.content.private_sortReverse !== false) {
@@ -2237,6 +2348,9 @@ function test_box_validate() {
         return false;
     }
     if (testBox.content.private_sort_default !== true) {
+        return false;
+    }
+    if (testBox.content.private_search_convenient !== true) {
         return false;
     }
     if (testBox.content.private_block !== false) {
@@ -2323,6 +2437,37 @@ function test_box_getCardsArrayFiltered() {
     // filter longer than value in card
     filteredCards = box.getCardsArrayFiltered(["", "c", "a aaa", "", "DD"]);
     if (filteredCards.length != 0) {
+        return false;
+    }
+    // -- convenient filter --
+    box.search = "y"
+    var filteredCards = box.getCardsArrayFiltered(["", "", "", " ", "", ""]);
+    if (filteredCards.length !== 0) {
+        return false;
+    }
+    box.search = "dd"
+    var filteredCards = box.getCardsArrayFiltered(["", "", "", " ", "", ""]);
+    if (filteredCards.length !== 3) {
+        return false;
+    }
+    // to use more columns AND search with operator AND -> but this is overwritten by the convenient search
+    filteredCards = box.getCardsArrayFiltered(["", "cc", "a a"]);
+    if (filteredCards.length !== 3) {
+        return false;
+    }
+    box.search = "Aa dd bB"
+    var filteredCards = box.getCardsArrayFiltered(["", "", "", " ", "", ""]);
+    if (filteredCards.length !== 3) {
+        return false;
+    }
+    box.search = "15"
+    var filteredCards = box.getCardsArrayFiltered(["", "", "", " ", "", ""]);
+    if (filteredCards.length !== 0) {
+        return false;
+    }
+    box.search = ""
+    filteredCards = box.getCardsArrayFiltered(["", "c", "a a", "", "DD"]);
+    if (filteredCards.length != 1 || filteredCards[0] != test_card_02) {
         return false;
     }
     return true;
