@@ -98,6 +98,7 @@ class Cart_manualcat {
         Array("item_sku"=>$item,
           "item_desc"=>$skudata["item_description"],
           "item_price"=>$skudata["item_price"],
+          "item_photo_url"=>$skudata["item_photo_url"],
           "item_meta"=>cart_maybeunjson($skudata["item_meta"]),
           "item_type"=>"manualcat",
           "locked"=>$skudata["locked"]
@@ -211,6 +212,7 @@ class Cart_manualcat {
     }
     $item["item_description"] = isset($_POST["item_description"]) ? $_POST["item_description"] : $item["item_description"];
     $item["item_price"] = isset($_POST["item_price"]) ? $_POST["item_price"]+0 : $item["item_price"];
+    $item["item_photo_url"] = isset($_POST["item_photo_url"]) ? $_POST["item_photo_url"] : $item["item_photo_url"];
     $item["item_active"] = isset($_POST["item_active"]) ? true : false;
     $item["item_locked"] = isset($_POST["item_locked"]) ? true : false;
     if ($item["item_active"]) {
@@ -243,7 +245,7 @@ class Cart_manualcat {
     $seller_uid = Cart::get_seller_id();
     $skudata= Cart_manualcat::get_item($sku);
 
-    $item= (is_array($skudata) && $skudata["item_sku"]=$sku) ? $skudata : Array("item_sku"=>$sku,"locked"=>0,"item_description"=>"New Item","item_price"=>0,"item_active"=>false);
+    $item= (is_array($skudata) && $skudata["item_sku"]=$sku) ? $skudata : Array("item_sku"=>$sku,"locked"=>0,"item_description"=>"New Item","item_price"=>0,"item_photo_url"=>"","item_active"=>false);
 
     $formelements["submit"]=t("Submit");
     $formelements["uri"]=strtok($_SERVER["REQUEST_URI"],'?').'?SKU='.$sku;
@@ -262,6 +264,9 @@ class Cart_manualcat {
     $formelements["itemdetails"].= replace_macros(get_markup_template('field_input.tpl'), array(
                 '$field'	=> array('item_price', t('Price'),
                 (isset($item["item_price"]) ? $item["item_price"] : "0.00"))));
+    $formelements["itemdetails"].= replace_macros(get_markup_template('field_input.tpl'), array(
+                '$field'	=> array('item_photo_url', t('Photo URL'),
+                (isset($item["item_photo_url"]) ? $item["item_photo_url"] : ''))));
 
     $macrosubstitutes=Array("security_token"=>get_form_security_token(),"sku"=>$sku,"formelements"=>$formelements);
 
