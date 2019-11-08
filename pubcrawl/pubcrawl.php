@@ -401,7 +401,7 @@ function pubcrawl_channel_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
 		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
 
@@ -945,7 +945,7 @@ function pubcrawl_profile_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
 		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
 
@@ -1061,7 +1061,7 @@ function pubcrawl_item_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
 		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
 
@@ -1113,7 +1113,7 @@ function pubcrawl_thing_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
 		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
 
@@ -1166,7 +1166,7 @@ function pubcrawl_locs_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
 		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
 
@@ -1220,7 +1220,7 @@ function pubcrawl_follow_mod_init($x) {
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
 		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
 		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
 
@@ -1249,7 +1249,7 @@ function pubcrawl_queue_deliver(&$b) {
 		$headers = [];
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$ret = $outq['outq_msg'];
-		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y h:i:s \\G\\M\\T');
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
 		$headers['(request-target)'] = 'post ' . get_request_string($outq['outq_posturl']);
 
