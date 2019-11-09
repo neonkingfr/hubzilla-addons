@@ -276,7 +276,7 @@ function asencode_item($i) {
 		$ret['url'] = [
 			'type' => 'Link',
 			'rel'  => 'alternate',
-			'type' => 'text/html',
+			'mediaType' => 'text/html',
 			'href' => $i['plink']
 		];
 	}
