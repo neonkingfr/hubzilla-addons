@@ -1273,11 +1273,6 @@ function as_create_note($channel,$observer_hash,$act) {
 	
 	$content = as_get_content($act->obj);
 
-	if(! $content) {
-		logger('no content');
-		return;
-	}
-
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
 	$s['uuid'] = '';
@@ -1524,11 +1519,6 @@ function as_announce_note($channel,$observer_hash,$act) {
 	}
 
 	$content = as_get_content($act->obj);
-
-	if(! $content) {
-		logger('no content');
-		return;
-	}
 
 	$s['owner_xchan'] = $s['author_xchan'] = $observer_hash;
 
