@@ -271,12 +271,15 @@ function asencode_item($i) {
 			$ret['location']['longitude'] = $l[1];
 		}
 	}
-	$ret['url'] = [
-		'type' => 'Link',
-		'rel'  => 'alternate',
-		'type' => 'text/html',
-		'href' => $i['plink']
-	];
+
+	if($i['obj']) {
+		$ret['url'] = [
+			'type' => 'Link',
+			'rel'  => 'alternate',
+			'type' => 'text/html',
+			'href' => $i['plink']
+		];
+	}
 
 	$ret['attributedTo'] = $i['author']['xchan_url'];
 
