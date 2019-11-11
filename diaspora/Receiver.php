@@ -571,6 +571,10 @@ class Diaspora_Receiver {
 			}
 
 		}
+		else {
+			logger('diaspora_reshare: no status_message');
+			return;
+		}
 
 		$maxlen = get_max_import_size();
 
