@@ -430,7 +430,7 @@ function pubcrawl_notifier_process(&$arr) {
 		return;
 
 	// If the parent is an announce activity, add the author to the recipients
-	if($arr['parent_item']['verb'] == ACTIVITY_SHARE) {
+	if($arr['parent_item']['verb'] === ACTIVITY_SHARE) {
 		$arr['env_recips'][] = [
 			'guid'     => $arr['parent_item']['author']['xchan_guid'],
 			'guid_sig' => $arr['parent_item']['author']['xchan_guid_sig'],
@@ -454,6 +454,7 @@ function pubcrawl_notifier_process(&$arr) {
 			$arr['recipients'][] = '\'' . $rr['channel_hash'] . '\'';
 		}
 	}
+
 }
 
 function pubcrawl_notifier_hub(&$arr) {
