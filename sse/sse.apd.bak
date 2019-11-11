@@ -1,0 +1,6 @@
+version: 1
+url: $baseurl/sse
+requires: local_channel
+name: SSE notifications
+photo: icon:exclamation-triangle
+
