@@ -43,7 +43,16 @@ function sse_item_store($item) {
 
 	if(is_sys_channel($item_uid)) {
 		$sys = true;
-		$hashes = get_channel_hashes();
+		//$hashes = get_channel_hashes();
+		//hz_syslog(print_r($hashes,true));
+
+		$visitors = q("SELECT DISTINCT xchan FROM xconfig WHERE cat = 'sse' AND k ='timestamp' and v > %s - INTERVAL %s",
+			db_utcnow(),
+			db_quoteinterval('15 MINUTE')
+		);
+
+		$hashes = flatten_array_recursive($visitors);
+
 	}
 	else {
 		$channel = channelx_by_n($item_uid);
@@ -113,7 +122,6 @@ function sse_item_store($item) {
 		if(is_array($x['files']['notifications']))
 			$x['files']['count'] = count($x['files']['notifications']);
 
-		set_xconfig($hash, 'sse', 'timestamp', datetime_convert());
 		set_xconfig($hash, 'sse', 'notifications', $x);
 
 	}
@@ -154,7 +162,6 @@ function sse_event_store_event_end($item) {
 	if(is_array($x['all_events']['notifications']))
 		$x['all_events']['count'] = count($x['all_events']['notifications']);
 
-	set_xconfig($channel['channel_hash'], 'sse', 'timestamp', datetime_convert());
 	set_xconfig($channel['channel_hash'], 'sse', 'notifications', $x);
 
 }
@@ -179,7 +186,6 @@ function sse_enotify_store_end($item) {
 	if(is_array($x['notify']['notifications']))
 		$x['notify']['count'] = count($x['notify']['notifications']);
 
-	set_xconfig($channel['channel_hash'], 'sse', 'timestamp', datetime_convert());
 	set_xconfig($channel['channel_hash'], 'sse', 'notifications', $x);
 
 }
@@ -204,7 +210,6 @@ function sse_permissions_create($item) {
 	if(is_array($x['intros']['notifications']))
 		$x['intros']['count'] = count($x['intros']['notifications']);
 
-	set_xconfig($channel['channel_hash'], 'sse', 'timestamp', datetime_convert());
 	set_xconfig($channel['channel_hash'], 'sse', 'notifications', $x);
 
 }
