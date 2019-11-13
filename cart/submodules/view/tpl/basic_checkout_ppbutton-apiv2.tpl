@@ -3,8 +3,8 @@
 	<div class="section-content-wrapper">
 		{{if !$order.checkedout}}
 		<div class="clearfix">
-			<div id="paypal-button-container" class="float-left mr-2"></div>
-			<a href="{{$links.checkoutlink}}" class="float-left p-1">Back to Payment Options</a>
+			<div id="paypal-button-container"></div>
+			<a href="{{$links.checkoutlink}}">Back to Payment Options</a>
 		</div>
 		<script>
 		  paypal.Buttons({
@@ -18,7 +18,7 @@
 			});
 		    },
 		    onApprove: function(data, actions) {
-alert("DATA: "+JSON.stringify(data));
+			console.log("CART DATA: " + data);
 			postdata = new FormData();
 			postdata.append('paymentID' , data.orderID);
 			return fetch('{{$buttonhook}}_execute', {
