@@ -159,22 +159,31 @@ class Cart_paypalbuttonV2 {
       Cart_paypalbuttonV2::load();
     }
 
-    static public function paypal_getbearer($credentials) {
-      $bearer = get_pconfig(\App::$profile['profile_uid'],'cart','paypalbutton_bearertoken');
-      $bearer = isset($bearer) ? cart_maybeunjson($bearer) : false;
+	static public function paypal_getbearer($credentials) {
 
-      if (isset($bearer["expires"]) && time() < $bearer["expires"]) {
-        return $bearer["access_token"];
-      }
-      del_pconfig(\App::$profile['profile_uid'],'cart','paypalbutton_bearertoken');
-      $data="grant_type=client_credentials";
+		$token = 'paypalbutton_sandbox_bearertoken';
+		if ($credentials['url'] == 'https://api.paypal.com')
+			$token = 'paypalbutton_bearertoken';
 
-      $ppresponse = Cart_paypalbuttonV2::paypal_post($data,$credentials,'/v1/oauth2/token',"application/x-www-form-urlencoded");
-      $bearer = cart_maybeunjson($ppresponse["data"]);
-      $bearer["expires"] = time() + $bearer["expires_in"];
-      set_pconfig(\App::$profile['profile_uid'],'cart','paypalbutton_bearertoken',cart_maybejson($bearer));
-      return $bearer["access_token"];
-    }
+		$bearer = get_pconfig(\App::$profile['profile_uid'], 'cart', $token);
+		$bearer = isset($bearer) ? cart_maybeunjson($bearer) : false;
+
+		if (isset($bearer['expires']) && time() < $bearer['expires']) {
+			return $bearer['access_token'];
+		}
+
+		del_pconfig(\App::$profile['profile_uid'], 'cart', $token);
+
+		$data = 'grant_type=client_credentials';
+		$ppresponse = Cart_paypalbuttonV2::paypal_post($data, $credentials, '/v1/oauth2/token', 'application/x-www-form-urlencoded');
+		$bearer = cart_maybeunjson($ppresponse['data']);
+		$bearer['expires'] = time() + $bearer['expires_in'];
+
+		set_pconfig(\App::$profile['profile_uid'], 'cart', $token, cart_maybejson($bearer));
+
+		return $bearer['access_token'];
+
+	}
 
     static public function paypal_getcredentials() {
       $id=\App::$profile['profile_uid'];
