@@ -118,6 +118,11 @@
 			</div>
 			<div class="row">
 				<div class="col-sm-12">
+					<label><input type="checkbox" id="flashcards-convenient-search"> Convenient search </label>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-12">
 					<label><input type="checkbox" id="flashcards-card-sort"> Show sortation </label>
 				</div>
 			</div>
@@ -343,8 +348,12 @@
 		<span id="span_flashcards_cards_actions_status"></span>
 		<span>Cards</span>
 		<button class="nav-item btn btn-default" id="button_flashcards_new_card">
-			<i class="fa fa-calendar-plus-o"></i>			
-		</button>		
+                    <i class="fa fa-calendar-plus-o"></i>			
+		</button>
+		<button class="nav-item btn btn-default" id="button_flashcards_search_cards" style="display: none;">
+                    <i class="fa fa-search"></i>			
+		</button>
+                <input id="input_flashcards_search_cards" style="display: none;">
 	</span>
 </div>
 

@@ -271,12 +271,15 @@ function asencode_item($i) {
 			$ret['location']['longitude'] = $l[1];
 		}
 	}
-	$ret['url'] = [
-		'type' => 'Link',
-		'rel'  => 'alternate',
-		'type' => 'text/html',
-		'href' => $i['plink']
-	];
+
+	if($i['obj']) {
+		$ret['url'] = [
+			'type' => 'Link',
+			'rel'  => 'alternate',
+			'mediaType' => 'text/html',
+			'href' => $i['plink']
+		];
+	}
 
 	$ret['attributedTo'] = $i['author']['xchan_url'];
 
@@ -1273,11 +1276,6 @@ function as_create_note($channel,$observer_hash,$act) {
 	
 	$content = as_get_content($act->obj);
 
-	if(! $content) {
-		logger('no content');
-		return;
-	}
-
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
 	$s['uuid'] = '';
@@ -1524,11 +1522,6 @@ function as_announce_note($channel,$observer_hash,$act) {
 	}
 
 	$content = as_get_content($act->obj);
-
-	if(! $content) {
-		logger('no content');
-		return;
-	}
 
 	$s['owner_xchan'] = $s['author_xchan'] = $observer_hash;
 

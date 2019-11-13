@@ -1,8 +1,24 @@
-<div class="widget cart-button-wrapper dm42cart">
-	<div class="cart-button dm42cart">
+<div class="widget">
+	<div class="catalog-item-details dm42cart">
+		{{if $item.item_photo_url}}
+		<img src="{{$item.item_photo_url}}" class="w-100 rounded pb-2">
+		{{/if}}
+		<div class="catalog-item-desc pb-2">
+			{{$item.item_desc}}
+		</div>
+		<div class="catalog-item-price pb-2">
+			<span class="font-weight-bold">{{$item.item_price_label}}:</span> {{$item.item_price}}
+		</div>
+		{{if $item.info}}
+		<div class="catalog-item-info pb-2">
+			<i class="fa fa-info-circle"></i> {{$item.info}}
+		</div>
+		{{/if}}
+	</div>
+	<div class="catalog-item-cart-button dm42cart">
 		{{if $item.order_qty}}
 		{{if $item.maxcount != 1}} 
-		<form method="post" style="border-width:0px;" action="{{$posturl}}?returnurl={{$returnurl}}">
+		<form method="post" action="{{$posturl}}?returnurl={{$returnurl}}">
 			<input type="hidden" name="cart_posthook" value="update_item">
 				<div class="input-group form-group">
 				<input class="form-control form-control-sm" type="text" name="qty-{{$item.id}}" value="{{$item.order_qty}}" style="width: 4em;float:left;">
@@ -13,7 +29,7 @@
 			</div>
 		</form>
 		{{else}}
-		<form method="post" style="border-width:0px;" action="{{$posturl}}?returnurl={{$returnurl}}">
+		<form method="post" action="{{$posturl}}?returnurl={{$returnurl}}">
 			<input type="hidden" name="cart_posthook" value="update_item">
 			<input type="hidden" name="delsku" value="{{$item.item_sku}}">
 			<b>Item Already in your cart!</b>
@@ -21,7 +37,7 @@
 			</form>
 		{{/if}}
 		{{else}}
-		<form method="post" style="border-width:0px;" action="{{$posturl}}{{if $returnurl}}?returnurl={{$returnurl}}{{/if}}">
+		<form method="post" action="{{$posturl}}{{if $returnurl}}?returnurl={{$returnurl}}{{/if}}">
 			<input type="hidden" name="cart_posthook" value="add_item">
 			<div class="input-group form-group">
 				<input class="form-control form-control-sm" type="text" name="qty" value="1">
