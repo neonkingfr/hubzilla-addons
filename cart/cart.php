@@ -96,7 +96,7 @@ class Cart {
 $cart_version = 0.9;
 load_config("cart");
 global $cart_submodules;
-$cart_submodules=Array("paypalbutton","hzservices","subscriptions","manualcat");
+$cart_submodules=Array("paypalbuttonV2","hzservices","subscriptions","manualcat");
 
 $cart_manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
 if ($cart_manualpayments) {
