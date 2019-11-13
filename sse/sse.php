@@ -61,7 +61,7 @@ function sse_item_store($item) {
 		$t = get_xconfig($hash, 'sse', 'timestamp');
 
 		if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
-			set_xconfig($hash, 'sse', 'notifications', []);
+			set_xconfig($hash, 'sse', 'notifications', '');
 		}
 
 		$vnotify = get_pconfig($item_uid, 'system', 'vnotify');
@@ -140,7 +140,7 @@ function sse_event_store_event_end($item) {
 	$t = get_xconfig($channel['channel_hash'], 'sse', 'timestamp');
 
 	if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
-		set_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
+		set_xconfig($channel['channel_hash'], 'sse', 'notifications', '');
 	}
 
 	$vnotify = get_pconfig($item_uid, 'system', 'vnotify');
@@ -175,7 +175,7 @@ function sse_enotify_store_end($item) {
 	$t = get_xconfig($channel['channel_hash'], 'sse', 'timestamp');
 
 	if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
-		set_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
+		set_xconfig($channel['channel_hash'], 'sse', 'notifications', '');
 	}
 
 	$x = get_xconfig($channel['channel_hash'], 'sse', 'notifications');
@@ -200,7 +200,7 @@ function sse_permissions_create($item) {
 	$t = get_xconfig($channel['channel_hash'], 'sse', 'timestamp');
 
 	if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
-		set_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
+		set_xconfig($channel['channel_hash'], 'sse', 'notifications', '');
 	}
 
 	$x = get_xconfig($channel['channel_hash'], 'sse', 'notifications');
