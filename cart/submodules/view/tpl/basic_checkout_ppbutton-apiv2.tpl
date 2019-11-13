@@ -18,7 +18,7 @@
 			});
 		    },
 		    onApprove: function(data, actions) {
-			console.log("CART DATA: " + data);
+			//console.log(data);
 			postdata = new FormData();
 			postdata.append('paymentID' , data.orderID);
 			return fetch('{{$buttonhook}}_execute', {
