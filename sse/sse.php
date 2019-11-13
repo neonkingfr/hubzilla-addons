@@ -56,6 +56,9 @@ function sse_item_store($item) {
 		$hashes = [$channel['channel_hash']];
 	}
 
+	if(! $hashes)
+		return;
+
 	foreach($hashes as $hash) {
 
 		$t = get_xconfig($hash, 'sse', 'timestamp');
@@ -137,6 +140,9 @@ function sse_event_store_event_end($item) {
 
 	$channel = channelx_by_n($item_uid);
 
+	if(! $channel)
+		return;
+
 	$t = get_xconfig($channel['channel_hash'], 'sse', 'timestamp');
 
 	if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
@@ -172,6 +178,9 @@ function sse_enotify_store_end($item) {
 
 	$channel = channelx_by_n($item['uid']);
 
+	if(! $channel)
+		return;
+
 	$t = get_xconfig($channel['channel_hash'], 'sse', 'timestamp');
 
 	if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
@@ -196,6 +205,9 @@ function sse_enotify_store_end($item) {
 function sse_permissions_create($item) {
 
 	$channel = channelx_by_hash($item['recipient']['xchan_hash']);
+
+	if(! $channel)
+		return;
 
 	$t = get_xconfig($channel['channel_hash'], 'sse', 'timestamp');
 
