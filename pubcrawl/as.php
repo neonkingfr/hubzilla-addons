@@ -273,12 +273,13 @@ function asencode_item($i) {
 	}
 
 	if($i['obj']) {
-		$ret['url'] = [
-			'type' => 'Link',
-			'rel'  => 'alternate',
-			'mediaType' => 'text/html',
-			'href' => $i['plink']
-		];
+		//$ret['url'] = [
+		//	'type' => 'Link',
+		//	'rel'  => 'alternate',
+		//	'mediaType' => 'text/html',
+		//	'href' => $i['plink']
+		//];
+		$ret['url'] = $i['plink'];
 	}
 
 	$ret['attributedTo'] = $i['author']['xchan_url'];
@@ -513,7 +514,13 @@ function asencode_activity($i) {
 
 	if($i['mid'] != $i['parent_mid']) {
 		$reply = true;
-		$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
+
+		// inReplyTo needs to be set in the activity for followup actions (Like, Dislike, Attend, Announce, etc.),
+		// but *not* for comments, where it should only be present in the object
+		if (! in_array($ret['type'],[ 'Create','Update' ])) {
+			$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
+		}
+
 		$recips = get_iconfig($i['parent'], 'activitypub', 'recips');
 	}
 
