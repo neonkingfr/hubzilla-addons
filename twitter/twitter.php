@@ -446,10 +446,10 @@ function twitter_post_hook(&$a,&$b) {
 				    $result = $cb->media_upload([ 'media' => $image ]);
 			    }
 			    catch (Exception $e) {
-			        logger('Send to Twitter failed with error "' . $e->getMessage() . '"');
-			        return;
+			        logger('Image upload to Twitter failed with error "' . $e->getMessage() . '"', LOG_INFO);
 			    }
-			    $post['media_ids'] = $result->media_id_string;
+			    if ($result->httpstatus == 200)
+			        $post['media_ids'] = $result->media_id_string;
 			}
 			
 			$result = $cb->statuses_update($post);
