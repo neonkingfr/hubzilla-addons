@@ -436,7 +436,7 @@ function twitter_post_hook(&$a,&$b) {
 			$cb = \Codebird\Codebird::getInstance();
 			$cb->setConsumerKey($ckey, $csecret);
 			$cb->setToken($otoken, $osecret);
-			$cb->setTimeout(intval(get_config('system','curl_timeout', 30)) * 1000); # in ms
+			$cb->setTimeout(intval(get_config('system','curl_timeout', 30)) * 1000); // in ms
 			
 			$post = [ 'status' => $msg ];
 
