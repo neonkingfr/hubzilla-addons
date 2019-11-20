@@ -11,6 +11,8 @@ use Zotlabs\Access\AccessList;
 
 class Flashcards extends Controller {
     
+    private $version = "2.06";
+    
     private $boxesDir;
     private $is_owner;
     private $owner;
@@ -61,7 +63,9 @@ class Flashcards extends Controller {
                 '$post_url' => 'flashcards/' . $this->owner['channel_address'],
                 '$nick' => $this->owner['channel_address'],
                 '$is_owner' => $this->is_owner,
-                '$flashcards_editor' => $this->observer['xchan_addr']
+                '$flashcards_editor' => $this->observer['xchan_addr'],
+                '$flashcards_owner' => $this->owner['xchan_addr'],
+                '$flashcards_version' => $this->version
         )); 
 
         return $o;
@@ -239,7 +243,7 @@ class Flashcards extends Controller {
 
         $channel = \App::get_channel();
 
-        $acl = new AccessList($channel); // ZAP: $acl = new AccessControl($channel)
+        $acl = new AccessList($channel); // Hubzilla: $acl = new AccessList($channel);
         $acl->set_from_array($_POST);
         $x = $acl->get();
 

@@ -304,6 +304,7 @@ class Box {
         };
         // not persistant search string for convenient search
         this.search = "";
+        this.searchResultColumns = [false, true, true, false, false, false, false, false, false, false, false];
     }
     /**
      * load content from local storage
@@ -588,39 +589,40 @@ class Box {
         var filtered = [];
         if(this.search !== "") {
             logger.log('Using convenient search with search string = ' + this.search + '...');
+            this.searchResultColumns = [false, true, true, false, false, false, false, false, false, false, false];
+            var parts = this.search.split(" ");
+            var partsFound = new Array(parts.length);
             for (i = 0; i < this.content.cards.length; i++) {
+                for(var z = 0; z < parts.length; z++) {
+                    partsFound[z] = false;
+                }
                 var card = this.content.cards[i];
-                var cardContent = "";
                 var j;
                 for(j = 1; j < 5; j++) {
-                    if(card.content[j].length > 0) {
-                        if (cardContent.length > 0) {
-                            cardContent += " ";
-                        }
-                        cardContent += card.content[j];
-                    }
-                }
-                if(cardContent.length < 1) {
-                    break; // should never happen
-                }
-                var aWordFound = false;
-                var aWordNotFound = false;
-                // String search: make a search with AND for every word in a search string
-                var parts = this.search.split(" ");
-                var k;
-                for (k = 0; k < parts.length; k++) {
-                    var value = parts[k].trim();
-                    if (value == "") {
+                    var text = card.content[j];
+                    if(text.length < 1) {
                         continue;
                     }
-                    if (! cardContent.toString().toLocaleLowerCase().includes(value.toLocaleLowerCase())) {
-                        aWordNotFound = true;
-                        break;
-                    } else {
-                        aWordFound = true;
+                    // String search: make a search with AND for every word in a search string
+                    var k;
+                    for (k = 0; k < parts.length; k++) {
+                        var value = parts[k].trim();
+                        if (value === "") {
+                            continue;
+                        }
+                        if (text.toString().toLocaleLowerCase().includes(value.toLocaleLowerCase())) {
+                            partsFound[k] = true;
+                            this.searchResultColumns[j] = true;
+                        }
                     }
                 }
-                if (aWordFound && !aWordNotFound) {
+                var notFound = false;
+                for(var z = 0; z < parts.length; z++) {
+                    if(! partsFound[z]) {
+                        notFound = true;
+                    }
+                }
+                if(! notFound) {
                     filtered.push(card);
                 }
             }
@@ -631,6 +633,7 @@ class Box {
                 filterArray = this.content.private_filter;
             }
             logger.log('Filter cards array with filter array = ' + filterArray + '...');
+            this.searchResultColumns = [false, false, false, false, false, false, false, false, false, false, false];
             // Is filter empty?
             var l;
             var isFilterEmpty = true;
@@ -999,11 +1002,7 @@ function conductGUIelements(action) {
         fillInputsBox();
         hasUploads = setShareButton();
     }
-    if (action !== 'list-boxes') {
-        $("#button_flashcards_list_close").hide();
-        $("#panel_cloud_boxes_1").hide();
-        blockEditBox = false;
-    }
+    $("#button_flashcards_close").hide();
     if (action === 'start') {
         $("#panel_box_navigation").show();
         $(".flashcards_nav").show();
@@ -1030,7 +1029,7 @@ function conductGUIelements(action) {
             $('#panel_box_attributes').collapse("hide");
             $("#panel_flashcards_cards_actions").show();
             $("#panel_flashcards_cards").show();
-            showCards();
+            showCards(false);
         }
     }
     if (action === 'edit-box') {
@@ -1054,7 +1053,7 @@ function conductGUIelements(action) {
         $("#button_flashcards_save_box").hide();
         $("#panel_flashcards_cards_actions").show();
         $("#panel_flashcards_cards").show();
-        showCards();
+        showCards(true);
     }
     if (action === 'edit-card') {
         $("#flashcards_panel_card_header").show();
@@ -1075,7 +1074,7 @@ function conductGUIelements(action) {
         $("#panel_flashcards_cards_actions").show();
         $("#panel_flashcards_cards").show();
         $("#button_flashcards_new_card").css({'color': ''});
-        showCards();
+        showCards(false);
     }
     if (action === 'learn-next') {
         $("#panel_box_navigation").hide();
@@ -1122,7 +1121,7 @@ function conductGUIelements(action) {
         $("#panel_flashcards_cards_actions").show();
         $("#panel_flashcards_cards").show();
         unsetLearnButtonsToFixedPosition();
-        showCards();
+        showCards(false);
     }
     if (action === 'list-boxes') {
         $("#flashcards_navbar_brand").html("Your Cloud Boxes");
@@ -1133,14 +1132,36 @@ function conductGUIelements(action) {
         $('#panel_flashcards_permissions').collapse("hide");
         $("#panel_flashcards_cards_actions").hide();
         $("#panel_flashcards_cards").hide();
+        $("#panel_flashcards_help").hide();
         $("#panel_box_navigation").show();
         $("#panel_cloud_boxes_1").show();
-        //$("#button_flashcards_list_close").show();
+        $("#button_flashcards_close").show();
         blockEditBox = true;
     }
     if (action === 'list-close') {
         $("#panel_flashcards_cards_actions").show();
         $("#panel_flashcards_cards").show();
+    }
+    if (action !== 'list-boxes') {
+        $("#panel_cloud_boxes_1").hide();
+        blockEditBox = false;
+    }
+    if (action === 'show-help') {
+        $("#flashcards_navbar_brand").html("Help");
+        $("#button_flashcards_save_box").hide();
+        $("#button_flashcards_learn_play").hide();
+        $("#button_share_box").hide();
+        $('#panel_box_attributes').collapse("hide");
+        $('#panel_flashcards_permissions').collapse("hide");
+        $("#panel_flashcards_cards_actions").hide();
+        $("#panel_flashcards_cards").hide();
+        $("#panel_cloud_boxes_1").hide();
+        $("#panel_box_navigation").show();
+        $("#panel_flashcards_help").show();
+        $("#button_flashcards_close").show();
+    }
+    if (action !== 'show-help') {
+        $("#panel_flashcards_help").hide();
     }
     fixTitleLength();
     if(hasUploads === 1 && box.content.private_autosave) {
@@ -1183,15 +1204,15 @@ function fillInputsSettings() {
     $("#fc_leitner_calculation").html(result[2]);
 }
 
-function showCards() {
+function showCards(reload) {
     logger.log('showCards()...');
     box.sort();
-    createTable();
+    createTable(reload);
     setCardsStatus();
     logger.log('tables created, showCards() is finished');
 }
 
-function createTable() {
+function createTable(reload) {
     var html = "";
     if (box.content.cards == null) {
         return;
@@ -1200,11 +1221,16 @@ function createTable() {
         removeRows();
         return;
     }
-    logger.log('creating table head...');
-    html += '<table class="table" id="flashcards_table">';
-    html += getColumnElements();
-    if(! box.content.private_search_convenient) {
-        html += '<tr>';
+    var cards = box.getCardsArrayFiltered();
+    if ($('#flashcards_table').length < 1 || reload) {
+        logger.log('creating table head...');
+        html += '<table class="table" id="flashcards_table">';
+        html += getColumnElements();
+        if(box.content.private_search_convenient) {
+            html += '<tr  style="display: none;">';
+        } else {
+            html += '<tr>';
+        }
         var i;
         for (i = 0; i < 11; i++) {
             logger.log('col ' + i + ' is visible = ' + box.content.private_visibleColumns[i]);
@@ -1215,38 +1241,40 @@ function createTable() {
             }
         }
         html += '</tr>';
-    }
-    if(box.content.private_show_card_sort) {            
-        html += '<tr>';
-        var i;
-        for (i = 0; i < 11; i++) {
-            if (box.content.private_visibleColumns[i]) {
-                html += '<th scope="col">';
-                // html += box.content.cardsColumnName[i];
-                // html += '<br>';
-                html += '<span>';
-                if (box.content.private_sortColumn == i) {
-                    if (!box.content.private_sortReverse) {
-                        html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
-                        html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
+        if(box.content.private_show_card_sort) {            
+            html += '<tr>';
+            var i;
+            for (i = 0; i < 11; i++) {
+                if (box.content.private_visibleColumns[i]) {
+                    html += '<th scope="col">';
+                    // html += box.content.cardsColumnName[i];
+                    // html += '<br>';
+                    html += '<span>';
+                    if (box.content.private_sortColumn == i) {
+                        if (!box.content.private_sortReverse) {
+                            html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
+                            html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
+                        } else {
+                            html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '"></i>';
+                            html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
+                        }
                     } else {
                         html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '"></i>';
-                        html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '" style="color:red;"></i>';
+                        html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
                     }
-                } else {
-                    html += '<i class="fa fa-fw fa-sort-asc fa-lg" sortCol="' + i + '"></i>';
-                    html += '<i class="fa fa-fw fa-sort-desc fa-lg" sortCol="' + i + '"></i>';
+                    html += '</span>';
+                    html += '</th>';
                 }
-                html += '</span>';
-                html += '</th>';
             }
+            html += '</tr>';
         }
-        html += '</tr>';
+        logger.log('creating table body...');
+        html += createCardRows(cards);
+        html += '</table>';
+        $('#panel_flashcards_cards').html(html);
+    } else {
+        replaceRows(cards);
     }
-    logger.log('creating table body...');
-    html += createCardRows();
-    html += '</table>';
-    $('#panel_flashcards_cards').html(html);
 }
 function removeRows() {
     logger.log('removeRows() remove all rows first...');
@@ -1255,17 +1283,16 @@ function removeRows() {
         tr.remove();
     })
 }
-function replaceRows() {
+function replaceRows(cards) {
     removeRows();
     logger.log('replaceRows() sort and filter cards...');
-    html = createCardRows();
+    html = createCardRows(cards);
     logger.log('replaceRows() insert into table...');
     $('#flashcards_table tr:last').after(html);
     logger.log('replaceRows() ready');
 }
-function createCardRows() {
+function createCardRows(cards) {
     logger.log('createCardRows() start...');
-    var cards = box.getCardsArrayFiltered();
     var html = '';
     if (cards == null) {
         return html;
@@ -1275,14 +1302,15 @@ function createCardRows() {
         html += '<tr class="flashcards-table-row" cardid="' + cards[i].content[0] + '">';
         var j;
         for (j = 0; j < 11; j++) {
-            if (box.content.private_visibleColumns[j]) {
+            if (box.content.private_visibleColumns[j] || box.searchResultColumns[j]) {
                 html += '<td>';
                 if (j == 0 || j == 5 || j == 9) {
                     if (cards[i].content[j] != 0) {
                         html += new Date(cards[i].content[j]).toLocaleString();
                     }
                 } else {
-                    html += cards[i].content[j];
+                    var marked = mark(cards[i].content[j], box.search)
+                    html += marked;
                 }
                 html += '</td>';
             }
@@ -1296,18 +1324,58 @@ function getColumnElements() {
     var counter = 0;
     var j;
     for (j = 0; j < 11; j++) {
-        if (box.content.private_visibleColumns[j]) {
+        if (box.content.private_visibleColumns[j] || box.searchResultColumns[j]) {
             counter++;
 
         }
     }
     for (j = 0; j < 11; j++) {
-        if (box.content.private_visibleColumns[j]) {
+        if (box.content.private_visibleColumns[j] || box.searchResultColumns[j]) {
             html += '<col width="' + 100 / counter + '%">';
         }
     }
     return html;
 }
+function mark(text, search) {
+    if(search.trim() === "") {
+        return text;
+    }
+    var searchParts = new Array();
+    var parts = search.split(/\s+/);
+    for (var el of parts) {
+        if(el.trim() !== "") {
+            searchParts.push(el);
+        }
+    }
+    var remaining = text;
+    var result = "";
+    var next = true;
+    while(next) {
+        var start = -1;
+        var part;
+        for (var el of searchParts) {
+            var testStart = remaining.toLowerCase().indexOf(el.toLowerCase());
+            if(testStart < 0) {
+                continue;
+            }
+            if(start === -1) {
+                start = testStart;
+                part = el;
+            } else if(start !== -1 && testStart < start) {
+                start = testStart;
+                part = el;
+            }
+        }
+        if(start > -1) {
+            result += remaining.substring(0, start) + '<mark>' + remaining.substring(start, start + part.length) + '</mark>';
+            remaining = remaining.substring(start + part.length, text.length);
+        } else {
+            result += remaining;
+            next = false;
+        }
+    }
+    return result;
+} 
 
 function setCardsStatus() {
     logger.log('setCardsStatus() ...');
@@ -1861,14 +1929,14 @@ $(document).on("click", "#button_flashcards_settings_default", function () {
 $(document).on("click", "i.fa-sort-asc", function () {
     box.content.private_sortColumn = parseInt($(this).attr("sortCol"));
     box.content.private_sortReverse = false;
-    showCards();
+    showCards(false);
     colorSortArrow();
 });
 
 $(document).on("click", "i.fa-sort-desc", function () {
     box.content.private_sortColumn = parseInt($(this).attr("sortCol"));
     box.content.private_sortReverse = true;
-    showCards();
+    showCards(false);
     colorSortArrow();
 });
 
@@ -1892,11 +1960,10 @@ function colorSortArrow() {
 }
 
 $(document).on("input", "input.cards-filter", function () {
-    // box.content.private_filter = [];
     $('input.cards-filter').each(function (i, obj) {
         box.content.private_filter[$(this).attr('filterCol')] = $(this).val();
     });
-    showCards();
+    showCards(false);
 });
 
 $(document).on("input", "#input_flashcards_search_cards", function () {
@@ -1905,14 +1972,14 @@ $(document).on("input", "#input_flashcards_search_cards", function () {
     var l = searchStr.length;
     var lastChar = searchStr.substring(searchStr.length - 1)
     if (l > 2 && lastChar !== " ") {
-        box.content.private_filter = ["", "", "", "", "", "", "", "", "", "", ""];
+        // box.content.private_filter = ["", "", "", "", "", "", "", "", "", "", ""];
         box.search = searchStr;
-        showCards();
+        showCards(false);
     } else {
         if(box.search.length > 0 && l === 0) {
             // User deleted the search string
             box.search = "";
-            showCards();
+            showCards(true);
         }
         logger.log('Search string less than 3 characters: ' + searchStr);
         return;
@@ -1961,8 +2028,13 @@ $(document).on("click", "#flashcards_new_box", function () {
     loadStartPage();
 });
 
-$(document).on("click", "#button_flashcards_list_close", function () {
-    logger.log('Clicked on button_flashcards_list_close');
+$(document).on("click", "#flashcards_show_help", function () {
+    logger.log('Clicked on flashcards_show_help');
+    conductGUIelements('show-help');
+});
+
+$(document).on("click", "#button_flashcards_close", function () {
+    logger.log('Clicked on button_flashcards_close');
     conductGUIelements('start');
 });
 
@@ -2097,6 +2169,7 @@ $(document).on("click", "#flashcards_perms", function () {
             $("#button_flashcards_save_box").hide();
             $("#panel_flashbox_settings").collapse("hide");
             $('#panel_box_attributes').collapse("hide");
+            $("#button_flashcards_close").show();
         } else {
             logger.log("Failed to load ACL. Error message is: " + data['errormsg']);
         }
@@ -2113,9 +2186,13 @@ function showACLbutton() {
 
 $(document).on("click", "#button_flashcards_search_cards", function () {
     if($("#input_flashcards_search_cards").is(":visible")) {
-        $('#input_flashcards_search_cards').hide(); 
+        $('#input_flashcards_search_cards').hide();
+        box.search = "";
+        $('#input_flashcards_search_cards').val("");
+        showCards();
     } else {
-        $('#input_flashcards_search_cards').show();        
+        $('#input_flashcards_search_cards').show();
+        $('#input_flashcards_search_cards').focus();
     }
 })
 
@@ -2445,9 +2522,15 @@ function test_box_getCardsArrayFiltered() {
     if (filteredCards.length !== 0) {
         return false;
     }
+    if (JSON.stringify(box.searchResultColumns) !== JSON.stringify([false, true, true, false, false, false, false, false, false, false, false])) {
+        return false;
+    }
     box.search = "dd"
     var filteredCards = box.getCardsArrayFiltered(["", "", "", " ", "", ""]);
     if (filteredCards.length !== 3) {
+        return false;
+    }
+    if (JSON.stringify(box.searchResultColumns) !== JSON.stringify([false, true, true, false, true, false, false, false, false, false, false])) {
         return false;
     }
     // to use more columns AND search with operator AND -> but this is overwritten by the convenient search
@@ -2455,9 +2538,15 @@ function test_box_getCardsArrayFiltered() {
     if (filteredCards.length !== 3) {
         return false;
     }
+    if (JSON.stringify(box.searchResultColumns) !== JSON.stringify([false, true, true, false, true, false, false, false, false, false, false])) {
+        return false;
+    }
     box.search = "Aa dd bB"
     var filteredCards = box.getCardsArrayFiltered(["", "", "", " ", "", ""]);
     if (filteredCards.length !== 3) {
+        return false;
+    }
+    if (JSON.stringify(box.searchResultColumns) !== JSON.stringify([false, true, true, true, true, false, false, false, false, false, false])) {
         return false;
     }
     box.search = "15"
@@ -2465,9 +2554,23 @@ function test_box_getCardsArrayFiltered() {
     if (filteredCards.length !== 0) {
         return false;
     }
+    if (JSON.stringify(box.searchResultColumns) !== JSON.stringify([false, true, true, false, false, false, false, false, false, false, false])) {
+        return false;
+    }
+    box.search = "Aa"
+    var filteredCards = box.getCardsArrayFiltered(["", "", "", " ", "", ""]);
+    if (filteredCards.length !== 3) {
+        return false;
+    }
+    if (JSON.stringify(box.searchResultColumns) !== JSON.stringify([false, true, true, true, true, false, false, false, false, false, false])) {
+        return false;
+    }
     box.search = ""
     filteredCards = box.getCardsArrayFiltered(["", "c", "a a", "", "DD"]);
     if (filteredCards.length != 1 || filteredCards[0] != test_card_02) {
+        return false;
+    }
+    if (JSON.stringify(box.searchResultColumns) !== JSON.stringify([false, false, false, false, false, false, false, false, false, false, false])) {
         return false;
     }
     return true;
@@ -3068,9 +3171,9 @@ function loadBox() {
     boxLocalStore.check();
     box.load();
     box.validate();
-    postUrl = $("#post_url").html();
-    nick = $("#nick").html();
-    is_owner = $("#is_owner").html();
+    postUrl = $("#flashcards_post_url").html();
+    nick = $("#flashcards_nick").html();
+    is_owner = $("#flashcards_is_owner").html();
     if (!is_owner) {
         $("#flashcards_new_box").hide();
         $("#flashcards-block-changes-row").hide();
