@@ -4,22 +4,17 @@
                 {{$toolbar}}
         </div>
 </div>
+		<script>
+			var wfitemid = {{$items.0.item_id}};
+			var itemPostURL = '{{$posturl}}';
+			var uuid = '{{$uuid}}';
+			var mid = '{{$mid}}';
+		</script>
 <div class="row">
 	<div class="col-xs-12 col-sm-6 col-md-9">
-		<div class="row">
-		<div class="col-12 workflow wfheading">
-			{{$items.0.title}}
- 			<a href="#" onclick='return false;' class="workflow-showmodal-iframe" data-posturl='{{$posturl}}' data-action='{{$addlinkaction}}' data-miscdata='{{$edittaskjsondata}}' data-toggle="tooltip" title="edit"><i class="fa fa-pencil"></i></a>
-		</div></div>
-		<div class="row">
-			{{foreach $itemmeta as $meta}}<div class="workflow wfmeta-item {{if $meta.cols}}{{$meta.cols}}{{/if}}">{{$meta.html}}
-			</div>
-			{{/foreach}}
+		<div id="wfitemdata">
+		{{include file="./workflow_display_wfitemdata.tpl"}}
 		</div>
-		<div class="row">
-		<div class="col-12 workflow wfcontent">
-			{{$body.html}}
-		</div></div>
 		<div class="row" style="min-height:500px;">
 			<div id="workflowDisplayMain" class="col-12 workflow wfmainiframe" style="height:max-height;border:solid 1px;padding:0px;">{{$maindata}}</div>
 		</div>

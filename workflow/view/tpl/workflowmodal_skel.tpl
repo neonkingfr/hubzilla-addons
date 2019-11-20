@@ -10,5 +10,8 @@
       <div id='workflow-modalcontent' style="height:100%;">
 	{{$content}}
       </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" onClick="window.workflowCloseModal();">Close</button>
+      </div>
     </div>
   </div>
