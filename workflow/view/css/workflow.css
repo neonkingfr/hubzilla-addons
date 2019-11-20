@@ -11,6 +11,10 @@
 	display:flex;
 }
 
+.workflowmeta {
+	font-size:.6em;
+}
+
 .wfmeta-item {
 	flex:1 0 auto;
 	align:self-auto;

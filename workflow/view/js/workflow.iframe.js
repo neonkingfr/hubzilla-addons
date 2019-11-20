@@ -31,6 +31,7 @@ function workflowSubmitRelated(posturl) {
 	var postdata = {
 		action: 'update',
 		uuid: $('#workflowuuid').val(),
+		mid: $('#workflowmid').val(),
 		observer: myzid,
 		jsondata: {updates: {
 			parameter: 'addrelation',
