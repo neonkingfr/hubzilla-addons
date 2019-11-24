@@ -22,6 +22,7 @@ class Ljpost extends Controller {
 		set_pconfig(local_channel(),'ljpost','lj_password',z_obscure(trim($_POST['lj_password'])));
 		set_pconfig(local_channel(),'ljpost','post_by_default',intval($_POST['lj_by_default']));
 		set_pconfig(local_channel(),'ljpost','post_wall2wall',intval($_POST['lj_wall2wall']));
+		set_pconfig(local_channel(),'ljpost','post_source_url',intval($_POST['lj_source_url']));
 	}
 
 
@@ -66,6 +67,9 @@ class Ljpost extends Controller {
 			'$field'	=> array('lj_wall2wall', t('Send wall-to-wall posts to Livejournal'), (get_pconfig(local_channel(),'ljpost','post_wall2wall') ? 1 : false), '', array(t('No'),t('Yes'))),
 		));
 
+		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
+			'$field'	=> array('lj_source_url', t('Add link to original post'), (get_pconfig(local_channel(),'ljpost','post_source_url') ? 1 : false), '', array(t('No'),t('Yes'))),
+		));
 
 		$tpl = get_markup_template("settings_addon.tpl");
 
