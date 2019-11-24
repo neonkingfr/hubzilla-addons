@@ -21,7 +21,7 @@ Class WorkflowSettingsUtil {
 			return;
 		}
 
-		check_form_security_token_redirectOnErr('settings/workflow', 'settings', $formname = 'form_security_token');
+		check_form_security_token_redirectOnErr('/settings/workflow', 'settings', $formname = 'form_security_token');
 
 		$statuses = $_REQUEST['status'];
 

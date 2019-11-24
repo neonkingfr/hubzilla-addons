@@ -64,8 +64,8 @@ function workflow_unload() {
 
 class Workflow_Utils {
 
-	private static $cspframesrcs=[];
-	private static $related_to_wfitems = [];
+	protected static $cspframesrcs=[];
+	protected static $related_to_wfitems = [];
 
 	public static function item_stored(&$arr) {
 		return;
@@ -334,7 +334,7 @@ class Workflow_Utils {
 		}
 	}
 
-	private static function queryvars_stripzid($url) {
+	protected static function queryvars_stripzid($url) {
 				        //$relurl = $rellink.'&zid='.get_my_address();
 
 		if (! strpos($url,'?')) {
@@ -349,7 +349,7 @@ class Workflow_Utils {
 		return $returl;
 	}
 
-	private static function get_workflow_meta_html($item,$iframeurl,$posturl) {
+	protected static function get_workflow_meta_html($item,$iframeurl,$posturl) {
 
 		$itemmeta = [];
 
@@ -542,7 +542,7 @@ class Workflow_Utils {
 		return $o;
 	}
 
-	private static function get_itemmeta_html($item,$uuid,$iframeurl,$posturl,$mid) {
+	protected static function get_itemmeta_html($item,$uuid,$iframeurl,$posturl,$mid) {
 
 		$itemmeta = [];
 
@@ -573,7 +573,7 @@ class Workflow_Utils {
 
 	}
 
-	private static function wfitems_with_relatedlink($uid,$link) {
+	protected static function wfitems_with_relatedlink($uid,$link) {
 		// self::$related_to_wfitems = [ [uid]=>[[link]=> { [ %wfitem% ] || null } ] ]
 
 		if (!local_channel()) {
@@ -649,12 +649,12 @@ class Workflow_Utils {
 		return;
 	}
 
-	private static function get_item_posturl($item) {
+	protected static function get_item_posturl($item) {
 		$channel = channelx_by_n(App::$profile_uid);
 		return z_root().'/workflow/'.$channel['channel_address'];
 	}
 
-	private static function get_item_iframeurl($item) {
+	protected static function get_item_iframeurl($item) {
 		$hubinfo = q("select hubloc_addr,hubloc_url,xchan_addr from hubloc left join xchan on (hubloc_hash = xchan_hash) where hubloc_hash = '%s' ",
 			dbesc($item['owner_xchan'])
 		);
@@ -704,7 +704,7 @@ class Workflow_Utils {
 		}
 	}
 
-	private static function get_items($searchvars,$observer = null,$do_callhooks = true) {
+	protected static function get_items($searchvars,$observer = null,$do_callhooks = true) {
 
 		$ownersearch = '';
 		$itemtype = '';
@@ -1402,7 +1402,7 @@ class Workflow_Utils {
 
 	}
 
-	private static function iframecontent_new($data) {
+	protected static function iframecontent_new($data) {
 
 	    	$uid = App::$profile_uid;
 
@@ -1580,7 +1580,24 @@ class Workflow_Utils {
 		$objs=$newobjs;
 	}
 
-	private static function create_workflowitem($arr,$owner_portid = null) {
+	protected static function create_workflowitem($arr,$owner_portid = null) {
+		if (($owner_portid) && !($owner_portid == \App::$channel['channel_portable_id'])) {
+			return false;
+		}
+
+	    	$uid = App::$profile_uid;
+
+		if (!Apps::addon_app_installed($uid,'workflow')) { return false; }
+
+		$channelinfo = channelx_by_n($uid);
+
+		$data = self::maybeunjson($arr['datastore']);
+		$data = self::datastore($data,self::maybeunjson($arr['jsondata']),['workflowBody','workflowSubject','linkeditem','iframeurl','posturl']);
+		$data = self::datastore($data,$arr['jsondata'],['workflowBody','workflowSubject','linkeditem','iframeurl','posturl']);
+		return self::item_create($data,$owner_portid);
+	}
+
+	protected static function item_create($data,$owner_portid = null) {
 
 		if (($owner_portid) && !($owner_portid == \App::$channel['channel_portable_id'])) {
 			return false;
@@ -1592,21 +1609,22 @@ class Workflow_Utils {
 
 		$channelinfo = channelx_by_n($uid);
 		$itemuuid = item_message_id();
-		$data = self::maybeunjson($arr['datastore']);
-		$data = self::datastore($data,self::maybeunjson($arr['jsondata']),['workflowBody','workflowSubject','linkeditem','iframeurl','posturl']);
-		$data = self::datastore($data,$arr['jsondata'],['workflowBody','workflowSubject','linkeditem','iframeurl','posturl']);
 		$mid = z_root().'/workflow/'.$channelinfo['channel_address'].'/display/'.$itemuuid;
+
+		$wfbody = (isset($data['workflowBody'])) ? $data['workflowBody'] : '';
+		$wfsubject = (isset($data['workflowSubject'])) ? $data['workflowSubject'] : 'Workflow Item';
+
 		$arr = [
 			'aid'=>$channelinfo['channel_account_id'],
 			'uid'=>$channelinfo['channel_id'],
         		'owner_xchan'=>$channelinfo['channel_hash'],
         		'author_xchan'=>get_observer_hash(),
 			'item_type'=>ITEM_TYPE_CUSTOM,
-			'body'=>$data['workflowBody'],
+			'body'=>$wfbody,
 			'item_nocomment'=>1,
 			'comment_policy'=>'contacts',
 			'comments_closed' => datetime_convert(),
-			'title'=>($data['workflowSubject']) ? $data['workflowSubject'] : 'Workflow Item',
+			'title'=>$wfsubject,
 			'uuid'=>$itemuuid,
 			'mid'=>$mid,
 			'llink'=>z_root().'/display/'.gen_link_id($mid),
@@ -1679,6 +1697,8 @@ class Workflow_Utils {
 
 		$arr['obj']=json_encode(self::encode_workflow_object($arr));
 
+		$post = false;
+
 		if ($owner_xchannel === null || $channel['channel_hash'] == $owner_xchannel) {
 
 			call_hooks("workflow_post_item",$arr);
@@ -1696,7 +1716,7 @@ class Workflow_Utils {
 		return $post;
 	}
 
-	private static function encode_workflow_object($item) {
+	protected static function encode_workflow_object($item) {
 
 
 		$json = [];
@@ -2079,8 +2099,10 @@ class Workflow_Utils {
 		}
 
                 $thismeta = '<b>Assigned:</b>';
-                $miscdata = json_encode(['action'=>'item_basiccontacts','uuid'=>$uuid,'mid'=>$mid,'iframeurl'=>$iframeurl]);
-                $thismeta .= "<a href='#' onclick='return false;' class='workflow-showmodal-iframe' data-posturl='".$posturl."' data-action='getmodal_getiframe' data-miscdata='".$miscdata."' data-toggle='tooltip' title='edit'><i class='fa fa-pencil'></i></a>";
+		if ($posturl && $iframeurl) {
+                	$miscdata = json_encode(['action'=>'item_basiccontacts','uuid'=>$uuid,'mid'=>$mid,'iframeurl'=>$iframeurl]);
+                	$thismeta .= "<a href='#' onclick='return false;' class='workflow-showmodal-iframe' data-posturl='".$posturl."' data-action='getmodal_getiframe' data-miscdata='".$miscdata."' data-toggle='tooltip' title='edit'><i class='fa fa-pencil'></i></a>";
+		}
  		$thismeta .= $contacts;
 
 		$newhookinfo['itemmeta'][] = [
@@ -2255,8 +2277,10 @@ class Workflow_Utils {
 		$itempriority = IConfig::Get($item,'workflow','priority',1);
 
                 $thismeta = 'Status: '.$itemstatus.' (Priority: '.$itempriority.')';
-                $miscdata = json_encode(['action'=>'item_basicmeta','uuid'=>$uuid,'mid'=>$mid,'iframeurl'=>$iframeurl]);
-                $thismeta .= "<a href='#' onclick='return false;' class='workflow-showmodal-iframe' data-posturl='".$posturl."' data-action='getmodal_getiframe' data-miscdata='".$miscdata."' data-toggle='tooltip' title='edit'><i class='fa fa-pencil'></i></a>";
+		if ($posturl && $iframeurl) {
+                	$miscdata = json_encode(['action'=>'item_basicmeta','uuid'=>$uuid,'mid'=>$mid,'iframeurl'=>$iframeurl]);
+                	$thismeta .= "<a href='#' onclick='return false;' class='workflow-showmodal-iframe' data-posturl='".$posturl."' data-action='getmodal_getiframe' data-miscdata='".$miscdata."' data-toggle='tooltip' title='edit'><i class='fa fa-pencil'></i></a>";
+		}
 
 		$newhookinfo['itemmeta'][] = [
 			'order' => 1,
@@ -2754,7 +2778,7 @@ class Workflow_Utils {
 		Master::Summon([ 'Notifier','activity',$itemstore['item_id'] ]);
 	}
 
-	private static function datastore($datastore,$requestdata,$parameters=[]) {
+	protected static function datastore($datastore,$requestdata,$parameters=[]) {
 
 		$dskeys = is_array($datastore) ? array_keys($datastore) : [];
 		$rdkeys = is_array($requestdata) ? array_keys($requestdata) : [];
