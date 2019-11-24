@@ -3,7 +3,7 @@
 /**
  * Name: Livejournal Post feature
  * Description: Post to Livejournal
- * Version: 1.1
+ * Version: 1.2
  * Author: Tony Baldwin <https://red.free-haven.org/channel/tony>
  * Author: Michael Johnston
  * Author: Cat Gray <https://free-haven.org/profile/catness>
