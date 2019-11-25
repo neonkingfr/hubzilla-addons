@@ -127,9 +127,9 @@ function ljpost_send(&$a,&$b) {
 		
 		$title = $b['title'];
 		// Replace URL bookmark
-		$post = str_replace("#^[", "&#128279 [", $b['body']);
+		$post = trim(str_replace("#^[", "&#128279 [", $b['body']));
 		if(get_pconfig($b['uid'],'ljpost','post_source_url'))
-		    $post .= "\n" . t('Source') . ": [url]" . $b['plink'] . "[/url]";
+		    $post .= "\n\n" . t('Source') . ": [url]" . $b['plink'] . "[/url]";
 		$post = bbcode($post);
 		$post = xmlify($post);
 		
