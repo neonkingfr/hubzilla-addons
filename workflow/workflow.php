@@ -86,8 +86,9 @@ class Workflow_Utils {
 		}
 
 		$newcsp = $csp;
-		$wfchannels = q("select hubloc_url,hubloc_addr,xchan_addr from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'their_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1'",
-				intval($uid)
+		$wfchannels = q("select hubloc_url,hubloc_addr,xchan_addr from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and ((cat = 'their_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1') OR (xchan_hash = ''%s'))",
+				intval($uid),
+				get_observer_hash()
 			);
 
 		foreach ($wfchannels as $wfhost) {
@@ -462,16 +463,7 @@ class Workflow_Utils {
 		$items = $hookinfo['items'];
 
 
-		$hubinfo = q("select hubloc_addr,hubloc_url,xchan_addr from hubloc left join xchan on (hubloc_hash = xchan_hash) where hubloc_hash = '%s' ",
-			dbesc($item['owner_xchan'])
-		);
-		if (!$hubinfo) {
-			$iframeurl = '/workflow/'.$channel['channel_address'];
-		} else {
-			$hubinfo = $hubinfo[0];
-			$addr = substr($hubinfo['hubloc_addr'], 0, strpos($hubinfo['hubloc_addr'], '@'));
-			$iframeurl = $hubinfo['hubloc_url'].'/workflow/'.$addr;
-		}
+		$iframeurl = self::get_item_iframeurl($item);
 
 		$posturl = z_root().'/workflow/'.$channel['channel_address'];
 
@@ -655,13 +647,23 @@ class Workflow_Utils {
 	}
 
 	protected static function get_item_iframeurl($item) {
-		$hubinfo = q("select hubloc_addr,hubloc_url,xchan_addr from hubloc left join xchan on (hubloc_hash = xchan_hash) where hubloc_hash = '%s' ",
+		$hubinfo = q("select hubloc_addr,hubloc_url,hubloc_primary,xchan_addr from hubloc left join xchan on (hubloc_hash = xchan_hash) where hubloc_hash = '%s' ",
 			dbesc($item['owner_xchan'])
 		);
 		if (!$hubinfo) {
 			$iframeurl = '/workflow/'.$channel['channel_address'];
 		} else {
-			$hubinfo = $hubinfo[0];
+			$hubidx = 0;
+			foreach ($hubinfo as $k => $hub) {
+				if (strpos($item['mid'],$hub['hubloc_url']) === 0) {
+					$hubidx = $k;
+					break;
+				}
+				if ($hub['hubloc_primary']) {
+					$hubidx = $k;
+				}
+			}
+			$hubinfo = $hubinfo[$hubidx];
 			$addr = substr($hubinfo['hubloc_addr'], 0, strpos($hubinfo['hubloc_addr'], '@'));
 			$iframeurl = $hubinfo['hubloc_url'].'/workflow/'.$addr;
 		}
