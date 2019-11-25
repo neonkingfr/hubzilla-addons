@@ -7,7 +7,7 @@
  * Version: 1.0
  * Author: Mario Vavti
  * Maintainer: Mario Vavti <mario@hub.somaton.com> 
- * MinVersion: 4.1
+ * MinVersion: 4.7
  */
 
 use Zotlabs\Lib\Apps;
@@ -16,7 +16,7 @@ use Zotlabs\Extend\Route;
 use Zotlabs\Lib\Enotify;
 
 function sse_load() {
-	Hook::register('item_store', 'addon/sse/sse.php', 'sse_item_store');
+	Hook::register('item_stored', 'addon/sse/sse.php', 'sse_item_stored');
 	Hook::register('event_store_event_end', 'addon/sse/sse.php', 'sse_event_store_event_end');
 	Hook::register('enotify_store_end', 'addon/sse/sse.php', 'sse_enotify_store_end');
 	Hook::register('permissions_create', 'addon/sse/sse.php', 'sse_permissions_create');
@@ -24,7 +24,7 @@ function sse_load() {
 
 
 function sse_unload() {
-	Hook::unregister('item_store', 'addon/sse/sse.php', 'sse_item_store');
+	Hook::unregister('item_stored', 'addon/sse/sse.php', 'sse_item_stored');
 	Hook::unregister('event_store_event_end', 'addon/sse/sse.php', 'sse_event_store_event_end');
 	Hook::unregister('enotify_store_end', 'addon/sse/sse.php', 'sse_enotify_store_end');
 	Hook::unregister('permissions_create', 'addon/sse/sse.php', 'sse_permissions_create');
@@ -32,7 +32,7 @@ function sse_unload() {
 
 
 
-function sse_item_store($item) {
+function sse_item_stored($item) {
 
 	if(! $item['uid'])
 		return;
@@ -80,10 +80,7 @@ function sse_item_store($item) {
 		$r[0] = $item;
 		xchan_query($r);
 
-		$x = get_xconfig($hash, 'sse', 'notifications');
-
-		if($x === false)
-			$x = [];
+		$x = get_xconfig($hash, 'sse', 'notifications', []);
 
 		// this is neccessary for Enotify::format() to calculate the right time and language
 		if($sys) {
@@ -157,7 +154,7 @@ function sse_event_store_event_end($item) {
 		dbesc($item['event_xchan'])
 	);
 
-	$x = get_xconfig($channel['channel_hash'], 'sse', 'notifications');
+	$x = get_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
 
 	$rr = array_merge($item, $xchan[0]);
 
@@ -187,7 +184,7 @@ function sse_enotify_store_end($item) {
 		set_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
 	}
 
-	$x = get_xconfig($channel['channel_hash'], 'sse', 'notifications');
+	$x = get_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
 
 	// this is neccessary for Enotify::format_notify() to calculate the right time and language
 	date_default_timezone_set($channel['channel_timezone']);
@@ -215,7 +212,7 @@ function sse_permissions_create($item) {
 		set_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
 	}
 
-	$x = get_xconfig($channel['channel_hash'], 'sse', 'notifications');
+	$x = get_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
 
 	// this is neccessary for Enotify::format_notify() to calculate the right time
 	date_default_timezone_set($channel['channel_timezone']);
