@@ -12,7 +12,6 @@ function workflowOffsiteIFrame( posturl, action, miscdata, id ) {
 		dataType: 'json',
 		success: function (data) {
 			if (data.html) {
-console.log('data: '+data.html);
 				$(id).html(data.html);
 				if (id == '#workflowModal') {
 					$('#workflowModal').modal('show');
@@ -91,7 +90,13 @@ function workflowSubmitWorkflowUrl(posturl) {
 }
 
 window.addEventListener("message",function(event) {
-	msginfo = JSON.parse(event.data);
+
+	try {
+		msginfo = JSON.parse(event.data);
+	} catch (e) {
+		return;
+	}
+
 	if (msginfo.parentwindowid != windowid) {
 		return;
 	}
