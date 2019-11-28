@@ -10,10 +10,10 @@
  * MinVersion: 4.7
  */
 
-use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 use Zotlabs\Lib\Enotify;
+use Zotlabs\Lib\XConfig;
 
 function sse_load() {
 	Hook::register('item_stored', 'addon/sse/sse.php', 'sse_item_stored');
@@ -22,15 +22,12 @@ function sse_load() {
 	Hook::register('permissions_create', 'addon/sse/sse.php', 'sse_permissions_create');
 }
 
-
 function sse_unload() {
 	Hook::unregister('item_stored', 'addon/sse/sse.php', 'sse_item_stored');
 	Hook::unregister('event_store_event_end', 'addon/sse/sse.php', 'sse_event_store_event_end');
 	Hook::unregister('enotify_store_end', 'addon/sse/sse.php', 'sse_enotify_store_end');
 	Hook::unregister('permissions_create', 'addon/sse/sse.php', 'sse_permissions_create');
 }
-
-
 
 function sse_item_stored($item) {
 
@@ -61,10 +58,12 @@ function sse_item_stored($item) {
 
 	foreach($hashes as $hash) {
 
-		$t = get_xconfig($hash, 'sse', 'timestamp', NULL_DATE);
+		XConfig::Load($hash);
+
+		$t = XConfig::Get($hash, 'sse', 'timestamp', NULL_DATE);
 
 		if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
-			set_xconfig($hash, 'sse', 'notifications', []);
+			XConfig::Set($hash, 'sse', 'notifications', []);
 		}
 
 		$vnotify = get_pconfig($item_uid, 'system', 'vnotify');
@@ -80,7 +79,9 @@ function sse_item_stored($item) {
 		$r[0] = $item;
 		xchan_query($r);
 
-		$x = get_xconfig($hash, 'sse', 'notifications', []);
+		XConfig::Set($hash, 'sse', 'lock', 1);
+
+		$x = XConfig::Get($hash, 'sse', 'notifications', []);
 
 		// this is neccessary for Enotify::format() to calculate the right time and language
 		if($sys) {
@@ -91,20 +92,20 @@ function sse_item_stored($item) {
 			date_default_timezone_set($channel['channel_timezone']);
 		}
 
-		push_lang(get_xconfig($hash, 'sse', 'language', 'en'));
+		push_lang(XConfig::Get($hash, 'sse', 'language', 'en'));
 
-		if(is_sys_channel($item_uid)) {
-			if(is_item_normal($item) && ($vnotify & VNOTIFY_PUBS || is_sys_channel($item_uid)))
+		if($sys) {
+			if(is_item_normal($item) && ($vnotify & VNOTIFY_PUBS || $sys))
 				$x['pubs']['notifications'][] = Enotify::format($r[0]);
 		}
 		else {
 			if(is_item_normal($item) && $item['item_wall'])
 				$x['home']['notifications'][] = Enotify::format($r[0]);
 
-			elseif(is_item_normal($item) && !$item['item_wall'])
+			if(is_item_normal($item) && !$item['item_wall'])
 				$x['network']['notifications'][] = Enotify::format($r[0]);
 
-			elseif($item['obj_type'] === ACTIVITY_OBJ_FILE)
+			if($item['obj_type'] === ACTIVITY_OBJ_FILE)
 				$x['files']['notifications'][] = Enotify::format_files($r[0]);
 		}
 
@@ -122,7 +123,9 @@ function sse_item_stored($item) {
 		if(is_array($x['files']['notifications']))
 			$x['files']['count'] = count($x['files']['notifications']);
 
-		set_xconfig($hash, 'sse', 'notifications', $x);
+		XConfig::Set($hash, 'sse', 'timestamp', datetime_convert());
+		XConfig::Set($hash, 'sse', 'notifications', $x);
+		XConfig::Set($hash, 'sse', 'lock', 0);
 
 	}
 
@@ -140,10 +143,12 @@ function sse_event_store_event_end($item) {
 	if(! $channel)
 		return;
 
-	$t = get_xconfig($channel['channel_hash'], 'sse', 'timestamp', NULL_DATE);
+	XConfig::Load($channel['channel_hash']);
+
+	$t = XConfig::Get($channel['channel_hash'], 'sse', 'timestamp', NULL_DATE);
 
 	if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
-		set_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
+		XConfig::Set($channel['channel_hash'], 'sse', 'notifications', []);
 	}
 
 	$vnotify = get_pconfig($item_uid, 'system', 'vnotify');
@@ -154,20 +159,21 @@ function sse_event_store_event_end($item) {
 		dbesc($item['event_xchan'])
 	);
 
-	$x = get_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
+	$x = XConfig::Get($channel['channel_hash'], 'sse', 'notifications', []);
 
 	$rr = array_merge($item, $xchan[0]);
 
 	// this is neccessary for Enotify::format() to calculate the right time and language
 	date_default_timezone_set($channel['channel_timezone']);
-	push_lang(get_xconfig($channel['channel_hash'], 'sse', 'language', 'en'));
+	push_lang(XConfig::Get($channel['channel_hash'], 'sse', 'language', 'en'));
 	$x['all_events']['notifications'][] = Enotify::format_all_events($rr);
 	pop_lang();
 
 	if(is_array($x['all_events']['notifications']))
 		$x['all_events']['count'] = count($x['all_events']['notifications']);
 
-	set_xconfig($channel['channel_hash'], 'sse', 'notifications', $x);
+	XConfig::Set($channel['channel_hash'], 'sse', 'timestamp', datetime_convert());
+	XConfig::Set($channel['channel_hash'], 'sse', 'notifications', $x);
 
 }
 
@@ -178,24 +184,27 @@ function sse_enotify_store_end($item) {
 	if(! $channel)
 		return;
 
-	$t = get_xconfig($channel['channel_hash'], 'sse', 'timestamp', NULL_DATE);
+	XConfig::Load($channel['channel_hash']);
+
+	$t = XConfig::Get($channel['channel_hash'], 'sse', 'timestamp', NULL_DATE);
 
 	if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
-		set_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
+		XConfig::Set($channel['channel_hash'], 'sse', 'notifications', []);
 	}
 
-	$x = get_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
+	$x = XConfig::Get($channel['channel_hash'], 'sse', 'notifications', []);
 
 	// this is neccessary for Enotify::format_notify() to calculate the right time and language
 	date_default_timezone_set($channel['channel_timezone']);
-	push_lang(get_xconfig($channel['channel_hash'], 'sse', 'language', 'en'));
+	push_lang(XConfig::Get($channel['channel_hash'], 'sse', 'language', 'en'));
 	$x['notify']['notifications'][] = Enotify::format_notify($item);
 	pop_lang();
 
 	if(is_array($x['notify']['notifications']))
 		$x['notify']['count'] = count($x['notify']['notifications']);
 
-	set_xconfig($channel['channel_hash'], 'sse', 'notifications', $x);
+	XConfig::Set($channel['channel_hash'], 'sse', 'timestamp', datetime_convert());
+	XConfig::Set($channel['channel_hash'], 'sse', 'notifications', $x);
 
 }
 
@@ -206,23 +215,26 @@ function sse_permissions_create($item) {
 	if(! $channel)
 		return;
 
-	$t = get_xconfig($channel['channel_hash'], 'sse', 'timestamp', NULL_DATE);
+	XConfig::Load($channel['channel_hash']);
+
+	$t = XConfig::Get($channel['channel_hash'], 'sse', 'timestamp', NULL_DATE);
 
 	if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
-		set_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
+		XConfig::Set($channel['channel_hash'], 'sse', 'notifications', []);
 	}
 
-	$x = get_xconfig($channel['channel_hash'], 'sse', 'notifications', []);
+	$x = XConfig::Get($channel['channel_hash'], 'sse', 'notifications', []);
 
 	// this is neccessary for Enotify::format_notify() to calculate the right time
 	date_default_timezone_set($channel['channel_timezone']);
-	push_lang(get_xconfig($channel['channel_hash'], 'sse', 'language', 'en'));
+	push_lang(XConfig::Get($channel['channel_hash'], 'sse', 'language', 'en'));
 	$x['intros']['notifications'][] = Enotify::format_intros($item['sender']);
 	pop_lang();
 
 	if(is_array($x['intros']['notifications']))
 		$x['intros']['count'] = count($x['intros']['notifications']);
 
-	set_xconfig($channel['channel_hash'], 'sse', 'notifications', $x);
+	XConfig::Set($channel['channel_hash'], 'sse', 'timestamp', datetime_convert());
+	XConfig::Set($channel['channel_hash'], 'sse', 'notifications', $x);
 
 }
