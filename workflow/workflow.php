@@ -85,18 +85,24 @@ class Workflow_Utils {
 			return;
 		}
 
+		$profile_channel = channelx_by_n($uid);
 		$newcsp = $csp;
-		$wfchannels = q("select hubloc_url,hubloc_addr,xchan_addr from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and ((cat = 'their_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1') OR (xchan_hash = ''%s'))",
-				intval($uid),
-				get_observer_hash()
+		$wfchannels = q("select hubloc_url,hubloc_addr,xchan_addr from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'their_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1'",
+				intval($uid)
 			);
 
 		foreach ($wfchannels as $wfhost) {
 			$newcsp['frame-src'][]=$wfhost['hubloc_url'];
 		}
 
-		$observer_channel = channelx_by_hash(get_observer_hash());
-		$newcsp['frame-src'][]=$observer_channel['hubloc_url'];
+		$wfchannels = q("select hubloc_url,hubloc_addr,xchan_addr from hubloc join xchan on hubloc_hash = xchan_hash where xchan_hash in ('%s','%s')",
+				get_observer_hash(),
+				$profile_channel['channel_hash']
+			);
+
+		foreach ($wfchannels as $wfhost) {
+			$newcsp['frame-src'][]=$wfhost['hubloc_url'];
+		}
 
 		$newcsp['frame-src'][]=z_root();
 		$newcsp['frame-src']=array_unique(array_merge($newcsp['frame-src'],self::$cspframesrcs));
