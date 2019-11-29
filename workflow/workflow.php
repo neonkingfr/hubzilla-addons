@@ -2920,8 +2920,8 @@ class Workflow_Utils {
 	}
 
         public static function page_header(&$header) {
-                $id = App::$profile_uid;
-                if (!$id) { return; }
+                $uid = (App::$profile_uid) ? App::$profile_uid : local_channel();
+                if (!$uid) { return; }
 
 		if (!Apps::addon_app_installed($uid,'workflow')) { return; }
 
@@ -2942,7 +2942,7 @@ class Workflow_Utils {
         }
 
         public static function page_end(&$footer) {
-                $uid = App::$profile_uid;
+                $uid = (App::$profile_uid) ? App::$profile_uid : local_channel();
                 if (!$uid) { return; }
 		if (!Apps::addon_app_installed($uid,'workflow')) { return; }
 		$footer .= replace_macros(get_markup_template('workflow_footer.tpl','addon/workflow'), [
