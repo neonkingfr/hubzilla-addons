@@ -2,16 +2,17 @@
 /**
  * Name: Channel Reputation
  * Description: Reputation system for community channels (forums, etc.)
- * Version: 0.7
+ * Version: 1.0
  * Author: DM42.Net, LLC
  * Maintainer: devhubzilla@dm42.net
- * MinVersion: 3.8.0
+ * MinVersion: 4.4.0
  */
 
 use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 use Zotlabs\Lib\IConfig;
+use Zotlabs\Lib\PConfig;
 
 function channelreputation_load() {
         Hook::register('get_all_api_perms', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::get_perms_filter',1,5000);
@@ -315,6 +316,7 @@ class ChannelReputation_Utils {
         public static function save ($uid,$channel_hash,$reputation) {
 
             $reputation_json = self::maybejson($reputation);
+
             $repsetting = 'repof-'.$channel_hash;
             set_pconfig($uid,'channelreputation',$repsetting,$reputation_json);
             self::$reputation[$uid][$channel_hash]=$reputation;
@@ -333,13 +335,18 @@ class ChannelReputation_Utils {
 		if ($mid && in_array($mid,$reputation['recentitems'])) {
 			return;
 		}
+		$hookinfo = [
+			'settings' => $settings,
+			'reputation' => $reputation
+		];
+		call_hooks('channelreputation_beforeupdate',$hookinfo);
 
             //Process hourly recoveries.
             if ($settings['hourly_post_recovery'] > 0) {
             	$timetopost = ($settings['minimum_to_post'] - $reputation['reputation']) / ($settings['hourly_post_recovery'] / 3600) ;
 	    } else {
-		$timetopost = 3600;
-		// Actually, it'd be infinity, but if hourly_post_recovery <= 0 this will effectively make it infinite.
+		$timetopost = -3600;
+		// Actually, it'd be negative infinity, but if hourly_post_recovery <= 0 this will effectively make it infinite.
             }
             $now = time();
             $timesince = $now - $reputation["lastactivity"];
@@ -352,7 +359,7 @@ class ChannelReputation_Utils {
 	    if ($settings['hourly_moderate_recovery'] > 0) {
             	$timetomoderate = (($settings['minimum_to_moderate'] - $reputation['reputation'] + $repdelta) / ($settings['hourly_moderate_recovery'] / 3600 ));
 	    } else {
-		$timetomoderate = 3600;
+		$timetomoderate = -3600;
 		// Actually, it'd be infinity, but if hourly_moderate_recovery <= 0 this will effectively make it infinite.
             }
 
@@ -392,7 +399,11 @@ class ChannelReputation_Utils {
 		}
             $reputation['lastactivity'] = $now;
             self::save($uid,$channel_hash,$reputation);
-
+		$hookinfo = [
+			'settings' => $settings,
+			'reputation' => $reputation
+		];
+		call_hooks('channelreputation_afterupdate',$hookinfo);
         }
 
         public static function permissions_list(&$arr) {
@@ -406,6 +417,7 @@ class ChannelReputation_Utils {
         }
 
         public static function get_perms_filter(&$arr) {
+
             $uid = $arr['channel_id'];
             $enable = get_pconfig ($uid,'channelreputation','enable');
             if (!$enable) { return; }
