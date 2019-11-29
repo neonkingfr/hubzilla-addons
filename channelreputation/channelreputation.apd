@@ -1,4 +1,4 @@
-version: 0.7
+version: 1.0
 url: $baseurl/channelreputation/$nick, $baseurl/settings/channelreputation
 requires: local_channel
 name: Channel Reputation
