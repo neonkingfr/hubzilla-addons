@@ -1,5 +1,5 @@
 version: 1.0
-url: $baseurl/channelreputation/$nick, $baseurl/settings/channelreputation
+url: $baseurl/channelreputation/$nick
 requires: local_channel
 name: Channel Reputation
 photo: icon:line-chart
