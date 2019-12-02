@@ -53,7 +53,7 @@ function workflow_load() {
 
 function workflow_unload() {
 	$hookdir = 'addon/workflow';
-	$hookfile = 'addon/workflow/workflow.php';
+	$hookfile = $hookdir.'/workflow.php';
 	Hook::unregister_by_file(__FILE__);
 	Hook::unregister_by_file($hookfile);
 	Route::unregister_by_file(dirname(__FILE__).'/Mod_Workflow.php');
@@ -87,7 +87,7 @@ class Workflow_Utils {
 
 		$profile_channel = channelx_by_n($uid);
 		$newcsp = $csp;
-		$wfchannels = q("select hubloc_url,hubloc_addr,xchan_addr from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'their_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1'",
+		$wfchannels = q("select hubloc_url,hubloc_addr,xchan_addr from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'their_perms' and k = 'workflow_user' and v = '1'",
 				intval($uid)
 			);
 
@@ -225,7 +225,7 @@ class Workflow_Utils {
 	}
 
 	public static function get_workflowusers () {
-		$wfchannels = q("select hubloc_host,hubloc_addr,xchan_addr,xchan_name,hubloc_primary,xchan_hash from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'my_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1'",
+		$wfchannels = q("select hubloc_host,hubloc_addr,xchan_addr,xchan_name,hubloc_primary,xchan_hash from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'my_perms' and k = 'workflow_user' and v = '1'",
 		intval(App::$profile_uid));
 
 		$wfusers = [];
@@ -233,6 +233,9 @@ class Workflow_Utils {
 		foreach ($wfchannels as $c) {
 			$wfusers[$c['xchan_hash']]=$c['xchan_name'].' - '.$c['xchan_addr'];
 		}
+
+		$c = channelx_by_n(App::$profile_uid);
+		$wfusers[$c['channel_hash']]=$c['channel_name'].' - '.$c['channel_addr'];
 
 		return $wfusers;
 
@@ -269,7 +272,7 @@ class Workflow_Utils {
 			$mywfchan['name'].=' ('.t('This channel').')';
 			$remoteworkflows[$mychan['channel_hash']] = $mywfchan;
 
-			$wfchannels = q("select hubloc_host,hubloc_addr,xchan_addr,xchan_name,hubloc_primary,xchan_hash from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'their_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1'",
+			$wfchannels = q("select hubloc_host,hubloc_addr,xchan_addr,xchan_name,hubloc_primary,xchan_hash from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'their_perms' and k = 'workflow_user' and v = '1'",
 				intval(local_channel()));
 			if ($wfchannels) {
 				foreach ($wfchannels as $wfchannel) {
@@ -286,7 +289,7 @@ class Workflow_Utils {
 			}
 
 		} else {
-			$wfchannels = q("select xchan from abconfig where chan = %d and xchan = '%s' and cat = 'my_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1'",
+			$wfchannels = q("select xchan from abconfig where chan = %d and xchan = '%s' and cat = 'my_perms' and k = 'workflow_user' and v = '1'",
 				App::$profile_uid,
 				dbesc(get_observer_hash()));
 			
@@ -400,8 +403,18 @@ class Workflow_Utils {
 
 	public static function display() {
 
+
 		$uid = App::$profile_uid;
 		if (!Apps::addon_app_installed($uid,'workflow')) { return; }
+
+		$hookinfo = [
+			'html' => null
+		];
+
+		call_hooks('workflow_display_replace',$hookinfo);
+		if ($hookinfo['html'] != null) {
+			return $hookinfo['html'];
+		}
 
 		$channel = channelx_by_n($uid);
 
@@ -468,8 +481,7 @@ class Workflow_Utils {
 		call_hooks('workflow_get_items_filter',$hookinfo);
 		$items = $hookinfo['items'];
 
-
-		$iframeurl = self::get_item_iframeurl($item);
+		$iframeurl = self::get_item_iframeurl($items[0]);
 
 		$posturl = z_root().'/workflow/'.$channel['channel_address'];
 
@@ -481,7 +493,7 @@ class Workflow_Utils {
 				if (strpos($rellink,'?') === false) {
 					$relurl = $rellink.'?zid='.get_my_address();
 				} else {
-				        $relurl = $rellink.'&zid='.get_my_address();
+				        $relurl = self::queryvars_stripzid($rellink).'&zid='.get_my_address();
 				}
 				$items[$itemidx]['related'][$idx]['jsondata'] = json_encode(['iframeurl'=>$relurl,'action'=>'getmodal_getiframe','raw'=>'raw']);
 				$items[$itemidx]['related'][$idx]['jsoneditdata'] = json_encode(['action'=>'form_addlink','uuid'=>$uuid,'mid'=>$item['mid'],'iframeurl'=>$posturl,'relatedlink'=>$related['relatedlink']]);
@@ -519,6 +531,7 @@ class Workflow_Utils {
 		Hook::insert('workflow_toolbar','Workflow_Utils::toolbar_backtoworkflow',1,1000);
 		$toolbar = self::get_toolbar($items);
 		$tpl = get_markup_template('workflow_display.tpl','addon/workflow');
+
 		
 		$vars = [
 			'$posturl' => z_root().'/workflow/'.$channel['channel_address'],
@@ -536,7 +549,16 @@ class Workflow_Utils {
 			'$edittaskjsondata' => json_encode(['action'=>'form_edittask','uuid'=>$uuid,'mid'=>$items[0]['mid'],'iframeurl'=>$iframeurl])
 		];
 
+		$sidebarhtml = replace_macros(get_markup_template('workflow_display_sidebar.tpl','addon/workflow'),$vars);
+		$sidebarhookinfo = [
+			'html' => $sidebarhtml,
+			'items' => $items
+		];
+		call_hooks('workflow_display_sidebar',$sidebarhookinfo);
+		$vars['sidebar'] = $sidebarhookinfo['html'];
+
         	$o = replace_macros($tpl,$vars);
+
 		return $o;
 	}
 
@@ -892,6 +914,7 @@ class Workflow_Utils {
 
 		$query = "select item.id as item_id from item $iconfigjoins where item.uid = $uid and item.mid=item.parent_mid and $objtype $itemtype $mids $uuids $ids $permissions $ownersearch $iconfigwhere $deleted $orderby $limit $offset";
 
+
 		$itemids = q($query);
 
 		if ($itemids) {
@@ -908,7 +931,7 @@ class Workflow_Utils {
 				call_hooks('workflow_get_items_filter',$hookinfo);
 				$items = $hookinfo['items'];
 			}
-
+			xchan_query($items);
 			return $items;
 		}
 		else {
@@ -1089,7 +1112,8 @@ class Workflow_Utils {
 	
 		foreach ($items as $item) {
 			$newitem = [];
-			$newitem['url']=$item['mid'].'?zid='.get_my_address();
+			$newitem['url']= $item['mid'];
+			$newitem['url'].=(strpos($item['mid'],'?')) ? '&zid='.get_my_address() : '?zid='.get_my_address();
 			$newitem['target']='new';
 			$newitem['title']=$item['title'];
 			$newitem['body']=prepare_body($item,true);
@@ -1419,6 +1443,19 @@ class Workflow_Utils {
 			killme();
 		}
 
+		if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) {
+			$hookinfo=[
+				'allow'=>false,
+				'arr'=>$arr,
+				'data'=>$data
+				];
+			call_hooks("workflow_permissions_createitem",$hookinfo);
+			if (!$hookinfo['allow']) {
+				$contentvars=[];
+				$contentvars['content'] = replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
+			}
+		}
+
 		$channel = channelx_by_n(App::$profile_uid);
 
 		$itemurl = $data['linkeditem'];
@@ -1456,8 +1493,7 @@ class Workflow_Utils {
 	public static function getmodal_getiframecontent($arr,$data = []) {
 		//@todo: add permissions
 
-		if ((!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) &&
-		    (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_additems'))) {
+		if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) {
 			$hookinfo=[
 				'allow'=>false,
 				'arr'=>$arr,
@@ -1523,8 +1559,7 @@ class Workflow_Utils {
 
 	public static function getmodal_createitem($arr,$data = []) {
 
-		if ((!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user'))  &&
-		    (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_additems'))) {
+		if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) {
 			$hookinfo=[
 				'allow'=>false,
 				'arr'=>$arr,
@@ -1616,7 +1651,8 @@ class Workflow_Utils {
 		if (!Apps::addon_app_installed($uid,'workflow')) { return false; }
 
 		$channelinfo = channelx_by_n($uid);
-		$itemuuid = item_message_id();
+		$itemuuid = item_message_id(); //Hubzilla
+		//$itemuuid = new_uuid(); //Zap
 		$mid = z_root().'/workflow/'.$channelinfo['channel_address'].'/display/'.$itemuuid;
 
 		$wfbody = (isset($data['workflowBody'])) ? $data['workflowBody'] : '';
@@ -1672,16 +1708,11 @@ class Workflow_Utils {
 				$arr['deny_cid']=$hookinfo['deny_cid'];
 				$arr['deny_gid']=$hookinfo['deny_gid'];
 		}
-		//$r = q("select item.*, item.id as item_id from item where item.uid = %d and mid = '%s' limit 1",
-			//intval($uid),
-			//dbesc($item['report_mid']));
 
 		// @TODO: fetch "report item" if we don't have it, then test if it was fetched
 //
-		//if ($r) {
 		$reportinfo = [];
 		$arr['iconfig'][]=['cat'=>'workflow','k'=>'report_mid','v'=>$item['report_mid'],'sharing'=>1];
-		//}
 
 		$arr['iconfig'][]=['cat'=>'workflow','k'=>'creator_xchan','v'=>get_observer_hash(),'sharing'=>1];
 		if ($data['linkeditem']) {
@@ -1827,8 +1858,7 @@ class Workflow_Utils {
 
 	public static function relate_link($itemowneruid,$observer,$itemmid,$relatedlink,$linkparams=[],$getarray=false) {
 
-		if ((!perm_is_allowed($itemowneruid, $observer, 'workflow_user')) &&
-		    (!perm_is_allowed($itemowneruid, $observer, 'workflow_additems'))) {
+		if (!perm_is_allowed($itemowneruid, $observer, 'workflow_user')) {
 			$hookinfo=[
 				'allow'=>false,
 				'itemowneruid'=>$itemowneruid,
@@ -1845,6 +1875,7 @@ class Workflow_Utils {
 			}
 		}
 
+		$relatedlink = self::queryvars_stripzid($relatedlink);
 		$linkkey=md5($relatedlink);
 		$linkinfo = [
 			'relatedlink'=>$relatedlink,
@@ -1925,8 +1956,7 @@ class Workflow_Utils {
 	}
 
 	public static function post_edittask($data) {
-		if ((!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user'))  &&
-		    (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_additems'))) {
+		if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) {
 			$hookinfo=[
 				'allow'=>false,
 				'data'=>$data
@@ -1945,7 +1975,12 @@ class Workflow_Utils {
 		$mid = $data['mid'];
 		$observer = get_observer_hash();
 
-		$items = self::get_items(['mid'=>$mid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if(!$items) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to update workflow item.']);
@@ -2001,8 +2036,7 @@ class Workflow_Utils {
 	}
 
 	public static function post_addlink($data) {
-		if ((!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user'))  &&
-		    (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_additems'))) {
+		if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user'))  {
 			$hookinfo=[
 				'allow'=>false,
 				'data'=>$data
@@ -2024,9 +2058,14 @@ class Workflow_Utils {
 		$linknotes = $data['linknotes'];
 		$relatedlink = $data['relatedlink'];
 
+		$relatedlink = self::queryvars_stripzid($relatedlink);
 		$linkkey=md5($relatedlink);
 
-		$items = self::get_items(['mid'=>$mid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if(!$items) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to create/update relation.']);
@@ -2141,7 +2180,12 @@ class Workflow_Utils {
 
 		$step = isset($data['step']) ? $data['step'] : 'step1';
 
-		$items = self::get_items(['mid'=>$mid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if (!$items) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to create/update relation.']);
@@ -2319,7 +2363,12 @@ class Workflow_Utils {
 
 		$step = isset($data['step']) ? $data['step'] : 'step1';
 
-		$items = self::get_items(['mid'=>$mid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if (!$items) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to create/update relation.']);
@@ -2414,6 +2463,7 @@ class Workflow_Utils {
 
 	public static function update_item($item) {
 
+			$observer = get_observer_hash();
 			$items = [$item];
 
 			$items[0]['revision']++;
@@ -2461,6 +2511,7 @@ class Workflow_Utils {
 			json_return_and_die(['html'=>'<h2>Workflow addon not installed.</h2>']);
 		}
 
+		$uid = App::$profile_uid;
 		$uuid= isset($data['uuid']) ? $data['uuid'] : null;
 		$mid= isset($data['mid']) ? $data['mid'] : null;
 		if (!$mid) {
@@ -2471,9 +2522,15 @@ class Workflow_Utils {
 		$action = "form_addlink";
 		$content = '';
 		$relatedlink = isset($data['relatedlink']) ? $data['relatedlink'] : '';
+		$relatedlink = self::queryvars_stripzid($relatedlink);
 		$linkkey=md5($relatedlink);
 
-		$items = self::get_items(['mid'=>$mid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if (!$items) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to create/update relation.']);
@@ -2547,6 +2604,7 @@ class Workflow_Utils {
 			json_return_and_die(['html'=>'<h2>Workflow addon not installed.</h2>']);
 		}
 
+		$uid= App::$profile_uid;
 		$uuid= isset($data['uuid']) ? $data['uuid'] : null;
 		$mid= isset($data['mid']) ? $data['mid'] : null;
 		if (!$mid) {
@@ -2558,7 +2616,12 @@ class Workflow_Utils {
 
 		$content = '';
 
-		$items = self::get_items(['mid'=>$mid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if (!$items) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to create/update relation.']);
@@ -2598,8 +2661,7 @@ class Workflow_Utils {
 
 	public static function basic_form($formname,$action,$content,$returntext=false,$data=[]) {
 		//@todo: add permissions
-	 	if ((!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) &&
-	 	    (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_additems'))) {
+	 	if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) {
 			$hookinfo=[
 				'allow'=>false,
 				'formname'=>$formname,
@@ -2713,14 +2775,16 @@ class Workflow_Utils {
 					}
 					break;
 				case 'addrelation':
+					$updated = 1;
+					$relatedlink=$update['relatedlink'];
+					$relatedlink = self::queryvars_stripzid($relatedlink);
 					$updatedetails[]=[
 						'action' => $parameter,
-						'details' => ['link'=>$update['relatedlink']]
+						'details' => ['link'=>$relatedlink]
 					];
-					$updated = 1;
-					$linkkey=md5($update['relatedlink']);
+					$linkkey=md5($relatedlink);
 					$linkinfo = [
-						'relatedlink'=>$update['relatedlink'],
+						'relatedlink'=>$relatedlink,
 						'addedby'=>$observer,
 						'title'=>$update['title'],
 						'notes'=>$update['notes']
