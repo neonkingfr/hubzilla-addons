@@ -11,53 +11,55 @@ use Zotlabs\Access\AccessList;
 
 class Flashcards extends Controller {
     
-    private $version = "2.06";
+    private $version = "2.08";
     
     private $boxesDir;
     private $is_owner;
     private $owner;
     private $observer;
     private $canWrite;
+    private $auth;
 
-    function init() {
-        // Determine which channel's flashcards to display to the observer
-        $nick = null;
-        if (argc() > 1) {
-            $nick = argv(1); // if the channel name is in the URL, use that
-        }
-        logger('nick = ' . $nick);
-        if (!$nick && local_channel()) { // if no channel name was provided, assume the current logged in channel
-            $channel = \App::get_channel();
-            logger('No nick but local channel - channel = ' . $channel);
-            if ($channel && $channel['channel_address']) {
-                $nick = $channel['channel_address'];
-                goaway(z_root() . '/flashcards/' . $nick);
-            }
-        }
-        if (!$nick) {
-            logger('No nick and no local channel');
-            notice(t('Profile Unavailable.') . EOL);
-            goaway(z_root());
-        }
-        
-        $this->owner = channelx_by_nick($nick);
+    function init() {		
+		
+        $this->observer = \App::get_observer();
+		
+		logger('This is the observer...', LOGGER_DEBUG);
+		logger(print_r($this->observer, true), LOGGER_DEBUG);
+		
+        $this->checkOwner();
         
 //        $this->flashcards_merge_test();
     }
 
     function get() {
-        
-        head_add_css('/addon/flashcards/view/css/flashcards.css');
+		
+		if(!$this->owner) {			
+			if (local_channel()) { // if no channel name was provided, assume the current logged in channel
+				$channel = \App::get_channel();
+				logger('No nick but local channel - channel = ' . $channel);
+				if ($channel && $channel['channel_address']) {
+					$nick = $channel['channel_address'];
+					goaway(z_root() . '/flashcards/' . $nick);
+				}
+			}
+		}
 
-        $desc = 'This addon app provides a learning software for your channel.';
-        
+        if (!$this->owner) {
+            logger('No nick and no local channel');
+            notice(t('Profile Unavailable.') . EOL);
+            goaway(z_root());
+        }
+		
         $status = $this->permChecks();
-        
+
         if(! $status['status']) {
             logger('observer prohibited');
             notice($status['errormsg'] . EOL);
             goaway(z_root());
         }
+
+        head_add_css('/addon/flashcards/view/css/flashcards.css');  
 
         $o = replace_macros(get_markup_template('flashcards.tpl','addon/flashcards'),array(
                 '$post_url' => 'flashcards/' . $this->owner['channel_address'],
@@ -72,7 +74,24 @@ class Flashcards extends Controller {
     }
 
     function post() {
-        
+	
+		if(argc() > 1) {
+			if(strcasecmp ( argv(1) , 'search') === 0) {
+				// API: /flashcards/search
+				// get all boxes of flashcards the observer is allowed to see
+				logger('Another instance requests all boxes of flashcards', LOGGER_DEBUG);
+				if(!$this->observer) {
+					$msg = "Failed to sent all boxes of flashcards. Reason: No observer found.";
+					logger($msg, LOGGER_DEBUG);
+					json_return_and_die(array('status' => false, 'errormsg' => $msg . EOL));
+				} else {
+					$msg = "Failed to sent all boxes of flashcards. Reason: Not implemented.";
+					logger($msg, LOGGER_DEBUG);
+					json_return_and_die(array('status' => false, 'errormsg' => $msg . EOL));
+				}
+			}
+		}        
+		
         $status = $this->permChecks();
         
         if(! $status['status']) {
@@ -119,6 +138,10 @@ class Flashcards extends Controller {
                     // API: /flashcards/nick/delete
                     // Deletes a box specified by param "box_id"
                     $this->deleteBox();
+                case 'search':
+                    // API: /flashcards/nick/search
+                    // get boxes of other instances
+                    $this->searchBoxes();
                 default:
                     break;
             }
@@ -129,28 +152,35 @@ class Flashcards extends Controller {
     private function permChecks() {
 
         $owner_uid = $this->owner['channel_id'];
+		
+		//logger('DELETE ME: This is the owner...', LOGGER_DEBUG);
+		//logger(print_r($this->owner, true), LOGGER_DEBUG);
 
-        if (!$owner_uid) {
+        if (!$owner_uid) {  // This IF should be checked before and could be deleted
+			logger('Stop: No owner profil', LOGGER_DEBUG);
             return array('status' => false, 'errormsg' => 'No owner profil');
         }
 
         if (observer_prohibited(true)) {
+			logger('Stop: observer prohibited', LOGGER_DEBUG);
             return array('status' => false, 'errormsg' => 'observer prohibited');
         }
 
         if(! Apps::addon_app_installed($owner_uid,'flashcards')) { 
+			logger('Stop: Owner profil has not addon installed', LOGGER_DEBUG);
             return array('status' => false, 'errormsg' => 'Owner profil has not addon installed');
         }
 
         if (!perm_is_allowed($owner_uid, get_observer_hash(), 'view_storage')) {
+			logger('Stop: Permission view storage denied', LOGGER_DEBUG);
             return array('status' => false, 'errormsg' => 'Permission view storage denied');
         }
 
         if (perm_is_allowed($owner_uid, get_observer_hash(), 'write_storage')) {
+			logger('write_storage is allowed', LOGGER_DEBUG);
             $this->canWrite = true;
         }
                
-        $this->observer = \App::get_observer();
         
         logger('observer = ' . $this->observer['xchan_addr'] . ', owner = ' . $this->owner['xchan_addr']);
         
@@ -163,6 +193,17 @@ class Flashcards extends Controller {
         
         return array('status' => true);
     }
+    
+    private function checkOwner() {		
+        // Determine which channel's flashcards to display to the observer
+        $nick = null;
+        if (argc() > 1) {
+            $nick = argv(1); // if the channel name is in the URL, use that
+        }
+        logger('nick = ' . $nick);
+        
+        $this->owner = channelx_by_nick($nick);
+	}
 
     private function getACL() {
         
@@ -269,36 +310,81 @@ class Flashcards extends Controller {
         logger('+++ list boxes ... +++');
         
         $this->recoverBoxes();
+		
+		$nicks = $this->getFlashcardsUsers();
+
+		$authObserver = new BasicAuth();
+
+		$authObserver->setCurrentUser($this->observer['xchan_addr']);
+		$authObserver->channel_id = $this->observer['xchan_guid'];
+		$authObserver->channel_hash = $this->observer['xchan_hash'];
+		$authObserver->observer = $this->observer['xchan_hash'];
+		
+		$baseURL = \App::get_baseurl();
         
         $boxes = [];
-        
-        try {
-            logger('getting files/dir for flashcards...');
-            $children = $this->boxesDir->getChildren();
-        } catch (\Exception $e) {
-            logger('permission denied');
-            notice(t('Permission denied.') . EOL);
-            json_return_and_die(array('status' => false, 'errormsg' => $e->getMessage() . EOL));
-        }
-        foreach($children as $child) {
-            if ($child instanceof File) {
-                if($child->getContentType() === strtolower('application/json')) {
-                    logger('found json file = '. $child->getName());
-                    $box = $this->readBox($this->boxesDir, $child->getName());
-                    unset($box['cards']);
-                    array_push($boxes, $box);
-                }
-            }
-        }
+
+		foreach ($nicks as $nick_fc) {		
+			$dirFlashcards = new Directory($nick_fc . '/flashcards/', $authObserver);
+			$boxFiles;
+			try {
+				$boxFiles = $dirFlashcards->getChildren();
+			} catch (\Exception $e) {
+				logger('permission denied for path ' . $nick_fc . '/flashcards/', LOGGER_DEBUG);
+				continue;
+			}
+			foreach($boxFiles as $child) {
+				if ($child instanceof File) {
+					if($child->getContentType() === strtolower('application/json')) {
+						$fname = $child->getName();
+						logger('found json file = '. $fname, LOGGER_DEBUG);
+						$box = $this->readBox($dirFlashcards, $child->getName());
+						if($box) {		
+							$box['size'] = count($box['cards']);
+							unset($box['cards']);
+							$current_owner = channelx_by_nick($nick_fc);
+							$box['current_owner'] = $current_owner['xchan_addr'];
+							$fn = substr($fname,0,strpos($fname, '.'));
+							$box['current_url'] = $baseURL . '/flashcards/' . $nick_fc . '/' . $fn;
+							array_push($boxes, $box);
+						}
+					}
+				}
+			}
+		}
         if (empty($boxes)) {
             logger('no boxes found');
-            notice('No boxes found');
         }
         
-        logger('sending (post response) list of boxes...');
+        logger('sending (post response) list of boxes...', LOGGER_DEBUG);
         
         json_return_and_die(array('status' => true, 'boxes' => $boxes));
     }
+
+    private function searchBoxes() {
+        
+        logger('+++ search boxes ... +++');
+        
+        json_return_and_die(array('status' => false, 'errormsg' => 'Not implemented' . EOL));
+    }
+
+    private function getFlashcardsUsers() {
+		$r = q("select app_url from app where app_plugin = 'flashcards' and app_deleted = 0");
+		
+        $nicks = [];
+		if($r) {
+			foreach ($r as $fc_url) {
+				$a_url = $fc_url['app_url'];
+				if (strpos($a_url, '/$nick')) {
+					continue;
+				}
+				$nick = substr($a_url, strripos($a_url, '/') + 1);
+				array_push($nicks, $nick);
+			}
+		}
+
+		return $nicks;
+	}
 
     private function recoverBoxes() {
         
@@ -356,8 +442,10 @@ class Flashcards extends Controller {
             if($this->is_owner) {
         
                 logger('owner requested box id = ' . $box_id);
+
+                $box = $this->importSharedBoxes($box);		
             
-                $box = $this->importSharedBoxes($box);
+				$box['size'] = count($box['cards']);
                 
                 json_return_and_die(
                         array(
@@ -422,7 +510,7 @@ class Flashcards extends Controller {
             $this->boxesDir->createDirectory($box_id);
         }
 
-        $boxDirObserver = new Directory('/'. $this->owner['channel_address'] . '/flashcards/' . $box_id, $this->createAuth());
+        $boxDirObserver = new Directory('/'. $this->owner['channel_address'] . '/flashcards/' . $box_id, $this->getAuth());
         if(! $boxDirObserver) {
             json_return_and_die(array('message' => 'Directory for observer box can not be created.', 'success' => false));
         }
@@ -434,6 +522,14 @@ class Flashcards extends Controller {
     private function writeBox() {
         
         logger('+++ write box ... +++');
+		
+		if(! $this->observer) {
+
+			logger('Stop: no observer. Can not write the box.');
+
+			json_return_and_die(array('status' => false, 'errormsg' => 'No box was sent. No observer.'));
+
+		}
         
         $boxRemote = $_POST['box'];
         if(!$boxRemote) {
@@ -481,6 +577,8 @@ class Flashcards extends Controller {
                 $hash = random_string(15);
                 $boxRemote["boxID"] = $hash;
                 $boxRemote["boxPublicID"] = $hash;
+                $boxRemote["creator"] = $this->observer['xchan_addr'];
+                $boxRemote["creator_xchan_hash"] = $this->observer['xchan_hash'];
                 $this->boxesDir->createFile($hash . '.json', json_encode($boxRemote));
         
                 logger('box is unknow and has to be created for owner, stored as = ' . $hash . '.json');
@@ -617,7 +715,15 @@ class Flashcards extends Controller {
                         $sharedBox = $this->readBox($shareDir, $sharedFileName);
                         $boxes = $this->flashcards_merge($box, $sharedBox, false);
                         $box = $boxes['boxLocal'];
-                        $shareDir->getChild($sharedFileName)->delete();
+						$this->boxesDir->getChild($boxId . '.json')->put(json_encode($box));
+						try {
+							// Remove the try-catch if everythings works fine on Hubzilla and ZAP.
+							// Zotlabs\Storage\BasicAuth was not used correctly (or changed).
+							$shareDir->getChild($sharedFileName)->delete();
+						} catch (\Exception $e) {
+							logger('Please report to the devs. This could be a bug with the usages of Zotlabs\Storage\BasicAuth. This caused a permission denied to delete a file in owned directory ', LOGGER_DEBUG);
+							continue;
+						}
                     }
                 }
             }
@@ -732,7 +838,15 @@ class Flashcards extends Controller {
         
     }
     
-    private function deleteBoxObserver($box_id) {
+    private function deleteBoxObserver($box_id) {		
+		
+		if(! $this->observer) {
+
+			logger('Stop: no observer. Can not delete the box.');
+
+			json_return_and_die(array('status' => false, 'errormsg' => 'Unable to delete the box. No observer.'));
+
+		}
         
         if(! $this->boxesDir->childExists($box_id)) {
             notice('No box dir found. Might be delete by owner.');
@@ -752,27 +866,25 @@ class Flashcards extends Controller {
         
     }
     
-    private function createAuth() { 
-        
-        // copied/adapted from Cloud.php
-        $auth = new BasicAuth();
+    private function getAuth() { 
 
-        $auth->setCurrentUser($this->owner['channel_address']);
-        $auth->channel_id = $this->owner['channel_id'];
-        $auth->channel_hash = $this->owner['channel_hash'];
-        $auth->channel_account_id = $this->owner['channel_account_id'];
-        if($this->owner['channel_timezone']) {
-            $auth->setTimezone($this->owner['channel_timezone']);
+        // copied/adapted from Cloud.php
+        if (!$this->auth) {
+
+            $this->auth = new BasicAuth();
+
+            $this->auth->setCurrentUser($this->owner['channel_address']);
+            $this->auth->channel_id = $this->owner['channel_id'];
+            $this->auth->channel_hash = $this->owner['xchan_hash'];
+            $this->auth->channel_account_id = $this->owner['channel_account_id'];
+            // this is not true but reflects that no files are owned by the observer
+            $this->auth->observer = $this->owner['xchan_hash'];
         }
-        // this is not true but reflects that no files are owned by the observer
-        $auth->observer = $this->owner['channel_hash'];
-        
-        return $auth;
+
+        return $this->auth;
     }
     
-    private function getShareDir() {
-        
-        $auth = $this->createAuth();
+    private function getShareDir() {  
         
         if(! $this->boxesDir->childExists('share')) {
             $this->boxesDir->createDirectory('share');
@@ -780,7 +892,7 @@ class Flashcards extends Controller {
         
         $channelAddress = $this->owner['channel_address'];
         
-        $shareDir = new Directory('/'. $channelAddress . '/flashcards/share', $auth);
+        $shareDir = new Directory('/'. $channelAddress . '/flashcards/share', $this->getAuth());
         
         if(! $shareDir) {
             json_return_and_die(array('message' => 'Directory share is missing.', 'success' => false));
@@ -791,15 +903,13 @@ class Flashcards extends Controller {
     
     private function getRecoverDir() {
         
-        $auth = $this->createAuth();
-        
         if(! $this->boxesDir->childExists('recover')) {
             $this->boxesDir->createDirectory('recover');
         }
         
         $channelAddress = $this->owner['channel_address'];
         
-        $recoverDir = new Directory('/'. $channelAddress . '/flashcards/recover', $auth);
+        $recoverDir = new Directory('/'. $channelAddress . '/flashcards/recover', $this->getAuth());
         
         if(! $recoverDir) {
             json_return_and_die(array('message' => 'Directory recover is missing.', 'success' => false));
@@ -810,26 +920,35 @@ class Flashcards extends Controller {
     
     private function getAddonDir() {
         
-        $auth = $this->createAuth($this->owner);
-        
-        $rootDirectory = new Directory('/', $auth);
-        
+        $this->getRootDir(); // just test this time
+
         $channelAddress = $this->owner['channel_address'];
-        
-        if(! $rootDirectory->childExists($channelAddress)) {
-            json_return_and_die(array('message' => 'No cloud directory.', 'success' => false));
-        }
-        $channelDir = new Directory('/' . $channelAddress, $auth);
+
+        $channelDir = new Directory('/' . $channelAddress, $this->getAuth());
         
         if(! $channelDir->childExists('flashcards')) {
             $channelDir->createDirectory('flashcards');
         }
         
-        $this->boxesDir = new Directory('/'. $channelAddress . '/flashcards', $auth);
+        $this->boxesDir = new Directory('/'. $channelAddress . '/flashcards', $this->getAuth());
         if(! $this->boxesDir) {
             json_return_and_die(array('message' => 'Directory flashcards is missing.', 'success' => false));
         }
         
+    }
+    
+    private function getRootDir() {
+
+        $rootDirectory = new Directory('/', $this->getAuth());
+
+        $channelAddress = $this->owner['channel_address'];
+
+        if(! $rootDirectory->childExists($channelAddress)) {
+            json_return_and_die(array('message' => 'No cloud directory.', 'success' => false));
+        }
+
+        return $rootDirectory;
+
     }
 
     /*
@@ -841,6 +960,7 @@ class Flashcards extends Controller {
      *  - boxPublicID
      *  - boxID
      *  - creator
+     *  - creator_xchan_hash
      *  - lastShared
      *  - maxLengthCardField
      *  - cardsColumnName

@@ -277,6 +277,7 @@ class Box {
             "title": "",
             "description": "",
             "creator": "",
+            "creator_xchan_hash": "",
             "lastShared": 0,
             "boxPublicID": 0, // milliseconds created
             "size": 0,
@@ -372,7 +373,8 @@ class Box {
         //this.content.boxID = this.checkInteger(this.content.boxID);		
         this.content.title = this.checkString(this.content.title, 80);
         this.content.description = this.checkString(this.content.description, 1000);
-        this.content.creator = this.checkString(this.content.creator, 80);
+        this.content.creator = this.checkString(this.content.creator, 256);
+        this.content.creator_xchan_hash = this.checkString(this.content.creator_xchan_hash, 256);
         this.content.lastShared = this.checkInteger(this.content.lastShared);
         this.content.boxPublicID = this.checkString(this.content.boxPublicID, 256);
         this.content.size = this.checkInteger(this.content.size);
@@ -1012,6 +1014,7 @@ function conductGUIelements(action) {
         $("#flashcards_panel_learn_buttons").hide();
         $("#flashcards_import").prop("disabled", false);
         $("#panel_cloud_boxes_1").hide();
+        $("#panel_search_cloud_boxes").hide();
         $('#panel_flashcards_permissions').collapse("hide");
         if (box.isEmpty()) {
             //$("#button_flashcards_edit_box").hide();
@@ -1124,7 +1127,7 @@ function conductGUIelements(action) {
         showCards(false);
     }
     if (action === 'list-boxes') {
-        $("#flashcards_navbar_brand").html("Your Cloud Boxes");
+        $("#flashcards_navbar_brand").html("Local Flashcards");
         $("#button_flashcards_save_box").hide();
         $("#button_flashcards_learn_play").hide();
         $("#button_share_box").hide();
@@ -1162,6 +1165,23 @@ function conductGUIelements(action) {
     }
     if (action !== 'show-help') {
         $("#panel_flashcards_help").hide();
+    }
+    if (action === 'search-boxes') {
+        $("#flashcards_navbar_brand").html("Search Cloud Boxes");
+        $("#button_flashcards_save_box").hide();
+        $("#button_flashcards_learn_play").hide();
+        $('#panel_box_attributes').collapse("hide");
+        $('#panel_flashcards_permissions').collapse("hide");
+        $("#panel_flashcards_cards_actions").hide();
+        $("#panel_flashcards_cards").hide();
+        $("#panel_flashcards_help").hide();
+        $("#panel_cloud_boxes_1").hide();
+        $("#button_flashcards_close").hide();
+        $("#panel_search_cloud_boxes").html('loading...');
+        $("#panel_search_cloud_boxes").show();
+    }
+    if (action !== 'search-boxes') {
+        $("#panel_search_cloud_boxes").hide();
     }
     fixTitleLength();
     if(hasUploads === 1 && box.content.private_autosave) {
@@ -2043,7 +2063,11 @@ $(document).on("click", "#flashcards_show_boxes", function () {
     loadCloudBoxes();
 });
 
+
+var localBoxes = [];
+
 function loadCloudBoxes() {
+    localBoxes = [];
     animate_on();
     logger.log('Sending request to download a list of cloud boxes...');
     $.post(postUrl + '/list/', '', function (data) {
@@ -2054,7 +2078,8 @@ function loadCloudBoxes() {
             var boxes = data['boxes'];
             if (boxes) {
                 if (boxes.length > 0) {
-                    createBoxList(boxes);
+                    localBoxes = boxes;
+                    createBoxList();
                     conductGUIelements('list-boxes');
                     return;
                 } else {
@@ -2075,16 +2100,35 @@ function loadCloudBoxes() {
         'json');
 }
 
-function createBoxList(boxes) {
+function createBoxList() {
+    createBoxListHeader();
+    createBoxListContent(true);
+}
+
+function createBoxListHeader() {
     var html = '';
-    html += '<div class="container-fluid">';
-    // list
+    html += '<div id="flashcards_boxes_list_header" class="clearfix form-group checkbox">';
+        html += '<label for="id_XY">All Flashcards on this server or just your own?</label>';
+        html += '<div class="float-right"><input type="checkbox" name="flashcards_own_boxes" id="id_flashcards_own_boxes" value="1" checked="checked" /><label class="switchlabel" for="id_flashcards_own_boxes"> <span class="onoffswitch-inner" data-on="All" data-off="Own"></span><span class="onoffswitch-switch"></span></label></div>';
+        html += '<small class="form-text text-muted">To search flashcards on other servers use menu -> "Search".</small>';
+    html += '</div>';
+    $("#panel_cloud_boxes_header").html(html);
+}
+
+function createBoxListContent(showAllBoxes) {
+    var html = '';
     var i;
-    for (i = 0; i < boxes.length; i++) {
-        var cloudBox = boxes[i];
+    for (i = 0; i < localBoxes.length; i++) {
+        var cloudBox = localBoxes[i];
         if (!cloudBox) {
             logger.log('Received a box that is NULL (seems to be a bug).');
             continue;  // This happened in dev (alpha)
+        }
+            var currentOwner = cloudBox["current_owner"];
+        if(!showAllBoxes) {
+            if(flashcards_editor !== currentOwner) {
+                continue;
+            }
         }
         var description = cloudBox["description"];
         if (!description) {
@@ -2093,15 +2137,16 @@ function createBoxList(boxes) {
         description = description.replace(/\n/g, '<br>');
         html += '<div class="row">';
         html += '   <div class="col-sm-12">';
-        html += '       <br><h3><a href="' + postUrl + '/' + cloudBox["boxID"] + '" name="load_box">' + cloudBox["title"] + '</a></h3>';
+        html += '       <br><h3><a href="' + cloudBox["current_url"] + '" name="load_box">' + cloudBox["title"] + '</a></h3>';
         html += '   </div>';
         html += '</div>';
         html += '<div class="col-sm-12">';
         html += '   <b>Description:</b><br>';
         html += '   ' + description + '';
+        html += '   <br><b>Owner: </b>' + cloudBox["current_owner"] + '';
         html += '   <br><b>Size: </b>' + cloudBox["size"] + '';
         if (cloudBox["boxID"] !== box.content.boxID) {
-            if (is_owner) {
+            if (flashcards_editor === currentOwner) {
                 html += '       &nbsp;<b>Delete box: </b>&nbsp;';
             } else {
                 html += '       &nbsp;<b>Delete learn results: </b>&nbsp;';
@@ -2111,7 +2156,68 @@ function createBoxList(boxes) {
         html += '</div>';
     }
     html += '</div>';
-    $("#panel_cloud_boxes_1").html(html);
+    $("#panel_cloud_boxes_content").html(html);
+}
+
+$(document).on("click", "#id_flashcards_own_boxes", function () {
+    logger.log('Clicked on checkbox id_flashcards_own_boxes');
+    var showAllBoxes = $('#id_flashcards_own_boxes').prop('checked');
+    createBoxListContent(showAllBoxes);
+});
+
+function searchCloudBoxes() {
+    animate_on();
+    logger.log('Sending request to search for boxes...');
+    $.post(postUrl + '/search/', '', function (data) {
+        animate_off();
+        if (data['status']) {
+            logger.log("Search for boxes successfull. Status: " + data['status']);
+            var boxes = data['boxes'];
+            if (boxes) {
+                if (boxes.length > 0) {
+                    createListFoundBoxes(boxes);
+                } else {
+                    logger.log("No cloud boxes found");
+                    $("#panel_search_cloud_boxes").html('No cloud boxes found');
+                }
+            } else {
+                logger.log("But the list of cloud boxes was empty");
+            }
+        } else {
+            logger.log("Error searching for boxes: " + data['errormsg']);
+            $("#panel_search_cloud_boxes").html(data['errormsg']);
+        }
+        $("#button_share_box").hide();
+        $("#button_flashcards_close").show();
+    },
+        'json');
+}
+
+$(document).on("click", "#flashcards_search_boxes", function () {
+    logger.log('Clicked on flashcards_search_boxes');
+    conductGUIelements('search-boxes');
+    searchCloudBoxes();
+});
+
+function createListFoundBoxes(boxes) {
+    var html = '';
+    html += '<div class="container-fluid">';
+    // list
+    var i;
+    for (i = 0; i < boxes.length; i++) {
+        var cloudBox = boxes[i];
+        if (!cloudBox) {
+            logger.log('Received a box URL that is NULL (seems to be a bug).');
+            continue;  // This happened in dev (alpha)
+        }
+        html += '<div class="row">';
+        html += '   <div class="col-sm-12">';
+        html += '       <br><h3><a href="' + cloudBox + '" name="load_box">' + cloudBox  + '</a></h3>';
+        html += '   </div>';
+        html += '</div>';
+    }
+    html += '</div>';
+    $("#panel_search_cloud_boxes").html(html);
 }
 
 $(document).on("click", "#run_unit_tests", function () {
@@ -2131,7 +2237,7 @@ function fixTitleLength() {
     if ($("#panel_box_navigation").css('display') !== 'none') {
         logger.log('Title is visible when rezising');
         if ($("#button_share_box").css('display') !== 'none') {
-            var s = box.content.title;
+            var s = $("#flashcards_navbar_brand").html();;
             $("#flashcards_navbar_brand").html(s);
             var i = s.length - 1;
             for (i; i > 0; i--) {
@@ -3044,6 +3150,7 @@ function test_box_merge() {
     localTestBox.getContent().boxID = "1528468531111";
     localTestBox.getContent().title = "local box";
     localTestBox.getContent().creator = "Genius";
+    localTestBox.getContent().creator_xchan_hash = "Genius_obs";
     localTestBox.getContent().cardsDeckWaitExponent = 1;
     localTestBox.getContent().private_sortColumn = 5;
     localTestBox.getContent().lastChangedPublicMetaData = 1528468538430;
@@ -3051,12 +3158,16 @@ function test_box_merge() {
     remoteTestBox.getContent().boxID = "1528468531111";
     remoteTestBox.getContent().title = "remote box";
     remoteTestBox.getContent().creator = "Would-be";
+    remoteTestBox.getContent().creator_xchan_hash = "Would-be-obs";
     remoteTestBox.getContent().cardsDeckWaitExponent = 4;
     remoteTestBox.getContent().private_sortColumn = 6;
     remoteTestBox.getContent().lastChangedPublicMetaData = 1528468538431;
     remoteTestBox.getContent().lastChangedPrivateMetaData = 1528468538431;
     localTestBox.merge(remoteTestBox);
     if (localTestBox.getContent().title != "remote box" || localTestBox.getContent().creator != "Genius") {
+        return false;
+    }
+    if (localTestBox.getContent().title != "remote box" || localTestBox.getContent().creator_xchan_hash != "Genius_obs") {
         return false;
     }
     if (localTestBox.getContent().boxPublicID != "1528468533333") {
