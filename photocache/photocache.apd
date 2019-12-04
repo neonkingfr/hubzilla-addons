@@ -1,6 +1,6 @@
-version: 0.1
+version: 0.2.14
 url: $baseurl/photocache
 requires: local_channel
 name: Photo Cache
-photo: icon:gear
+photo: icon:hdd-o
 categories: Networking

@@ -2,15 +2,17 @@
 /**
  * Name: Channel Reputation
  * Description: Reputation system for community channels (forums, etc.)
- * Version: 0.7
+ * Version: 1.0
  * Author: DM42.Net, LLC
  * Maintainer: devhubzilla@dm42.net
- * MinVersion: 3.8.0
+ * MinVersion: 4.4.0
  */
 
 use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
+use Zotlabs\Lib\IConfig;
+use Zotlabs\Lib\PConfig;
 
 function channelreputation_load() {
         Hook::register('get_all_api_perms', 'addon/channelreputation/channelreputation.php', 'ChannelReputation_Utils::get_perms_filter',1,5000);
@@ -69,7 +71,6 @@ class ChannelReputation_Utils {
                           'moderators_modpoints' => 2, //Members of moderators_groups may reward/penalize up to this amount per moderation action without losing any of their personal reputation
                           'moderate_by' => CHANNELREPUTATION_COMMUNITYMODERATION
                  );
-
 
         public static function page_end(&$footer) {
                 $id = App::$profile_uid;
@@ -176,6 +177,8 @@ class ChannelReputation_Utils {
 			}
 
 		}
+
+		$settings["validationkey"] = random_string();
 
 		$allsettings = self::$settings;
 		$allsettings[$id] = $settings;
@@ -303,7 +306,7 @@ class ChannelReputation_Utils {
             $reputation = get_pconfig($uid,'channelreputation',$setting);
             $reputation = self::maybeunjson($reputation);
             if (!is_array($reputation) || !isset($reputation["reputation"])) {
-                    $reputation = Array('reputation'=>$settings['starting_reputation'], 'lastactivity'=>time());
+                    $reputation = Array('reputation'=>$settings['starting_reputation'], 'lastactivity'=>time(), 'recentitems'=>[]);
             }
 
             self::$reputation[$uid][$channel_hash] = $reputation;
@@ -313,19 +316,38 @@ class ChannelReputation_Utils {
         public static function save ($uid,$channel_hash,$reputation) {
 
             $reputation_json = self::maybejson($reputation);
+
             $repsetting = 'repof-'.$channel_hash;
             set_pconfig($uid,'channelreputation',$repsetting,$reputation_json);
             self::$reputation[$uid][$channel_hash]=$reputation;
         }
 
-        public static function update($uid,$channel_hash,$activity='',$points=0) {
+        public static function update($uid,$channel_hash,$activity='',$points=0,$mid=null) {
             $enable = get_pconfig ($uid,'channelreputation','enable');
             if (!$enable) { return; }
             $settings = self::get_settings($uid);
             $reputation = self::get($uid,$channel_hash);
 
+		// We have a list of the last few items to
+		// try to make sure in a channel-clone situation we
+		// don't deduct moderation points multiple times.
+
+		if ($mid && in_array($mid,$reputation['recentitems'])) {
+			return;
+		}
+		$hookinfo = [
+			'settings' => $settings,
+			'reputation' => $reputation
+		];
+		call_hooks('channelreputation_beforeupdate',$hookinfo);
+
             //Process hourly recoveries.
-            $timetopost = ($settings['minimum_to_post'] - $reputation['reputation']) / ($settings['hourly_post_recovery'] / 3600) ;
+            if ($settings['hourly_post_recovery'] > 0) {
+            	$timetopost = ($settings['minimum_to_post'] - $reputation['reputation']) / ($settings['hourly_post_recovery'] / 3600) ;
+	    } else {
+		$timetopost = -3600;
+		// Actually, it'd be negative infinity, but if hourly_post_recovery <= 0 this will effectively make it infinite.
+            }
             $now = time();
             $timesince = $now - $reputation["lastactivity"];
             $repdelta = 0;
@@ -334,9 +356,14 @@ class ChannelReputation_Utils {
             }
 
             $pointsuntilmoderate = ($settings['minimum_to_moderate'] - $reputation['reputation'] + $repdelta);
-            $timetomoderate = (($settings['minimum_to_moderate'] - $reputation['reputation'] + $repdelta) / ($settings['hourly_moderate_recovery'] / 3600 ));
+	    if ($settings['hourly_moderate_recovery'] > 0) {
+            	$timetomoderate = (($settings['minimum_to_moderate'] - $reputation['reputation'] + $repdelta) / ($settings['hourly_moderate_recovery'] / 3600 ));
+	    } else {
+		$timetomoderate = -3600;
+		// Actually, it'd be infinity, but if hourly_moderate_recovery <= 0 this will effectively make it infinite.
+            }
 
-            if ($timetopost < 0 && $timetomoderate > 0) {
+            if ($timetopost <= 0 && $timetomoderate > 0) {
                 $moderate_recovery = ($timesince * ($settings['hourly_moderate_recovery'] / 3600));
                 $repdelta = $repdelta + ($timesince * ($settings['hourly_moderate_recovery'] / 3600));
             }
@@ -361,9 +388,22 @@ class ChannelReputation_Utils {
             if ($reputation['reputation'] < $settings['minimum_reputation']) {
                    $reputation['reputation'] = $settings['minimum_reputation'];
             }
+		// Save the mid in a short list of recently moderated items
+		// to try to make sure in a channel-clone situation we
+		// don't deduct moderation points multiple times.
+		if ($mid) {
+			array_push($reputation['recentitems'],$mid);
+			while (count($reputation['recentitems']) > 5) {
+				$oldest = array_shift($reputation['recentitems']);
+			}
+		}
             $reputation['lastactivity'] = $now;
             self::save($uid,$channel_hash,$reputation);
-
+		$hookinfo = [
+			'settings' => $settings,
+			'reputation' => $reputation
+		];
+		call_hooks('channelreputation_afterupdate',$hookinfo);
         }
 
         public static function permissions_list(&$arr) {
@@ -377,6 +417,7 @@ class ChannelReputation_Utils {
         }
 
         public static function get_perms_filter(&$arr) {
+
             $uid = $arr['channel_id'];
             $enable = get_pconfig ($uid,'channelreputation','enable');
             if (!$enable) { return; }
@@ -566,20 +607,49 @@ class ChannelReputation_Utils {
 		*/
          }
 
-         public static function item_store(&$arr) {
-                if (!isset($arr['uid'])) { return; }
-                $enable = get_pconfig ($arr['uid'],'channelreputation','enable');
-                if (!$enable) { return; }
-                $poster_rep = self::get($arr['uid'],$arr['auther_xchan']);
-                if ($arr['mid'] !== $arr['parent_mid']) {
-                        // Is comment
-                        self::update($arr['uid'],$arr['author_xchan'],'comment');
-                } else {
-                        // Is post
-                        self::update($arr['uid'],$arr['author_xchan'],'post');
-                }
-         }
+	private static function check_applied($arr) {
 
+		// Avoid duplicate deductions when channel is cloned.
+
+		$settings = self::get_settings($arr['uid']);
+		$applied = IConfig::Get($arr,'channelreputation','applied','no');
+		$testkey = md5($arr['mid'].$settings['validationkey']);
+		return ($applied === $testkey) ? true : false;
+
+	}
+
+         public static function item_store(&$arr) {
+
+                if (!isset($arr['uid'])) { 
+			return; 
+		}
+
+		if (!Apps::addon_app_installed($arr['uid'], 'channelreputation')) {
+			return;
+		}
+
+               	$enable = PConfig::Get($arr['uid'],'channelreputation','enable',false);
+
+               	if (!$enable) { 
+			return; 
+		}
+
+		if (self::check_applied($arr)) {
+			return;
+		}
+
+               	$poster_rep = self::get($arr['uid'],$arr['author_xchan']);
+               	if ($arr['mid'] !== $arr['parent_mid']) {
+                       	// Is comment
+                       	self::update($arr['uid'],$arr['author_xchan'],'comment',0,$arr['mid']);
+               	} else {
+                       	// Is post
+                       	self::update($arr['uid'],$arr['author_xchan'],'post',0,$arr['mid']);
+               	}
+		$settings = self::get_settings($arr['uid']);
+		$appliedkey = md5($arr['mid'].$settings['validationkey']);
+		$applied = IConfig::Set($arr,'channelreputation','applied',$appliedkey,false);
+	}
 }
 
 function channelreputation_post (&$a) {
@@ -587,12 +657,12 @@ function channelreputation_post (&$a) {
        echo $html;
        killme();
 }
-global $Channelreputation;
 
 function channelreputation_module() {
 
 }
 
+global $Channelreputation; 
 if (!$Channelreputation instanceof Channelreputation) {
   $Channelreputation = new ChannelReputation_Utils();
 }

@@ -44,8 +44,7 @@ function dwpost_jot_nets(&$a,&$b) {
 
         $dw_defpost = get_pconfig(local_channel(),'dwpost','post_by_default');
         $selected = ((intval($dw_defpost) == 1) ? ' checked="checked" ' : '');
-        $b .= '<div class="profile-jot-net"><input type="checkbox" name="dwpost_enable" ' . $selected . ' value="1" /> '
-            . t('Post to Dreamwidth') . '</div>';
+        $b .= '<div class="profile-jot-net"><input type="checkbox" name="dwpost_enable" ' . $selected . ' value="1" /> <i class="fa fa-send fa-2x" aria-hidden="true"></i> ' . t('Post to Dreamwidth') . '</div>';
 
 }
 

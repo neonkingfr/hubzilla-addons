@@ -55,6 +55,9 @@ function asfetch_event($x) {
 		$ev = bbtoevent($x['content']);
 		if($ev) {
 
+			if(! $ev['timezone'])
+				$ev['timezone'] = 'UTC';
+					
 			$actor = null;
 			if(array_key_exists('author',$x) && array_key_exists('link',$x['author'])) {
 				$actor = $x['author']['link'][0]['href'];
@@ -64,14 +67,14 @@ function asfetch_event($x) {
 				'id'        => z_root() . '/event/' . $ev['event_hash'],
 				'summary'   => bbcode($ev['summary'], [ 'cache' => true ]),
 				// RFC3339 Section 4.3
-				'startTime' => (($ev['adjust']) ? datetime_convert('UTC','UTC',$ev['dtstart'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtstart'],'Y-m-d\\TH:i:s-00:00')),
+				'startTime' => (($ev['adjust']) ? datetime_convert($ev['timezone'],'UTC',$ev['dtstart'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtstart'],'Y-m-d\\TH:i:s-00:00')),
 				'content'   => bbcode($ev['description'], [ 'cache' => true ]),
 				'location'  => [ 'type' => 'Place', 'content' => bbcode($ev['location'], [ 'cache' => true ]) ],
 				'source'    => [ 'content' => format_event_bbcode($ev), 'mediaType' => 'text/bbcode' ],
 				'actor'     => $actor,
 			];
 			if(! $ev['nofinish']) {
-				$y['endTime'] = (($ev['adjust']) ? datetime_convert('UTC','UTC',$ev['dtend'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtend'],'Y-m-d\\TH:i:s-00:00'));
+				$y['endTime'] = (($ev['adjust']) ? datetime_convert($ev['timezone'],'UTC',$ev['dtend'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtend'],'Y-m-d\\TH:i:s-00:00'));
 			}
 				
 			// copy attachments from the passed object - these are already formatted for ActivityStreams
@@ -268,12 +271,16 @@ function asencode_item($i) {
 			$ret['location']['longitude'] = $l[1];
 		}
 	}
-	$ret['url'] = [
-		'type' => 'Link',
-		'rel'  => 'alternate',
-		'type' => 'text/html',
-		'href' => $i['plink']
-	];
+
+	if($i['obj']) {
+		//$ret['url'] = [
+		//	'type' => 'Link',
+		//	'rel'  => 'alternate',
+		//	'mediaType' => 'text/html',
+		//	'href' => $i['plink']
+		//];
+		$ret['url'] = $i['plink'];
+	}
 
 	$ret['attributedTo'] = $i['author']['xchan_url'];
 
@@ -454,6 +461,9 @@ function asencode_activity($i) {
 
 	if($i['title'])
 		$ret['title'] = html2plain(bbcode($i['title'], ['cache' => true ]));
+		
+	// Remove URL bookmark
+	$i['body'] = str_replace("#^[", "[", $i['body']);
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);
 	if($i['created'] !== $i['edited'])
@@ -504,7 +514,13 @@ function asencode_activity($i) {
 
 	if($i['mid'] != $i['parent_mid']) {
 		$reply = true;
-		$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
+
+		// inReplyTo needs to be set in the activity for followup actions (Like, Dislike, Attend, Announce, etc.),
+		// but *not* for comments, where it should only be present in the object
+		if (! in_array($ret['type'],[ 'Create','Update' ])) {
+			$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
+		}
+
 		$recips = get_iconfig($i['parent'], 'activitypub', 'recips');
 	}
 
@@ -1080,12 +1096,15 @@ function as_actor_store($url,$person_obj) {
 		else
 			$icon = $person_obj['icon'];
 	}
-
-	if(is_array($person_obj['url']) && array_key_exists('href', $person_obj['url']))
-		$profile = $person_obj['url']['href'];
-	else
-		$profile = $url;
-
+	
+        if(is_array($person_obj['url'])) {
+                if(array_key_exists('href', $person_obj['url']))
+                        $profile = $person_obj['url']['href'];
+                else
+                        $profile = $url;
+        }
+        else
+                $profile = $person_obj['url'];
 
 	$inbox = $person_obj['inbox'];
 
@@ -1248,7 +1267,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	$parent = ((array_key_exists('inReplyTo',$act->obj) && !$announce) ? urldecode($act->obj['inReplyTo']) : false);
 
 	if(!$parent) {
-		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream && $announce)) {
+		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
 			logger('no permission');
 			return;
 		}
@@ -1263,11 +1282,6 @@ function as_create_note($channel,$observer_hash,$act) {
 	);
 	
 	$content = as_get_content($act->obj);
-
-	if(! $content) {
-		logger('no content');
-		return;
-	}
 
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
@@ -1515,11 +1529,6 @@ function as_announce_note($channel,$observer_hash,$act) {
 	}
 
 	$content = as_get_content($act->obj);
-
-	if(! $content) {
-		logger('no content');
-		return;
-	}
 
 	$s['owner_xchan'] = $s['author_xchan'] = $observer_hash;
 
@@ -1872,13 +1881,13 @@ function as_get_content($act) {
 	}
 
 	if($event) {
-		$event['summary'] = (($content['summary']) ? $content['summary'] : $content['name']);
+		$event['summary'] = (($content['name']) ? $content['name'] : $content['summary']);
 		$event['description'] = $content['content'];
 		if($event['summary'] && $event['dtstart']) {
 			$content['event'] = $event;
 		}
-		if(! $content['content']) {
-			$content['content'] = format_event_bbcode($content['event']);
+		if(strpos($content['content'],"[event-") === false) {
+			$content['content'] .= "\n" . format_event_bbcode($content['event']);
 		}
 	}
 

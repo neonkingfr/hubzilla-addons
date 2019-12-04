@@ -4,75 +4,94 @@ namespace Zotlabs\Module;
 
 use Zotlabs\Lib\Apps;
 use Zotlabs\Web\Controller;
-use Zotlabs\Storage;
+use Zotlabs\Storage\Directory;
+use Zotlabs\Storage\File;
+use Zotlabs\Storage\BasicAuth;
+use Zotlabs\Access\AccessList;
 
-class Flashcards extends \Zotlabs\Web\Controller {
+class Flashcards extends Controller {
+    
+    private $version = "2.08";
     
     private $boxesDir;
     private $is_owner;
     private $owner;
     private $observer;
     private $canWrite;
+    private $auth;
 
-    function init() {
-        // Determine which channel's flashcards to display to the observer
-        logger('init()');
-        $nick = null;
-        if (argc() > 1) {
-            $nick = argv(1); // if the channel name is in the URL, use that
-        }
-        logger('nick = ' . $nick);
-        if (!$nick && local_channel()) { // if no channel name was provided, assume the current logged in channel
-            $channel = \App::get_channel();
-            logger('No nick but local channel - channel = ' . $channel);
-            if ($channel && $channel['channel_address']) {
-                $nick = $channel['channel_address'];
-                goaway(z_root() . '/flashcards/' . $nick);
-            }
-        }
-        if (!$nick) {
-            logger('No nick and no local channel');
-            notice(t('Profile Unavailable.') . EOL);
-            goaway(z_root());
-        }
-
-        profile_load($nick);
+    function init() {		
+		
+        $this->observer = \App::get_observer();
+		
+		logger('This is the observer...', LOGGER_DEBUG);
+		logger(print_r($this->observer, true), LOGGER_DEBUG);
+		
+        $this->checkOwner();
         
 //        $this->flashcards_merge_test();
     }
 
     function get() {
-        
-        head_add_css('/addon/flashcards/view/css/flashcards.css');
+		
+		if(!$this->owner) {			
+			if (local_channel()) { // if no channel name was provided, assume the current logged in channel
+				$channel = \App::get_channel();
+				logger('No nick but local channel - channel = ' . $channel);
+				if ($channel && $channel['channel_address']) {
+					$nick = $channel['channel_address'];
+					goaway(z_root() . '/flashcards/' . $nick);
+				}
+			}
+		}
 
-        if (observer_prohibited(true)) {
-            logger('observer prohibited');
-            return login();
+        if (!$this->owner) {
+            logger('No nick and no local channel');
+            notice(t('Profile Unavailable.') . EOL);
+            goaway(z_root());
         }
-
-        $desc = 'This addon app provides a learning software for your channel.';
-
-        $text = '<div class="section-content-info-wrapper">' . $desc . '</div>';
-        
+		
         $status = $this->permChecks();
-        
+
         if(! $status['status']) {
+            logger('observer prohibited');
             notice($status['errormsg'] . EOL);
-            return $text;
+            goaway(z_root());
         }
+
+        head_add_css('/addon/flashcards/view/css/flashcards.css');  
 
         $o = replace_macros(get_markup_template('flashcards.tpl','addon/flashcards'),array(
                 '$post_url' => 'flashcards/' . $this->owner['channel_address'],
                 '$nick' => $this->owner['channel_address'],
                 '$is_owner' => $this->is_owner,
-                '$flashcards_editor' => $this->observer['xchan_addr']
+                '$flashcards_editor' => $this->observer['xchan_addr'],
+                '$flashcards_owner' => $this->owner['xchan_addr'],
+                '$flashcards_version' => $this->version
         )); 
 
         return $o;
     }
 
     function post() {
-        
+	
+		if(argc() > 1) {
+			if(strcasecmp ( argv(1) , 'search') === 0) {
+				// API: /flashcards/search
+				// get all boxes of flashcards the observer is allowed to see
+				logger('Another instance requests all boxes of flashcards', LOGGER_DEBUG);
+				if(!$this->observer) {
+					$msg = "Failed to sent all boxes of flashcards. Reason: No observer found.";
+					logger($msg, LOGGER_DEBUG);
+					json_return_and_die(array('status' => false, 'errormsg' => $msg . EOL));
+				} else {
+					$msg = "Failed to sent all boxes of flashcards. Reason: Not implemented.";
+					logger($msg, LOGGER_DEBUG);
+					json_return_and_die(array('status' => false, 'errormsg' => $msg . EOL));
+				}
+			}
+		}        
+		
         $status = $this->permChecks();
         
         if(! $status['status']) {
@@ -119,6 +138,10 @@ class Flashcards extends \Zotlabs\Web\Controller {
                     // API: /flashcards/nick/delete
                     // Deletes a box specified by param "box_id"
                     $this->deleteBox();
+                case 'search':
+                    // API: /flashcards/nick/search
+                    // get boxes of other instances
+                    $this->searchBoxes();
                 default:
                     break;
             }
@@ -128,30 +151,36 @@ class Flashcards extends \Zotlabs\Web\Controller {
     
     private function permChecks() {
 
-        if (observer_prohibited(true)) {
-            return array('status' => false, 'errormsg' => 'observer prohibited');
-        }
-        
-        $owner_uid = \App::$profile_uid;
+        $owner_uid = $this->owner['channel_id'];
+		
+		//logger('DELETE ME: This is the owner...', LOGGER_DEBUG);
+		//logger(print_r($this->owner, true), LOGGER_DEBUG);
 
-        if (!$owner_uid) {
+        if (!$owner_uid) {  // This IF should be checked before and could be deleted
+			logger('Stop: No owner profil', LOGGER_DEBUG);
             return array('status' => false, 'errormsg' => 'No owner profil');
         }
 
+        if (observer_prohibited(true)) {
+			logger('Stop: observer prohibited', LOGGER_DEBUG);
+            return array('status' => false, 'errormsg' => 'observer prohibited');
+        }
+
         if(! Apps::addon_app_installed($owner_uid,'flashcards')) { 
+			logger('Stop: Owner profil has not addon installed', LOGGER_DEBUG);
             return array('status' => false, 'errormsg' => 'Owner profil has not addon installed');
         }
 
         if (!perm_is_allowed($owner_uid, get_observer_hash(), 'view_storage')) {
+			logger('Stop: Permission view storage denied', LOGGER_DEBUG);
             return array('status' => false, 'errormsg' => 'Permission view storage denied');
         }
 
         if (perm_is_allowed($owner_uid, get_observer_hash(), 'write_storage')) {
+			logger('write_storage is allowed', LOGGER_DEBUG);
             $this->canWrite = true;
         }
-        
-        $this->owner = channelx_by_n($owner_uid);        
-        $this->observer = \App::get_observer();
+               
         
         logger('observer = ' . $this->observer['xchan_addr'] . ', owner = ' . $this->owner['xchan_addr']);
         
@@ -164,6 +193,17 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
         return array('status' => true);
     }
+    
+    private function checkOwner() {		
+        // Determine which channel's flashcards to display to the observer
+        $nick = null;
+        if (argc() > 1) {
+            $nick = argv(1); // if the channel name is in the URL, use that
+        }
+        logger('nick = ' . $nick);
+        
+        $this->owner = channelx_by_nick($nick);
+	}
 
     private function getACL() {
         
@@ -244,7 +284,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
 
         $channel = \App::get_channel();
 
-        $acl = new \Zotlabs\Access\AccessList($channel);
+        $acl = new AccessList($channel); // Hubzilla: $acl = new AccessList($channel);
         $acl->set_from_array($_POST);
         $x = $acl->get();
 
@@ -270,36 +310,81 @@ class Flashcards extends \Zotlabs\Web\Controller {
         logger('+++ list boxes ... +++');
         
         $this->recoverBoxes();
+		
+		$nicks = $this->getFlashcardsUsers();
+
+		$authObserver = new BasicAuth();
+
+		$authObserver->setCurrentUser($this->observer['xchan_addr']);
+		$authObserver->channel_id = $this->observer['xchan_guid'];
+		$authObserver->channel_hash = $this->observer['xchan_hash'];
+		$authObserver->observer = $this->observer['xchan_hash'];
+		
+		$baseURL = \App::get_baseurl();
         
         $boxes = [];
-        
-        try {
-            logger('getting files/dir for flashcards...');
-            $children = $this->boxesDir->getChildren();
-        } catch (\Exception $e) {
-            logger('permission denied');
-            notice(t('Permission denied.') . EOL);
-            json_return_and_die(array('status' => false, 'errormsg' => $e->getMessage() . EOL));
-        }
-        foreach($children as $child) {
-            if ($child instanceof \Zotlabs\Storage\File) {
-                if($child->getContentType() === strtolower('application/json')) {
-                    logger('found json file = '. $child->getName());
-                    $box = $this->readBox($this->boxesDir, $child->getName());
-                    unset($box['cards']);
-                    array_push($boxes, $box);
-                }
-            }
-        }
+
+		foreach ($nicks as $nick_fc) {		
+			$dirFlashcards = new Directory($nick_fc . '/flashcards/', $authObserver);
+			$boxFiles;
+			try {
+				$boxFiles = $dirFlashcards->getChildren();
+			} catch (\Exception $e) {
+				logger('permission denied for path ' . $nick_fc . '/flashcards/', LOGGER_DEBUG);
+				continue;
+			}
+			foreach($boxFiles as $child) {
+				if ($child instanceof File) {
+					if($child->getContentType() === strtolower('application/json')) {
+						$fname = $child->getName();
+						logger('found json file = '. $fname, LOGGER_DEBUG);
+						$box = $this->readBox($dirFlashcards, $child->getName());
+						if($box) {		
+							$box['size'] = count($box['cards']);
+							unset($box['cards']);
+							$current_owner = channelx_by_nick($nick_fc);
+							$box['current_owner'] = $current_owner['xchan_addr'];
+							$fn = substr($fname,0,strpos($fname, '.'));
+							$box['current_url'] = $baseURL . '/flashcards/' . $nick_fc . '/' . $fn;
+							array_push($boxes, $box);
+						}
+					}
+				}
+			}
+		}
         if (empty($boxes)) {
             logger('no boxes found');
-            notice('No boxes found');
         }
         
-        logger('sending (post response) list of boxes...');
+        logger('sending (post response) list of boxes...', LOGGER_DEBUG);
         
         json_return_and_die(array('status' => true, 'boxes' => $boxes));
     }
+
+    private function searchBoxes() {
+        
+        logger('+++ search boxes ... +++');
+        
+        json_return_and_die(array('status' => false, 'errormsg' => 'Not implemented' . EOL));
+    }
+
+    private function getFlashcardsUsers() {
+		$r = q("select app_url from app where app_plugin = 'flashcards' and app_deleted = 0");
+		
+        $nicks = [];
+		if($r) {
+			foreach ($r as $fc_url) {
+				$a_url = $fc_url['app_url'];
+				if (strpos($a_url, '/$nick')) {
+					continue;
+				}
+				$nick = substr($a_url, strripos($a_url, '/') + 1);
+				array_push($nicks, $nick);
+			}
+		}
+
+		return $nicks;
+	}
 
     private function recoverBoxes() {
         
@@ -311,7 +396,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
         $children = $recoverDir->getChildren();
         foreach($children as $child) {
-            if ($child instanceof \Zotlabs\Storage\File) {
+            if ($child instanceof File) {
                 if($child->getContentType() === strtolower('application/json')) {
                     $fname = $child->getName();
                     logger('found recover file = ' . $fname);
@@ -357,8 +442,10 @@ class Flashcards extends \Zotlabs\Web\Controller {
             if($this->is_owner) {
         
                 logger('owner requested box id = ' . $box_id);
+
+                $box = $this->importSharedBoxes($box);		
             
-                $box = $this->importSharedBoxes($box);
+				$box['size'] = count($box['cards']);
                 
                 json_return_and_die(
                         array(
@@ -423,7 +510,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
             $this->boxesDir->createDirectory($box_id);
         }
 
-        $boxDirObserver = new \Zotlabs\Storage\Directory('/'. $this->owner['channel_address'] . '/flashcards/' . $box_id, $this->createAuth());
+        $boxDirObserver = new Directory('/'. $this->owner['channel_address'] . '/flashcards/' . $box_id, $this->getAuth());
         if(! $boxDirObserver) {
             json_return_and_die(array('message' => 'Directory for observer box can not be created.', 'success' => false));
         }
@@ -435,6 +522,14 @@ class Flashcards extends \Zotlabs\Web\Controller {
     private function writeBox() {
         
         logger('+++ write box ... +++');
+		
+		if(! $this->observer) {
+
+			logger('Stop: no observer. Can not write the box.');
+
+			json_return_and_die(array('status' => false, 'errormsg' => 'No box was sent. No observer.'));
+
+		}
         
         $boxRemote = $_POST['box'];
         if(!$boxRemote) {
@@ -482,6 +577,8 @@ class Flashcards extends \Zotlabs\Web\Controller {
                 $hash = random_string(15);
                 $boxRemote["boxID"] = $hash;
                 $boxRemote["boxPublicID"] = $hash;
+                $boxRemote["creator"] = $this->observer['xchan_addr'];
+                $boxRemote["creator_xchan_hash"] = $this->observer['xchan_hash'];
                 $this->boxesDir->createFile($hash . '.json', json_encode($boxRemote));
         
                 logger('box is unknow and has to be created for owner, stored as = ' . $hash . '.json');
@@ -608,7 +705,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
 
         $children = $shareDir->getChildren();
         foreach($children as $child) {
-            if ($child instanceof \Zotlabs\Storage\File) {
+            if ($child instanceof File) {
                 if($child->getContentType() === strtolower('application/json')) {
                     $sharedFileName = $child->getName();
 
@@ -618,7 +715,15 @@ class Flashcards extends \Zotlabs\Web\Controller {
                         $sharedBox = $this->readBox($shareDir, $sharedFileName);
                         $boxes = $this->flashcards_merge($box, $sharedBox, false);
                         $box = $boxes['boxLocal'];
-                        $shareDir->getChild($sharedFileName)->delete();
+						$this->boxesDir->getChild($boxId . '.json')->put(json_encode($box));
+						try {
+							// Remove the try-catch if everythings works fine on Hubzilla and ZAP.
+							// Zotlabs\Storage\BasicAuth was not used correctly (or changed).
+							$shareDir->getChild($sharedFileName)->delete();
+						} catch (\Exception $e) {
+							logger('Please report to the devs. This could be a bug with the usages of Zotlabs\Storage\BasicAuth. This caused a permission denied to delete a file in owned directory ', LOGGER_DEBUG);
+							continue;
+						}
                     }
                 }
             }
@@ -713,7 +818,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
             $shareDir = $this->getShareDir();
             $children = $shareDir->getChildren();
             foreach($children as $child) {
-                if ($child instanceof \Zotlabs\Storage\File) {
+                if ($child instanceof File) {
                     if($child->getContentType() === strtolower('application/json')) {
                         $sharedFileName = $child->getName();
                         if (strpos($sharedFileName, $boxID) === 0) {
@@ -733,7 +838,15 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
     }
     
-    private function deleteBoxObserver($box_id) {
+    private function deleteBoxObserver($box_id) {		
+		
+		if(! $this->observer) {
+
+			logger('Stop: no observer. Can not delete the box.');
+
+			json_return_and_die(array('status' => false, 'errormsg' => 'Unable to delete the box. No observer.'));
+
+		}
         
         if(! $this->boxesDir->childExists($box_id)) {
             notice('No box dir found. Might be delete by owner.');
@@ -753,27 +866,25 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
     }
     
-    private function createAuth() { 
-        
-        // copied/adapted from Cloud.php
-        $auth = new \Zotlabs\Storage\BasicAuth();
+    private function getAuth() { 
 
-        $auth->setCurrentUser($this->owner['channel_address']);
-        $auth->channel_id = $this->owner['channel_id'];
-        $auth->channel_hash = $this->owner['channel_hash'];
-        $auth->channel_account_id = $this->owner['channel_account_id'];
-        if($this->owner['channel_timezone']) {
-            $auth->setTimezone($this->owner['channel_timezone']);
+        // copied/adapted from Cloud.php
+        if (!$this->auth) {
+
+            $this->auth = new BasicAuth();
+
+            $this->auth->setCurrentUser($this->owner['channel_address']);
+            $this->auth->channel_id = $this->owner['channel_id'];
+            $this->auth->channel_hash = $this->owner['xchan_hash'];
+            $this->auth->channel_account_id = $this->owner['channel_account_id'];
+            // this is not true but reflects that no files are owned by the observer
+            $this->auth->observer = $this->owner['xchan_hash'];
         }
-        // this is not true but reflects that no files are owned by the observer
-        $auth->observer = $this->owner['channel_hash'];
-        
-        return $auth;
+
+        return $this->auth;
     }
     
-    private function getShareDir() {
-        
-        $auth = $this->createAuth();
+    private function getShareDir() {  
         
         if(! $this->boxesDir->childExists('share')) {
             $this->boxesDir->createDirectory('share');
@@ -781,7 +892,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
         
         $channelAddress = $this->owner['channel_address'];
         
-        $shareDir = new \Zotlabs\Storage\Directory('/'. $channelAddress . '/flashcards/share', $auth);
+        $shareDir = new Directory('/'. $channelAddress . '/flashcards/share', $this->getAuth());
         
         if(! $shareDir) {
             json_return_and_die(array('message' => 'Directory share is missing.', 'success' => false));
@@ -792,15 +903,13 @@ class Flashcards extends \Zotlabs\Web\Controller {
     
     private function getRecoverDir() {
         
-        $auth = $this->createAuth();
-        
         if(! $this->boxesDir->childExists('recover')) {
             $this->boxesDir->createDirectory('recover');
         }
         
         $channelAddress = $this->owner['channel_address'];
         
-        $recoverDir = new \Zotlabs\Storage\Directory('/'. $channelAddress . '/flashcards/recover', $auth);
+        $recoverDir = new Directory('/'. $channelAddress . '/flashcards/recover', $this->getAuth());
         
         if(! $recoverDir) {
             json_return_and_die(array('message' => 'Directory recover is missing.', 'success' => false));
@@ -811,26 +920,35 @@ class Flashcards extends \Zotlabs\Web\Controller {
     
     private function getAddonDir() {
         
-        $auth = $this->createAuth($this->owner);
-        
-        $rootDirectory = new \Zotlabs\Storage\Directory('/', $auth);
-        
+        $this->getRootDir(); // just test this time
+
         $channelAddress = $this->owner['channel_address'];
-        
-        if(! $rootDirectory->childExists($channelAddress)) {
-            json_return_and_die(array('message' => 'No cloud directory.', 'success' => false));
-        }
-        $channelDir = new \Zotlabs\Storage\Directory('/' . $channelAddress, $auth);
+
+        $channelDir = new Directory('/' . $channelAddress, $this->getAuth());
         
         if(! $channelDir->childExists('flashcards')) {
             $channelDir->createDirectory('flashcards');
         }
         
-        $this->boxesDir = new \Zotlabs\Storage\Directory('/'. $channelAddress . '/flashcards', $auth);
+        $this->boxesDir = new Directory('/'. $channelAddress . '/flashcards', $this->getAuth());
         if(! $this->boxesDir) {
             json_return_and_die(array('message' => 'Directory flashcards is missing.', 'success' => false));
         }
         
+    }
+    
+    private function getRootDir() {
+
+        $rootDirectory = new Directory('/', $this->getAuth());
+
+        $channelAddress = $this->owner['channel_address'];
+
+        if(! $rootDirectory->childExists($channelAddress)) {
+            json_return_and_die(array('message' => 'No cloud directory.', 'success' => false));
+        }
+
+        return $rootDirectory;
+
     }
 
     /*
@@ -842,6 +960,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
      *  - boxPublicID
      *  - boxID
      *  - creator
+     *  - creator_xchan_hash
      *  - lastShared
      *  - maxLengthCardField
      *  - cardsColumnName
@@ -861,6 +980,10 @@ class Flashcards extends \Zotlabs\Web\Controller {
      *  - private_visibleColumns
      *  - private_switch_learn_direction
      *  - private_switch_learn_all
+     *  - private_autosave
+     *  - private_show_card_sort
+     *  - private_sort_default
+     *  - private_search_convenient
      *  - private_block
      *  calculate
      *  - size
@@ -897,7 +1020,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
             }
         }
         $keysPublic = array('title', 'description', 'lastEditor', 'lastChangedPublicMetaData', 'lastShared');
-        $keysPrivate = array('cardsDecks', 'cardsDeckWaitExponent', 'cardsRepetitionsPerDeck', 'private_block', 'private_sortColumn', 'private_sortReverse', 'private_filter', 'private_visibleColumns', 'private_switch_learn_direction', 'private_switch_learn_all', 'lastChangedPrivateMetaData');
+        $keysPrivate = array('cardsDecks', 'cardsDeckWaitExponent', 'cardsRepetitionsPerDeck', 'private_block', 'private_sortColumn', 'private_sortReverse', 'private_filter', 'private_visibleColumns', 'private_switch_learn_direction', 'private_switch_learn_all', 'private_autosave', 'private_show_card_sort', 'private_sort_default', 'private_search_convenient', 'lastChangedPrivateMetaData');
         if($boxLocal['lastChangedPublicMetaData'] != $boxRemote['lastChangedPublicMetaData']) {
             if($boxLocal['lastChangedPublicMetaData'] > $boxRemote['lastChangedPublicMetaData']) {
                 foreach ($keysPublic as &$key) {
@@ -1011,11 +1134,11 @@ class Flashcards extends \Zotlabs\Web\Controller {
     }
     
     function flashcards_merge_test() {
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
-        $boxIn2 = '{"boxID":"b2b2b2","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":false,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_hasChanged":false,"private_block":true,"cards":[]}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
+        $boxIn2 = '{"boxID":"b2b2b2","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":false,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_autosave":true,"private_show_card_sort":true,"private_sort_default":true,"private_search_convenient":true,"private_hasChanged":false,"private_block":true,"cards":[]}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare2 = '{"boxID":"b2b2b2","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":"b","size":2,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":false,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_hasChanged":false,"private_block":true}';
+        $boxCompare2 = '{"boxID":"b2b2b2","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":"b","size":2,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":false,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_autosave":true,"private_show_card_sort":true,"private_sort_default":true,"private_search_convenient":true,"private_hasChanged":false,"private_block":true}';
         $box2['boxPublicID'] = 'b';
         $boxes = $this->flashcards_merge($box1, $box2, false);
         $boxOut1 = json_encode($boxes['boxLocal']);
@@ -1028,7 +1151,7 @@ class Flashcards extends \Zotlabs\Web\Controller {
         }
         // Nothing changed
         $box2['boxPublicID'] = $box1['boxPublicID'];
-        $boxCompare2 = '{"boxID":"b2b2b2","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":false,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_hasChanged":false,"private_block":true}';
+        $boxCompare2 = '{"boxID":"b2b2b2","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":false,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_autosave":true,"private_show_card_sort":true,"private_sort_default":true,"private_search_convenient":true,"private_hasChanged":false,"private_block":true}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1039,12 +1162,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
             return false;
         }
         // Public and private meta data
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":true,"cards":[]}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":1,"private_sortReverse":false,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_hasChanged":false,"private_block":false,"cards":[]}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":true,"cards":[]}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":1,"private_sortReverse":false,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_autosave":true,"private_show_card_sort":true,"private_sort_default":true,"private_search_convenient":true,"private_hasChanged":false,"private_block":false,"cards":[]}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":true,"cards":[]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":false,"private_block":true,"cards":[]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":true,"cards":[]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":false,"private_block":true,"cards":[]}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1055,12 +1178,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
             return false;
         }
         // Public and private meta data the other way around
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":true,"cards":[]}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":true,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_hasChanged":false,"private_block":false,"cards":[]}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":true,"cards":[]}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a2aaaaaaaaaaa","description":"A2aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"dMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":true,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_autosave":true,"private_show_card_sort":true,"private_sort_default":true,"private_search_convenient":true,"private_hasChanged":false,"private_block":false,"cards":[]}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":true,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_hasChanged":true,"private_block":false,"cards":[]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":true,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_hasChanged":false,"private_block":false,"cards":[]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":true,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_autosave":true,"private_show_card_sort":true,"private_sort_default":true,"private_search_convenient":true,"private_hasChanged":true,"private_block":false,"cards":[]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"bMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219599,"maxLengthCardField":1000,"cardsDecks":"6","cardsDeckWaitExponent":"2","cardsRepetitionsPerDeck":"1","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219599,"private_sortColumn":1,"private_sortReverse":true,"private_filter":["b","","","","","","","","","",""],"private_visibleColumns":[true,false,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":true,"private_switch_learn_all":true,"private_autosave":true,"private_show_card_sort":true,"private_sort_default":true,"private_search_convenient":true,"private_hasChanged":false,"private_block":false,"cards":[]}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1071,12 +1194,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
             return false;
         }
         // Add remote card to empty local cards
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230161,0,0,0,0,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":0,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230161,0,0,0,0,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230161,0,0,0,0,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230161,0,0,0,0,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1087,12 +1210,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
             return false;
         }
         // Add local cards to empty remote cards
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":999,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230161,0,0,0,0,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":999,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":999,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230161,0,0,0,0,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":999,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230161,0,0,0,0,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230161,0,0,0,0,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230161,0,0,0,0,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230161,0,0,0,0,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1103,12 +1226,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
             return false;
         }
         // change card values
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230161,0,0,0,1531058230162,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230161,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230161,0,0,0,1531058230162,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230161,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]}]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]}]}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1119,12 +1242,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
             return false;
         }
         // change card values the other way around
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230161,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230161,0,0,0,1531058230162,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230161,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230161,0,0,0,1531058230162,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]}]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]}]}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1135,12 +1258,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
             return false;
         }
         // add public card to box 1 (local)
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230161,0,0,0,1531058230162,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230161,0,0,0,1531058230162,true]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,2,4,6,8,true]}]}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230161,0,0,0,0,false]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,0,0,0,0,false]}]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230161,0,0,0,0,false]},{"content":[1531058231082,"b1","b1b","b1bb","b1bbb",1531058239161,0,0,0,0,false]}]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":0,"boxPublicID":1531058219599,"size":2,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
         $boxes = $this->flashcards_merge($box1, $box2, false);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1152,12 +1275,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
         }        
         
         // last shared younger than last learnt
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230162,true]}]}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230162,0,0,0,1531058230160,true]}]}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230162,true]}]}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230162,0,0,0,1531058230160,true]}]}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230162,1,2,3,1531058230162,true]}]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230162,1,2,3,1531058230162,true]}]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230162,1,2,3,1531058230162,true]}]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230162,1,2,3,1531058230162,true]}]}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1169,12 +1292,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
         }    
         
         // last shared younger than last edit
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230160,true]}]}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230160,0,0,0,1531058230162,true]}]}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230160,true]}]}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"ax","aax","aaax","aaaax",1531058230160,0,0,0,1531058230162,true]}]}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]}]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]}]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]}]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,0,0,0,1531058230162,true]}]}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1186,12 +1309,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
         } 
         
         // last shared older than last edit and last learnt
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230160,true]}]}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230160,true]}]}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230160,true]}]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230160,true]}]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058239161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[]}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1203,12 +1326,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
         }
         
         // last shared older than last edit
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230160,true]}]}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230160,true]}]}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230160,true]}]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230160,true]}]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230160,true]}]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230162,1,2,3,1531058230160,true]}]}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
@@ -1220,12 +1343,12 @@ class Flashcards extends \Zotlabs\Web\Controller {
         }
         
         // last shared older than last learnt
-        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230162,true]}]}';
-        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false}';
+        $boxIn1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230162,true]}]}';
+        $boxIn2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false}';
         $box1 = json_decode($boxIn1, true);
         $box2 = json_decode($boxIn2, true);
-        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230162,true]}]}';
-        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230162,true]}]}';
+        $boxCompare1 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230162,true]}]}';
+        $boxCompare2 = '{"boxID":"a1a1a1","title":"a1aaaaaaaaaaa","description":"A1aaaaaaaaaaaa","creator":"aMan","lastShared":1531058230161,"boxPublicID":1531058219599,"size":1,"lastEditor":"cMan","lastChangedPublicMetaData":1531058219598,"maxLengthCardField":1000,"cardsDecks":"7","cardsDeckWaitExponent":"3","cardsRepetitionsPerDeck":"3","cardsColumnName":["Created","Side 1","Side 2","Description","Tags","modified","Deck","Progress","Counter","Learnt","Upload"],"lastChangedPrivateMetaData":1531058219598,"private_sortColumn":0,"private_sortReverse":false,"private_filter":["a","","","","","","","","","",""],"private_visibleColumns":[false,true,true,true,true,false,false,false,false,false,false],"private_switch_learn_direction":false,"private_switch_learn_all":false,"private_autosave":false,"private_show_card_sort":false,"private_sort_default":false,"private_search_convenient":false,"private_hasChanged":true,"private_block":false,"cards":[{"content":[1531058221298,"a","aa","aaa","aaaa",1531058230160,1,2,3,1531058230162,true]}]}';
         $boxes = $this->flashcards_merge($box1, $box2);
         $boxOut1 = json_encode($boxes['boxLocal']);
         $boxOut2 = json_encode($boxes['boxRemote']);
