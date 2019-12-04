@@ -58,15 +58,13 @@ function sse_item_stored($item) {
 
 	foreach($hashes as $hash) {
 
-		XConfig::Load($hash);
-
-		$t = XConfig::Get($hash, 'sse', 'timestamp', NULL_DATE);
-
-		if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
-			XConfig::Set($hash, 'sse', 'notifications', []);
+		if($sys) {
+			$current_channel = channelx_by_hash($hash);
+			$item_uid = $current_channel ? $current_channel['channel_id'] : $item_uid;
 		}
 
 		$vnotify = get_pconfig($item_uid, 'system', 'vnotify');
+
 		if($item['verb'] === ACTIVITY_LIKE && !($vnotify & VNOTIFY_LIKE))
 			continue;
 
@@ -79,13 +77,20 @@ function sse_item_stored($item) {
 		$r[0] = $item;
 		xchan_query($r);
 
+		XConfig::Load($hash);
+
+		$t = XConfig::Get($hash, 'sse', 'timestamp', NULL_DATE);
+
+		if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
+			XConfig::Set($hash, 'sse', 'notifications', []);
+		}
+
 		XConfig::Set($hash, 'sse', 'lock', 1);
 
 		$x = XConfig::Get($hash, 'sse', 'notifications', []);
 
 		// this is neccessary for Enotify::format() to calculate the right time and language
-		if($sys) {
-			$current_channel = channelx_by_hash($hash);
+		if($sys && $current_channel) {
 			date_default_timezone_set($current_channel['channel_timezone']);
 		}
 		else {
