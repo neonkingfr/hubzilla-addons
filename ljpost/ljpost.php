@@ -115,6 +115,8 @@ function ljpost_send(&$a,&$b) {
 		require_once('include/bbcode.php');
 		require_once('include/datetime.php');
 		
+		push_lang(($b['lang'] ? $b['lang'] : 'en'));
+		
 		// If this is other author post
 		if($b['owner_xchan'] != $b['author_xchan']) {
 		
