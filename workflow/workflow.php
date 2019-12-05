@@ -57,9 +57,9 @@ function workflow_unload() {
 	Hook::unregister_by_file(__FILE__);
 	Hook::unregister_by_file($hookfile);
 	Route::unregister_by_file(dirname(__FILE__).'/Mod_Workflow.php');
-	Route::unregister_by_file(dirname(__FILE__).'/Mod_WorkflowSettings.php');
+	Route::unregister_by_file(dirname(__FILE__).'/Settings/Mod_WorkflowSettings.php');
 	Route::unregister_by_file($hookdir.'/Mod_Workflow.php');
-	Route::unregister_by_file($hookdir.'/Mod_WorkflowSettings.php');
+	Route::unregister_by_file($hookdir.'/Settings/Mod_WorkflowSettings.php');
 }
 
 class Workflow_Utils {
