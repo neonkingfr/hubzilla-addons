@@ -619,7 +619,7 @@ class Workflow_Utils {
 		];
 
 		$wfitems = self::get_items($searchvars,get_observer_hash());
-		$items = fetch_post_tags($items);
+		$wfitems = fetch_post_tags($wfitems);
 
 		self::$related_to_wfitems[$uid][$link]=$wfitems;
 		return self::$related_to_wfitems[$uid][$link];
@@ -935,7 +935,7 @@ class Workflow_Utils {
 			return $items;
 		}
 		else {
-			return false;
+			return [];
 		}
 	}
 
