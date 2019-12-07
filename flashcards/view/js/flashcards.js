@@ -1069,6 +1069,11 @@ function conductGUIelements(action) {
         $("#panel_flashcards_cards").hide();
         $(".card-content").prop('disabled', false);
     }
+    if (action !== 'edit-card') {
+        $("#flashcards_cardedit_save").hide();
+        $("#flashcards_cardedit_cancel").hide();
+        $("#panel_flashcards_card").hide();
+    }
     if (action === 'save-card') {
         //$("#flashcards_cardedit_save").hide();
         $("#flashcards_cardedit_cancel").hide();
