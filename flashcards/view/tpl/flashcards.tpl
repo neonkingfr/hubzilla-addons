@@ -386,7 +386,7 @@
 	<div class="container-fluid">
             <div class="row">
                 <div class="col-sm-12">
-                    <p>Flashcards version {{$flashcards_version}}</p>
+                    <p>Flashcards version <span id="flashcards_version">{{$flashcards_version}}</span></p>
                     <p>This addon is a  <a href="https://en.wikipedia.org/wiki/List_of_flashcard_software" target="_blank">flashcard software</a> that uses <a href="https://en.wikipedia.org/wiki/Spaced_repetition" target="_blank">spaced repetition</a> as a learning technique.</p>
                     <p><img src="/addon/flashcards/view/img/leitner-system.png" align="center" width="70%"></p>
                     <p>You can share the flash cards with other users.</p>
@@ -416,7 +416,8 @@
                     <h4>Permissions and Technically</h4>
                     <p>A student sees those flashcards only the school allows him to see. The student will get a copy of "English-Italian". For both users it looks the same, same URL, same content. Everything is done under the hood. The student does not own the flashcards. The school can withdraw the permissions for a student or even delete the flashcards at any time.</p>
                     <h4>Federation</h4>
-                    <p>It is not tested yet but should be available in the near future. If enabled a student will be able to use the addon without having an account at Hubzulla or ZAP as long as the account supports <a href="https://en.wikipedia.org/wiki/ActivityPub" target="_blank">ActivityPub</a>. Users of Mastodon should have ActivityPub for example. Stay tuned.</p>
+                    <p>Users of Hubzilla and ZAP (both talk ZOT) will be able to use flashcards on other servers, e.g. "English-Italian" of the school in our example.</p>
+                    <p><a href="https://en.wikipedia.org/wiki/ActivityPub" target="_blank">ActivityPub</a>: It is not tested yet but should be available in the near future. If enabled a student will be able to use the addon without having an account at Hubzulla or ZAP as long as the account supports ActivityPub. Users of Mastodon should have ActivityPub for example. Stay tuned.</p>
                 </div>
             </div>
 	</div>
@@ -430,8 +431,6 @@
 <div id="flashcards_post_url" style="display: none;">{{$post_url}}</div>
 <div id="flashcards_nick" style="display: none;">{{$nick}}</div>
 <div id="flashcards_is_owner" style="display: none;">{{$is_owner}}</div>
-<div id="flashcards_version" style="display: none;">{{$version}}</div>
-<div id="flashcards_observer" style="display: none;">{{$flashcards_observer}}</div>
 <!--
 <p>
 	<button class="btn" id="run_unit_tests"">Test</button>
