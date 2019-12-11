@@ -213,7 +213,7 @@ function twitter_shortenmsg($b) {
 	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $matches)) {
 	    if($matches[1]) {
 	        $sizes = array_map('intval', explode('x', substr($matches[1],1)));
-	        if($sizes[0] > 480)
+	        if($sizes[0] >= 480)
 	            $image = html_entity_decode($matches[2]);
 	    }
 	}
