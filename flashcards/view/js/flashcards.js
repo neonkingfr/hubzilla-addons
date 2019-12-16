@@ -75,6 +75,8 @@ class BoxLocalStore {
 var postUrl = '';
 var is_owner = '';
 var flashcards_editor = '';
+var is_local_channel = '';
+var is_allowed_to_create_box = '';
 
 var boxLocalStore = new BoxLocalStore();
 var stringContentOldCard = '';
@@ -992,8 +994,12 @@ function setShareButton() {
 }
 
 function loadStartPage() {
-    fillInputsSettings();
-    conductGUIelements('start');
+    if(is_allowed_to_create_box || !box.isEmpty()) {
+        fillInputsSettings();
+        conductGUIelements('start');
+    } else {
+        conductGUIelements('show-help');
+    }
 }
 
 function conductGUIelements(action) {
@@ -1005,6 +1011,11 @@ function conductGUIelements(action) {
         hasUploads = setShareButton();
     }
     $("#button_flashcards_close").hide();
+    if (box.isEmpty()) {
+        $("#flashcards_edit_box").hide();
+    } else {
+        $("#flashcards_edit_box").show();
+    }
     if (action === 'start') {
         $("#panel_box_navigation").show();
         $(".flashcards_nav").show();
@@ -1017,7 +1028,6 @@ function conductGUIelements(action) {
         $("#panel_search_cloud_boxes").hide();
         $('#panel_flashcards_permissions').collapse("hide");
         if (box.isEmpty()) {
-            //$("#button_flashcards_edit_box").hide();
             $("#button_flashcards_save_box").show();
             $("#button_flashcards_learn_play").hide();
             $("#button_share_box").hide();
@@ -1042,7 +1052,6 @@ function conductGUIelements(action) {
         $("#button_share_box").hide();
         $("#button_flashcards_learn_play").hide();
         $("#button_flashcards_save_box").show();
-        //$("#button_flashcards_edit_box").hide();
         $("#panel_flashcards_card").hide();
         $("#panel_flashcards_cards_actions").hide();
         $("#panel_flashcards_cards").hide();
@@ -1052,7 +1061,6 @@ function conductGUIelements(action) {
     if (action === 'save-box') {
         $("#panel_flashbox_settings").collapse("hide");
         $('#panel_box_attributes').collapse("hide");
-        //$("#button_flashcards_edit_box").show();
         $("#button_flashcards_save_box").hide();
         $("#panel_flashcards_cards_actions").show();
         $("#panel_flashcards_cards").show();
@@ -1087,7 +1095,6 @@ function conductGUIelements(action) {
     if (action === 'learn-next') {
         $("#panel_box_navigation").hide();
         $("#flashcards_panel_card_header").hide();
-        //$("#button_flashcards_edit_box").hide();
         $('#panel_box_attributes').collapse("hide");
         $("#panel_flashcards_cards_actions").hide();
         $("#panel_flashcards_cards").hide();
@@ -1122,7 +1129,6 @@ function conductGUIelements(action) {
         $("#panel_box_navigation").show();
         $(".flashcards_learn").hide();
         $("#flashcards_panel_learn_buttons").hide();
-        //$("#button_flashcards_edit_box").show();
         $("#button_flashcards_save_box").hide();
         $("#panel_flashcards_card").hide();
         // $("#panel_flashcards_card").collapse("hide");
@@ -1143,7 +1149,10 @@ function conductGUIelements(action) {
         $("#panel_flashcards_help").hide();
         $("#panel_box_navigation").show();
         $("#panel_cloud_boxes_1").show();
-        $("#button_flashcards_close").show();
+        if(!is_local_channel) {
+            $("#panel_cloud_boxes_header").hide();
+        }
+        $("#flashcards_edit_box").hide();
         blockEditBox = true;
     }
     if (action === 'list-close') {
@@ -1166,7 +1175,6 @@ function conductGUIelements(action) {
         $("#panel_cloud_boxes_1").hide();
         $("#panel_box_navigation").show();
         $("#panel_flashcards_help").show();
-        $("#button_flashcards_close").show();
     }
     if (action !== 'show-help') {
         $("#panel_flashcards_help").hide();
@@ -1181,9 +1189,13 @@ function conductGUIelements(action) {
         $("#panel_flashcards_cards").hide();
         $("#panel_flashcards_help").hide();
         $("#panel_cloud_boxes_1").hide();
-        $("#button_flashcards_close").hide();
         $("#panel_search_cloud_boxes").html('loading...');
         $("#panel_search_cloud_boxes").show();
+        if(is_allowed_to_create_box) {
+            $("#button_flashcards_close").show();
+        } else {
+            $("#button_flashcards_close").hide();
+        }
     }
     if (action !== 'search-boxes') {
         $("#panel_search_cloud_boxes").hide();
@@ -1588,10 +1600,6 @@ function validateInputsBox() {
     $("#flashcards_navbar_brand").html(box_title);
     return true;
 }
-
-$(document).on("click", "#button_flashcards_edit_box", function () {
-    //conductGUIelements('edit-box');
-});
 
 $(document).on("click", "#button_flashcards_save_box", function () {
     logger.log('clicked button save box');
@@ -2060,7 +2068,7 @@ $(document).on("click", "#flashcards_show_help", function () {
 
 $(document).on("click", "#button_flashcards_close", function () {
     logger.log('Clicked on button_flashcards_close');
-    conductGUIelements('start');
+    conductGUIelements('start');    
 });
 
 $(document).on("click", "#flashcards_show_boxes", function () {
@@ -2091,11 +2099,19 @@ function loadCloudBoxes() {
                     logger.log("The list of own cloud boxes is empty");
                 }
             } else {
-                logger.log("But the list of cloud boxes was empty");
+                logger.log("No boxes received");
             }
-            box = new Box();
-            box.store();
-            loadStartPage();
+            if(is_allowed_to_create_box) {
+                box = new Box();
+                box.store();
+                loadStartPage();
+            } else {                
+                var html = 'No flashcards on this server or no permissions to view them';
+                $("#panel_cloud_boxes_header").html('');
+                $("#panel_cloud_boxes_content").html(html);
+                conductGUIelements('list-boxes');
+                return;
+            }
         } else {
             logger.log("Error downloading list of boxes: " + data['errormsg']);
             $("#panel_flashcards_cards").html(data['errormsg']);
@@ -2150,7 +2166,9 @@ function createBoxListContent(showAllBoxes) {
         html += '   ' + description + '';
         html += '   <br><b>Owner: </b>' + cloudBox["current_owner"] + '';
         html += '   <br><b>Size: </b>' + cloudBox["size"] + '';
-        if (cloudBox["boxID"] !== box.content.boxID) {
+        if(flashcards_editor === '') {            
+            html += '   <br>Unknow observer. Please login to view this box';
+        }else if (cloudBox["boxID"] !== box.content.boxID) {
             if (flashcards_editor === currentOwner) {
                 html += '       &nbsp;<b>Delete box: </b>&nbsp;';
             } else {
@@ -2193,7 +2211,11 @@ function searchCloudBoxes() {
             $("#panel_search_cloud_boxes").html(data['errormsg']);
         }
         $("#button_share_box").hide();
-        $("#button_flashcards_close").show();
+        if(is_allowed_to_create_box) {
+            $("#button_flashcards_close").show();
+        } else {
+            $("#button_flashcards_close").hide();
+        }
     },
         'json');
 }
@@ -2288,7 +2310,7 @@ $(document).on("click", "#flashcards_perms", function () {
 })
 
 function showACLbutton() {
-    if (is_owner == 1 && box.content.boxID !== "") {
+    if (is_allowed_to_create_box == 1 && box.content.boxID !== "") {
         $("#flashcards_perms").show();
     } else {
         $("#flashcards_perms").hide();
@@ -3290,7 +3312,9 @@ function loadBox() {
     postUrl = $("#flashcards_post_url").html();
     nick = $("#flashcards_nick").html();
     is_owner = $("#flashcards_is_owner").html();
-    if (!is_owner) {
+    is_local_channel = $("#flashcards_is_local_channel").html();
+    is_allowed_to_create_box = $("#flashcards_is_allowed_to_create_box").html();
+    if (!is_allowed_to_create_box) {
         $("#flashcards_new_box").hide();
         $("#flashcards-block-changes-row").hide();
     }
