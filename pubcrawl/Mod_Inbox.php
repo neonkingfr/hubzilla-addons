@@ -59,7 +59,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 			else {
 				$arr['author']['url'] = $AS->obj['attributedTo'];
 			}
-hz_syslog(print_r($AS,true));
+
 			pubcrawl_import_author($arr);
 
 			if(! empty($arr['result'])) {
