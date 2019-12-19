@@ -60,6 +60,8 @@ class Inbox extends \Zotlabs\Web\Controller {
 				$arr['author']['url'] = $AS->obj['attributedTo'];
 			}
 
+			$arr['author']['url'] = as_get_attributed_to_person($AS);
+
 			pubcrawl_import_author($arr);
 
 			if(! empty($arr['result'])) {
