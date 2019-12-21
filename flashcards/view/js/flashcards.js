@@ -1080,7 +1080,6 @@ function conductGUIelements(action) {
     if (action !== 'edit-card') {
         $("#flashcards_cardedit_save").hide();
         $("#flashcards_cardedit_cancel").hide();
-        $("#panel_flashcards_card").hide();
     }
     if (action === 'save-card') {
         //$("#flashcards_cardedit_save").hide();
@@ -1153,6 +1152,7 @@ function conductGUIelements(action) {
             $("#panel_cloud_boxes_header").hide();
         }
         $("#flashcards_edit_box").hide();
+        $("#panel_flashcards_card").hide();
         blockEditBox = true;
     }
     if (action === 'list-close') {
@@ -1175,6 +1175,7 @@ function conductGUIelements(action) {
         $("#panel_cloud_boxes_1").hide();
         $("#panel_box_navigation").show();
         $("#panel_flashcards_help").show();
+        $("#panel_flashcards_card").hide();
     }
     if (action !== 'show-help') {
         $("#panel_flashcards_help").hide();
@@ -1196,6 +1197,7 @@ function conductGUIelements(action) {
         } else {
             $("#button_flashcards_close").hide();
         }
+        $("#panel_flashcards_card").hide();
     }
     if (action !== 'search-boxes') {
         $("#panel_search_cloud_boxes").hide();
