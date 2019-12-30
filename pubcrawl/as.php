@@ -1274,7 +1274,9 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['owner_xchan'] = $observer_hash;
 	}
 
-	$s['author_xchan'] = (($announce) ? $act->obj['attributedTo'] : $observer_hash);
+	$announce_author = as_get_attributed_to_person($act);
+
+	$s['author_xchan'] = (($announce) ? $announce_author : $observer_hash);
 
 	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
 		dbesc($observer_hash),
@@ -1911,4 +1913,22 @@ function as_get_textfield($act,$field) {
 		}
 	}
 	return $content;
+}
+
+function as_get_attributed_to_person($act) {
+
+	$attributed_to = '';
+
+	if(is_array($act->obj['attributedTo'])) {
+		foreach($act->obj['attributedTo'] as $a) {
+			if($a['type'] == 'Person')
+				$attributed_to = $a['id'];
+		}
+	}
+	else {
+		$attributed_to = $act->obj['attributedTo'];
+	}
+
+	return $attributed_to;
+
 }
