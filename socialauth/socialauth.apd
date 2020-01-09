@@ -1,0 +1,7 @@
+version: 0.3
+url: $baseurl/socialauth
+name: Social authentication 
+requires: local_channel
+photo: icon:share-alt
+categories: Networking
+
