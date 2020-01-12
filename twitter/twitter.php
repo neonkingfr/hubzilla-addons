@@ -227,7 +227,7 @@ function twitter_shortenmsg($b) {
 	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
 
 	// Remove URL bookmark
-	$body = str_replace("#^[", "[", $body);
+	$body = str_replace("#^[", "&#128279 [", $body);
 
 	// At first convert the text to html
 	$msg = bbcode($body, [ 'tryoembed' => false ]);
