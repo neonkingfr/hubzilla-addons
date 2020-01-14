@@ -189,6 +189,10 @@ class Inbox extends \Zotlabs\Web\Controller {
 					break;
 				case 'Like':
 				case 'Dislike':
+//				case 'Accept':
+//				case 'Reject':
+//				case 'TentativeAccept':
+//				case 'TentativeReject':
 					as_like_action($channel,$observer_hash,$AS);
 					break;
 				case 'Undo':

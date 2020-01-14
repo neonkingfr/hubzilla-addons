@@ -511,9 +511,15 @@ function asencode_activity($i) {
 			$ret['target'] = $tgt;
 	}
 
+ 	if(array_path_exists('object/type',$ret) && $ret['object']['type'] === 'Event' && $ret['type'] === 'Create') {
+		$ret['type'] = 'Invite';
+	}
+
 	if($i['mid'] != $i['parent_mid']) {
 		$reply = true;
-		$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
+		if (! in_array($ret['type'],[ 'Create','Update','Accept','Reject','TentativeAccept','TentativeReject' ])) {
+			$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
+		}
 		$recips = get_iconfig($i['parent'], 'activitypub', 'recips');
 	}
 
