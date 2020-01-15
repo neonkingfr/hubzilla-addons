@@ -90,13 +90,23 @@ function workflowSubmitWorkflowUrl(posturl) {
 }
 
 window.addEventListener("message",function(event) {
-	msginfo = JSON.parse(event.data);
+
+	try {
+		msginfo = JSON.parse(event.data);
+	} catch (e) {
+		return;
+	}
+
 	if (msginfo.parentwindowid != windowid) {
 		return;
 	}
 	if (msginfo.message=='wfclosemodal') {
 		$('#workflowModal').modal('hide');
-		location.reload(true);
+		workflowOffsiteIFrame( 
+			itemPostURL,
+			'reload_wfitem',
+			JSON.stringify({itemid: wfitemid,action: 'reload_wfitem',uuid: uuid,mid: mid}),
+			'#wfitemdata' );
 	}
 	if (msginfo.message=='wfitemsubmitted') {
 	}
@@ -140,7 +150,14 @@ $(document).ready(function() {
 			'#workflowModal' );
 	});
 
+	window.onpopstate = function(e) {
+		if(e.state !== null && e.state.b64mid !== bParam_mid)
+			getDataWF(e.state.b64mid, '');
+	};
+
 });
+
+
 
 $.fn.wfserializeObject = function()
 {
@@ -158,3 +175,5 @@ $.fn.wfserializeObject = function()
    });
    return o;
 };
+
+

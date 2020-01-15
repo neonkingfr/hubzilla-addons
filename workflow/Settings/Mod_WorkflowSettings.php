@@ -87,7 +87,7 @@ class Workflow extends Controller {
 			$count++;
 			$templatevars = [
 				'$title' => isset($group['title']) ? $group['title'] : 'Settings Group '.$count,
-				'$group' => $count,
+				'$groupid' => $count,
 				'$form_security_token' => $form_security_token,
 				'$formname' => $group['formname'],
 				'$content' => $group['formcontents'],

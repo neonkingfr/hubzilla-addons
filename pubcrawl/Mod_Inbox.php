@@ -50,7 +50,17 @@ class Inbox extends \Zotlabs\Web\Controller {
 			$arr = [];
 			$x = [];
 
-			$arr['author']['url'] = $AS->obj['attributedTo'];
+			if(is_array($AS->obj['attributedTo'])) {
+				foreach($AS->obj['attributedTo'] as $attr) {
+					if($attr['type'] == 'Person')
+						$arr['author']['url'] = $attr['id'];
+				}
+			}
+			else {
+				$arr['author']['url'] = $AS->obj['attributedTo'];
+			}
+
+			$arr['author']['url'] = as_get_attributed_to_person($AS);
 
 			pubcrawl_import_author($arr);
 

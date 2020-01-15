@@ -492,7 +492,17 @@ function pubcrawl_notifier_process(&$arr) {
 		$arr['recipients'][] = '\'' . $arr['parent_item']['author']['xchan_hash'] . '\'';
 	}
 
+
 	// deliver to local subscribers directly
+	$sys = get_sys_channel();
+
+	$arr['env_recips'][] = [
+		'guid'     => $sys['channel_guid'],
+		'guid_sig' => $sys['channel_guid_sig'],
+		'hash'     => $sys['channel_hash']
+	];
+	$arr['recipients'][] = '\'' . $sys['channel_hash'] . '\'';
+
 	$r = q("SELECT channel_guid, channel_guid_sig, channel_hash FROM channel WHERE channel_id IN ( SELECT abook_channel FROM abook WHERE abook_xchan = '%s' AND abook_channel != %d )",
 		dbesc($arr['target_item']['owner_xchan']),
 		intval($arr['channel']['channel_id'])

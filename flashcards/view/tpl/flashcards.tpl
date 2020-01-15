@@ -7,7 +7,9 @@
 				<a class="dropdown-item" id="flashcards_edit_box">Edit Box</a>
 				<a class="dropdown-item" id="flashcards_show_boxes">List Boxes</a>
 				<div class="dropdown-divider"></div>
-				<a class="dropdown-item disabled" href="#">Search</a>
+				<a class="dropdown-item .disabled" id="flashcards_search_boxes">Search</a>
+				<div class="dropdown-divider"></div>
+				<a class="dropdown-item" id="flashcards_show_help">Help</a>
 			</div>
 		</li>
 		<div class="navbar-brand nav-pill">
@@ -21,7 +23,7 @@
 		<button class="btn btn-default nav-pill ml-auto" id="button_flashcards_save_box" style="display: none;">
 			<i class="fa fa-save fa-lg"></i> Save
 		</button>
-		<button class="btn btn-default nav-pill ml-auto" id="button_flashcards_list_close" style="display: none;">
+		<button class="btn btn-default nav-pill ml-auto" id="button_flashcards_close" style="display: none;">
 			<i class="fa fa-window-close fa-lg"></i> Close
 		</button>
 	</ul>
@@ -70,7 +72,8 @@
 		<div class="row">
 			<div class="col-sm-12">
 				<div class="form-group">
-					<small id="flashcards_editor" class="form-text text-muted">{{$flashcards_editor}}</small>
+                                        <small id="flashcards_owner" class="form-text text-muted">owner is {{$flashcards_owner}}. </small>
+                                        <small id="flashcards_editor" class="form-text text-muted">{{$flashcards_editor}}</small>
 				</div>
 			</div>
 		</div>      
@@ -344,54 +347,92 @@
                         
 <div id="panel_flashcards_cards_actions" style="display: none;">
 	<span class="navbar-brand">
-		<span>&nbsp;</span>
-		<span id="span_flashcards_cards_actions_status"></span>
-		<span>Cards</span>
-		<button class="nav-item btn btn-default" id="button_flashcards_new_card">
-                    <i class="fa fa-calendar-plus-o"></i>			
-		</button>
-		<button class="nav-item btn btn-default" id="button_flashcards_search_cards" style="display: none;">
-                    <i class="fa fa-search"></i>			
-		</button>
-                <input id="input_flashcards_search_cards" style="display: none;">
+            <div class="container-fluid"> 
+              <div class="row">
+                <div class="col-sm-12">
+                    <div class="form-group">
+                        <button class="nav-item btn btn-default" id="button_flashcards_search_cards" style="display: none;">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        <button class="nav-item btn btn-default" id="button_flashcards_new_card">
+                            <i class="fa fa-calendar-plus-o"></i>
+                        </button>
+                        <span id="span_flashcards_cards_actions_status"></span>
+                        <span>Cards</span>
+                    </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-12">
+                    <div class="form-group">
+                        <input id="input_flashcards_search_cards" style="display: none;">
+                    </div>
+                </div>
+              </div>
+            </div>
 	</span>
 </div>
 
 <div id="panel_flashcards_cards" style="display: none;"></div>
 
 <div id="panel_cloud_boxes_1" style="display: none;">
+    <div id="panel_cloud_boxes_header"></div>
+    <div id="panel_cloud_boxes_content"></div>
+</div>
+
+<div id="panel_search_cloud_boxes" style="display: none;"></div>
+
+<div id="panel_flashcards_help" style="display: none;">
 	<div class="container-fluid">
-		<div class="row">
-			<div class="col-sm-12">
-                <button class="btn nav-item" id="button_flashcards_list_close">
-                    <i class="fa fa-window-close"></i> Close
-                </button>
-      		</div>
-     	 </div>
-		<div class="row">
-			<div class="col-sm-1">
-				<i class="fa fa-sliders fa-lg" data-toggle="collapse" href="#panel_list_box_1" role="button" aria-expanded="false" aria-controls="panel_list_box_1"></i>
-			</div>
-			<div class="col-sm-11">
-				<a href="flashcards/admin/boxID" name="load_box">Box Title</a>
-			</div>
-		</div>
-		<div class="row panel-collapse collapse" id="panel_list_box_1">
-            <div class="col-sm-10">
-                Description
+            <div class="row">
+                <div class="col-sm-12">
+                    <p>Flashcards version <span id="flashcards_version">{{$flashcards_version}}</span></p>
+                    <p>This addon is a  <a href="https://en.wikipedia.org/wiki/List_of_flashcard_software" target="_blank">flashcard software</a> that uses <a href="https://en.wikipedia.org/wiki/Spaced_repetition" target="_blank">spaced repetition</a> as a learning technique.</p>
+                    <p><img src="/addon/flashcards/view/img/leitner-system.png" align="center" width="70%"></p>
+                    <p>You can share the flash cards with other users.</p>
+                    <p>Your learning progress will be kept private.</p>
+                    <hr/>
+                    <h4>The School Example</h4>
+                    <hr/>
+                    <h4>The school...</h4>
+                    <p>has the addon Flashcards installed and creates a box of flashcards, let's say "English-Italian".</p>
+                    <p>The school has full control of who is allowed to</p>
+                    <ul>
+                        <li>open and learn with "English-Italian"</li>
+                        <li>make changes to "English-Italian"</li>
+                    </ul>
+                    <h4>The student...</h4>
+                    <ul>
+                        <li>can access "English-Italian" via menu -> "List Boxes"</li>
+                        <li>can make changes to "English-Italian" if he is allowed to to so</li>
+                        <li>can change the learning algorithm, e.g. how often to repeat cards,...</li>
+                        <li>use the cards as dictionary</li>
+                    </ul>
+                    <hr/>
+                    <h4>FAQs</h4>
+                    <hr/>
+                    <h4>How to add or change cards?</h4>
+                    <p>By default the school and the students can both add or modify cards. The syncronization is done automatically as soon as they upload (save) changes.</p>
+                    <h4>Permissions and Technically</h4>
+                    <p>A student sees those flashcards only the school allows him to see. The student will get a copy of "English-Italian". For both users it looks the same, same URL, same content. Everything is done under the hood. The student does not own the flashcards. The school can withdraw the permissions for a student or even delete the flashcards at any time.</p>
+                    <h4>Federation</h4>
+                    <p>Users of Hubzilla and ZAP (both talk ZOT) will be able to use flashcards on other servers, e.g. "English-Italian" of the school in our example.</p>
+                    <p><a href="https://en.wikipedia.org/wiki/ActivityPub" target="_blank">ActivityPub</a>: It is not tested yet but should be available in the near future. If enabled a student will be able to use the addon without having an account at Hubzulla or ZAP as long as the account supports <a href="https://en.wikipedia.org/wiki/ActivityPub" target="_blank">ActivityPub</a>. Users of Mastodon should have ActivityPub for example. Stay tuned.</p>
+                </div>
             </div>
-            <div class="col-sm-2">
-                <i class="fa fa-trash" id="link_delete_box" boxid="boxID" title_box_delete="box-title"></i>
-            </div>
-		</div>
 	</div>
 </div>
 
+
+
+
 <div id="panel_flashcards_cards" style="display: none;"></div>
 
-<div id="post_url" style="display: none;">{{$post_url}}</div>
-<div id="nick" style="display: none;">{{$nick}}</div>
-<div id="is_owner" style="display: none;">{{$is_owner}}</div>
+<div id="flashcards_post_url" style="display: none;">{{$post_url}}</div>
+<div id="flashcards_nick" style="display: none;">{{$nick}}</div>
+<div id="flashcards_is_owner" style="display: none;">{{$is_owner}}</div>
+<div id="flashcards_is_local_channel" style="display: none;">{{$is_local_channel}}</div>
+<div id="flashcards_is_allowed_to_create_box" style="display: none;">{{$is_allowed_to_create_box}}</div>
 <!--
 <p>
 	<button class="btn" id="run_unit_tests"">Test</button>

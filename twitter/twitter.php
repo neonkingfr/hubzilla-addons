@@ -210,19 +210,24 @@ function twitter_shortenmsg($b) {
 
 	// Looking for the first image
 	$image = '';
-	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $matches))
-		$image = html_entity_decode($matches[2]);
+	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $matches)) {
+	    if($matches[1]) {
+	        $sizes = array_map('intval', explode('x', substr($matches[1],1)));
+	        if($sizes[0] >= 480)
+	            $image = html_entity_decode($matches[2]);
+	    }
+	}
 	
 	// Choose first URL 
 	$link = '';
-	if (preg_match('/\[(url=|o?embed\])(https?\:\/\/[^\]\[]+)/is', $body, $matches))
-		$link = html_entity_decode($matches[2]);
+	if (preg_match('/\[url=|\[o?embed\](https?\:\/\/[^\]\[]+)/is', $body, $matches))
+	    $link = html_entity_decode($matches[1]);
 
 	// Add some newlines so that the message could be cut better
 	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
 
 	// Remove URL bookmark
-	$body = str_replace("#^[", "[", $body);
+	$body = str_replace("#^[", "&#128279 [", $body);
 
 	// At first convert the text to html
 	$msg = bbcode($body, [ 'tryoembed' => false ]);
@@ -436,7 +441,7 @@ function twitter_post_hook(&$a,&$b) {
 			$cb = \Codebird\Codebird::getInstance();
 			$cb->setConsumerKey($ckey, $csecret);
 			$cb->setToken($otoken, $osecret);
-			$cb->setTimeout(20000);
+			$cb->setTimeout(intval(get_config('system','curl_timeout', 30)) * 1000); // in ms
 			
 			$post = [ 'status' => $msg ];
 
@@ -446,10 +451,10 @@ function twitter_post_hook(&$a,&$b) {
 				    $result = $cb->media_upload([ 'media' => $image ]);
 			    }
 			    catch (Exception $e) {
-			        logger('Send to Twitter failed with error "' . $e->getMessage() . '"');
-			        return;
+			        logger('Image upload to Twitter failed with error "' . $e->getMessage() . '"', LOG_INFO);
 			    }
-			    $post['media_ids'] = $result->media_id_string;
+			    if ($result->httpstatus == 200)
+			        $post['media_ids'] = $result->media_id_string;
 			}
 			
 			$result = $cb->statuses_update($post);

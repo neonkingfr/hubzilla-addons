@@ -47,6 +47,7 @@ class Workflow extends Controller {
 
 	function post() {
 
+		self::init();
 		if (!App::$profile_uid) {
 			App::$error = 405;
 			return;

@@ -5,7 +5,7 @@
  * Version: 1.0
  * Author: DM42.Net, LLC
  * Maintainer: devhubzilla@dm42.net
- * MinVersion: 4.4.2
+ * MinVersion: 4.5
  */
 
 use \App;
@@ -53,19 +53,19 @@ function workflow_load() {
 
 function workflow_unload() {
 	$hookdir = 'addon/workflow';
-	$hookfile = 'addon/workflow/workflow.php';
+	$hookfile = $hookdir.'/workflow.php';
 	Hook::unregister_by_file(__FILE__);
 	Hook::unregister_by_file($hookfile);
 	Route::unregister_by_file(dirname(__FILE__).'/Mod_Workflow.php');
-	Route::unregister_by_file(dirname(__FILE__).'/Mod_WorkflowSettings.php');
+	Route::unregister_by_file(dirname(__FILE__).'/Settings/Mod_WorkflowSettings.php');
 	Route::unregister_by_file($hookdir.'/Mod_Workflow.php');
-	Route::unregister_by_file($hookdir.'/Mod_WorkflowSettings.php');
+	Route::unregister_by_file($hookdir.'/Settings/Mod_WorkflowSettings.php');
 }
 
 class Workflow_Utils {
 
-	private static $cspframesrcs=[];
-	private static $related_to_wfitems = [];
+	protected static $cspframesrcs=[];
+	protected static $related_to_wfitems = [];
 
 	public static function item_stored(&$arr) {
 		return;
@@ -81,13 +81,23 @@ class Workflow_Utils {
 
 		if (!Apps::addon_app_installed($uid,'workflow')) { return; }
 
-		if (argv(0) != 'workflow') {
+		if (argv(0) != 'workflow' && !local_channel()) {
 			return;
 		}
 
+		$profile_channel = channelx_by_n($uid);
 		$newcsp = $csp;
-		$wfchannels = q("select hubloc_url,hubloc_addr,xchan_addr from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'their_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1'",
+		$wfchannels = q("select hubloc_url,hubloc_addr,xchan_addr from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'their_perms' and k = 'workflow_user' and v = '1'",
 				intval($uid)
+			);
+
+		foreach ($wfchannels as $wfhost) {
+			$newcsp['frame-src'][]=$wfhost['hubloc_url'];
+		}
+
+		$wfchannels = q("select hubloc_url,hubloc_addr,xchan_addr from hubloc join xchan on hubloc_hash = xchan_hash where xchan_hash in ('%s','%s')",
+				get_observer_hash(),
+				$profile_channel['channel_hash']
 			);
 
 		foreach ($wfchannels as $wfhost) {
@@ -215,7 +225,7 @@ class Workflow_Utils {
 	}
 
 	public static function get_workflowusers () {
-		$wfchannels = q("select hubloc_host,hubloc_addr,xchan_addr,xchan_name,hubloc_primary,xchan_hash from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'my_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1'",
+		$wfchannels = q("select hubloc_host,hubloc_addr,xchan_addr,xchan_name,hubloc_primary,xchan_hash from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'my_perms' and k = 'workflow_user' and v = '1'",
 		intval(App::$profile_uid));
 
 		$wfusers = [];
@@ -223,6 +233,9 @@ class Workflow_Utils {
 		foreach ($wfchannels as $c) {
 			$wfusers[$c['xchan_hash']]=$c['xchan_name'].' - '.$c['xchan_addr'];
 		}
+
+		$c = channelx_by_n(App::$profile_uid);
+		$wfusers[$c['channel_hash']]=$c['channel_name'].' - '.$c['channel_addr'];
 
 		return $wfusers;
 
@@ -259,7 +272,7 @@ class Workflow_Utils {
 			$mywfchan['name'].=' ('.t('This channel').')';
 			$remoteworkflows[$mychan['channel_hash']] = $mywfchan;
 
-			$wfchannels = q("select hubloc_host,hubloc_addr,xchan_addr,xchan_name,hubloc_primary,xchan_hash from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'their_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1'",
+			$wfchannels = q("select hubloc_host,hubloc_addr,xchan_addr,xchan_name,hubloc_primary,xchan_hash from hubloc join xchan on hubloc_hash = xchan_hash join abconfig on xchan=xchan_hash where chan = %d and cat = 'their_perms' and k = 'workflow_user' and v = '1'",
 				intval(local_channel()));
 			if ($wfchannels) {
 				foreach ($wfchannels as $wfchannel) {
@@ -276,7 +289,7 @@ class Workflow_Utils {
 			}
 
 		} else {
-			$wfchannels = q("select xchan from abconfig where chan = %d and xchan = '%s' and cat = 'my_perms' and (k = 'workflow_user' or k = 'workflow_additems') and v = '1'",
+			$wfchannels = q("select xchan from abconfig where chan = %d and xchan = '%s' and cat = 'my_perms' and k = 'workflow_user' and v = '1'",
 				App::$profile_uid,
 				dbesc(get_observer_hash()));
 			
@@ -331,7 +344,7 @@ class Workflow_Utils {
 		}
 	}
 
-	private static function queryvars_stripzid($url) {
+	protected static function queryvars_stripzid($url) {
 				        //$relurl = $rellink.'&zid='.get_my_address();
 
 		if (! strpos($url,'?')) {
@@ -346,16 +359,69 @@ class Workflow_Utils {
 		return $returl;
 	}
 
+	protected static function get_workflow_meta_html($item,$iframeurl,$posturl) {
+
+		$itemmeta = [];
+
+		$hookinfo=[
+			'item'=>$item,
+			'itemmeta'=>$itemmeta,
+			'uuid'=>$item['uuid'],
+			'mid'=>$item['mid'],
+			'iframeurl'=>$iframeurl,
+			'posturl'=>$posturl
+		];
+
+
+		call_hooks('dm42workflow_meta_display',$hookinfo);
+
+		usort($hookinfo['itemmeta'],function($a,$b) {
+			if (intval(@$a['order']) == intval(@$b['order'])) {
+				return 0;
+			}
+
+			$ret = (intval(@$a['order']) > intval(@$b['order'])) ? 1 : -1;
+			return $ret;
+		});
+
+		$itemmeta=$hookinfo['itemmeta'];
+
+		$o='';
+		foreach ($itemmeta as $meta) {
+			$o.="<div class='workflow wfmeta-item ";
+			if ($meta['cols']) {
+				$o.=" ".$meta['cols'];
+			}
+
+			$o .= "' style='display:inline-block;'>";
+			$o .= $meta['html'];
+                        $o .= "</div>";
+		}
+
+		return $o;
+	}
+
 	public static function display() {
+
 
 		$uid = App::$profile_uid;
 		if (!Apps::addon_app_installed($uid,'workflow')) { return; }
 
+		$hookinfo = [
+			'html' => null
+		];
+
+		call_hooks('workflow_display_replace',$hookinfo);
+		if ($hookinfo['html'] != null) {
+			return $hookinfo['html'];
+		}
+
 		$channel = channelx_by_n($uid);
 
 		$item_normal = "item.item_deleted = 0 and item.item_pending_remove = 0
-				and item.item_blocked = 0
-				and item.obj_type ='".WORKFLOW_ACTIVITY_OBJ_TYPE."'";
+				and item.item_blocked = 0";
+
+		$workflow_only = " and item.obj_type ='".WORKFLOW_ACTIVITY_OBJ_TYPE."'";
 
 		$uuid = argv(3);
 
@@ -369,7 +435,7 @@ class Workflow_Utils {
 
 		$item = q("Select item.*, item.id as item_id
 			from item
-			where item.uid = %d and $item_normal
+			where item.uid = %d and $item_normal $workflow_only
 			and item.uuid = '%s'
 			$sql_extra ",
 				$uid,
@@ -377,6 +443,16 @@ class Workflow_Utils {
 			);
 
 		if (!$item) { return; }
+		$hookinfo=['item'=>$item,'html'=>null];
+		call_hooks('workflow_display_hook',$hookinfo);
+		if ($hookinfo['html']!==null) {
+			return $hookinfo['html'];
+		}
+
+		$itemmid=$item[0]['mid'];
+
+		Hook::insert('dm42workflow_meta_display','Workflow_Utils::basicmeta_meta_display',1,30000);
+		Hook::insert('dm42workflow_meta_display','Workflow_Utils::contact_meta_display',1,30000);
 
 		$body=prepare_body($item[0],true);
 
@@ -386,9 +462,8 @@ class Workflow_Utils {
 			AND item.parent = %d
 			$sql_extra ",
 				$uid,
-				dbesc($item[0]['id'])
+				dbesc($item[0]['item_id'])
 			);
-
 
 		if ($child_items) {
 			xchan_query($child_items);
@@ -398,7 +473,6 @@ class Workflow_Utils {
 		else {
 			$items = [];
 		}
-
 		if (!$items) {
 			return;
 		}
@@ -407,16 +481,7 @@ class Workflow_Utils {
 		call_hooks('workflow_get_items_filter',$hookinfo);
 		$items = $hookinfo['items'];
 
-		$hubinfo = q("select hubloc_addr,hubloc_url,xchan_addr from hubloc left join xchan on (hubloc_hash = xchan_hash) where hubloc_hash = '%s' ",
-			dbesc($item['owner_xchan'])
-		);
-		if (!$hubinfo) {
-			$iframeurl = '/workflow/'.$channel['channel_address'];
-		} else {
-			$hubinfo = $hubinfo[0];
-			$addr = substr($hubinfo['hubloc_addr'], 0, strpos($hubinfo['hubloc_addr'], '@'));
-			$iframeurl = $hubinfo['hubloc_url'].'/workflow/'.$addr;
-		}
+		$iframeurl = self::get_item_iframeurl($items[0]);
 
 		$posturl = z_root().'/workflow/'.$channel['channel_address'];
 
@@ -428,10 +493,10 @@ class Workflow_Utils {
 				if (strpos($rellink,'?') === false) {
 					$relurl = $rellink.'?zid='.get_my_address();
 				} else {
-				        $relurl = $rellink.'&zid='.get_my_address();
+				        $relurl = self::queryvars_stripzid($rellink).'&zid='.get_my_address();
 				}
 				$items[$itemidx]['related'][$idx]['jsondata'] = json_encode(['iframeurl'=>$relurl,'action'=>'getmodal_getiframe','raw'=>'raw']);
-				$items[$itemidx]['related'][$idx]['jsoneditdata'] = json_encode(['action'=>'form_addlink','uuid'=>$uuid,'iframeurl'=>$posturl,'relatedlink'=>$related['relatedlink']]);
+				$items[$itemidx]['related'][$idx]['jsoneditdata'] = json_encode(['action'=>'form_addlink','uuid'=>$uuid,'mid'=>$item['mid'],'iframeurl'=>$posturl,'relatedlink'=>$related['relatedlink']]);
 				$items[$itemidx]['related'][$idx]['action'] = 'getmodal_getiframe';
 				$items[$itemidx]['related'][$idx]['relurl'] = $relurl;
 				$items[$itemidx]['related'][$idx]['uniq'] = md5($relurl);
@@ -445,12 +510,67 @@ class Workflow_Utils {
 		$items = fetch_post_tags($items);
 
 		$item=$items[0];
+		//$itemmeta=self::get_itemmeta_html($item,$uuid,$iframeurl,$posturl,$item['mid']);
+		$itemmeta='';
+
+		$maindata = '';
+		if (isset($items[0]['related']) && is_array($items[0]['related'])) {
+			$related = $items[0]['related'];
+			$relitem = array_shift($related);
+			$contentvars = [
+				'iframeurl' => $relitem['relurl'],
+				'$title' => t('Workflow'),
+			];
+
+			$maindata = replace_macros(get_markup_template('workflowiframe.tpl','addon/workflow'), $contentvars);
+			//$maindata = replace_macros(get_markup_template('workflowmodal_skel.tpl','addon/workflow'), $modalcontentvars);
+		}
+
+		$wfitem_priority = IConfig::Get($items[0],'workflow','priority',1);
+
+		Hook::insert('workflow_toolbar','Workflow_Utils::toolbar_backtoworkflow',1,1000);
+		$toolbar = self::get_toolbar($items);
+		$tpl = get_markup_template('workflow_display.tpl','addon/workflow');
+
+		
+		$vars = [
+			'$posturl' => z_root().'/workflow/'.$channel['channel_address'],
+			//'$posturl' => $posturl,
+			'$uuid' => $uuid,
+			'$mid' => $items[0]['mid'],
+			'$toolbar' => $toolbar,
+			'$body' =>$body,
+			'$itemmeta'=>$itemmeta,
+			'$items'=>$items,
+			'$maindata' => $maindata,
+			'$myzid'=>get_my_address(),
+			'$addlinkmiscdata'=>json_encode(['action'=>'form_addlink','uuid'=>$uuid,'mid'=>$items[0]['mid'],'iframeurl'=>$posturl]),
+			'$addlinkaction'=>'getmodal_getiframe',
+			'$edittaskjsondata' => json_encode(['action'=>'form_edittask','uuid'=>$uuid,'mid'=>$items[0]['mid'],'iframeurl'=>$iframeurl])
+		];
+
+		$sidebarhtml = replace_macros(get_markup_template('workflow_display_sidebar.tpl','addon/workflow'),$vars);
+		$sidebarhookinfo = [
+			'html' => $sidebarhtml,
+			'items' => $items
+		];
+		call_hooks('workflow_display_sidebar',$sidebarhookinfo);
+		$vars['sidebar'] = $sidebarhookinfo['html'];
+
+        	$o = replace_macros($tpl,$vars);
+
+		return $o;
+	}
+
+	protected static function get_itemmeta_html($item,$uuid,$iframeurl,$posturl,$mid) {
+
 		$itemmeta = [];
 
 		$hookinfo=[
 			'item'=>$item,
 			'itemmeta'=>$itemmeta,
 			'uuid'=>$uuid,
+			'mid'=>$mid,
 			'iframeurl'=>$iframeurl,
 			'posturl'=>$posturl
 		];
@@ -469,43 +589,11 @@ class Workflow_Utils {
 			return $ret;
 		});
 
-		$itemmeta=$hookinfo['itemmeta'];
+		return $hookinfo['itemmeta'];
 
-		$maindata = '';
-		if (isset($items[0]['related']) && is_array($items[0]['related'])) {
-			$related = $items[0]['related'];
-			$relitem = array_shift($related);
-			$contentvars = [
-				'iframeurl' => $relitem['relurl'].'?zid='.get_my_address(),
-				'$title' => t('Workflow'),
-			];
-
-			$maindata = replace_macros(get_markup_template('workflowiframe.tpl','addon/workflow'), $contentvars);
-		}
-
-		Hook::insert('workflow_toolbar','Workflow_Utils::toolbar_backtoworkflow',1,1000);
-		$toolbar = self::get_toolbar($items);
-
-		$tpl = get_markup_template('workflow_display.tpl','addon/workflow');
-		$vars = [
-			'$posturl' => z_root().'/workflow/'.$channel['channel_address'],
-			//'$posturl' => $posturl,
-			'$toolbar' => $toolbar,
-			'$body' =>$body,
-			'$itemmeta'=>$itemmeta,
-			'$items'=>$items,
-			'$maindata' => $maindata,
-			'$myzid'=>get_my_address(),
-			'$addlinkmiscdata'=>json_encode(['action'=>'form_addlink','uuid'=>$uuid,'iframeurl'=>$posturl]),
-			'$addlinkaction'=>'getmodal_getiframe',
-			'$edittaskjsondata' => json_encode(['action'=>'form_edittask','uuid'=>$uuid,'iframeurl'=>$iframeurl])
-		];
-
-        	$o = replace_macros($tpl,$vars);
-		return $o;
 	}
 
-	private static function wfitems_with_relatedlink($uid,$link) {
+	protected static function wfitems_with_relatedlink($uid,$link) {
 		// self::$related_to_wfitems = [ [uid]=>[[link]=> { [ %wfitem% ] || null } ] ]
 
 		if (!local_channel()) {
@@ -516,12 +604,11 @@ class Workflow_Utils {
 
 		// Use a small memory cache to speed things up.
 
-		if (array_key_exists($link,self::$related_to_wfitems[$uid])) {
+		if (isset(self::$related_to_wfitems[$uid]) && array_key_exists($link,self::$related_to_wfitems[$uid])) {
 			return self::$related_to_wfitems[$uid][$link];
 		}
 
 		$iconfig_k = 'link:related:'.md5($link);
-logger("LINK: ".$link);
 		$searchvars = [
 			'uid'=>$uid,
 			'iconfig'=>[
@@ -532,6 +619,7 @@ logger("LINK: ".$link);
 		];
 
 		$wfitems = self::get_items($searchvars,get_observer_hash());
+		$wfitems = fetch_post_tags($wfitems);
 
 		self::$related_to_wfitems[$uid][$link]=$wfitems;
 		return self::$related_to_wfitems[$uid][$link];
@@ -540,7 +628,10 @@ logger("LINK: ".$link);
 	public static function prepare_body_final(&$prep_arr) {
 
 		$uid = local_channel();
-
+		if (!$uid) {
+			$uid = App::$profile_uid;
+		}
+		
 		if (!$uid || (!Apps::addon_app_installed($uid,'workflow'))) {
 			return;
 		}
@@ -552,15 +643,60 @@ logger("LINK: ".$link);
 		$templatevars = [
 			'relateditems' => $related
 		];
+
 		if ($related) {
-//logger("RELATED: ".print_r($related,true));
 			$tpl = get_markup_template('workflow_prepare_body_related.tpl','addon/workflow');
         		$relatedhtml = replace_macros($tpl,$templatevars);
 			$arr['html'] .= $relatedhtml;
 		} 
 
+		if ($arr['item']['obj_type'] == WORKFLOW_ACTIVITY_OBJ_TYPE) {
+			$items = [$arr['item']];
+			$items = fetch_post_tags($items);
+			$item=$items[0];
+			$metahtml = '';
+			//$metahtml = "<div style='z-index:5;position:absolute;font-color:rgba(0,0,0,.2);'>";
+			//$metahtml .= "<i class='generic-icons-nav fa fa-fw fa-list-ol' style='font-size:8em;color:rgba(0,0,0,.15);'></i></div>";
+			$metahtml .= "<div class='workflowmeta row' style='background-color:rgba(40,40,230,.2);padding:8px;margin:0 4px 0 4px;'>\n";
+			$iframeurl = self::get_item_iframeurl($item);
+			$posturl = self::get_item_posturl($item);
+			$metahtml .= self::get_workflow_meta_html($item,$iframeurl,$posturl);
+			$metahtml .= "</div> <!-- workflowmeta -->\n<hr />\n";
+			$arr['html'] = $metahtml . $arr['html'];
+		}
+
 		$prep_arr = $arr;
 		return;
+	}
+
+	protected static function get_item_posturl($item) {
+		$channel = channelx_by_n(App::$profile_uid);
+		return z_root().'/workflow/'.$channel['channel_address'];
+	}
+
+	protected static function get_item_iframeurl($item) {
+		$hubinfo = q("select hubloc_addr,hubloc_url,hubloc_primary,xchan_addr from hubloc left join xchan on (hubloc_hash = xchan_hash) where hubloc_hash = '%s' ",
+			dbesc($item['owner_xchan'])
+		);
+		if (!$hubinfo) {
+			$iframeurl = '/workflow/'.$channel['channel_address'];
+		} else {
+			$hubidx = 0;
+			foreach ($hubinfo as $k => $hub) {
+				if (strpos($item['mid'],$hub['hubloc_url']) === 0) {
+					$hubidx = $k;
+					break;
+				}
+				if ($hub['hubloc_primary']) {
+					$hubidx = $k;
+				}
+			}
+			$hubinfo = $hubinfo[$hubidx];
+			$addr = substr($hubinfo['hubloc_addr'], 0, strpos($hubinfo['hubloc_addr'], '@'));
+			$iframeurl = $hubinfo['hubloc_url'].'/workflow/'.$addr;
+		}
+
+		return $iframeurl;
 	}
 
 	public static function get() {
@@ -583,18 +719,14 @@ logger("LINK: ".$link);
 				}
 				break;
 
-			case 'login':
-				header("Access-Control-Allow-Origin: *");
-				if ((perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) ||
-				   (perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_additems'))) {
-					json_return_and_die(["success"=>1]);
-				} else {
-					json_return_and_die(["success"=>0]);
-				}
-				killme();
-				break;
-
 			default:
+				$safecommand = preg_replace('[^A-Za-z0-9\_]','',argv(2));
+				$html = '';
+				call_hooks('workflow_get_'.$safecommand,$html);
+				if ($html != '') {
+					return $html;
+				}
+
 				logger("Workflow bad command: ".argv(2));
 				if (argc()==3) {
 					return self::display_list();
@@ -602,9 +734,7 @@ logger("LINK: ".$link);
 		}
 	}
 
-	private static function get_items($searchvars,$observer = null,$do_callhooks = true) {
-
-logger("SEARCHVARS: ".print_r($searchvars,true));
+	protected static function get_items($searchvars,$observer = null,$do_callhooks = true) {
 
 		$ownersearch = '';
 		$itemtype = '';
@@ -626,6 +756,25 @@ logger("SEARCHVARS: ".print_r($searchvars,true));
 				$uuids = 'and item.uuid in '.implode(',',implode($searchvars['uuid']));
 			} else {
 				$uuids = 'and item.uuid = \''.dbesc($searchvars['uuid']).'\'';
+			}
+		}
+
+		$mids = '';
+		if (isset($searchvars['mid'])) {
+
+			if (is_array($searchvars['mid'])) {
+				$mids = 'and item.mid in (\''.implode('\',\'',implode($searchvars['mid'])).'\')';
+			} else {
+				$mids = 'and item.mid = \''.dbesc($searchvars['mid']).'\'';
+			}
+		}
+
+		$ids = '';
+		if (isset($searchvars['id'])) {
+			if (is_array($searchvars['id'])) {
+				$ids = 'and item.id in ('.implode(',',$searchvars['id']).') ';
+			} else {
+				$ids = 'and item.id = '.intval($searchvars['id']).' ';
 			}
 		}
 
@@ -763,10 +912,10 @@ logger("SEARCHVARS: ".print_r($searchvars,true));
 			}
 		}
 
-		$query = "select item.id as item_id from item $iconfigjoins where item.uid = $uid and item.mid=item.parent_mid and $objtype $itemtype $uuids $permissions $ownersearch $iconfigwhere $deleted $orderby $limit $offset";
-logger("QUERY: ".$query);
+		$query = "select item.id as item_id from item $iconfigjoins where item.uid = $uid and item.mid=item.parent_mid and $objtype $itemtype $mids $uuids $ids $permissions $ownersearch $iconfigwhere $deleted $orderby $limit $offset";
+
+
 		$itemids = q($query);
-//logger("ITEMIDS: ".json_encode($itemids));
 
 		if ($itemids) {
 			$ids = [];
@@ -782,11 +931,11 @@ logger("QUERY: ".$query);
 				call_hooks('workflow_get_items_filter',$hookinfo);
 				$items = $hookinfo['items'];
 			}
-
+			xchan_query($items);
 			return $items;
 		}
 		else {
-			return false;
+			return [];
 		}
 	}
 
@@ -920,6 +1069,12 @@ logger("QUERY: ".$query);
 
 	public static function display_list() {
 
+		$hookinfo=['html'=>null];
+		call_hooks('workflow_display_list_hook',$hookinfo);
+		if ($hookinfo['html']!==null) {
+			return $hookinfo['html'];
+		}
+
 		$ownerchan = channelx_by_n(App::$profile_uid);
 		$searchvars = [
 			'uid'=>App::$profile_uid
@@ -939,7 +1094,9 @@ logger("QUERY: ".$query);
 		$itemlist = [];
 		$channels =[];
 		if (!$items) { $items = []; }
-		$items=fetch_post_tags($items);
+		//$items=fetch_post_tags($items);
+		xchan_query($items);
+		$items = fetch_post_tags($items, true);
 
 		$hookinfo = [
 			'items' => $items
@@ -947,13 +1104,16 @@ logger("QUERY: ".$query);
 
 		Hook::insert('dm42workflow_display_list','Workflow_Utils::display_list_basicfilter',1,30000);
 
+		Hook::insert('dm42workflow_meta_display','Workflow_Utils::basicmeta_meta_display',1,30000);
+		Hook::insert('dm42workflow_meta_display','Workflow_Utils::contact_meta_display',1,30000);
 		call_hooks('dm42workflow_display_list',$hookinfo);
 
 		$items = $hookinfo['items'];
 	
 		foreach ($items as $item) {
 			$newitem = [];
-			$newitem['url']=$item['mid'].'?zid='.get_my_address();
+			$newitem['url']= $item['mid'];
+			$newitem['url'].=(strpos($item['mid'],'?')) ? '&zid='.get_my_address() : '?zid='.get_my_address();
 			$newitem['target']='new';
 			$newitem['title']=$item['title'];
 			$newitem['body']=prepare_body($item,true);
@@ -990,12 +1150,15 @@ logger("QUERY: ".$query);
 		}
 
 		$vars['title']="Current Items";
-		usort($itemlist,function($a,$b) {
-			if (intval(@$a['priority']) == intval(@$b['priority'])) {
+		//usort($itemlist,function($a,$b) {
+		usort($items,function($a,$b) {
+			$apriority = (isset($a['workflowdata']['priority']) || $a['workflowdata']['priority'] === 0) ? $a['workflowdata']['priority'] : 1;
+			$bpriority = (isset($b['workflowdata']['priority']) || $b['workflowdata']['priority'] === 0) ? $b['workflowdata']['priority'] : 1;
+			if (intval(@$apriority) == intval(@$bpriority)) {
 				return 0;
 			}
 
-			$ret = (intval(@$a['priority']) < intval(@$b['priority'])) ? 1 : -1;
+			$ret = (intval(@$apriority) < intval(@$bpriority)) ? 1 : -1;
 			return $ret;
 		});
 		$vars['items']=$itemlist;
@@ -1021,10 +1184,12 @@ logger("QUERY: ".$query);
 				$vars['headerextras'].="<div class='row'>".$row."</div>";
 			}
 		}
-
+/*
 		$tpl = get_markup_template('workflow_list.tpl','addon/workflow');
         	$o = replace_macros($tpl,$vars);
 		return $o;
+*/
+		return $vars['toolbar'].$vars['headerextras'].conversation($items,'network',0);
 	}
 
 	public static function get_toolbar($items) {
@@ -1213,16 +1378,22 @@ logger("QUERY: ".$query);
 
 		$workflows = self::get_workflowlist();
 		$data=self::maybeunjson($arr['jsondata']['datastore']);
-		//$data = self::datastore($data,self::maybeunjson($arr['jsondata']),['linkeditem','iframeurl','posturl','action','uuid','iframeaction','relatedlink']);
+		//$data = self::datastore($data,self::maybeunjson($arr['jsondata']),['linkeditem','iframeurl','posturl','action','uuid','mid','iframeaction','relatedlink']);
 		$data = self::datastore($data,self::maybeunjson($arr['jsondata']),null);
-		//$data = self::datastore($data,$arr['jsondata'],['linkeditem','iframeurl','posturl','action','uuid','iframeaction','relatedlink']);
+		//$data = self::datastore($data,$arr['jsondata'],['linkeditem','iframeurl','posturl','action','uuid','mid','iframeaction','relatedlink']);
 		$data = self::datastore($data,$arr['jsondata'],null);
 		$itemurl = $data['linkeditem'];
 
 		if (!isset($data['iframeurl']) && count($workflows) == 1) {
 			$data['iframeurl'] = $workflows[0]['wfaddr'];
 		} elseif (count($workflows) ==0) {
-			return ['html' => '<h2>No workflows available.</h2>'];
+			$contentvars = [
+				'iframeurl' => '',
+				'$title' => t('No Workflows Available'),
+				'content' => '<h2>No Workflows Available</h2>'
+			];
+			$retval = ['html' => replace_macros(get_markup_template('workflowmodal_skel.tpl','addon/workflow'), $contentvars)];
+			return $retval;
 		}
 
 		if (isset($data['iframeurl'])) {
@@ -1238,13 +1409,14 @@ logger("QUERY: ".$query);
 			} else {
 				$contentvars = ['content' => replace_macros(get_markup_template('workflowiframe.tpl','addon/workflow'), $contentvars)];
 				$retval = ['html' => replace_macros(get_markup_template('workflowmodal_skel.tpl','addon/workflow'), $contentvars)];
+				//$retval = ['html' => replace_macros(get_markup_template('workflowiframe.tpl','addon/workflow'), $contentvars)];
 			}
 
 			return $retval;
 		}
 
 		$itemurl = (isset($data['linkeditem'])) ? $data['linkeditem'] : null;
-
+		$data['raw']='raw';
 		$jsondata = self::maybejson($data);
 		$contentvars = [
 			'$label' => t('Add item to which workflow').':',
@@ -1262,13 +1434,26 @@ logger("QUERY: ".$query);
 
 	}
 
-	private static function iframecontent_new($data) {
+	protected static function iframecontent_new($data) {
 
 	    	$uid = App::$profile_uid;
 
 		if (!Apps::addon_app_installed($uid,'workflow')) {
 			echo '<h2>Workflow addon not installed.</h2>';
 			killme();
+		}
+
+		if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) {
+			$hookinfo=[
+				'allow'=>false,
+				'arr'=>$arr,
+				'data'=>$data
+				];
+			call_hooks("workflow_permissions_createitem",$hookinfo);
+			if (!$hookinfo['allow']) {
+				$contentvars=[];
+				$contentvars['content'] = replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
+			}
 		}
 
 		$channel = channelx_by_n(App::$profile_uid);
@@ -1303,23 +1488,30 @@ logger("QUERY: ".$query);
 		];
 
 		return replace_macros(get_markup_template('workflowiframecontent_new.tpl','addon/workflow'), $contentvars);
-
 	}
 
 	public static function getmodal_getiframecontent($arr,$data = []) {
 		//@todo: add permissions
-		if ((!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) &&
-		    (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_additems'))) {
-			echo replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
-			killme();
+
+		if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) {
+			$hookinfo=[
+				'allow'=>false,
+				'arr'=>$arr,
+				'data'=>$data
+				];
+			call_hooks("workflow_permissions_getmodal_getiframecontent",$hookinfo);
+			if (! $hookinfo['allow']) {
+				echo replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
+				killme();
+			}
 		}
 
 
 		$data=self::maybeunjson($arr['datastore']);
 
-		//$data = self::datastore($data,self::maybeunjson($arr['jsondata']),['workflowBody','workflowSubject','linkeditem','iframeurl','posturl','action','uuid','iframeaction','relatedlink']);
+		//$data = self::datastore($data,self::maybeunjson($arr['jsondata']),['workflowBody','workflowSubject','linkeditem','iframeurl','posturl','action','uuid','mid','iframeaction','relatedlink']);
 		$data = self::datastore($data,self::maybeunjson($arr['jsondata']),null);
-		//$data = self::datastore($data,$arr['jsondata'],['workflowBody','workflowSubject','linkeditem','iframeurl','posturl','action','uuid','iframeaction','relatedlink']);
+		//$data = self::datastore($data,$arr['jsondata'],['workflowBody','workflowSubject','linkeditem','iframeurl','posturl','action','uuid','mid','iframeaction','relatedlink']);
 		$data = self::datastore($data,$arr['jsondata'],null);
 
 		require_once(theme_include('theme_init.php'));
@@ -1366,7 +1558,22 @@ logger("QUERY: ".$query);
 
 
 	public static function getmodal_createitem($arr,$data = []) {
-		//@todo: add permissions
+
+		if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) {
+			$hookinfo=[
+				'allow'=>false,
+				'arr'=>$arr,
+				'data'=>$data
+				];
+			call_hooks("workflow_permissions_getmodal_createitem",$hookinfo);
+			if (!$hookinfo['allow']) {
+				$contentvars=[];
+				$contentvars['content'] = replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
+			}
+		        return ['success'=>0, 'html' => replace_macros(get_markup_template('workflowmodal_skel.tpl','addon/workflow'), $contentvars)];
+			
+		}
+
 		$itemurl = '';
 
 	    	$uid = App::$profile_uid;
@@ -1416,7 +1623,24 @@ logger("QUERY: ".$query);
 		$objs=$newobjs;
 	}
 
-	private static function create_workflowitem($arr,$owner_portid = null) {
+	protected static function create_workflowitem($arr,$owner_portid = null) {
+		if (($owner_portid) && !($owner_portid == \App::$channel['channel_portable_id'])) {
+			return false;
+		}
+
+	    	$uid = App::$profile_uid;
+
+		if (!Apps::addon_app_installed($uid,'workflow')) { return false; }
+
+		$channelinfo = channelx_by_n($uid);
+
+		$data = self::maybeunjson($arr['datastore']);
+		$data = self::datastore($data,self::maybeunjson($arr['jsondata']),['workflowBody','workflowSubject','linkeditem','iframeurl','posturl']);
+		$data = self::datastore($data,$arr['jsondata'],['workflowBody','workflowSubject','linkeditem','iframeurl','posturl']);
+		return self::item_create($data,$owner_portid);
+	}
+
+	protected static function item_create($data,$owner_portid = null) {
 
 		if (($owner_portid) && !($owner_portid == \App::$channel['channel_portable_id'])) {
 			return false;
@@ -1427,22 +1651,24 @@ logger("QUERY: ".$query);
 		if (!Apps::addon_app_installed($uid,'workflow')) { return false; }
 
 		$channelinfo = channelx_by_n($uid);
-		$itemuuid = item_message_id();
-		$data = self::maybeunjson($arr['datastore']);
-		$data = self::datastore($data,self::maybeunjson($arr['jsondata']),['workflowBody','workflowSubject','linkeditem','iframeurl','posturl']);
-		$data = self::datastore($data,$arr['jsondata'],['workflowBody','workflowSubject','linkeditem','iframeurl','posturl']);
+		$itemuuid = item_message_id(); //Hubzilla
+		//$itemuuid = new_uuid(); //Zap
 		$mid = z_root().'/workflow/'.$channelinfo['channel_address'].'/display/'.$itemuuid;
+
+		$wfbody = (isset($data['workflowBody'])) ? $data['workflowBody'] : '';
+		$wfsubject = (isset($data['workflowSubject'])) ? $data['workflowSubject'] : 'Workflow Item';
+
 		$arr = [
 			'aid'=>$channelinfo['channel_account_id'],
 			'uid'=>$channelinfo['channel_id'],
         		'owner_xchan'=>$channelinfo['channel_hash'],
         		'author_xchan'=>get_observer_hash(),
 			'item_type'=>ITEM_TYPE_CUSTOM,
-			'body'=>$data['workflowBody'],
+			'body'=>$wfbody,
 			'item_nocomment'=>1,
 			'comment_policy'=>'contacts',
-			'comments_closed'=>'2001-01-01 00:00:01',
-			'title'=>($data['workflowSubject']) ? $data['workflowSubject'] : 'Workflow Item',
+			'comments_closed' => datetime_convert(),
+			'title'=>$wfsubject,
 			'uuid'=>$itemuuid,
 			'mid'=>$mid,
 			'llink'=>z_root().'/display/'.gen_link_id($mid),
@@ -1482,20 +1708,15 @@ logger("QUERY: ".$query);
 				$arr['deny_cid']=$hookinfo['deny_cid'];
 				$arr['deny_gid']=$hookinfo['deny_gid'];
 		}
-		//$r = q("select item.*, item.id as item_id from item where item.uid = %d and mid = '%s' limit 1",
-			//intval($uid),
-			//dbesc($item['report_mid']));
 
-		// fetch if we don't have it, then test if it was fetched
+		// @TODO: fetch "report item" if we don't have it, then test if it was fetched
 //
-		//if ($r) {
 		$reportinfo = [];
 		$arr['iconfig'][]=['cat'=>'workflow','k'=>'report_mid','v'=>$item['report_mid'],'sharing'=>1];
-		//}
 
 		$arr['iconfig'][]=['cat'=>'workflow','k'=>'creator_xchan','v'=>get_observer_hash(),'sharing'=>1];
 		if ($data['linkeditem']) {
-			$rlink = self::relate_link($uid,get_observer_hash(),null,$data['linkeditem'],'Precipitating Item',true);
+			$rlink = self::relate_link($uid,get_observer_hash(),null,$data['linkeditem'],['title'=>'Problem Report','notes'=>'Initial issue report'],true);
 			$arr['iconfig'][]=$rlink;
 		}
 
@@ -1515,7 +1736,12 @@ logger("QUERY: ".$query);
 
 		$arr['obj']=json_encode(self::encode_workflow_object($arr));
 
+		$post = false;
+
 		if ($owner_xchannel === null || $channel['channel_hash'] == $owner_xchannel) {
+
+			call_hooks("workflow_post_item",$arr);
+
 			$post = post_activity_item($arr,false,true);
 
 			if (!$post['success']) {
@@ -1523,12 +1749,13 @@ logger("QUERY: ".$query);
 			}
 			sync_an_item($uid,$post['item_id']);
 			Master::Summon([ 'Notifier','activity',$post['item_id'] ]);
+			
 		}
 
 		return $post;
 	}
 
-	private static function encode_workflow_object($item) {
+	protected static function encode_workflow_object($item) {
 
 
 		$json = [];
@@ -1629,19 +1856,32 @@ logger("QUERY: ".$query);
 		$extras .= '<h4 class="text-danger">Error creating post.</h4>';
 	}
 
-	public static function relate_link($itemowneruid,$observer,$itemuuid,$relatedlink,$notes='',$getarray=false) {
+	public static function relate_link($itemowneruid,$observer,$itemmid,$relatedlink,$linkparams=[],$getarray=false) {
 
-		if ((!perm_is_allowed($itemowneruid, $observer, 'workflow_user')) &&
-		    (!perm_is_allowed($itemowneruid, $observer, 'workflow_additems'))) {
-			return false;
+		if (!perm_is_allowed($itemowneruid, $observer, 'workflow_user')) {
+			$hookinfo=[
+				'allow'=>false,
+				'itemowneruid'=>$itemowneruid,
+				'observer'=>$observer,
+				'itemmid'=>$itemmid,
+				'relatedlink'=>$relatedlink,
+				'notes'=>(isset($linkparams['notes'])) ? $linkparams['notes'] : '',
+				'title'=>(isset($linkparams['title'])) ? $linkparams['title'] : '',
+				'getarray'=>$getarray
+				];
+			call_hooks("workflow_permissions_relate_link",$hookinfo);
+			if (!$hookinfo['allow']) {
+				return false;
+			}
 		}
 
+		$relatedlink = self::queryvars_stripzid($relatedlink);
 		$linkkey=md5($relatedlink);
 		$linkinfo = [
 			'relatedlink'=>$relatedlink,
 			'addedby'=>$observer,
-			'title'=>$title,
-			'notes'=>$notes
+			'notes'=>(isset($linkparams['notes'])) ? $linkparams['notes'] : '',
+			'title'=>(isset($linkparams['title'])) ? $linkparams['title'] : ''
 		];
 		$linkinfo = json_encode($linkinfo);
 
@@ -1650,13 +1890,13 @@ logger("QUERY: ".$query);
 		}
 
 		$items = q("select *,id as item_id from item where uid = %d and
-				uuid = '%s' %s limit 1",
+				mid = '%s' %s limit 1",
 					intval($itemowneruid),
-					dbesc($itemuuid),
+					dbesc($itemmid),
 					item_permissions_sql($itemowneruid,$observer)
 				);
 		if (!$items) {
-			logger("LINK FAILED: Can't find item: ".$itemuuid." linkdata:".$linkinfo,LOGGER_DEBUG);
+			logger("LINK FAILED: Can't find item: ".$itemmid." linkdata:".$linkinfo,LOGGER_DEBUG);
 			return false;
 		}
 
@@ -1689,7 +1929,7 @@ logger("QUERY: ".$query);
 		return true;
 	}
 
-	public static function refresh_item($observer,$uuid) {
+	public static function refresh_item($observer,$mid) {
 
 		$channel = \App::$channel;
 
@@ -1699,9 +1939,9 @@ logger("QUERY: ".$query);
 
 		$permsql = item_permissions_sql($channel['channel_id'],$observer);
 
-		$items = q("select *,id as item_id from item where uid = %d AND uuid = '%s' %s LIMIT 1",
+		$items = q("select *,id as item_id from item where uid = %d AND mid = '%s' %s LIMIT 1",
 			intval($channel['channel_id']),
-			dbesc($uuid),
+			dbesc($mid),
 			$permsql
 			);
 
@@ -1716,22 +1956,34 @@ logger("QUERY: ".$query);
 	}
 
 	public static function post_edittask($data) {
-		if ((!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user'))  &&
-		    (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_additems'))) {
-			echo replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
-			killme();
+		if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) {
+			$hookinfo=[
+				'allow'=>false,
+				'data'=>$data
+				];
+			call_hooks("workflow_permissions_post_edittask",$hookinfo);
+			if (!$hookinfo['allow']) {
+				echo replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
+				killme();
+			}
 		}
 
 	    	$uid = App::$profile_uid;
 		$channel = channelx_by_n(App::$profile_uid);
 
 		$uuid = $data['uuid'];
+		$mid = $data['mid'];
 		$observer = get_observer_hash();
 
-		$items = self::get_items(['uuid'=>$uuid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if(!$items) {
-			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to create/update relation.']);
+			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to update workflow item.']);
 		}
 
 		$items = fetch_post_tags($items);
@@ -1770,7 +2022,7 @@ logger("QUERY: ".$query);
 			$allow[] = $hash;
 		}
 		$items[0]['allow_cid'] = '<'.implode('><',$allow).'>';
-//logger("STORING: ".print_r($items[0],true));
+
 		unset($items[0]['owner']);
 		unset($items[0]['author']);
 
@@ -1784,24 +2036,36 @@ logger("QUERY: ".$query);
 	}
 
 	public static function post_addlink($data) {
-		if ((!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user'))  &&
-		    (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_additems'))) {
-			echo replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
-			killme();
+		if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user'))  {
+			$hookinfo=[
+				'allow'=>false,
+				'data'=>$data
+				];
+			call_hooks("workflow_permissions_post_addlink",$hookinfo);
+			if (!$hookinfo['allow']) {
+				echo replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
+				killme();
+			}
 		}
 
 	    	$uid = App::$profile_uid;
 		$channel = channelx_by_n(App::$profile_uid);
 
 		$uuid = $data['uuid'];
+		$mid = $data['mid'];
 		$observer = get_observer_hash();
 		$linktitle = $data['linktitle'];
 		$linknotes = $data['linknotes'];
 		$relatedlink = $data['relatedlink'];
 
+		$relatedlink = self::queryvars_stripzid($relatedlink);
 		$linkkey=md5($relatedlink);
 
-		$items = self::get_items(['uuid'=>$uuid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if(!$items) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to create/update relation.']);
@@ -1865,6 +2129,7 @@ logger("QUERY: ".$query);
 		$item = $hookinfo['item'];
 		$itemmeta = $hookinfo['itemmeta'];
 		$uuid = $hookinfo['uuid'];
+		$mid = $hookinfo['mid'];
 		$iframeurl = $hookinfo['iframeurl'];
 		$posturl = $hookinfo['posturl'];
 
@@ -1881,13 +2146,15 @@ logger("QUERY: ".$query);
 		}
 
                 $thismeta = '<b>Assigned:</b>';
-                $miscdata = json_encode(['action'=>'item_basiccontacts','uuid'=>$uuid,'iframeurl'=>$iframeurl]);
-                $thismeta .= "<a href='#' onclick='return false;' class='workflow-showmodal-iframe' data-posturl='".$posturl."' data-action='getmodal_getiframe' data-miscdata='".$miscdata."' data-toggle='tooltip' title='edit'><i class='fa fa-pencil'></i></a>";
+		if ($posturl && $iframeurl) {
+                	$miscdata = json_encode(['action'=>'item_basiccontacts','uuid'=>$uuid,'mid'=>$mid,'iframeurl'=>$iframeurl]);
+                	$thismeta .= "<a href='#' onclick='return false;' class='workflow-showmodal-iframe' data-posturl='".$posturl."' data-action='getmodal_getiframe' data-miscdata='".$miscdata."' data-toggle='tooltip' title='edit'><i class='fa fa-pencil'></i></a>";
+		}
  		$thismeta .= $contacts;
 
 		$newhookinfo['itemmeta'][] = [
 			'order' => 1,
-			'cols' => "col-xs-12 col-sm-6 col-md-3",
+			'cols' => "col-xs-12 col-sm-6 col-md-6",
 			'html'=> $thismeta
 		];
 
@@ -1906,13 +2173,19 @@ logger("QUERY: ".$query);
 		if ($data['iframeaction']!='item_basiccontacts' && $data['action']!='item_basiccontacts') { return; }
 
 		$uuid= isset($data['uuid']) ? $data['uuid'] : null;
-		if (!$uuid) {
+		$mid= isset($data['mid']) ? $data['mid'] : null;
+		if (!$mid) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to update meta information.']);
 		}
 
 		$step = isset($data['step']) ? $data['step'] : 'step1';
 
-		$items = self::get_items(['uuid'=>$uuid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if (!$items) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to create/update relation.']);
@@ -1927,6 +2200,7 @@ logger("QUERY: ".$query);
 		$content = '';
 
 		$content .= "<input type='hidden' name='uuid' value='".$uuid."'>\n";
+		$content .= "<input type='hidden' name='mid' value='".$mid."'>\n";
 		$content .= "<input type='hidden' name='iframeaction' value='".$action."'>\n";
 		$content .= "<input type='hidden' name='step' value='final'>\n";
 
@@ -2044,10 +2318,10 @@ logger("QUERY: ".$query);
 	public static function basicmeta_meta_display(&$hookinfo) {
 
 		$newhookinfo = $hookinfo;
-
 		$item = $hookinfo['item'];
 		$itemmeta = $hookinfo['itemmeta'];
 		$uuid = $hookinfo['uuid'];
+		$mid = $hookinfo['mid'];
 		$iframeurl = $hookinfo['iframeurl'];
 		$posturl = $hookinfo['posturl'];
 
@@ -2055,12 +2329,14 @@ logger("QUERY: ".$query);
 		$itempriority = IConfig::Get($item,'workflow','priority',1);
 
                 $thismeta = 'Status: '.$itemstatus.' (Priority: '.$itempriority.')';
-                $miscdata = json_encode(['action'=>'item_basicmeta','uuid'=>$uuid,'iframeurl'=>$iframeurl]);
-                $thismeta .= "<a href='#' onclick='return false;' class='workflow-showmodal-iframe' data-posturl='".$posturl."' data-action='getmodal_getiframe' data-miscdata='".$miscdata."' data-toggle='tooltip' title='edit'><i class='fa fa-pencil'></i></a>";
+		if ($posturl && $iframeurl) {
+                	$miscdata = json_encode(['action'=>'item_basicmeta','uuid'=>$uuid,'mid'=>$mid,'iframeurl'=>$iframeurl]);
+                	$thismeta .= "<a href='#' onclick='return false;' class='workflow-showmodal-iframe' data-posturl='".$posturl."' data-action='getmodal_getiframe' data-miscdata='".$miscdata."' data-toggle='tooltip' title='edit'><i class='fa fa-pencil'></i></a>";
+		}
 
 		$newhookinfo['itemmeta'][] = [
 			'order' => 1,
-			'cols' => "col-xs-12 col-sm-6 col-md-3",
+			'cols' => "col-xs-12 col-sm-6 col-md-6",
 			'html'=> $thismeta
 		];
 
@@ -2080,13 +2356,19 @@ logger("QUERY: ".$query);
 		if ($data['iframeaction']!='item_basicmeta' && $data['action']!='item_basicmeta') { return; }
 
 		$uuid= isset($data['uuid']) ? $data['uuid'] : null;
-		if (!$uuid) {
+		$mid= isset($data['mid']) ? $data['mid'] : null;
+		if (!$mid) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to update meta information.']);
 		}
 
 		$step = isset($data['step']) ? $data['step'] : 'step1';
 
-		$items = self::get_items(['uuid'=>$uuid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if (!$items) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to create/update relation.']);
@@ -2101,6 +2383,7 @@ logger("QUERY: ".$query);
 		$content = '';
 
 		$content .= "<input type='hidden' name='uuid' value='".$uuid."'>\n";
+		$content .= "<input type='hidden' name='mid' value='".$mid."'>\n";
 		$content .= "<input type='hidden' name='iframeaction' value='".$action."'>\n";
 		$content .= "<input type='hidden' name='step' value='final'>\n";
 
@@ -2180,6 +2463,7 @@ logger("QUERY: ".$query);
 
 	public static function update_item($item) {
 
+			$observer = get_observer_hash();
 			$items = [$item];
 
 			$items[0]['revision']++;
@@ -2227,8 +2511,10 @@ logger("QUERY: ".$query);
 			json_return_and_die(['html'=>'<h2>Workflow addon not installed.</h2>']);
 		}
 
+		$uid = App::$profile_uid;
 		$uuid= isset($data['uuid']) ? $data['uuid'] : null;
-		if (!$uuid) {
+		$mid= isset($data['mid']) ? $data['mid'] : null;
+		if (!$mid) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to add a link.']);
 		}
 
@@ -2236,15 +2522,22 @@ logger("QUERY: ".$query);
 		$action = "form_addlink";
 		$content = '';
 		$relatedlink = isset($data['relatedlink']) ? $data['relatedlink'] : '';
+		$relatedlink = self::queryvars_stripzid($relatedlink);
 		$linkkey=md5($relatedlink);
 
-		$items = self::get_items(['uuid'=>$uuid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if (!$items) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to create/update relation.']);
 		}
 
 		$content .= "<input type='hidden' name='uuid' value='".$uuid."'>\n";
+		$content .= "<input type='hidden' name='mid' value='".$mid."'>\n";
 		$content .= "<input type='hidden' name='iframeaction' value='form_addlink'>\n";
 
 		if ($relatedlink) {
@@ -2311,8 +2604,10 @@ logger("QUERY: ".$query);
 			json_return_and_die(['html'=>'<h2>Workflow addon not installed.</h2>']);
 		}
 
+		$uid= App::$profile_uid;
 		$uuid= isset($data['uuid']) ? $data['uuid'] : null;
-		if (!$uuid) {
+		$mid= isset($data['mid']) ? $data['mid'] : null;
+		if (!$mid) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to add a link.']);
 		}
 
@@ -2321,13 +2616,19 @@ logger("QUERY: ".$query);
 
 		$content = '';
 
-		$items = self::get_items(['uuid'=>$uuid],get_observer_hash(),false);
+		$searchvars = [
+			'uid' => $uid,
+			'mid' => $mid
+		];
+
+		$items = self::get_items($searchvars,get_observer_hash(),false);
 
 		if (!$items) {
 			json_return_and_die(['html'=>'<h2>Item not found.</h2>Unable to create/update relation.']);
 		}
 
 		$content .= "<input type='hidden' name='uuid' value='".$uuid."'>\n";
+		$content .= "<input type='hidden' name='mid' value='".$mid."'>\n";
 		$content .= "<input type='hidden' name='iframeaction' value='form_edittask'>\n";
 
 		if ($data['step']=='final'){
@@ -2360,16 +2661,26 @@ logger("QUERY: ".$query);
 
 	public static function basic_form($formname,$action,$content,$returntext=false,$data=[]) {
 		//@todo: add permissions
-	 	if ((!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) &&
-	 	    (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_additems'))) {
-			if ($returntext) {
-				return replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
-			}
-			if ($returntext) {
-				return replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
-			}  else {
-				echo replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
-				killme();
+	 	if (!perm_is_allowed(App::$profile_uid,get_observer_hash(),'workflow_user')) {
+			$hookinfo=[
+				'allow'=>false,
+				'formname'=>$formname,
+				'action'=>$action,
+				'content'=>$content,
+				'returntext'=>$returntext,
+				'data'=>$data
+				];
+			call_hooks("workflow_permissions_basic_form",$hookinfo);
+			if (!$hookinfo['allow']) {
+				if ($returntext) {
+					return replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
+				}
+				if ($returntext) {
+					return replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
+				}  else {
+					echo replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
+					killme();
+				}
 			}
 
 		}
@@ -2405,7 +2716,7 @@ logger("QUERY: ".$query);
 		killme();
 	}
 
-	public static function update($observer,$uuid,$data) {
+	public static function update($observer,$mid,$data) {
 		// Submit updates and queue item to send updates
 		// Return updated version
 
@@ -2417,9 +2728,9 @@ logger("QUERY: ".$query);
 
 		$permsql = item_permissions_sql($channel['channel_id'],$observer);
 
-		$orig = q("select *,id as item_id from item where uid = %d AND uuid = '%s' %s LIMIT 1",
+		$orig = q("select *,id as item_id from item where uid = %d AND mid = '%s' %s LIMIT 1",
 			intval($channel['channel_id']),
-			dbesc($uuid),
+			dbesc($mid),
 			$permsql
 			);
 
@@ -2464,14 +2775,16 @@ logger("QUERY: ".$query);
 					}
 					break;
 				case 'addrelation':
+					$updated = 1;
+					$relatedlink=$update['relatedlink'];
+					$relatedlink = self::queryvars_stripzid($relatedlink);
 					$updatedetails[]=[
 						'action' => $parameter,
-						'details' => ['link'=>$update['relatedlink']]
+						'details' => ['link'=>$relatedlink]
 					];
-					$updated = 1;
-					$linkkey=md5($update['relatedlink']);
+					$linkkey=md5($relatedlink);
 					$linkinfo = [
-						'relatedlink'=>$update['relatedlink'],
+						'relatedlink'=>$relatedlink,
 						'addedby'=>$observer,
 						'title'=>$update['title'],
 						'notes'=>$update['notes']
@@ -2537,7 +2850,7 @@ logger("QUERY: ".$query);
 		Master::Summon([ 'Notifier','activity',$itemstore['item_id'] ]);
 	}
 
-	private static function datastore($datastore,$requestdata,$parameters=[]) {
+	protected static function datastore($datastore,$requestdata,$parameters=[]) {
 
 		$dskeys = is_array($datastore) ? array_keys($datastore) : [];
 		$rdkeys = is_array($requestdata) ? array_keys($requestdata) : [];
@@ -2554,7 +2867,6 @@ logger("QUERY: ".$query);
 	}
 
 	public static function json_receiver($requestdata) {
-
 
 		if (!App::$profile_uid) {
 			App::$error = 400;
@@ -2574,33 +2886,33 @@ logger("QUERY: ".$query);
 
 		header("Access-Control-Allow-Origin: *");
 
-		switch ($action) {
-			case 'update':
-				$uuid = (isset($requestdata['uuid'])) ? $requestdata['uuid'] : null;
-				if (!$uuid) {
-					App::$error = 400;
-					return ['error'=>150,'errmsg'=>'Update missing UUID'];
-				}
-				$data = self::maybeunjson($requestdata['jsondata']);
-				self::update(App::$profile_uid,$requestdata['observer'],$data);
-				break;
-			case 'getmodal_getiframe':
-				return self::getmodal_getiframe($requestdata);
-				break;
-			case 'getmodal_linkiframe':
-				return self::getmodal_linkiframe($requestdata['url']);
-				break;
+                switch ($action) {
+                        case 'update':
+                                $mid = (isset($requestdata['mid'])) ? $requestdata['mid'] : null;
+                                if (!$mid) {
+                                        App::$error = 400;
+                                        return ['error'=>150,'errmsg'=>'Update missing UUID'];
+                                }
+                                $data = self::maybeunjson($requestdata['jsondata']);
+                                self::update($requestdata['observer'],$mid,$data);
+                                break;
+                        case 'getmodal_getiframe':
+                                return self::getmodal_getiframe($requestdata);
+                                break;
+                        case 'getmodal_linkiframe':
+                                return self::getmodal_linkiframe($requestdata['url']);
+                                break;
 
-			case 'getmodal_getiframecontent':
-				return self::getmodal_getiframecontent($requestdata);
-				break;
+                        case 'getmodal_getiframecontent':
+                                return self::getmodal_getiframecontent($requestdata);
+                                break;
 
-			case 'getmodal_createitem':
-				return self::getmodal_createitem($requestdata);
-				break;
+                        case 'getmodal_createitem':
+                                return self::getmodal_createitem($requestdata);
+                                break;
 
-			case 'newitem':
-				if (!$item=self::create_workflowitem($requestdata)) {
+                        case 'newitem':
+                                if (!$item=self::create_workflowitem($requestdata)) {
 					Hook::insert('workflow_create_item_extras','Workflow_Utils::posterror',1,30000);
 					return self::getmodal_createitem($requestdata);
 				}
@@ -2608,16 +2920,72 @@ logger("QUERY: ".$query);
 				json_return_and_die(['success'=>1,'html'=>'Item Created.<br><a href="#" onclick="window.open(\''.$item['activity']['plink'].'\');">Go to item</a>']);
 				break;
 
+			case 'reload_wfitem':
+				self::reload_wfitem(self::maybeunjson($requestdata));
+				break;
+
 			default:
+				$safeaction = preg_replace('[^A-Za-z0-9\_]','',$action);
+				$hookinfo = [
+					'success' => false,
+					'error' => '',
+					'requestdata'=>$requestdata
+				];
+				call_hooks("workflow_jsonreceiver_".$safeaction,$hookinfo);
+				if ($hookinfo['success']) {
+					break;
+				}
 				App::$error = 400;
 				return ['error'=>100,'errmsg'=>'No valid action'];
 		}
 
 	}
 
+	public static function reload_wfitem($requestdata) {
+
+                $uid = App::$profile_uid;
+		$channel = channelx_by_n($uid);
+		$jsondata = self::maybeunjson($requestdata['jsondata']);
+
+		$searchvars = [
+			'uid'=>$uid,
+			'id'=>$jsondata['itemid']
+		];
+
+		$wfitems = self::get_items($searchvars,get_observer_hash());
+		$wfitems = fetch_post_tags($wfitems);
+
+		$iframeurl = '/workflow/'.$channel['channel_address'];
+		$posturl = $iframeurl;
+
+		Hook::insert('dm42workflow_meta_display','Workflow_Utils::basicmeta_meta_display',1,30000);
+		Hook::insert('dm42workflow_meta_display','Workflow_Utils::contact_meta_display',1,30000);
+
+		$body=prepare_body($wfitems[0],true);
+
+		$uuid=$jsondata['uuid'];
+		$mid=$jsondata['mid'];
+		//$itemmeta=self::get_itemmeta_html($wfitems[0],$uuid,$iframeurl,$posturl,$wfitems[0]['mid']);
+		$itemmeta='';
+
+		$html = replace_macros(get_markup_template('workflow_display_wfitemdata.tpl','addon/workflow'), [
+			'$items' => $wfitems,
+			'$itemmeta' => $itemmeta,
+			'$body' => $body,
+			'$uuid' => $uuid,
+			'$mid' => $mid,
+			'$posturl' => $posturl,
+			'$addlinkaction'=>'getmodal_getiframe',
+			'$edittaskjsondata' => json_encode(['action'=>'form_edittask','uuid'=>$uuid,'mid'=>$mid,'iframeurl'=>$iframeurl])
+			]
+		);
+
+		json_return_and_die(['success'=>1,'html'=>$html]);
+	}
+
         public static function page_header(&$header) {
-                $id = App::$profile_uid;
-                if (!$id) { return; }
+                $uid = (App::$profile_uid) ? App::$profile_uid : local_channel();
+                if (!$uid) { return; }
 
 		if (!Apps::addon_app_installed($uid,'workflow')) { return; }
 
@@ -2638,7 +3006,7 @@ logger("QUERY: ".$query);
         }
 
         public static function page_end(&$footer) {
-                $uid = App::$profile_uid;
+                $uid = (App::$profile_uid) ? App::$profile_uid : local_channel();
                 if (!$uid) { return; }
 		if (!Apps::addon_app_installed($uid,'workflow')) { return; }
 		$footer .= replace_macros(get_markup_template('workflow_footer.tpl','addon/workflow'), [
