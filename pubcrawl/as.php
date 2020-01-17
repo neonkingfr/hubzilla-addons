@@ -1470,8 +1470,14 @@ function as_create_note($channel,$observer_hash,$act) {
 		}
 	}
 
-	if($act->recips && (! in_array(ACTIVITY_PUBLIC_INBOX,$act->recips)))
+	if ($act->recips && (! in_array(ACTIVITY_PUBLIC_INBOX,$act->recips)))
 		$s['item_private'] = 1;
+
+	if (is_array($act->data)) {
+		if (array_key_exists('directMessage',$act->data) && intval($act->data['directMessage'])) {
+			$s['item_private'] = 2;
+		}
+	}
 
 	set_iconfig($s,'activitypub','recips',$act->raw_recips);
 	if($parent) {
