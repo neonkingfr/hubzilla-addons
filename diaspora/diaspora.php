@@ -1210,6 +1210,7 @@ function diaspora_queue_deliver(&$b) {
 					dbesc($base)
 				);
 			}
+
 			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s'",
 				dbesc('accepted for delivery'),
 				dbescdate(datetime_convert()),
