@@ -432,7 +432,6 @@ function asdecode_attachment($item) {
 
 	if($item['attachment']) {
 		foreach($item['attachment'] as $att) {
-
 			$entry = [];
 			if($att['href'])
 				$entry['href'] = $att['href'];
