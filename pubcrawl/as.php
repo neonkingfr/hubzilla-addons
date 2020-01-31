@@ -441,6 +441,8 @@ function asdecode_attachment($item) {
 				$entry['type'] = $att['mediaType'];
 			elseif($att['type'] === 'Image')
 				$entry['type'] = 'image/jpeg';
+			if($att['name'])
+				$entry['name'] = $att['name'];
 			if($entry)
 				$ret[] = $entry;
 		}
@@ -1823,7 +1825,10 @@ function as_bb_attach($attach) {
 
 	foreach($attach as $a) {
 		if(strpos($a['type'],'image') !== false) {
-			$ret .= '[img]' . $a['href'] . '[/img]' . "\n\n";
+			if($a['name'])
+				$ret .= '[img=' . $a['href'] . ']' . $a['name'] . '[/img]' . "\n\n";
+			else
+				$ret .= '[img]' . $a['href'] . '[/img]' . "\n\n";
 		}
 		if(array_key_exists('type',$a) && strpos($a['type'], 'video') === 0) {
 			$ret .= '[video]' . $a['href'] . '[/video]' . "\n\n";
