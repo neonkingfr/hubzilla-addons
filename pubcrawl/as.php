@@ -432,6 +432,7 @@ function asdecode_attachment($item) {
 
 	if($item['attachment']) {
 		foreach($item['attachment'] as $att) {
+
 			$entry = [];
 			if($att['href'])
 				$entry['href'] = $att['href'];
@@ -442,7 +443,7 @@ function asdecode_attachment($item) {
 			elseif($att['type'] === 'Image')
 				$entry['type'] = 'image/jpeg';
 			if($att['name'])
-				$entry['name'] = $att['name'];
+				$entry['name'] = htmlentities($att['name'], ENT_COMPAT, 'UTF-8');
 			if($entry)
 				$ret[] = $entry;
 		}
