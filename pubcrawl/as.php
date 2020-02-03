@@ -441,6 +441,8 @@ function asdecode_attachment($item) {
 				$entry['type'] = $att['mediaType'];
 			elseif($att['type'] === 'Image')
 				$entry['type'] = 'image/jpeg';
+			if($att['name'])
+				$entry['name'] = htmlentities($att['name'], ENT_COMPAT, 'UTF-8');
 			if($entry)
 				$ret[] = $entry;
 		}
@@ -512,15 +514,16 @@ function asencode_activity($i) {
 			$ret['target'] = $tgt;
 	}
 
+ 	if(array_path_exists('object/type',$ret) && $ret['object']['type'] === 'Event' && $ret['type'] === 'Create') {
+		$ret['type'] = 'Invite';
+	}
+
 	if($i['mid'] != $i['parent_mid']) {
 		$reply = true;
 
-		// inReplyTo needs to be set in the activity for followup actions (Like, Dislike, Attend, Announce, etc.),
-		// but *not* for comments, where it should only be present in the object
-		if (! in_array($ret['type'],[ 'Create','Update' ])) {
+		if (! in_array($ret['type'],[ 'Create','Update','Accept','Reject','TentativeAccept','TentativeReject' ])) {
 			$ret['inReplyTo'] = ((strpos($i['thr_parent'],'http') === 0) ? $i['thr_parent'] : z_root() . '/item/' . urlencode($i['thr_parent']));
 		}
-
 		$recips = get_iconfig($i['parent'], 'activitypub', 'recips');
 	}
 
@@ -1470,8 +1473,14 @@ function as_create_note($channel,$observer_hash,$act) {
 		}
 	}
 
-	if($act->recips && (! in_array(ACTIVITY_PUBLIC_INBOX,$act->recips)))
+	if ($act->recips && (! in_array(ACTIVITY_PUBLIC_INBOX,$act->recips)))
 		$s['item_private'] = 1;
+
+	if (is_array($act->data)) {
+		if (array_key_exists('directMessage',$act->data) && intval($act->data['directMessage'])) {
+			$s['item_private'] = 2;
+		}
+	}
 
 	set_iconfig($s,'activitypub','recips',$act->raw_recips);
 	if($parent) {
@@ -1816,7 +1825,10 @@ function as_bb_attach($attach) {
 
 	foreach($attach as $a) {
 		if(strpos($a['type'],'image') !== false) {
-			$ret .= '[img]' . $a['href'] . '[/img]' . "\n\n";
+			if($a['name'])
+				$ret .= '[img=' . $a['href'] . ']' . $a['name'] . '[/img]' . "\n\n";
+			else
+				$ret .= '[img]' . $a['href'] . '[/img]' . "\n\n";
 		}
 		if(array_key_exists('type',$a) && strpos($a['type'], 'video') === 0) {
 			$ret .= '[video]' . $a['href'] . '[/video]' . "\n\n";

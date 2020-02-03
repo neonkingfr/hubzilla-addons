@@ -828,7 +828,7 @@ function diaspora_post_local(&$item) {
 
 				$rawobj = ((is_array($item['obj'])) ? $item['obj'] : json_decode($item['obj'],true));
 				if($rawobj) {
-					$ev = bbtoevent($rawobj);
+					$ev = bbtoevent($rawobj['content']);
 					if($ev && $ev['hash'] && defined('DIASPORA_V2')) {
 						$meta = [
 							'author'      => $handle,
@@ -1210,6 +1210,7 @@ function diaspora_queue_deliver(&$b) {
 					dbesc($base)
 				);
 			}
+
 			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s'",
 				dbesc('accepted for delivery'),
 				dbescdate(datetime_convert()),
