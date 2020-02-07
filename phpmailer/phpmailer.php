@@ -86,9 +86,11 @@ function phpmailer_email_send(&$x) {
 	 *  * \e string \b additionalMailHeader  additions to the smtp mail header
 	 */
 
-	require_once('addon/phpmailer/PHPMailerAutoload.php');
+	require_once('addon/phpmailer/PHPMailer/src/Exception.php');
+	require_once('addon/phpmailer/PHPMailer/src/PHPMailer.php');
+	require_once('addon/phpmailer/PHPMailer/src/SMTP.php');
 
-	$mail = new PHPMailer;
+	$mail = new \PHPMailer\PHPMailer\PHPMailer;
 
 	$s = intval(get_config('phpmailer','smtpdebug'));
 	if($s) {
