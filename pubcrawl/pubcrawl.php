@@ -436,7 +436,7 @@ function pubcrawl_channel_mod_init($x) {
 		if(! $chan)
 			http_status_exit(404, 'Not found');
 
-		if(! Apps::addon_app_installed($chan['channel_id'],'pubcrawl'))
+		if(! Apps::addon_app_installed($chan['channel_id'],'pubcrawl') && argv(1) !== 'sys')
 			http_status_exit(404, 'Not found');
 
 		$y = asencode_person($chan);
