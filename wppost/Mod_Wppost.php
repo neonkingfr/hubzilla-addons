@@ -24,6 +24,7 @@ class Wppost extends Controller {
 		set_pconfig(local_channel(),'wppost','wp_password',z_obscure(trim($_POST['wp_password'])));
 		set_pconfig(local_channel(),'wppost','wp_blog',trim($_POST['wp_blog']));
 		set_pconfig(local_channel(),'wppost','forward_comments',trim($_POST['wp_forward_comments']));
+		set_pconfig(local_channel(),'wppost','post_source_url',intval($_POST['wp_source_url']));
 
 		info( t('Wordpress Settings saved.') . EOL);
 
@@ -84,6 +85,10 @@ class Wppost extends Controller {
 
 		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
 			'$field'	=> array('wp_forward_comments', t('Forward comments (requires hubzilla_wp plugin)'), $fwd_checked, '', array(t('No'),t('Yes'))),
+		));
+
+		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
+			'$field'	=> array('wp_source_url', t('Add link to original post'), (get_pconfig(local_channel(),'wppost','post_source_url') ? 1 : false), '', array(t('No'),t('Yes'))),
 		));
 
 		$tpl = get_markup_template("settings_addon.tpl");
