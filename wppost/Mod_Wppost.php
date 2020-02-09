@@ -25,6 +25,7 @@ class Wppost extends Controller {
 		set_pconfig(local_channel(),'wppost','wp_blog',trim($_POST['wp_blog']));
 		set_pconfig(local_channel(),'wppost','forward_comments',trim($_POST['wp_forward_comments']));
 		set_pconfig(local_channel(),'wppost','post_source_url',intval($_POST['wp_source_url']));
+		set_pconfig(local_channel(),'wppost','post_source_urltext',trim($_POST['wp_source_urltext']));
 
 		info( t('Wordpress Settings saved.') . EOL);
 
@@ -58,7 +59,9 @@ class Wppost extends Controller {
 		$wp_password = z_unobscure(get_pconfig(local_channel(), 'wppost', 'wp_password'));
 		$wp_blog = get_pconfig(local_channel(), 'wppost', 'wp_blog');
 		$wp_blogid = get_pconfig(local_channel(), 'wppost', 'wp_blogid');
-
+		$url_enabled = get_pconfig(local_channel(),'wppost','post_source_url');
+		$url_checked = (($url_enabled) ? 1 : false);
+		$wp_source_urltext = get_pconfig(local_channel(), 'wppost', 'post_source_urltext');
 
 		/* Add some HTML to the existing form */
 
@@ -89,6 +92,11 @@ class Wppost extends Controller {
 
 		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
 			'$field'	=> array('wp_source_url', t('Add link to original post'), (get_pconfig(local_channel(),'wppost','post_source_url') ? 1 : false), '', array(t('No'),t('Yes'))),
+		));
+
+		$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
+			'$field'	=> array('wp_source_urltext', t('Link description'), $wp_source_urltext,
+						 t('Default "Originally posted on Hubzilla"'))
 		));
 
 		$tpl = get_markup_template("settings_addon.tpl");

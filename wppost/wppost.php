@@ -160,8 +160,14 @@ function wppost_send(&$b) {
 		require_once('include/bbcode.php');
 
 		$post = $b['body'];
-		if(get_pconfig($b['uid'],'wppost','post_source_url'))
-			$post .= "\n\n" . t('[url=') . $b['plink'] . t(']Source[/url]');
+
+		if(get_pconfig($b['uid'],'wppost','post_source_url')) {
+			if(get_pconfig($b['uid'],'wppost','post_source_urltext'))
+				$urltext = get_pconfig($b['uid'],'wppost','post_source_urltext');
+			else
+				$urltext = 'Originally posted on Hubzilla';
+			$post .= "\n\n" . t('[url=') . $b['plink'] . t(']') . $urltext . t('[/url]');
+		}
 
 		$data = array(
 			'post_title'     => trim($b['title']),
