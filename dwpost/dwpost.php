@@ -121,8 +121,16 @@ function dwpost_send(&$a,&$b) {
 
 		// Replace URL bookmark
 		$post = trim(str_replace("#^[", "&#128279 [", $b['body']));
-		if(get_pconfig($b['uid'],'dwpost','post_source_url'))
-			$post .= "\n\n" . t('[url=') . $b['plink'] . t(']Source[/url]');
+
+		// Add source URL
+		if(get_pconfig($b['uid'],'dwpost','post_source_url')) {
+			if(get_pconfig($b['uid'],'dwpost','post_source_urltext'))
+				$urltext = get_pconfig($b['uid'],'dwpost','post_source_urltext');
+			else
+				$urltext = 'Originally posted on Hubzilla';
+			$post .= "\n\n" . t('[url=') . $b['plink'] . t(']') . $urltext . t('[/url]');
+		}
+
 		$post = bbcode($post);
 		$post = xmlify($post);
 		$tags = dwpost_get_tags($b['tag']);

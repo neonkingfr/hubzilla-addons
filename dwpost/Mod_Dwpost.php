@@ -22,6 +22,7 @@ class Dwpost extends Controller {
 		set_pconfig(local_channel(),'dwpost','dw_password',z_obscure(trim($_POST['dw_password'])));
 		set_pconfig(local_channel(),'dwpost','post_by_default',intval($_POST['dw_by_default']));
 		set_pconfig(local_channel(),'dwpost','post_source_url',intval($_POST['dw_source_url']));
+		set_pconfig(local_channel(),'dwpost','post_source_urltext',trim($_POST['dw_source_urltext']));
 		info( t('Dreamwidth Crosspost Connector Settings saved.') . EOL);
 	}
 
@@ -44,7 +45,7 @@ class Dwpost extends Controller {
 		$dwpost_on = get_pconfig(local_channel(),'dwpost','post_by_default');
 		$dw_username = get_pconfig(local_channel(), 'dwpost', 'dw_username');
 		$dw_password = z_unobscure(get_pconfig(local_channel(), 'dwpost', 'dw_password'));
-
+		$dw_source_urltext = get_pconfig(local_channel(), 'dwpost', 'post_source_urltext');
 
 		/* Add some HTML to the existing form */
 
@@ -62,6 +63,10 @@ class Dwpost extends Controller {
 
 		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), array(
 			'$field'	=> array('dw_source_url', t('Add link to original post'), (get_pconfig(local_channel(),'dwpost','post_source_url') ? 1 : false), '', array(t('No'),t('Yes'))),
+		));
+
+		$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
+			'$field'	=> array('dw_source_urltext', t('Link description (default: "Originally posted on Hubzilla")'), $dw_source_urltext, '')
 		));
 
 		$tpl = get_markup_template("settings_addon.tpl");
