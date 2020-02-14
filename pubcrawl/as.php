@@ -1409,7 +1409,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	}
 
 	if($parent) {
-		$p = q("select parent_mid, owner_xchan from item where mid = '%s' and uid = %d limit 1",
+		$p = q("select parent_mid, owner_xchan, obj_type from item where mid = '%s' and uid = %d limit 1",
 			dbesc($s['parent_mid']),
 			intval($s['uid'])
 		);
@@ -1439,6 +1439,13 @@ function as_create_note($channel,$observer_hash,$act) {
 				// $s['thr_parent'] = $s['mid'];
 			}
 		}
+
+		if ($p[0]['obj_type'] === 'Question') {
+			if ($s['obj_type'] === ACTIVITY_OBJ_NOTE && $s['title'] && (! $s['body'])) {
+				$s['obj_type'] = 'Answer';
+			}
+		}
+
 		if($p[0]['parent_mid'] !== $s['parent_mid']) {
 			$s['thr_parent'] = $s['parent_mid'];
 		}
