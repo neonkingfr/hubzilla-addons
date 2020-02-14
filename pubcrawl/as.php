@@ -1261,7 +1261,6 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s = [];
 
 	$announce = (($act->type === 'Announce') ? true  : false);
-	$poll = (($act->obj['type'] === 'Question') ? true  : false);
 
 	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
 	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
@@ -1359,8 +1358,8 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s['title']    = as_bb_content($content,'name');
 	$s['body']     = $summary . as_bb_content($content,'content');
 	$s['verb']     = (($announce) ? ACTIVITY_SHARE : ACTIVITY_POST);
-	$s['obj_type'] = (($poll) ? 'Question' : ACTIVITY_OBJ_NOTE);
-	$s['obj']      = (($poll) ? $act->obj : '');
+	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
+	$s['obj']      = '';
 	$s['app']      = t('ActivityPub');
 
 	if($act->obj['type'] === 'Event') {
@@ -1369,6 +1368,12 @@ function as_create_note($channel,$observer_hash,$act) {
 			$s['obj_type'] = ACTIVITY_OBJ_EVENT;
 		}
 	}
+
+	if($act->obj['type'] === 'Question') {
+		$s['obj_type'] = 'Question';
+		$s['obj'] = $act->obj;
+	}
+
 
 	if($channel['channel_system']) {
 		if(! \Zotlabs\Lib\MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
