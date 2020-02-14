@@ -24,7 +24,7 @@ function asencode_object($x) {
 		return asfetch_profile($x); 
 	}
 
-	if($x['type'] === ACTIVITY_OBJ_NOTE) {
+	if(in_array($x['type'], [ ACTIVITY_OBJ_NOTE, 'Question' ])) {
 		return asfetch_item($x); 
 	}
 
@@ -158,8 +158,6 @@ function asfetch_thing($x) {
 
 function asfetch_item($x) {
 
-hz_syslog(print_r($x,true));
-
 	$r = q("select * from item where mid = '%s' limit 1",
 		dbesc($x['id'])
 	);
@@ -250,6 +248,23 @@ function asencode_item($i) {
 		$ret['type'] = 'Note';
 	else
 		$ret['type'] = 'Article';
+
+	if($i['obj_type'] === 'Question') {
+		$ret['type'] = 'Question';
+
+		if ($i['obj']) {
+			if (is_array($i['obj'])) {
+				$ret = $i['obj'];
+			}
+			else {
+				$ret = json_decode($i['obj'],true);
+			}
+
+			if(array_path_exists('actor/id',$ret)) {
+				$ret['actor'] = $ret['actor']['id'];
+			}
+		}
+	}
 
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
 
@@ -587,7 +602,7 @@ function asencode_activity($i) {
 		$ret['to'] = (($ret['to']) ? array_merge($ret['to'],$mentions) : $mentions);
 	}
 
-	if(in_array($ret['object']['type'], [ 'Note', 'Article' ])) {
+	if(in_array($ret['object']['type'], [ 'Note', 'Article', 'Question' ])) {
 		if(isset($ret['to']))
 			$ret['object']['to'] = $ret['to'];
 		if(isset($ret['cc']))
