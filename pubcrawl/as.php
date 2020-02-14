@@ -158,6 +158,8 @@ function asfetch_thing($x) {
 
 function asfetch_item($x) {
 
+hz_syslog(print_r($x,true));
+
 	$r = q("select * from item where mid = '%s' limit 1",
 		dbesc($x['id'])
 	);
@@ -1216,7 +1218,7 @@ function as_actor_store($url,$person_obj) {
 
 function as_create_action($channel,$observer_hash,$act) {
 
-	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video', 'Image', 'Event' ])) {
+	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video', 'Image', 'Event', 'Question' ])) {
 		as_create_note($channel,$observer_hash,$act);
 	}
 
@@ -1259,6 +1261,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s = [];
 
 	$announce = (($act->type === 'Announce') ? true  : false);
+	$poll = (($act->obj['type'] === 'Question') ? true  : false);
 
 	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
 	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
@@ -1356,7 +1359,8 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s['title']    = as_bb_content($content,'name');
 	$s['body']     = $summary . as_bb_content($content,'content');
 	$s['verb']     = (($announce) ? ACTIVITY_SHARE : ACTIVITY_POST);
-	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
+	$s['obj_type'] = (($poll) ? 'Question' : ACTIVITY_OBJ_NOTE);
+	$s['obj']      = (($poll) ? $act->obj : '');
 	$s['app']      = t('ActivityPub');
 
 	if($act->obj['type'] === 'Event') {
