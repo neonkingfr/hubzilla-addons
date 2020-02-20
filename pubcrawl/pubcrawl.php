@@ -16,7 +16,6 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 use Zotlabs\Lib\ActivityStreams;
-use Zotlabs\Lib\Activity;
 use Zotlabs\Web\HTTPSig;
 
 require_once('addon/pubcrawl/as.php');
@@ -113,7 +112,7 @@ function pubcrawl_post_local_end(&$x) {
 
 	$channel = channelx_by_hash($item[0]['author_xchan']);
 
-	$s = Activity::encode_activity($item[0]);
+	$s = asencode_activity($item[0]);
 
 	$msg = array_merge(['@context' => [
 			ACTIVITYSTREAMS_JSONLD_REV,
@@ -409,7 +408,7 @@ function pubcrawl_activity_mod_init($x) {
 			ACTIVITYSTREAMS_JSONLD_REV,
 			'https://w3id.org/security/v1',
 			z_root() . ZOT_APSCHEMA_REV
-			]], Activity::encode_activity($items[0]));
+			]], asencode_activity($items[0]));
 
 
 		$headers = [];
@@ -594,7 +593,7 @@ function pubcrawl_notifier_hub(&$arr) {
 	}
 
 	if($target_item && !$signed_msg) {
-		$ti = Activity::encode_activity($target_item);
+		$ti = asencode_activity($target_item);
 		if(! $ti)
 			return;
 
@@ -1098,7 +1097,7 @@ function pubcrawl_item_mod_init($x) {
 
 		// Wrong object type
 
-		if(! in_array(activity_obj_mapper($items[0]['obj_type']), [ 'Note', 'Article', 'Question' ])) {
+		if(! in_array(activity_obj_mapper($items[0]['obj_type']), [ 'Note', 'Article' ])) {
 			http_status_exit(418, "I'm a teapot"); 
 		}
 
@@ -1110,7 +1109,7 @@ function pubcrawl_item_mod_init($x) {
 		if(! perm_is_allowed($chan['channel_id'],get_observer_hash(),'view_stream'))
 			http_status_exit(403, 'Forbidden');
 
-		$i = Activity::encode_item($items[0]);
+		$i = asencode_item($items[0]);
 		if(! $i)
 			http_status_exit(404, 'Not found');
 

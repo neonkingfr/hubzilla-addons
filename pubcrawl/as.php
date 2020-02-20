@@ -24,7 +24,7 @@ function asencode_object($x) {
 		return asfetch_profile($x); 
 	}
 
-	if(in_array($x['type'], [ ACTIVITY_OBJ_NOTE ])) {
+	if(in_array($x['type'], [ ACTIVITY_OBJ_NOTE, 'Question' ])) {
 		return asfetch_item($x); 
 	}
 
@@ -164,7 +164,7 @@ function asfetch_item($x) {
 	if($r) {
 		xchan_query($r,true);
 		$r = fetch_post_tags($r,true);
-		return Activity::encode_item($r[0]);
+		return asencode_item($r[0]);
 	}
 }
 
@@ -181,7 +181,7 @@ function asencode_item_collection($items,$id,$type,$extra = null) {
 	if($items) {
 		$x = [];
 		foreach($items as $i) {
-			$t = Activity::encode_activity($i);
+			$t = asencode_activity($i);
 			if($t)
 				$x[] = $t;
 		}
@@ -269,7 +269,7 @@ function asencode_item($i) {
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
 
 	if($i['title'])
-		$ret['name'] = bbcode($i['title'], ['cache' => true ]);
+		$ret['title'] = bbcode($i['title'], ['cache' => true ]);
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);
 	if($i['created'] !== $i['edited'])
@@ -479,7 +479,7 @@ function asencode_activity($i) {
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/activity/' . urlencode($i['mid']));
 
 	if($i['title'])
-		$ret['name'] = html2plain(bbcode($i['title'], ['cache' => true ]));
+		$ret['title'] = html2plain(bbcode($i['title'], ['cache' => true ]));
 		
 	// Remove URL bookmark
 	$i['body'] = str_replace("#^[", "[", $i['body']);
@@ -510,22 +510,23 @@ function asencode_activity($i) {
 
 
 	if($i['obj']) {
-		$obj = Activity::encode_object($i['obj']);
+		$obj = asencode_object($i['obj']);
 		if($obj)
 			$ret['object'] = $obj;
 		else
 			return [];
 	}
 	else {
-		$obj = Activity::encode_item($i);
+		$obj = asencode_item($i);
 		if($obj)
 			$ret['object'] = $obj;
 		else
 			return [];
 	}
 
+
 	if($i['target']) {
-		$tgt = Activity::encode_object($i['target']);
+		$tgt = asencode_object($i['target']);
 		if($tgt)
 			$ret['target'] = $tgt;
 	}
