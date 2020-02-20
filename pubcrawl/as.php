@@ -24,7 +24,7 @@ function asencode_object($x) {
 		return asfetch_profile($x); 
 	}
 
-	if(in_array($x['type'], [ ACTIVITY_OBJ_NOTE, 'Question' ])) {
+	if(in_array($x['type'], [ ACTIVITY_OBJ_NOTE, 'Question', 'Note' ])) {
 		return asfetch_item($x); 
 	}
 
@@ -269,7 +269,7 @@ function asencode_item($i) {
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
 
 	if($i['title'])
-		$ret['title'] = bbcode($i['title'], ['cache' => true ]);
+		$ret['name'] = bbcode($i['title'], ['cache' => true ]);
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);
 	if($i['created'] !== $i['edited'])
@@ -479,7 +479,7 @@ function asencode_activity($i) {
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/activity/' . urlencode($i['mid']));
 
 	if($i['title'])
-		$ret['title'] = html2plain(bbcode($i['title'], ['cache' => true ]));
+		$ret['name'] = html2plain(bbcode($i['title'], ['cache' => true ]));
 		
 	// Remove URL bookmark
 	$i['body'] = str_replace("#^[", "[", $i['body']);
