@@ -2,7 +2,7 @@
 /**
  * Name: NavBanner Options
  * Description: Add some more options to the banner of your Hub.
- * Version: 1.0  
+ * Version: 1.2  
  * Author: Dale Hitchenor <dale@hitchenor.com>
  * Maintainer: none
  */
@@ -23,14 +23,22 @@ function navbanner_options_unload() {
 
 function navbanner_options_main(&$banner) {
     
+    $accountid = \App::$account['account_id'];
+    $hostname = \App::get_hostname();
+    
     $sitename = \App::$config['system']['sitename'];
     $channelname = \App::$channel['channel_name'];
     $channeladdr = \App::$channel['channel_address'];
-    $fullname = \App::$profile['fullname'];
+    $fullname = \App::$observer['xchan_name'];
     $accountemail = \App::$account['account_email'];
-    $hostname = \App::get_hostname();
+    $serviceclass = \App::$account['account_service_class'];
+    $accountlevel = \App::$account['account_level'];
+    
 
-    $oldbanner = get_config('system','banner');
+    if ($_SESSION['authenticated'] != 1) {
+        $banner = $sitename;
+    } else {
+        $oldbanner = get_config('system','banner');
     $old = array();
         $old[0] = '/channel_name/';
         $old[1] = '/channel_address/';
@@ -38,6 +46,9 @@ function navbanner_options_main(&$banner) {
         $old[3] = '/full_name/';
         $old[4] = '/host_name/';
         $old[5] = '/site_name/';
+        $old[6] = '/account_id/';
+        $old[7] = '/service_class/';
+        $old[8] = '/account_level/';
     $new = array();
         $new[0] = $channelname;
         $new[1] = $channeladdr."@".$hostname;
@@ -45,7 +56,12 @@ function navbanner_options_main(&$banner) {
         $new[3] = $fullname;
         $new[4] = $hostname;
         $new[5] = $sitename;
+        $new[6] = $accountid;
+        $new[7] = $serviceclass;
+        $new[8] = $accountlevel;
+        
     ksort($old);
     ksort($new);
     $banner = preg_replace($old, $new, $oldbanner);
+    }
 }
