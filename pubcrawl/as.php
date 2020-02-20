@@ -1388,6 +1388,16 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['obj'] = $act->obj;
 	}
 
+	if ($act->obj['type'] === 'Question' && in_array($act->type,['Create','Update'])) {
+		if ($act->obj['endTime']) {
+			$s['comments_closed'] = datetime_convert('UTC','UTC', $act->obj['endTime']);
+		}
+	}
+
+	// Mastodon does not provide update timestamps when updating poll tallies which means race conditions may occur here.
+	if ($act->type === 'Update' && $act->obj['type'] === 'Question' && $s['edited'] === $s['created']) {
+		$s['edited'] = datetime_convert();
+	}
 
 	if($channel['channel_system']) {
 		if(! \Zotlabs\Lib\MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
@@ -1519,12 +1529,13 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	$x = null;
 
-	$r = q("select created, edited from item where mid = '%s' and uid = %d limit 1",
+	$r = q("select id, created, edited from item where mid = '%s' and uid = %d limit 1",
 		dbesc($s['mid']),
 		intval($s['uid'])
 	);
 	if($r) {
 		if($s['edited'] > $r[0]['edited']) {
+			$s['id'] = $r[0]['id'];
 			$x = item_store_update($s);
 		}
 		else {
