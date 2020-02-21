@@ -570,6 +570,7 @@ function asencode_activity($i) {
 			$reply_addr = (($i['owner']['xchan_addr']) ? $i['owner']['xchan_addr'] : $i['owner']['xchan_name']);
 
 			if($dm) {
+
 				$m = [
 					'type' => 'Mention',
 					'href' => $reply_url,
@@ -609,6 +610,12 @@ function asencode_activity($i) {
 	$mentions = as_map_mentions($i);
 	if(count($mentions)) {
 		$ret['to'] = (($ret['to']) ? array_merge($ret['to'],$mentions) : $mentions);
+	}
+
+	// poll answers should be addressed only to the poll owner
+	if($i['item_private'] && $i['obj_type'] === 'Answer') {
+		$ret['to'] = $i['owner']['xchan_url'];
+		unset($ret['cc']);
 	}
 
 	if(in_array($ret['object']['type'], [ 'Note', 'Article', 'Question' ])) {
