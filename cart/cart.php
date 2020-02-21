@@ -1668,6 +1668,9 @@ function cart_checkout_start (&$hookdata) {
 	unset($ordermeta["paytype"]);
 	cart_updateorder_meta($ordermeta,$orderhash);
 	$hookdata["order_meta"]=$ordermeta;
+	$hookdata["readytopay"]=1;
+	$hookdata['text']['readytopayrequirementsnotmet'] = t('Requirements not met.').' '.t('Review your order and complete any needed requirements.');
+	
 	call_hooks('cart_before_checkout',$hookdata);
 	call_hooks('cart_display_before',$hookdata);
 

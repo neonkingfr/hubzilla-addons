@@ -28,6 +28,14 @@
 					<td style="text-align:right;">{{$item.item_price}}</td>
 					<td style="text-align:right;">{{$item.extended}}</td>
 				</tr>
+				<tr>
+				{{if $item.itemextras}}
+					<td></td>
+					<td colspan=3>
+					{{$item.itemextras}}
+					</td>
+				</tr>
+				{{/if}}
 				{{/foreach}}
 				<tr>
 					<td colspan=4>
