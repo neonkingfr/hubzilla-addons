@@ -9,37 +9,43 @@ require_once('include/event.php');
 
 function asencode_object($x) {
 
-	if((substr(trim($x),0,1)) === '{' ) {
+	if(($x) && (! is_array($x)) && (substr(trim($x),0,1)) === '{' ) {
 		$x = json_decode($x,true);
 	}
 
-	if(is_array($x) && array_key_exists('asld',$x)) {
-		return $x['asld'];
+	if(is_array($x)) {
+
+		if(array_key_exists('asld',$x)) {
+			return $x['asld'];
+		}
+
+		if($x['type'] === ACTIVITY_OBJ_PERSON) {
+			return asfetch_person($x);
+		}
+
+		if($x['type'] === ACTIVITY_OBJ_PROFILE) {
+			return asfetch_profile($x);
+		}
+
+		if(in_array($x['type'], [ ACTIVITY_OBJ_NOTE, ACTIVITY_OBJ_ARTICLE ] )) {
+			return asfetch_item($x);
+		}
+
+		if($x['type'] === ACTIVITY_OBJ_THING) {
+			return asfetch_thing($x);
+		}
+
+		if($x['type'] === ACTIVITY_OBJ_EVENT) {
+			return asfetch_event($x);
+		}
+
+		if($x['type'] === ACTIVITY_OBJ_PHOTO) {
+			return asfetch_image($x);
+		}
+
 	}
 
-	if($x['type'] === ACTIVITY_OBJ_PERSON) {
-		return asfetch_person($x); 
-	}
-	if($x['type'] === ACTIVITY_OBJ_PROFILE) {
-		return asfetch_profile($x); 
-	}
-
-	if(in_array($x['type'], [ ACTIVITY_OBJ_NOTE, 'Question', 'Note' ])) {
-		return asfetch_item($x); 
-	}
-
-	if($x['type'] === ACTIVITY_OBJ_THING) {
-		return asfetch_thing($x); 
-	}
-	
-	if($x['type'] === ACTIVITY_OBJ_EVENT) {
-		return asfetch_event($x); 
-	}
-	
-	if($x['type'] === ACTIVITY_OBJ_PHOTO) {
-		return asfetch_image($x); 
-	}
-
+	return $x;
 
 }	
 
@@ -234,24 +240,28 @@ function asencode_item($i) {
 
 	$ret = [];
 
+	$objtype = activity_obj_mapper($i['obj_type']);
+
 	if(intval($i['item_deleted'])) {
 		$ret['type'] = 'Tombstone';
-		$ret['formerType'] = 'Note';
+		$ret['formerType'] = $objtype;
 		$ret['id'] = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
 		return $ret;
 	}
 
-	$images = false;
-	$has_images = preg_match_all('/\[[zi]mg(.*?)\](.*?)\[/ism',$i['body'],$images,PREG_SET_ORDER); 
+	$ret['type'] = $objtype;
 
-	if((! $has_images) || get_pconfig($i['uid'],'activitypub','downgrade_media',true))
-		$ret['type'] = 'Note';
-	else
-		$ret['type'] = 'Article';
+	if ($objtype !== 'Question') {
+		$images = false;
+		$has_images = preg_match_all('/\[[zi]mg(.*?)\](.*?)\[/ism',$i['body'],$images,PREG_SET_ORDER); 
 
-	if($i['obj_type'] === 'Question') {
-		$ret['type'] = 'Question';
+		if((! $has_images) || get_pconfig($i['uid'],'activitypub','downgrade_media',true))
+			$ret['type'] = 'Note';
+		else
+			$ret['type'] = 'Article';
+	}
 
+	if ($objtype === 'Question') {
 		if ($i['obj']) {
 			if (is_array($i['obj'])) {
 				$ret = $i['obj'];
@@ -523,7 +533,6 @@ function asencode_activity($i) {
 		else
 			return [];
 	}
-
 
 	if($i['target']) {
 		$tgt = asencode_object($i['target']);
@@ -818,8 +827,17 @@ function activity_obj_mapper($obj) {
 		'http://purl.org/zot/activity/thing'                => 'Object',
 		'http://purl.org/zot/activity/file'                 => 'zot:File',
 		'http://purl.org/zot/activity/mood'                 => 'zot:Mood',
-		
+		'Invite'                                            => 'Invite',
+		'Question'                                          => 'Question'
 	];
+
+	if ($obj === 'Answer') {
+		return 'Note';
+	}
+
+	if (strpos($obj,'/') === false) {
+		return $obj;
+	}
 
 	if(array_key_exists($obj,$objs)) {
 		return $objs[$obj];
@@ -827,8 +845,6 @@ function activity_obj_mapper($obj) {
 
 	logger('Unmapped activity object: ' . $obj);
 	return 'Note';
-
-//	return false;
 
 }
 
