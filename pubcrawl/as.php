@@ -1400,6 +1400,10 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s['obj']      = '';
 	$s['app']      = t('ActivityPub');
 
+	// This isn't perfect but the best we can do for now.
+
+	$s['comment_policy'] = 'authenticated';
+
 	if($act->obj['type'] === 'Event') {
 		$ev = as_bb_content($content,'event');
 		if($ev) {
