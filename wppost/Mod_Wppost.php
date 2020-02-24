@@ -95,8 +95,7 @@ class Wppost extends Controller {
 		));
 
 		$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-			'$field'	=> array('wp_source_urltext', t('Link description'), $wp_source_urltext,
-						 t('Default "Originally posted on Hubzilla"'))
+		    '$field'	=> array('wp_source_urltext', t('Link description (default:') . ' "' . t('Source') . '")', $wp_source_urltext, '')
 		));
 
 		$tpl = get_markup_template("settings_addon.tpl");
