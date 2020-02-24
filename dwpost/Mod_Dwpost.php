@@ -66,7 +66,7 @@ class Dwpost extends Controller {
 		));
 
 		$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-			'$field'	=> array('dw_source_urltext', t('Link description (default: "Originally posted on Hubzilla")'), $dw_source_urltext, '')
+			'$field'	=> array('dw_source_urltext', t('Link description (default:') . ' "' . t('Source') . '")', $dw_source_urltext, '')
 		));
 
 		$tpl = get_markup_template("settings_addon.tpl");
