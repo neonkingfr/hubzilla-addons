@@ -39,6 +39,14 @@
 				{{/foreach}}
 				<tr>
 					<td colspan=4>
+						{{$orderextras}}
+						{{if !$order_checkedout && $orderextras}}
+						<button id="cart_update" class="btn btn-success btn-sm invisible" type="submit" name="Submit" title="Update Cart"><i class="fa fa-check"></i> Save Changes</button>
+						{{/if}}
+					</td>
+				</tr>
+				<tr>
+					<td colspan=4>
 						{{if !$order_checkedout}}
 						<button id="cart_update" class="btn btn-success btn-sm invisible" type="submit" name="Submit" title="Update Cart"><i class="fa fa-check"></i> Save Changes</button>
 						{{/if}}
