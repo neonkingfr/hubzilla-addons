@@ -116,6 +116,8 @@ function dwpost_send(&$a,&$b) {
 
 		require_once('include/bbcode.php');
 		require_once('include/datetime.php');
+		
+		push_lang(($b['lang'] ? $b['lang'] : 'en'));
 
 		$title = $b['title'];
 
