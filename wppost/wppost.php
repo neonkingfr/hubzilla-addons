@@ -158,6 +158,8 @@ function wppost_send(&$b) {
 	if($wp_username && $wp_password && $wp_blog) {
 
 		require_once('include/bbcode.php');
+		
+		push_lang(($b['lang'] ? $b['lang'] : 'en'));
 
 		$post = $b['body'];
 
