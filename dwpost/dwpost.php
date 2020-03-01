@@ -2,12 +2,13 @@
 
 /**
  * Name: Dreamwidth Post feature
- * Description: Post to dreamwidth
- * Version: 1.0
+ * Description: Post to Dreamwidth
+ * Version: 1.1
  * Author: Tony Baldwin <https://red.free-haven.org/channel/tony>
  * Author: Michael Johnston
  * Author: Cat Gray <https://free-haven.org/profile/catness>
- * Maintainer: none
+ * Author: Max Kostikov <https://tiksi.net/channel/kostikov>
+ * Maintainer: ivan zlax <https://ussr.win/channel/zlax>
  */
 
 use Zotlabs\Lib\Apps;
@@ -16,14 +17,15 @@ use Zotlabs\Extend\Route;
 
 require_once('include/permissions.php');
 
+
 function dwpost_load() {
 	register_hook('post_local',           'addon/dwpost/dwpost.php', 'dwpost_post_local');
 	register_hook('notifier_normal',      'addon/dwpost/dwpost.php', 'dwpost_send');
 	register_hook('jot_networks',         'addon/dwpost/dwpost.php', 'dwpost_jot_nets');
 
 	Route::register('addon/dwpost/Mod_Dwpost.php','dwpost');
-
 }
+
 
 function dwpost_unload() {
 	unregister_hook('post_local',       'addon/dwpost/dwpost.php', 'dwpost_post_local');
@@ -31,7 +33,6 @@ function dwpost_unload() {
 	unregister_hook('jot_networks',     'addon/dwpost/dwpost.php', 'dwpost_jot_nets');
 
 	Route::unregister('addon/dwpost/Mod_Dwpost.php','dwpost');
-
 }
 
 
@@ -42,11 +43,12 @@ function dwpost_jot_nets(&$a,&$b) {
 	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
 		return;
 
-        $dw_defpost = get_pconfig(local_channel(),'dwpost','post_by_default');
-        $selected = ((intval($dw_defpost) == 1) ? ' checked="checked" ' : '');
-        $b .= '<div class="profile-jot-net"><input type="checkbox" name="dwpost_enable" ' . $selected . ' value="1" /> <i class="fa fa-send fa-2x" aria-hidden="true"></i> ' . t('Post to Dreamwidth') . '</div>';
+	$dw_defpost = get_pconfig(local_channel(),'dwpost','post_by_default');
 
+	$selected = ((intval($dw_defpost) == 1) ? ' checked="checked" ' : '');
+	$b .= '<div class="profile-jot-net"><input type="checkbox" name="dwpost_enable" ' . $selected . ' value="1" /> <i class="fa fa-send fa-2x" aria-hidden="true"></i> ' . t('Post to Dreamwidth') . '</div>';
 }
+
 
 function dwpost_post_local(&$a,&$b) {
 
@@ -80,23 +82,21 @@ function dwpost_post_local(&$a,&$b) {
 }
 
 
-
-
 function dwpost_send(&$a,&$b) {
 
-    if((! is_item_normal($b)) || $b['item_private'] || ($b['created'] !== $b['edited']))
-        return;
+	if((! is_item_normal($b)) || $b['item_private'] || ($b['created'] !== $b['edited']))
+		return;
 
 	if(! perm_is_allowed($b['uid'],'','view_stream',false))
 		return;
 
-    if(! strstr($b['postopts'],'dwpost'))
-        return;
+	if(! strstr($b['postopts'],'dwpost'))
+		return;
 
-    if($b['parent'] != $b['id'])
-        return;
+	if($b['parent'] != $b['id'])
+		return;
 
-	// dreamwidth post in the LJ user's timezone. 
+	// Dreamwidth post in the DW user's timezone. 
 	// Hopefully the person's Friendica account
 	// will be set to the same thing.
 
@@ -106,7 +106,7 @@ function dwpost_send(&$a,&$b) {
 		intval($b['uid'])
 	);
 	if($x && strlen($x[0]['channel_timezone']))
-		$tz = $x[0]['channel_timezone'];	
+		$tz = $x[0]['channel_timezone'];
 
 	$dw_username = get_pconfig($b['uid'],'dwpost','dw_username');
 	$dw_password = z_unobscure(get_pconfig($b['uid'],'dwpost','dw_password'));
@@ -116,9 +116,25 @@ function dwpost_send(&$a,&$b) {
 
 		require_once('include/bbcode.php');
 		require_once('include/datetime.php');
+		
+		push_lang(($b['lang'] ? $b['lang'] : 'en'));
 
 		$title = $b['title'];
-		$post = bbcode($b['body']);
+
+		// Replace URL bookmark
+		$post = trim(str_replace("#^[", "&#128279 [", $b['body']));
+
+		// Add source URL
+		if(get_pconfig($b['uid'],'dwpost','post_source_url')) {
+			if(get_pconfig($b['uid'],'dwpost','post_source_urltext')) {
+				$urltext = get_pconfig($b['uid'],'dwpost','post_source_urltext');
+				$post .= "\n\n" . t('[url=') . $b['plink'] . t(']') . $urltext . t('[/url]');
+			}
+			else
+				$post .= "\n\n" . t('Source') . ": [url]" . $b['plink'] . "[/url]";
+		}
+
+		$post = bbcode($post);
 		$post = xmlify($post);
 		$tags = dwpost_get_tags($b['tag']);
 
@@ -167,8 +183,7 @@ EOT;
 	}
 }
 
-function dwpost_get_tags($post)
-{
+function dwpost_get_tags($post) {
 	preg_match_all("/\]([^\[#]+)\[/",$post,$matches);
 	$tags = implode(', ',$matches[1]);
 	return $tags;
