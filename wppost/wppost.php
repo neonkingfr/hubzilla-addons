@@ -167,7 +167,7 @@ function wppost_send(&$b) {
 		if(get_pconfig($b['uid'],'wppost','post_source_url')) {
 			if(get_pconfig($b['uid'],'wppost','post_source_urltext')) {
 				$urltext = get_pconfig($b['uid'],'wppost','post_source_urltext');
-				$post .= "\n\n" . t('[url=') . $b['plink'] . t(']') . $urltext . t('[/url]');
+				$post .= "\n\n" . '[url=' . $b['plink'] . ']' . $urltext . '[/url]';
 			}
 			else
 			    $post .= "\n\n" . t('Source') . ": [url]" . $b['plink'] . "[/url]";
