@@ -3,6 +3,7 @@
 		<h3>Payment Options</h3>
 	</div>
 	<div class="section-content-wrapper">
+		{{if $readytopay}}
 		<form method="post">
 			<input type="hidden" name="cart_posthook" value="checkout_choosepayment">
 			<div class="form-group">
@@ -17,5 +18,11 @@
 				<a href="{{$links.cataloglink}}" class="btn btn-outline-secondary">Continue Shopping</a>
 			</div>
 		</form>
+		{{else}}
+			<div class="form-group">
+				{{$text.readytopayrequirementsnotmet}}<br>
+				<a href="{{$links.checkoutlink}}" class="btn btn-outline-secondary">Continue to payment</a>
+			</div>
+		{{/if}}
 	</div>
 </div>
