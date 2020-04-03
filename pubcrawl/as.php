@@ -251,7 +251,11 @@ function asencode_item($i) {
 
 	$ret['type'] = $objtype;
 
-	if ($objtype !== 'Question') {
+	if ($i['obj']) {
+		$ret = asencode_object($i['obj']);
+	}
+
+	if ($ret['type'] === 'Note' && $objtype !== 'Question') {
 		$images = false;
 		$has_images = preg_match_all('/\[[zi]mg(.*?)\](.*?)\[/ism',$i['body'],$images,PREG_SET_ORDER); 
 
@@ -259,6 +263,7 @@ function asencode_item($i) {
 			$ret['type'] = 'Note';
 		else
 			$ret['type'] = 'Article';
+
 	}
 
 	if ($objtype === 'Question') {
@@ -299,13 +304,8 @@ function asencode_item($i) {
 		}
 	}
 
-	if($i['obj']) {
-		//$ret['url'] = [
-		//	'type' => 'Link',
-		//	'rel'  => 'alternate',
-		//	'mediaType' => 'text/html',
-		//	'href' => $i['plink']
-		//];
+
+	if (! $ret['url']) {
 		$ret['url'] = $i['plink'];
 	}
 
@@ -486,7 +486,15 @@ function asencode_activity($i) {
 	$reply = false;
 
 	$ret['type'] = activity_mapper($i['verb']);
+
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/activity/' . urlencode($i['mid']));
+
+	if (strpos($ret['id'],z_root() . '/item/') !== false) {
+		$ret['id'] = str_replace('/item/','/activity/',$ret['id']);
+	}
+	elseif (strpos($ret['id'],z_root() . '/event/') !== false) {
+		$ret['id'] = str_replace('/event/','/activity/',$ret['id']);
+	}
 
 	if($i['title'])
 		$ret['name'] = html2plain(bbcode($i['title'], ['cache' => true ]));
