@@ -1095,12 +1095,6 @@ function pubcrawl_item_mod_init($x) {
 		xchan_query($r,true);
 		$items = fetch_post_tags($r,true);
 
-		// Wrong object type
-
-		if(! in_array(activity_obj_mapper($items[0]['obj_type']), [ 'Note', 'Article', 'Question' ])) {
-			http_status_exit(418, "I'm a teapot"); 
-		}
-
 		$chan = channelx_by_n($items[0]['uid']);
 
 		if(! $chan)
@@ -1112,7 +1106,6 @@ function pubcrawl_item_mod_init($x) {
 		$i = asencode_item($items[0]);
 		if(! $i)
 			http_status_exit(404, 'Not found');
-
 
 		$x = array_merge(['@context' => [
 			ACTIVITYSTREAMS_JSONLD_REV,
