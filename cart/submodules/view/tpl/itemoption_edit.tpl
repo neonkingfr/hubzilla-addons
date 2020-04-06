@@ -31,17 +31,16 @@
             placeholder: "ui-state-highlight",
             cursor: 'crosshair',
             update: function(event, ui) {
-
-      var Order = $("#ItemOptions").sortable('toArray').toString();
-      $('#itemoptorder').val(Order);
-alert(Order);
- }
-    });
-        $( "#ItemOptions" ).disableSelection();
-	$( ".form-control").click(function() { $("#ItemOptions").sortable('disable'); $(this).focus(); });
-	$( ".form-control input").focus(function() { $("#ItemOptions").enableSelection(); $(this).setSelectionRange(($this).value.length,$(this).value.length); });
-	$( ".form-control").blur(function() { $("#ItemOptions").sortable('enable'); });
-});
+			var Order = $("#ItemOptions").sortable('toArray').toString();
+        		$( "#ItemOptions" ).disableSelection();
+			$( ".form-control").click(function() { $("#ItemOptions").sortable('disable'); $(this).focus(); });
+			$( ".form-control input").focus(function() { $("#ItemOptions").enableSelection(); $(this).setSelectionRange(($this).value.length,$(this).value.length); });
+			$( ".form-control").blur(function() { $("#ItemOptions").sortable('enable'); });
+			$('#itemoptorder').val(Order);
+ 			}
+    		});
+        $( "#sortable" ).disableSelection();
+	});
 </script>
 
 <div style='display:none'>

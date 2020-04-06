@@ -15,7 +15,10 @@
 			<label for="id_itemopt_required_{{$option.uuid}}">{{$textstrings.required}}</label>
 			<div class="float-right"><input type="checkbox" name="itemoption_required[{{$option.uuid}}]" id="id_itemopt_required_{{$option.uuid}}" value="1" {{if $option.required}}checked="checked"{{/if}} /><label class="switchlabel" for="id_itemopt_required_{{$option.uuid}}"> <span class="onoffswitch-inner" data-on="{{$textstrings.yes}}" data-off="{{$textstrings.no}}"></span><span class="onoffswitch-switch"></span></label></div>
 		</div>
-	</div>
+        </div>
+        <div class="col-sm-12 col-md-10">
+        <span style="font-size:medium;"><input class="form-control" name="itemoption_label[{{$option.uuid}}]" id="id_itemopt_label_{{$option.uuid}}" type="text" value="{{$option.label}}" style="display:inline;"/></span>
+        </div>
     </div></div></div>
     <div id="itemoptdetails_{{$option.uuid}}" class="panel-collapse collapse">
 
