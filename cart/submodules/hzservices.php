@@ -10,6 +10,7 @@
  */
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Connect;
 
 class Cart_hzservices {
 
@@ -430,7 +431,7 @@ class Cart_hzservices {
           notice ("Add connection".EOL);
           $buyer_url=$buyer_channel["address"];
           require_once ('include/follow.php');
-          $result=new_contact($seller_chaninfo["channel_id"],$buyer_url,$seller_chaninfo,false, true);
+          $result = Connect::connect($seller_chaninfo,$buyer_url);
           if (!$result["success"]){
             $errortext = $result["message"];
             $calldata["fulfillment_errors"][]=$errortext;
