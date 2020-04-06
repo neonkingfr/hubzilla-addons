@@ -6,7 +6,7 @@ use Zotlabs\Extend\Route;
 /**
  * Name: cart
  * Description: Core cart utilities for orders and payments
- * Version: 0.9.5
+ * Version: 1.0.0
  * Author: Matthew Dent <dentm42@dm42.net>
  * MinVersion: 3.6
  */
@@ -26,7 +26,7 @@ use Zotlabs\Extend\Route;
 
 
 class Cart {
-	public static $cart_version="0.9.0";
+	public static $cart_version="1.0.0";
 	public static $seller;
 	public static $buyer;
 

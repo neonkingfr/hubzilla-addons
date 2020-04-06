@@ -33,7 +33,6 @@
 
       var Order = $("#ItemOptions").sortable('toArray');
       $('#itemoptorder').val(Order);
-alert($('#itemoptorder').val());
  }
     });
         $( "#sortable" ).disableSelection();

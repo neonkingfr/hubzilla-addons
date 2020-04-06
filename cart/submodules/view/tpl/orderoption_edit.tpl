@@ -27,7 +27,6 @@
 
       var Order = $("#ItemOptions").sortable('toArray').toString();
       $('#itemoptorder').val(Order);
-alert(Order);
  }
     });
         $( "#ItemOptions" ).disableSelection();
