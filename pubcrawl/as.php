@@ -626,7 +626,7 @@ function asencode_activity($i) {
 		unset($ret['cc']);
 	}
 
-	if(in_array($ret['object']['type'], [ 'Note', 'Article', 'Question' ])) {
+	if(array_path_exists('object/type', $ret) && in_array($ret['object']['type'], [ 'Note', 'Article', 'Question' ])) {
 		if(isset($ret['to']))
 			$ret['object']['to'] = $ret['to'];
 		if(isset($ret['cc']))
