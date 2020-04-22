@@ -34,6 +34,11 @@ function gallery_channel_apps(&$b) {
 	if(! Apps::addon_app_installed($uid, 'gallery'))
 		return;
 
+	$p = get_all_perms($uid, get_observer_hash());
+
+	if (! $p['view_storage'])
+		return;
+
 	$b['tabs'][] = [
 		'label' => t('Gallery'),
 		'url'   => z_root() . '/gallery/' . $b['nickname'],
