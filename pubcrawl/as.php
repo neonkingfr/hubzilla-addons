@@ -1570,6 +1570,10 @@ function as_create_note($channel,$observer_hash,$act) {
 		intval($s['uid'])
 	);
 	if($r) {
+		// if we already have the item dismiss its announce
+		if($announce)
+			return;
+
 		if($s['edited'] > $r[0]['edited']) {
 			$s['id'] = $r[0]['id'];
 			$x = item_store_update($s);
