@@ -100,7 +100,7 @@ function sse_item_stored($item) {
 		push_lang(XConfig::Get($hash, 'sse', 'language', 'en'));
 
 		if($sys) {
-			if(is_item_normal($item) && ($vnotify & VNOTIFY_PUBS || $sys) && !in_array($item['obj_type'], ['Document', 'Video', 'Audio']))
+			if(is_item_normal($item) && ($vnotify & VNOTIFY_PUBS || $sys) && !in_array($item['obj_type'], ['Document', 'Video', 'Audio', 'Image']))
 				$x['pubs']['notifications'][] = Enotify::format($r[0]);
 		}
 		else {
