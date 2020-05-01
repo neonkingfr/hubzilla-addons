@@ -46,39 +46,9 @@ class Inbox extends \Zotlabs\Web\Controller {
 			as_actor_store($AS->actor['id'],$AS->actor);
 
 		if($AS->type == 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo',$AS->obj)) {
-
 			$arr = [];
-			$x = [];
-
-			if(is_array($AS->obj['attributedTo'])) {
-				foreach($AS->obj['attributedTo'] as $attr) {
-					if($attr['type'] == 'Person')
-						$arr['author']['url'] = $attr['id'];
-				}
-			}
-			else {
-				$arr['author']['url'] = $AS->obj['attributedTo'];
-			}
-
 			$arr['author']['url'] = as_get_attributed_to_person($AS);
-
 			pubcrawl_import_author($arr);
-
-			if(! empty($arr['result'])) {
-				$x['hash'] = $arr['result'];
-			}
-			else {
-				logger('pubcrawl_import_author failed for announce activity');
-				return;
-			}
-
-			$AS->sharee = xchan_fetch($x);
-			if(! $AS->sharee) {
-				//TODO: what do we do with sharees from other networks (for now mainly gnusocial)?
-				logger('got announce activity but could not import share author');
-				return;
-			}
-
 		}
 
 		$is_public = false;
@@ -155,7 +125,6 @@ class Inbox extends \Zotlabs\Web\Controller {
 		}
 		$AS->set_recips($saved_recips);
 
-
 		foreach($channels as $channel) {
 
 			if(($AS->obj) && (! is_array($AS->obj))) {
@@ -195,6 +164,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 			switch($AS->type) {
 				case 'Create':
 				case 'Update':
+				case 'Announce':
 					as_create_action($channel,$observer_hash,$AS);
 					break;
 				case 'Like':
@@ -218,10 +188,6 @@ class Inbox extends \Zotlabs\Web\Controller {
 				case 'Remove':
 					break;
 
-				case 'Announce':
-					as_create_action($channel,$observer_hash,$AS);
-					//as_announce_action($channel,$observer_hash,$AS);
-					break;
 				default:
 					break;
 

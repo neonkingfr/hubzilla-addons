@@ -251,7 +251,7 @@ function pubcrawl_import_author(&$b) {
 	if(! $url)
 		return;
 
-	$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' and xchan_network = 'activitypub' limit 1",
+	$r = q("select xchan_hash from xchan where xchan_hash = '%s' and xchan_network = 'activitypub' limit 1",
 		dbesc($url)
 	);
 	if($r) {
@@ -263,6 +263,9 @@ function pubcrawl_import_author(&$b) {
 	$x = discover_by_webbie($url);
 
 	if($x) {
+		$b['result'] = $x;
+			return;
+/*
 		$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' limit 1",
 			dbesc($url)
 		);
@@ -270,9 +273,8 @@ function pubcrawl_import_author(&$b) {
 			$b['result'] = $r[0]['xchan_hash'];
 			return;
 		}
+*/
 	}
-
-	return;
 
 }
 
