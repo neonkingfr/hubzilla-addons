@@ -253,7 +253,10 @@ function asencode_item($i) {
 
 	if ($i['obj']) {
 		$ret = asencode_object($i['obj']);
+		//$ret['url'] = $i['plink'];
+		//hz_syslog(print_r($ret,true));
 	}
+		hz_syslog(print_r($i,true));
 
 	if ($ret['type'] === 'Note' && $objtype !== 'Question') {
 		$images = false;
@@ -302,11 +305,6 @@ function asencode_item($i) {
 			$ret['location']['latitude'] = $l[0];
 			$ret['location']['longitude'] = $l[1];
 		}
-	}
-
-
-	if (! $ret['url']) {
-		$ret['url'] = $i['plink'];
 	}
 
 	$ret['attributedTo'] = $i['author']['xchan_url'];
