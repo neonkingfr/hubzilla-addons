@@ -253,10 +253,8 @@ function asencode_item($i) {
 
 	if ($i['obj']) {
 		$ret = asencode_object($i['obj']);
-		//$ret['url'] = $i['plink'];
-		//hz_syslog(print_r($ret,true));
+		$ret['url'] = $i['plink'];
 	}
-		hz_syslog(print_r($i,true));
 
 	if ($ret['type'] === 'Note' && $objtype !== 'Question') {
 		$images = false;
