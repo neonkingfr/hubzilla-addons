@@ -1002,7 +1002,8 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 				'hubloc_host'     => $host,
 				'hubloc_callback' => $salmon,
 				'hubloc_updated'  => datetime_convert(),
-				'hubloc_primary'  => 1
+				'hubloc_primary'  => 1,
+				'hubloc_id_url'   => escape_tags($uri)
 			]
 		);
 	}

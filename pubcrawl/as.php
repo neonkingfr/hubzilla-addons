@@ -1241,7 +1241,8 @@ function as_actor_store($url,$person_obj) {
 				'hubloc_host'     => escape_tags($hostname),
 				'hubloc_callback' => $inbox,
 				'hubloc_updated'  => datetime_convert(),
-				'hubloc_primary'  => 1
+				'hubloc_primary'  => 1,
+				'hubloc_id_url'   => escape_tags($profile)
 			]
 		);
 	}
