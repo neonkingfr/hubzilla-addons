@@ -816,12 +816,13 @@ class Diaspora_Receiver {
 
 		/* WARN: As a side effect of this, all of $this->xmlbase will now be unxmlified */
 
-		$oldxml = array_map('unxmlify',$this->xmlbase);
-		if($oldxml) {
+		if($this->xmlbase) {
 			$unxml = [];
-			foreach($oldxml as $k => $v) {
+			foreach($this->xmlbase as $k => $v) {
 				if($k === 'diaspora_handle')
 					$k = 'author';
+				if(is_string($v))
+					$v = unxmlify($v);
 				$unxml[$k] = $v;
 			}
 		}
@@ -1661,14 +1662,15 @@ class Diaspora_Receiver {
 		$arr['obj_type'] = $objtype;
 		$arr['obj'] = $object;
 
-		$oldxml = array_map('unxmlify',$this->xmlbase);
-		if($oldxml) {
+		if($this->xmlbase) {
 			$unxml = [];
-			foreach($oldxml as $k => $v) {
+			foreach($this->xmlbase as $k => $v) {
 				if($k === 'diaspora_handle')
 					$k = 'author';
 				if($k === 'target_type')
 					$k = 'parent_type';
+				if(is_string($v))
+					$v = unxmlify($v);
 				$unxml[$k] = $v;
 			}
 		}
@@ -2214,14 +2216,15 @@ class Diaspora_Receiver {
 		$arr['obj_type'] = $objtype;
 		$arr['obj'] = $object;
 
-		$oldxml = array_map('unxmlify',$this->xmlbase);
-		if($oldxml) {
+		if($this->xmlbase) {
 			$unxml = [];
-			foreach($oldxml as $k => $v) {
+			foreach($this->xmlbase as $k => $v) {
 				if($k === 'diaspora_handle')
 					$k = 'author';
 				if($k === 'target_type')
 					$k = 'parent_type';
+				if(is_string($v))
+					$v = unxmlify($v);
 				$unxml[$k] = $v;
 			}
 		}
