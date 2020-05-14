@@ -34,6 +34,11 @@ function sse_item_stored($item) {
 	if(! $item['uid'])
 		return;
 
+	if(! is_item_normal($item))
+		return;
+
+	$is_file = in_array($item['obj_type'], ['Document', 'Video', 'Audio', 'Image']);
+
 	$item_uid = $item['uid'];
 
 	$sys = false;
@@ -100,17 +105,20 @@ function sse_item_stored($item) {
 		push_lang(XConfig::Get($hash, 'sse', 'language', 'en'));
 
 		if($sys) {
-			if(is_item_normal($item) && ($vnotify & VNOTIFY_PUBS || $sys) && !in_array($item['obj_type'], ['Document', 'Video', 'Audio', 'Image']))
+			if(($vnotify & VNOTIFY_PUBS || $sys) && !$is_file  && intval($item['item_private']) === 0)
 				$x['pubs']['notifications'][] = Enotify::format($r[0]);
 		}
 		else {
-			if(is_item_normal($item) && $item['item_wall'] && !in_array($item['obj_type'], ['Document', 'Video', 'Audio', 'Image']))
+			if($item['item_wall'] && !$is_file && in_array(intval($item['item_private']), [0, 1]))
 				$x['home']['notifications'][] = Enotify::format($r[0]);
 
-			if(is_item_normal($item) && !$item['item_wall'] && !in_array($item['obj_type'], ['Document', 'Video', 'Audio', 'Image']))
+			if(!$item['item_wall'] && !$is_file && in_array(intval($item['item_private']), [0, 1]))
 				$x['network']['notifications'][] = Enotify::format($r[0]);
 
-			if(is_item_normal($item) && in_array($item['obj_type'], ['Document', 'Video', 'Audio', 'Image']))
+			if(!$item['item_wall'] && !$is_file && intval($item['item_private']) === 2)
+				$x['dm']['notifications'][] = Enotify::format($r[0]);
+
+			if($is_file)
 				$x['files']['notifications'][] = Enotify::format($r[0]);
 		}
 
@@ -118,6 +126,9 @@ function sse_item_stored($item) {
 
 		if(is_array($x['network']['notifications']))
 			$x['network']['count'] = count($x['network']['notifications']);
+
+		if(is_array($x['dm']['notifications']))
+			$x['dm']['count'] = count($x['dm']['notifications']);
 
 		if(is_array($x['home']['notifications']))
 			$x['home']['count'] = count($x['home']['notifications']);
