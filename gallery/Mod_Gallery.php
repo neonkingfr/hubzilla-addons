@@ -135,11 +135,11 @@ class Gallery extends \Zotlabs\Web\Controller {
 		$o = replace_macros($tpl, [
 			'$title' => t('Gallery'),
 			'$albums' => $items,
-			'$channel_nick' => App::$data['channel']['channel_address'],
-			'$channel_name' => App::$data['channel']['channel_name'],
-			'$channel_url' => App::$data['channel']['xchan_url'],
-			'$observer_name' => App::$data['observer']['xchan_name'],
-			'$observer_url' => App::$data['observer']['xchan_url'],
+			'$channel_nick' => json_encode(App::$data['channel']['channel_address']),
+			'$channel_name' => json_encode(App::$data['channel']['channel_name']),
+			'$channel_url' => json_encode(App::$data['channel']['xchan_url']),
+			'$observer_name' => json_encode(App::$data['observer']['xchan_name']),
+			'$observer_url' => json_encode(App::$data['observer']['xchan_url']),
 			'$unsafe' => $unsafe,
 			'$json' => (($photo) ? $json_photo : $json_album),
 			'$aj' => $photo
