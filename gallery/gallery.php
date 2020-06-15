@@ -204,7 +204,8 @@ function gallery_prepare_body(&$arr) {
 					lastRow: '$last_row',
 					justifyThreshold: 0.5,
 					border: 0,
-					margins: 3
+					margins: 3,
+					maxRowsCount: 1
 				}).on('jg.complete', function(e){ justifiedGalleryActive = false; setTimeout(scrollToItem, 100); });
 			}
 		</script>
