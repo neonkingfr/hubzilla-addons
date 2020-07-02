@@ -170,7 +170,7 @@ function gallery_prepare_body(&$arr) {
 	switch($img_nodes) {
 		case 1:
 			$row_height = 300;
-			$last_row = 'justify';
+			$last_row = 'center';
 			break;
 		case 2:
 			$row_height = 240;
@@ -182,7 +182,7 @@ function gallery_prepare_body(&$arr) {
 			break;
 		default:
 			$row_height = 120;
-			$last_row = 'nojustify';
+			$last_row = 'justify';
 	}
 
 	$js = <<<EOF
@@ -202,11 +202,16 @@ function gallery_prepare_body(&$arr) {
 					captions: false,
 					rowHeight: $row_height,
 					lastRow: '$last_row',
-					justifyThreshold: 0.5,
 					border: 0,
 					margins: 3,
 					maxRowsCount: 1
-				}).on('jg.complete', function(e){ justifiedGalleryActive = false; setTimeout(scrollToItem, 100); });
+				}).on('jg.complete', function(e){
+					justifiedGalleryActive = false;
+					setTimeout(scrollToItem, 100);
+					if(this.children.length == 1) {
+						$('#' + this.parentNode.id).css('background-image', 'url(/addon/gallery/view/img/bg.png)');
+					}
+				});
 			}
 		</script>
 EOF;
