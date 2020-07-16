@@ -211,7 +211,7 @@ function gallery_prepare_body(&$arr) {
 					justifiedGalleryActive = false;
 					setTimeout(scrollToItem, 100);
 					if($('#gallery-wrapper-$id .jg-entry').length === 1) {
-						$('#' + this.parentNode.id).css('background-image', 'url(/addon/gallery/view/img/bg.png)');
+						$('#' + this.parentNode.id).css('background-image', 'url(/addon/gallery/view/img/bg.svg)');
 					}
 					if($('#gallery-wrapper-$id .jg-entry-visible').length < $('#gallery-wrapper-$id .jg-entry').length) {
 						var more_count = $('#gallery-wrapper-$id .jg-entry').length - $('#gallery-wrapper-$id .jg-entry-visible').length;
