@@ -1144,14 +1144,35 @@ function as_actor_store($url,$person_obj) {
 			$icon = $person_obj['icon'];
 	}
 	
-        if(is_array($person_obj['url'])) {
-                if(array_key_exists('href', $person_obj['url']))
-                        $profile = $person_obj['url']['href'];
-                else
-                        $profile = $url;
-        }
-        else
-                $profile = $person_obj['url'];
+	$links = false;
+	$profile = false;
+
+	if (is_array($person_obj['url'])) {
+		if (! array_key_exists(0,$person_obj['url'])) {
+			$links = [ $person_obj['url'] ];
+		}
+		else {
+			$links = $person_obj['url'];
+		}
+	}
+
+	if ($links) {
+		foreach ($links as $link) {
+			if (array_key_exists('mediaType',$link) && $link['mediaType'] === 'text/html') {
+				$profile = $link['href'];
+			}
+		}
+		if (! $profile) {
+			$profile = $links[0]['href'];
+		}
+	}
+	elseif (isset($person_obj['url']) && is_string($person_obj['url'])) {
+		$profile = $person_obj['url'];
+	}
+
+	if (! $profile) {
+		$profile = $url;
+	}
 
 	$inbox = $person_obj['inbox'];
 
@@ -1182,6 +1203,7 @@ function as_actor_store($url,$person_obj) {
 		dbesc($url)
 	);
 	if(! $r) {
+
 		// create a new record
 		$r = xchan_store_lowlevel(
 			[
