@@ -118,7 +118,7 @@ function sse_item_stored($item) {
 			if(($vnotify & VNOTIFY_MAIL) && !$item['item_wall'] && !$is_file && intval($item['item_private']) === 2)
 				$x['dm']['notifications'][] = Enotify::format($r[0]);
 
-			if(($vnotify & VNOTIFY_FILE) && $is_file)
+			if(($vnotify & VNOTIFY_FILES) && $is_file)
 				$x['files']['notifications'][] = Enotify::format($r[0]);
 		}
 
