@@ -168,7 +168,7 @@ class Mail extends Controller {
 				'$defexpire' => '',
 				'$feature_expire' => ((feature_enabled(local_channel(),'content_expire')) ? true : false),
 				'$expires' => t('Set expiration date'),
-				'$feature_encrypt' => ((feature_enabled(local_channel(),'content_encrypt')) ? true : false),
+				'$feature_encrypt' => ((feature_enabled(local_channel(),'content_encrypt') && plugin_is_installed('cryptojs')) ? true : false),
 				'$encrypt' => t('Encrypt text'),
 				'$cipher' => $cipher,
 			));
