@@ -2380,7 +2380,7 @@ class Diaspora_Receiver {
 		$r = q("update xchan set xchan_name = '%s', xchan_name_date = '%s', xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
 			dbesc($name),
 			dbesc(datetime_convert()),
-			dbesc(datetime_convert()),
+			dbesc($images[5]),
 			dbesc($images[0]),
 			dbesc($images[1]),
 			dbesc($images[2]),
