@@ -251,7 +251,7 @@ function pubcrawl_import_author(&$b) {
 	if(! $url)
 		return;
 
-	$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' and xchan_network = 'activitypub' limit 1",
+	$r = q("select xchan_hash from xchan where xchan_hash = '%s' and xchan_network = 'activitypub' limit 1",
 		dbesc($url)
 	);
 	if($r) {
@@ -263,6 +263,9 @@ function pubcrawl_import_author(&$b) {
 	$x = discover_by_webbie($url);
 
 	if($x) {
+		$b['result'] = $x;
+			return;
+/*
 		$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' limit 1",
 			dbesc($url)
 		);
@@ -270,9 +273,8 @@ function pubcrawl_import_author(&$b) {
 			$b['result'] = $r[0]['xchan_hash'];
 			return;
 		}
+*/
 	}
-
-	return;
 
 }
 
@@ -1095,12 +1097,6 @@ function pubcrawl_item_mod_init($x) {
 		xchan_query($r,true);
 		$items = fetch_post_tags($r,true);
 
-		// Wrong object type
-
-		if(! in_array(activity_obj_mapper($items[0]['obj_type']), [ 'Note', 'Article', 'Question' ])) {
-			http_status_exit(418, "I'm a teapot"); 
-		}
-
 		$chan = channelx_by_n($items[0]['uid']);
 
 		if(! $chan)
@@ -1112,7 +1108,6 @@ function pubcrawl_item_mod_init($x) {
 		$i = asencode_item($items[0]);
 		if(! $i)
 			http_status_exit(404, 'Not found');
-
 
 		$x = array_merge(['@context' => [
 			ACTIVITYSTREAMS_JSONLD_REV,

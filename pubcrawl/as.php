@@ -251,7 +251,12 @@ function asencode_item($i) {
 
 	$ret['type'] = $objtype;
 
-	if ($objtype !== 'Question') {
+	if ($i['obj']) {
+		$ret = asencode_object($i['obj']);
+		$ret['url'] = $i['plink'];
+	}
+
+	if ($ret['type'] === 'Note' && $objtype !== 'Question') {
 		$images = false;
 		$has_images = preg_match_all('/\[[zi]mg(.*?)\](.*?)\[/ism',$i['body'],$images,PREG_SET_ORDER); 
 
@@ -259,6 +264,7 @@ function asencode_item($i) {
 			$ret['type'] = 'Note';
 		else
 			$ret['type'] = 'Article';
+
 	}
 
 	if ($objtype === 'Question') {
@@ -297,16 +303,6 @@ function asencode_item($i) {
 			$ret['location']['latitude'] = $l[0];
 			$ret['location']['longitude'] = $l[1];
 		}
-	}
-
-	if($i['obj']) {
-		//$ret['url'] = [
-		//	'type' => 'Link',
-		//	'rel'  => 'alternate',
-		//	'mediaType' => 'text/html',
-		//	'href' => $i['plink']
-		//];
-		$ret['url'] = $i['plink'];
 	}
 
 	$ret['attributedTo'] = $i['author']['xchan_url'];
@@ -486,7 +482,15 @@ function asencode_activity($i) {
 	$reply = false;
 
 	$ret['type'] = activity_mapper($i['verb']);
+
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/activity/' . urlencode($i['mid']));
+
+	if (strpos($ret['id'],z_root() . '/item/') !== false) {
+		$ret['id'] = str_replace('/item/','/activity/',$ret['id']);
+	}
+	elseif (strpos($ret['id'],z_root() . '/event/') !== false) {
+		$ret['id'] = str_replace('/event/','/activity/',$ret['id']);
+	}
 
 	if($i['title'])
 		$ret['name'] = html2plain(bbcode($i['title'], ['cache' => true ]));
@@ -618,7 +622,7 @@ function asencode_activity($i) {
 		unset($ret['cc']);
 	}
 
-	if(in_array($ret['object']['type'], [ 'Note', 'Article', 'Question' ])) {
+	if(array_path_exists('object/type', $ret) && in_array($ret['object']['type'], [ 'Note', 'Article', 'Question' ])) {
 		if(isset($ret['to']))
 			$ret['object']['to'] = $ret['to'];
 		if(isset($ret['cc']))
@@ -1140,14 +1144,35 @@ function as_actor_store($url,$person_obj) {
 			$icon = $person_obj['icon'];
 	}
 	
-        if(is_array($person_obj['url'])) {
-                if(array_key_exists('href', $person_obj['url']))
-                        $profile = $person_obj['url']['href'];
-                else
-                        $profile = $url;
-        }
-        else
-                $profile = $person_obj['url'];
+	$links = false;
+	$profile = false;
+
+	if (is_array($person_obj['url'])) {
+		if (! array_key_exists(0,$person_obj['url'])) {
+			$links = [ $person_obj['url'] ];
+		}
+		else {
+			$links = $person_obj['url'];
+		}
+	}
+
+	if ($links) {
+		foreach ($links as $link) {
+			if (array_key_exists('mediaType',$link) && $link['mediaType'] === 'text/html') {
+				$profile = $link['href'];
+			}
+		}
+		if (! $profile) {
+			$profile = $links[0]['href'];
+		}
+	}
+	elseif (isset($person_obj['url']) && is_string($person_obj['url'])) {
+		$profile = $person_obj['url'];
+	}
+
+	if (! $profile) {
+		$profile = $url;
+	}
 
 	$inbox = $person_obj['inbox'];
 
@@ -1178,6 +1203,7 @@ function as_actor_store($url,$person_obj) {
 		dbesc($url)
 	);
 	if(! $r) {
+
 		// create a new record
 		$r = xchan_store_lowlevel(
 			[
@@ -1237,7 +1263,8 @@ function as_actor_store($url,$person_obj) {
 				'hubloc_host'     => escape_tags($hostname),
 				'hubloc_callback' => $inbox,
 				'hubloc_updated'  => datetime_convert(),
-				'hubloc_primary'  => 1
+				'hubloc_primary'  => 1,
+				'hubloc_id_url'   => escape_tags($profile)
 			]
 		);
 	}
@@ -1562,6 +1589,10 @@ function as_create_note($channel,$observer_hash,$act) {
 		intval($s['uid'])
 	);
 	if($r) {
+		// if we already have the item dismiss its announce
+		if($announce)
+			return;
+
 		if($s['edited'] > $r[0]['edited']) {
 			$s['id'] = $r[0]['id'];
 			$x = item_store_update($s);

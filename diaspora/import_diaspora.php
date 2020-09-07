@@ -1,6 +1,7 @@
 <?php
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Connect;
 
 require_once('include/markdown.php');
 require_once('include/group.php');
@@ -117,7 +118,7 @@ function import_diaspora_account($data) {
 
 	if($data['user']['contacts']) {
 		foreach($data['user']['contacts'] as $contact) {
-			$result = new_contact($channel_id, $contact['account_id'], $c['channel']);
+			$result = Connect::connect($c['channel'], $contact['account_id']);
 			if($result['success']) {
 				if($contact['contact_groups_membership']) {
 					foreach($contact['contact_groups_membership'] as $aspect) {

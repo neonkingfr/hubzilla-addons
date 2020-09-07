@@ -713,12 +713,12 @@ function diaspora_discover(&$b) {
 		else {
 			$r = xchan_store_lowlevel(
 				[
-					'xchan_hash'         => $addr,
-					'xchan_guid'         => $guid,
-					'xchan_pubkey'       => $pubkey,
-					'xchan_addr'         => $addr,
-					'xchan_url'          => $profile,
-					'xchan_name'         => $vcard['fn'],
+					'xchan_hash'         => escape_tags($addr),
+					'xchan_guid'         => escape_tags($guid),
+					'xchan_pubkey'       => escape_tags($pubkey),
+					'xchan_addr'         => escape_tags($addr),
+					'xchan_url'          => escape_tags($profile),
+					'xchan_name'         => escape_tags($vcard['fn']),
 					'xchan_name_date'    => datetime_convert(),
 					'xchan_network'      => $network
 				]
@@ -732,15 +732,16 @@ function diaspora_discover(&$b) {
 		if(! $r) {
 			$r = hubloc_store_lowlevel(
 				[
-					'hubloc_guid'     => $guid,
-					'hubloc_hash'     => $addr,
-					'hubloc_addr'     => $addr,
+					'hubloc_guid'     => escape_tags($guid),
+					'hubloc_hash'     => escape_tags($addr),
+					'hubloc_addr'     => escape_tags($addr),
 					'hubloc_network'  => $network,
 					'hubloc_url'      => trim($diaspora_base,'/'),
-					'hubloc_host'     => $hostname,
+					'hubloc_host'     => escape_tags($hostname),
 					'hubloc_callback' => $notify,
 					'hubloc_updated'  => datetime_convert(),
-					'hubloc_primary'  => 1
+					'hubloc_primary'  => 1,
+					'hubloc_id_url'   => escape_tags($profile)
 				]
 			);
 		}

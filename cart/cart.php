@@ -6,7 +6,7 @@ use Zotlabs\Extend\Route;
 /**
  * Name: cart
  * Description: Core cart utilities for orders and payments
- * Version: 0.9.0
+ * Version: 1.0.0
  * Author: Matthew Dent <dentm42@dm42.net>
  * MinVersion: 3.6
  */
@@ -26,7 +26,7 @@ use Zotlabs\Extend\Route;
 
 
 class Cart {
-	public static $cart_version="0.9.0";
+	public static $cart_version="1.0.0";
 	public static $seller;
 	public static $buyer;
 
@@ -49,6 +49,9 @@ class Cart {
 	}
 
   public static function get_seller_id() {
+	if (argv(0) == "settings" && argv(1) == "cart") {
+		return local_channel();
+	}
         return (isset(\App::$profile["profile_uid"]) && \App::$profile["profile_uid"] != null) ? \App::$profile["profile_uid"] : Cart::$seller["channel_id"];
   }
 
@@ -96,7 +99,7 @@ class Cart {
 $cart_version = 0.9;
 load_config("cart");
 global $cart_submodules;
-$cart_submodules=Array("paypalbuttonV2","hzservices","subscriptions","manualcat");
+$cart_submodules=Array("paypalbuttonV2","hzservices","subscriptions","manualcat","orderoptions");
 
 $cart_manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
 if ($cart_manualpayments) {
@@ -1124,8 +1127,8 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('channel_apps', 'addon/cart/cart.php', 'cart_channel_apps');
 	Zotlabs\Extend\Hook::register('cart_do_additem','addon/cart/cart.php','cart_do_additem',1);
 	Zotlabs\Extend\Hook::register('cart_order_additem','addon/cart/cart.php','cart_additem_hook',1);
-	Zotlabs\Extend\Hook::register('cart_do_updateitem','addon/cart/cart.php','cart_do_updateitem',1);
-	Zotlabs\Extend\Hook::register('cart_order_updateitem','addon/cart/cart.php','cart_updateitem_hook',1);
+	Zotlabs\Extend\Hook::register('cart_do_updateitem','addon/cart/cart.php','cart_do_updateitem',1,1);
+	Zotlabs\Extend\Hook::register('cart_order_updateitem','addon/cart/cart.php','cart_updateitem_hook',1,1);
 	Zotlabs\Extend\Hook::register('cart_order_before_updateitem','addon/cart/cart.php','cart_updateitem_qty_hook',1,32000);
 	Zotlabs\Extend\Hook::register('cart_order_before_updateitem','addon/cart/cart.php','cart_updateitem_delsku_hook',1,32000);
 	Zotlabs\Extend\Hook::register('cart_checkout','addon/cart/cart.php','cart_checkout_hook',1);
@@ -1140,7 +1143,7 @@ function cart_load(){
 	Zotlabs\Extend\Hook::register('cart_display','addon/cart/cart.php','cart_display_applytemplate',1,31000);
 	Zotlabs\Extend\Hook::register('cart_mod_content','addon/cart/cart.php','cart_mod_content',1,99);
 	Zotlabs\Extend\Hook::register('cart_post_add_item','addon/cart/cart.php','cart_post_add_item');
-	Zotlabs\Extend\Hook::register('cart_post_update_item','addon/cart/cart.php','cart_post_update_item');
+	Zotlabs\Extend\Hook::register('cart_post_update_item','addon/cart/cart.php','cart_post_update_item',1,1);
 	Zotlabs\Extend\Hook::register('cart_checkout_start','addon/cart/cart.php','cart_checkout_start');
 	Zotlabs\Extend\Hook::register('cart_post_checkout_choosepayment','addon/cart/cart.php','cart_post_choose_payment',1,32000);
 	Zotlabs\Extend\Hook::register('cart_aside_filter','addon/cart/cart.php','cart_render_aside',1,10000);
@@ -1331,11 +1334,11 @@ function cart_post_update_item () {
 
 	$order = cart_loadorder($orderhash);
 
-	foreach ($order["items"] as $item) {
+	foreach ($order["items"] as $itemid=>$item) {
 		if ($order["order_checkedout"]) {
 						continue;
 		}
-		$hookdata=Array("content"=>'',"iteminfo"=>$item);
+		$hookdata=Array("content"=>'',"itemid"=>$itemid,"iteminfo"=>$item);
 		call_hooks('cart_do_updateitem',$hookdata);
 	}
 }
@@ -1670,7 +1673,6 @@ function cart_checkout_start (&$hookdata) {
 	$hookdata["order_meta"]=$ordermeta;
 	$hookdata["readytopay"]=1;
 	$hookdata['text']['readytopayrequirementsnotmet'] = t('Requirements not met.').' '.t('Review your order and complete any needed requirements.');
-	
 	call_hooks('cart_before_checkout',$hookdata);
 	call_hooks('cart_display_before',$hookdata);
 

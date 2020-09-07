@@ -13,6 +13,7 @@ function openstreetmap_load() {
 	register_hook('generate_map', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_generate_map');
 	register_hook('generate_named_map', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_generate_named_map');
 	register_hook('page_header', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_alterheader');
+	register_hook('content_security_policy','addon/openstreetmap/openstreetmap.php','openstreetmap_content_security_policy');
 
 	logger("installed openstreetmap");
 }
@@ -22,6 +23,7 @@ function openstreetmap_unload() {
 	unregister_hook('generate_map', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_generate_map');
 	unregister_hook('generate_named_map', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_generate_named_map');
 	unregister_hook('page_header', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_alterheader');
+	unregister_hook('content_security_policy','addon/openstreetmap/openstreetmap.php','openstreetmap_content_security_policy');
 
 	logger("removed openstreetmap");
 }
@@ -167,4 +169,8 @@ function openstreetmap_plugin_admin_post(&$a) {
 	set_config('openstreetmap', 'zoom', $zoom);
 	set_config('openstreetmap', 'marker', $marker);
 	info( t('Settings updated.') . EOL);
+}
+
+function openstreetmap_content_security_policy(&$a, &$csp) {
+	$csp["frame-src"][] = 'www.openstreetmap.org';
 }
