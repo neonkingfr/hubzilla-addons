@@ -158,7 +158,7 @@ class Openid extends \Zotlabs\Web\Controller {
 						if($photos) {
 							$z = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', 
 								xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
-								dbesc(datetime_convert()),
+								dbesc($photos[5]),
 								dbesc($photos[0]),
 								dbesc($photos[1]),
 								dbesc($photos[2]),
