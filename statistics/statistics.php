@@ -13,6 +13,11 @@ function statistics_load() {
 	register_hook('cron_weekly', 'addon/statistics/statistics.php', 'statistics_cron_weekly');
 	register_hook('well_known', 'addon/statistics/statistics.php', 'statistics_well_known');
 	register_hook('module_loaded', 'addon/statistics/statistics.php', 'statistics_load_module');
+
+	//register at the-federation.info
+	$url = "https://the-federation.info/register/" . App::get_hostname();
+	$ret = z_fetch_url($url);
+
 }
 
 
