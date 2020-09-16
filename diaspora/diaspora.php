@@ -101,23 +101,6 @@ function diaspora_plugin_admin_post() {
 
 }
 
-
-function diaspora_statistics_register() {
-
-	if(! plugin_is_installed('statistics'))
-		return;
-
-	$registered = get_config('diaspora', 'statistics_registered');
-
-	if(!$registered) {
-		$url = "https://the-federation.info/register/" . App::get_hostname();
-		$ret = z_fetch_url($url);
-		// since we don't get any useful result from the fetch, we will just assume it worked
-		set_config('diaspora','statistics_registered',1);
-	}
-
-}
-
 function diaspora_author_is_pmable(&$b) {
 	if($b['abook'] && (! intval($b['abook']['abook_not_here'])) && (strpos($b['xchan']['xchan_network'],'diaspora') !== false))
 		$b['result'] = true;
