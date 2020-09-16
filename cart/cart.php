@@ -1234,7 +1234,7 @@ function cart_formatamount($amount) {
 	return sprintf(cart_getcurrencyformat(),$amount);
 }
 
-function cart_plugin_admin_post(&$s) {
+function cart_plugin_admin_post() {
 
   $prev_dropval = cart_getsysconfig("dropTablesOnUninstall");
 
@@ -1245,7 +1245,7 @@ function cart_plugin_admin_post(&$s) {
   }
 }
 
-function cart_plugin_admin(&$a,&$s) {
+function cart_plugin_admin(&$s) {
 
     $dropdbonuninstall = intval(cart_getsysconfig("dropTablesOnUninstall"));
 
