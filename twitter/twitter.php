@@ -486,7 +486,7 @@ function twitter_post_hook(&$a,&$b) {
 }
 
 
-function twitter_plugin_admin_post(&$a){
+function twitter_plugin_admin_post(){
 	$consumerkey	=	((x($_POST,'consumerkey'))		? notags(trim($_POST['consumerkey']))	: '');
 	$consumersecret	=	((x($_POST,'consumersecret'))	? notags(trim($_POST['consumersecret'])): '');
 	set_config('twitter','consumerkey',$consumerkey);
@@ -495,7 +495,7 @@ function twitter_plugin_admin_post(&$a){
 }
 
 
-function twitter_plugin_admin(&$a, &$o){
+function twitter_plugin_admin(&$o){
 logger('Twitter admin');
 	$t = get_markup_template( "admin.tpl", "addon/twitter/" );
 
