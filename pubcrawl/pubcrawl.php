@@ -374,10 +374,12 @@ function pubcrawl_salmon_sign($data,$channel) {
 
 }
 
-
 function pubcrawl_activity_mod_init($x) {
 
 	if(pubcrawl_is_as_request()) {
+
+/*
+
 		$item_id = argv(1);
 		if(! $item_id)
 			return;
@@ -425,7 +427,7 @@ function pubcrawl_activity_mod_init($x) {
 		HTTPSig::set_headers($h);
 		echo $ret;
 		killme();
-
+*/
 	}
 }
 
@@ -1024,8 +1026,10 @@ function pubcrawl_profile_mod_init($x) {
 
 
 function pubcrawl_item_mod_init($x) {
-	
+
 	if(pubcrawl_is_as_request()) {
+
+/*
 		$item_id = argv(1);
 		if(! $item_id)
 			http_status_exit(404, 'Not found');
@@ -1128,6 +1132,7 @@ function pubcrawl_item_mod_init($x) {
 		HTTPSig::set_headers($h);
 		echo $ret;
 		killme();
+*/
 	}
 }
 
