@@ -24,11 +24,11 @@ function pubcrawl_load() {
 	Hook::register_array('addon/pubcrawl/pubcrawl.php', [
 		'module_loaded'              => 'pubcrawl_load_module',
 		'webfinger'                  => 'pubcrawl_webfinger',
-		'activity_mod_init'          => 'pubcrawl_activity_mod_init',
+//		'activity_mod_init'          => 'pubcrawl_activity_mod_init',
 		'channel_mod_init'           => 'pubcrawl_channel_mod_init',
 		'profile_mod_init'           => 'pubcrawl_profile_mod_init',
 		'follow_mod_init'            => 'pubcrawl_follow_mod_init',
-		'item_mod_init'              => 'pubcrawl_item_mod_init',
+//		'item_mod_init'              => 'pubcrawl_item_mod_init',
 		'thing_mod_init'             => 'pubcrawl_thing_mod_init',
 		'locs_mod_init'              => 'pubcrawl_locs_mod_init',
 		'follow_allow'               => 'pubcrawl_follow_allow',
