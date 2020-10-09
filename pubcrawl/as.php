@@ -1527,7 +1527,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s['owner_xchan']  = as_find_best_identity($s['owner_xchan']);
 
 	if(!$s['author_xchan']) {
-		logger('No author: ' print_r($act, true));
+		logger('No author: ' . print_r($act, true));
 	}
 
 	if(!$s['owner_xchan']) {
