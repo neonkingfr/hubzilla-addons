@@ -1520,6 +1520,23 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['owner_xchan'] = $p[0]['owner_xchan'];
 	}
 
+	// Some authors may be zot6 authors in which case we want to store their nomadic identity
+	// instead of their ActivityPub identity
+
+	$s['author_xchan'] = as_find_best_identity($s['author_xchan']);
+	$s['owner_xchan']  = as_find_best_identity($s['owner_xchan']);
+
+	if(!$s['author_xchan']) {
+		logger('No author: ' print_r($act, true));
+	}
+
+	if(!$s['owner_xchan']) {
+		logger('No owner: ' . print_r($act, true));
+	}
+
+	if(!$s['author_xchan'] || !$s['owner_xchan'])
+		return;
+
 	$a = Activity::decode_taxonomy($act->obj);
 	if($a) {
 		$s['term'] = $a;
@@ -2043,4 +2060,15 @@ function as_get_attributed_to_person($act) {
 
 	return $attributed_to;
 
+}
+
+function as_find_best_identity($xchan) {
+	$r = q("select hubloc_hash from hubloc where hubloc_id_url = '%s'",
+		dbesc($xchan)
+	);
+	if ($r) {
+		$r = Libzot::zot_record_preferred($r);
+		return $r['hubloc_hash'];
+	}
+	return $xchan;
 }
