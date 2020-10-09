@@ -1866,8 +1866,8 @@ function as_like_note($channel,$observer_hash,$act) {
 	if($act->type === 'Dislike')
 		$bodyverb = t('%1$s doesn\'t like %2$s\'s %3$s');
 
-	$ulink = '[url=' . $item_author['xchan_url'] . ']' . $item_author['xchan_name'] . '[/url]';
-	$alink = '[url=' . $parent_item['author']['xchan_url'] . ']' . $parent_item['author']['xchan_name'] . '[/url]';
+	$ulink = '[url=' . $item_author['xchan_url'] . '][bdi]' . $item_author['xchan_name'] . '[/bdi][/url]';
+	$alink = '[url=' . $parent_item['author']['xchan_url'] . '][bdi]' . $parent_item['author']['xchan_name'] . '[/bdi][/url]';
 	$plink = '[url='. z_root() . '/display/' . gen_link_id($act->id) . ']' . $post_type . '[/url]';
 	$s['body'] =  sprintf( $bodyverb, $ulink, $alink, $plink );
 
