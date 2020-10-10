@@ -4,6 +4,7 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Daemon\Master;
 use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\Libzot;
 
 require_once('include/event.php');
 
@@ -1520,6 +1521,23 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['owner_xchan'] = $p[0]['owner_xchan'];
 	}
 
+	// Some authors may be zot6 authors in which case we want to store their nomadic identity
+	// instead of their ActivityPub identity
+
+	$s['author_xchan'] = as_find_best_identity($s['author_xchan']);
+	$s['owner_xchan']  = as_find_best_identity($s['owner_xchan']);
+
+	if(!$s['author_xchan']) {
+		logger('No author: ' . print_r($act, true));
+	}
+
+	if(!$s['owner_xchan']) {
+		logger('No owner: ' . print_r($act, true));
+	}
+
+	if(!$s['author_xchan'] || !$s['owner_xchan'])
+		return;
+
 	$a = Activity::decode_taxonomy($act->obj);
 	if($a) {
 		$s['term'] = $a;
@@ -1848,8 +1866,8 @@ function as_like_note($channel,$observer_hash,$act) {
 	if($act->type === 'Dislike')
 		$bodyverb = t('%1$s doesn\'t like %2$s\'s %3$s');
 
-	$ulink = '[url=' . $item_author['xchan_url'] . ']' . $item_author['xchan_name'] . '[/url]';
-	$alink = '[url=' . $parent_item['author']['xchan_url'] . ']' . $parent_item['author']['xchan_name'] . '[/url]';
+	$ulink = '[url=' . $item_author['xchan_url'] . '][bdi]' . $item_author['xchan_name'] . '[/bdi][/url]';
+	$alink = '[url=' . $parent_item['author']['xchan_url'] . '][bdi]' . $parent_item['author']['xchan_name'] . '[/bdi][/url]';
 	$plink = '[url='. z_root() . '/display/' . gen_link_id($act->id) . ']' . $post_type . '[/url]';
 	$s['body'] =  sprintf( $bodyverb, $ulink, $alink, $plink );
 
@@ -2043,4 +2061,15 @@ function as_get_attributed_to_person($act) {
 
 	return $attributed_to;
 
+}
+
+function as_find_best_identity($xchan) {
+	$r = q("select hubloc_hash from hubloc where hubloc_id_url = '%s'",
+		dbesc($xchan)
+	);
+	if ($r) {
+		$r = Libzot::zot_record_preferred($r);
+		return $r['hubloc_hash'];
+	}
+	return $xchan;
 }
