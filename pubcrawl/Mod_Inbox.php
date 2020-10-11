@@ -133,6 +133,10 @@ class Inbox extends \Zotlabs\Web\Controller {
 				if(is_array($o)) {
 					$AS->obj = $o;
 				}
+				else {
+					logger('could not fetch object: ' . print_r($AS, true));
+					continue;
+				}
 			}
 
 			switch($AS->type) {

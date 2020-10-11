@@ -1812,8 +1812,16 @@ function as_like_note($channel,$observer_hash,$act) {
 		$s['parent_mid'] = $parent_item['parent_mid'];
 	}
 
-	$s['owner_xchan'] = $parent_item['owner_xchan'];
-	$s['author_xchan'] = $observer_hash;
+	$s['owner_xchan']  = as_find_best_identity($parent_item['owner_xchan']);
+	$s['author_xchan'] = as_find_best_identity($observer_hash);
+
+	if(!$s['author_xchan']) {
+		logger('No author: ' . print_r($act, true));
+	}
+
+	if(!$s['owner_xchan']) {
+		logger('No owner: ' . print_r($act, true));
+	}
 
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
@@ -1832,11 +1840,11 @@ function as_like_note($channel,$observer_hash,$act) {
 
 	$body = $parent_item['body'];
 
-	$z = q("select * from xchan where xchan_hash = '%s' limit 1",
+	$z = q("select * from xchan where xchan_hash = '%s'",
 		dbesc($parent_item['author_xchan'])
 	);
 	if($z)
-		$item_author = $z[0];		
+		$item_author = Libzot::zot_record_preferred($z, 'xchan_network');
 
 	$object = json_encode(array(
 		'type'    => $post_type,
@@ -2064,7 +2072,7 @@ function as_get_attributed_to_person($act) {
 }
 
 function as_find_best_identity($xchan) {
-	$r = q("select hubloc_hash from hubloc where hubloc_id_url = '%s'",
+	$r = q("select hubloc_hash, hubloc_network from hubloc where hubloc_id_url = '%s'",
 		dbesc($xchan)
 	);
 	if ($r) {
