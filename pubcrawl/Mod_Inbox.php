@@ -22,14 +22,62 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		logger('inbox_activity: ' . jindent($data), LOGGER_DATA);
 
-		HTTPSig::verify($data);
+		$hsig = HTTPSig::verify($data);
 
 		$AS = new \Zotlabs\Lib\ActivityStreams($data);
 
-		//logger('debug: ' . $AS->debug());
+		if ($AS->is_valid() && $AS->type === 'Announce' && is_array($AS->obj)
+			&& array_key_exists('object',$AS->obj) && array_key_exists('actor',$AS->obj)) {
+			// This is a relayed/forwarded Activity (as opposed to a shared/boosted object)
+			// Reparse the encapsulated Activity and use that instead
+			logger('relayed activity',LOGGER_DEBUG);
+			$AS = new ActivityStreams($AS->obj);
+		}
 
-		if(! $AS->is_valid())
+		// logger('debug: ' . $AS->debug());
+
+		if (! $AS->is_valid()) {
+			if ($AS->deleted) {
+				// process mastodon user deletion activities, but only if we can validate the signature
+				if ($hsig['header_valid'] && $hsig['content_valid'] && $hsig['portable_id']) {
+					logger('removing deleted actor');
+					remove_all_xchan_resources($hsig['portable_id']);
+				}
+				else {
+					logger('ignoring deleted actor', LOGGER_DEBUG, LOG_INFO);
+				}
+			}
 			return;
+		}
+
+
+		// $observer_hash in this case is the sender
+
+		if ($hsig['header_valid'] && $hsig['content_valid'] && $hsig['portable_id']) {
+			$observer_hash = $hsig['portable_id'];
+			// fetch the portable_id for the actor, which may or may not be the sender
+			$v = q("select hubloc_hash from hubloc where hubloc_id_url = '%s' or hubloc_hash = '%s'",
+				dbesc($AS->actor['id']),
+				dbesc($AS->actor['id'])
+			);
+			// only allow relayed activities if the activity is signed with LDSigs
+			// AND the signature is valid AND the signer is the actor.
+			if ($v && $v[0]['hubloc_hash'] !== $observer_hash) {
+				if ($AS->signer && $AS->signer !== $AS->actor['id']) {
+					return;
+				}
+				if (! $AS->sigok) {
+					return;
+				}
+			}
+		}
+		else {
+			$observer_hash = $AS->actor['id'];
+		}
+
+		if (! $observer_hash) {
+			return;
+		}
 
 		$observer_hash = $AS->actor['id'];
 		if(! $observer_hash)
