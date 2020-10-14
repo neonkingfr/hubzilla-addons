@@ -107,7 +107,8 @@ function cart_myshop_order(&$pagecontent) {
 	$order = cart_loadorder($orderhash);
   $channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
-	if (!$order || $order["seller_channel"]!=$channel_hash) {
+	$channel_hashes = Cart::get_xchan_hashes($channel_hash);
+	if (!$channel_hash || !$order || !in_array($order["seller_channel"],$channel_hashes)) {
 		return "<h1>".t("Order Not Found")."</h1>";
 	}
   $permission=Array();
@@ -122,10 +123,12 @@ function cart_myshop_order(&$pagecontent) {
 	$template = get_markup_template($templateinfo['name'],$templateinfo['path']);
         $templatevalues['added_display']=Array("order"=>$order,"content"=>"");
         call_hooks('cart_addons_myshop_order_display',$templatevalues['added_display']);
+        call_hooks('cart_addons_myshop_prep_display',$templatevalues);
 	//HOOK: cart_post_myshop_order
 	$rendered = replace_macros($template, $templatevalues);
 	$pagecontent = $rendered;
 }
+
 function cart_myshop_order_markpaid () {
 	if (!check_form_security_token()) {
 		notice (check_form_security_std_err_msg());
@@ -137,7 +140,7 @@ function cart_myshop_order_markpaid () {
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
-	if (!$order || $order["seller_channel"]!=$channel_hash) {
+	if (!$channel_hash || !$order || !in_array($order["seller_channel"],Cart::get_xchan_hashes ($channel_hash))) {
 		notice (t("Access Denied"));
 		return;
 	}
@@ -173,7 +176,7 @@ function cart_myshop_item_fulfill () {
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
-	if (!$order || $order["seller_channel"]!=$channel_hash) {
+	if (!$channel_hash || !$order || !in_array($order["seller_channel"],Cart::get_xchan_hashes ($channel_hash))) {
 		notice (t("Access Denied"));
 		return;
 	}
@@ -207,7 +210,7 @@ function cart_myshop_item_cancel () {
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
-	if (!$order || $order["seller_channel"]!=$channel_hash) {
+	if (!$channel_hash || !$order || !in_array($order["seller_channel"],Cart::get_xchan_hashes ($channel_hash))) {
 		notice (t("Access Denied"));
 		return;
 	}
@@ -221,7 +224,6 @@ function cart_myshop_item_cancel () {
 		return;
 	}
 	$itemtocancel=Array('order_hash'=>$orderhash,'id'=>$itemid);
-        logger("Call do_cancelitem",LOGGER_DEBUG);
 	cart_do_cancelitem ($itemtocancel);
 	if (isset($itemtocancel["error"])) {
 		notice (t($itemtocancel["error"]));
@@ -255,7 +257,7 @@ function cart_myshop_clear_item_exception () {
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
-	if (!$order || $order["seller_channel"]!=$channel_hash) {
+	if (!$channel_hash || !$order || !in_array($order["seller_channel"],Cart::get_xchan_hashes ($channel_hash))) {
 		notice (t("Access Denied"));
 		return;
 	}
@@ -290,7 +292,7 @@ function cart_myshop_add_ordernote () {
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
-	if (!$order || $order["seller_channel"]!=$channel_hash) {
+	if (!$channel_hash || !$order || !in_array($order["seller_channel"],Cart::get_xchan_hashes ($channel_hash))) {
 		notice (t("Access Denied"));
 		return;
 	}
@@ -313,7 +315,7 @@ function cart_myshop_add_itemnote () {
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
-	if (!$order || $order["seller_channel"]!=$channel_hash) {
+	if (!$channel_hash || !$order || !in_array($order["seller_channel"],Cart::get_xchan_hashes ($channel_hash))) {
 		notice (t("Access Denied"));
 		return;
 	}
@@ -371,9 +373,10 @@ function cart_myshop_aside (&$aside) {
 function cart_myshop_get_ordercount () {
   $seller_hash=get_observer_hash();
   $r=q("select count(cart_orders.order_hash) as ordercount from cart_orders where
-        seller_channel = '%s'
+        %s
         ",
-      dbesc($seller_hash));
+      Cart::channel_hashes_sql (Cart::get_xchan_hashes ($seller_hash),'seller_channel')
+      );
   if (!$r) {return 0;}
   return $r[0]["ordercount"];
 }
@@ -384,12 +387,14 @@ function cart_myshop_get_allorders ($search=null,$limit=100000,$offset=0) {
   *   [""]
 ***/
   $seller_hash=get_observer_hash();
+  $hashes = Cart::get_xchan_hashes($seller_hash);
+  $hashes_sql = Cart::channel_hashes_sql($hashes,'seller_channel');
   $r=q("select distinct cart_orders.order_hash,cart_orders.id from cart_orders,cart_orderitems
         where cart_orders.order_hash = cart_orderitems.order_hash and
-        seller_channel = '%s'
+        %s
 				ORDER BY cart_orders.id
         limit %d offset %d",
-      dbesc($seller_hash),
+      Cart::channel_hashes_sql (Cart::get_xchan_hashes ($seller_hash),'seller_channel'),
       intval($limit), intval($offset));
   $orders=Array();
   if (!$r) {return Array();}
@@ -409,20 +414,20 @@ function cart_myshop_get_openorders ($search=null,$limit=100,$offset=1) {
 /*
   $r=q("select distinct cart_orders.order_hash from cart_orders,cart_orderitems
         where cart_orders.order_hash = cart_orderitems.order_hash and
-        seller_channel = '%s' and cart_orderitems.item_fulfilled is NULL
+        %s and cart_orderitems.item_fulfilled is NULL
         and cart_orderitems.item_confirmed is not NULL
         limit %d offset %d",
-      dbesc($seller_hash),
+      Cart::channel_hashes_sql (Cart::get_xchan_hashes ($seller_hash),'seller_channel'),
       intval($limit), intval($offset));
 */
 
   $r=q("select distinct cart_orders.order_hash from cart_orders,cart_orderitems
         where cart_orders.order_hash = cart_orderitems.order_hash and
-        seller_channel = '%s' and
+        %s and
         cart_orderitems.item_fulfilled = 0 and
         cart_orderitems.item_confirmed = 1
         limit %d offset %d",
-      dbesc($seller_hash),
+      Cart::channel_hashes_sql (Cart::get_xchan_hashes ($seller_hash),'seller_channel'),
       intval($limit), intval($offset));
   if (!$r) {return Array();}
 
@@ -437,11 +442,11 @@ function cart_myshop_get_closedorders ($search=null,$limit=100,$offset=1) {
 
   $seller_hash=get_observer_hash();
   $r=q("select distinct order_hash from cart_orders where
-        seller_channel = '%s' and
+        %s and
         cart_orders.order_hash not in (select order_hash from cart_orderitems
         where item_fulfilled = 1)
         limit %d offset %d",
-      dbesc($seller_hash),
+      Cart::channel_hashes_sql (Cart::get_xchan_hashes ($seller_hash),'seller_channel'),
       intval($limit), intval($offset));
 
   if (!$r) {return Array();}

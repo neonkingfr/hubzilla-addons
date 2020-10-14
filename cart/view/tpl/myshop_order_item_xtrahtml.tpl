@@ -1,5 +1,14 @@
-<div style="margin-left:5em;">{{if !$item.item_fulfilled}}
-<div><span style="font-weight:bold;">Item Not Fulfilled</span></div>
+<div style="margin-left:5em;">
+{{if $item.meta.data.html}}
+<div>
+<div style="font-weight:bold;color:#fff;background-color:#0d0d0d;width:100%;">Item details and customizations</div>
+
+<div style="color:#000;background-color:#e0e0e0;width:100%;padding:10px;">
+	{{$item.meta.data.html}}
+</div>
+</div>
+{{/if}}{{if !$item.item_fulfilled}}
+<div style="background-color:#ff0;"><span style="font-weight:bold;">Item Not Fulfilled</span></div>
 {{else}}
 <div><span style="font-weight:bold;">Item Fulfilled</span></div>
 {{/if}}
@@ -22,8 +31,8 @@
 </div>
 <div style="clear:both;"></div>
 </div>
-{{if $item.item_fulfilled}}<div class="warning">Warning: May result in duplicate product being sent.</div>{{/if}}
-{{if $item.item_exception}}<div class="warning">Item Exception: Please review notes.</div>
+{{if $item.item_fulfilled}}<div style="background-color:#fe0;color:#00;">Warning: May result in duplicate product being sent.</div>{{/if}}
+{{if $item.item_exception}}<div class="background-color:#f33;color:#fff;">Item Exception: Please review notes.</div>
 <div class="cart-myshop-itemexception-form">
 <form method="post">
 <input type=hidden name="form_security_token" value="{{$security_token}}">

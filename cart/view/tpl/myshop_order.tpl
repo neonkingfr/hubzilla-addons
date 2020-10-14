@@ -46,6 +46,15 @@
     </tr>
     {{/if}}
     </table>
+    {{if $orderextras}}
+    <div>
+    <div style="font-weight:bold;color:#fff;background-color:#0d0d0d;width:100%;">Additional Order Data</div>
+
+    <div style="color:#000;background-color:#e0e0e0;width:100%;padding:10px;">
+	{{$orderextras}}
+    </div>
+    </div>
+    {{/if}}
     <div>
       {{if !$order_paid}}
       <form method="post">
