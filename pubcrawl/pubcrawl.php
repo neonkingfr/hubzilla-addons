@@ -47,7 +47,7 @@ function pubcrawl_load() {
 		'channel_protocols'          => 'pubcrawl_channel_protocols',
 		'federated_transports'       => 'pubcrawl_federated_transports',
 		'create_identity'            => 'pubcrawl_create_identity',
-		'can_comment_on_post'        => 'pubcrawl_can_comment_on_post'
+//		'can_comment_on_post'        => 'pubcrawl_can_comment_on_post'
 	]);
 	Route::register('addon/pubcrawl/Mod_Pubcrawl.php','pubcrawl');
 }
@@ -1372,6 +1372,7 @@ function pubcrawl_create_identity($b) {
 }
 
 function pubcrawl_can_comment_on_post(&$x) {
+/*
 	if(local_channel()) {
 		$c = App::get_channel();
 		$recips = get_iconfig($x['item'],'activitypub','recips',[]);
@@ -1382,5 +1383,6 @@ function pubcrawl_can_comment_on_post(&$x) {
 		if(isset($recips['cc']) && (in_array(ACTIVITY_PUBLIC_INBOX, $recips['cc']) || in_array(channel_url($c), $recips['cc'])))
 			$x['allowed'] = Apps::addon_app_installed($c['channel_id'], 'pubcrawl');
 	}
+*/
 }
 
