@@ -1825,6 +1825,9 @@ function as_like_note($channel,$observer_hash,$act) {
 		logger('No owner: ' . print_r($act, true));
 	}
 
+	if(!$s['author_xchan'] || !$s['owner_xchan'])
+		return;
+
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
 	$s['uuid'] = '';
