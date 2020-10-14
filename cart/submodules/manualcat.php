@@ -154,9 +154,7 @@ class Cart_manualcat {
     $sku = isset($_REQUEST["SKU"]) ? preg_replace("[^a-zA-Z0-9\-]",'',$_REQUEST["SKU"]) : null;
     if ($sku) {
       $pagecontent=Cart_manualcat::itemedit_form($sku);
-logger("FORMEXTRAS CALL");
       call_hooks('itemedit_formextras',$pagecontent);
-logger("FORMEXTRAS RETURN");
       return;
     }
 
@@ -165,9 +163,7 @@ logger("FORMEXTRAS RETURN");
     Cart_manualcat::get_catalog($skus);
     //Cart_manualcat::filter_catalog($skus);
     
-    logger("SKUS: ".print_r($skus,true),LOGGER_DEBUG);
     ksort($skus,SORT_STRING);
-    logger("SKUS: ".print_r($skus,true),LOGGER_DEBUG);
     $skulist = '';
     $templatevalues=Array("security_token"=>get_form_security_token(),"skus"=>$skus);
     $skulist .= replace_macros(get_markup_template('manualcat.itemadmin.skulist.tpl','addon/cart/submodules/'),$templatevalues);
