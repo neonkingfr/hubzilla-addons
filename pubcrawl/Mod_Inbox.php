@@ -79,9 +79,18 @@ class Inbox extends \Zotlabs\Web\Controller {
 			return;
 		}
 
-		$observer_hash = $AS->actor['id'];
-		if(! $observer_hash)
-			return;
+		// update the hubloc_connected timestamp, ignore failures
+		q("update hubloc set hubloc_connected = '%s' where hubloc_hash = '%s' and hubloc_network = 'activitypub'",
+			dbesc(datetime_convert()),
+			dbesc($observer_hash)
+		);
+
+		$m = parse_url($observer_hash);
+		if ($m['scheme'] && $m['host']) {
+			q("update site set site_dead = 0 where site_dead = 1 and site_url = '%s'",
+				dbesc($m['scheme'] . '://' . $m['host'])
+			);
+		}
 
 		if($AS->type == 'Update' && $AS->obj['type'] == 'Person') {
 			$x['recipient']['xchan_network'] = 'activitypub';
