@@ -2,6 +2,7 @@
 namespace Zotlabs\Module;
 
 use Zotlabs\Web\HTTPSig;
+use Zotlabs\Lib\ActivityStreams;
 
 
 class Inbox extends \Zotlabs\Web\Controller {
@@ -24,7 +25,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		$hsig = HTTPSig::verify($data);
 
-		$AS = new \Zotlabs\Lib\ActivityStreams($data);
+		$AS = new ActivityStreams($data);
 
 		if ($AS->is_valid() && $AS->type === 'Announce' && is_array($AS->obj)
 			&& array_key_exists('object',$AS->obj) && array_key_exists('actor',$AS->obj)) {
