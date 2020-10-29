@@ -54,6 +54,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		// $observer_hash in this case is the sender
 
+/* TODO: this doesnot seem to work as expected yet.
 		if ($hsig['header_valid'] && $hsig['content_valid'] && $hsig['portable_id']) {
 			$observer_hash = $hsig['portable_id'];
 			// fetch the portable_id for the actor, which may or may not be the sender
@@ -75,6 +76,9 @@ class Inbox extends \Zotlabs\Web\Controller {
 		else {
 			$observer_hash = $AS->actor['id'];
 		}
+*/
+
+		$observer_hash = $AS->actor['id'];
 
 		if (! $observer_hash) {
 			return;
