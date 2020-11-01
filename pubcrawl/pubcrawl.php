@@ -1309,11 +1309,13 @@ function pubcrawl_queue_deliver(&$b) {
 		$chan = channelx_by_n($outq['outq_channel']);
 
 		$retries = 0;
+		$m = parse_url($outq['outq_posturl']);
 
 		$headers = [];
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$ret = $outq['outq_msg'];
 		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
+		$headers['Host'] = $m['host'];
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
 		$headers['(request-target)'] = 'post ' . get_request_string($outq['outq_posturl']);
 
