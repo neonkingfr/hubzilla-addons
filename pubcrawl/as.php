@@ -1127,6 +1127,37 @@ function as_actor_store($url,$person_obj) {
 	if(! is_array($person_obj))
 		return;
 
+	// it seems we were loosing public keys due to an issue Lib/Activity::encode_person()
+	// if so, refetch the person object and fix it.
+
+	$fix_pubkey = false;
+
+	if(! $person_obj['publicKey']['publicKeyPem']) {
+		$fix_pubkey = true;
+
+		$x = as_fetch($url);
+		if(! $x)
+			return;
+
+		$AS = new ActivityStreams($x);
+
+		if(! $AS->is_valid()) {
+			return;
+		}
+
+		$person_obj = null;
+		if(in_array($AS->type, [ 'Application', 'Group', 'Organization', 'Person', 'Service' ])) {
+			$person_obj = $AS->data;
+		}
+		elseif($AS->obj && ( in_array($AS->obj['type'], [ 'Application', 'Group', 'Organization', 'Person', 'Service' ] ))) {
+			$person_obj = $AS->obj;
+		}
+		else {
+			return;
+		}
+	}
+
+
 	$icon = '';
 	$name = $person_obj['name'];
 	if(! $name)
@@ -1223,9 +1254,8 @@ function as_actor_store($url,$person_obj) {
 
 		// Record exists. Cache existing records for one week at most
 		// then refetch to catch updated profile photos, names, etc. 
-
 		$d = datetime_convert('UTC','UTC','now - 1 week');
-		if($r[0]['xchan_name_date'] > $d)
+		if($r[0]['xchan_name_date'] > $d && $fix_pubkey === false)
 			return;
 
 		// update existing record

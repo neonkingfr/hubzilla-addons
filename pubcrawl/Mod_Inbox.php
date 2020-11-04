@@ -25,6 +25,11 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		$hsig = HTTPSig::verify($data);
 
+		if (! ($hsig['header_signed'] && $hsig['header_valid'] && $hsig['content_signed'] && $hsig['content_valid'])) {
+			logger('HTTPSig::verify() failed: ' . print_r($hsig,true), LOGGER_DEBUG);
+			http_status_exit(403,'Permission denied');
+		}
+
 		$AS = new ActivityStreams($data);
 
 		if ($AS->is_valid() && $AS->type === 'Announce' && is_array($AS->obj)
@@ -104,8 +109,10 @@ class Inbox extends \Zotlabs\Web\Controller {
 			return;
 		}
 
-		if(is_array($AS->actor) && array_key_exists('id',$AS->actor))
+		if(is_array($AS->actor) && array_key_exists('id',$AS->actor)) {
 			as_actor_store($AS->actor['id'],$AS->actor);
+		}
+
 
 		if($AS->type == 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo',$AS->obj)) {
 			$arr = [];
