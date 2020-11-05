@@ -19,7 +19,7 @@ function openclipatar_unload() {
 
 function openclipatar_module() { return; }
 
-function openclipatar_plugin_admin_post(&$a) {
+function openclipatar_plugin_admin_post() {
 	$prefclipids = ((x($_POST, 'prefclipids')) ? notags(trim($_POST['prefclipids'])) : '');
 	$defsearch = ((x($_POST, 'defsearch')) ? notags(trim($_POST['defsearch'])) : '');
 	$prefclipmsg = ((x($_POST, 'prefclipmsg')) ? notags(trim($_POST['prefclipmsg'])) : '');
@@ -32,7 +32,7 @@ function openclipatar_plugin_admin_post(&$a) {
 	set_config('openclipatar', 'sortids', $_POST['sortids']);
 }
 
-function openclipatar_plugin_admin(&$a, &$o) {
+function openclipatar_plugin_admin(&$o) {
 	$t = get_markup_template('admin.tpl', 'addon/openclipatar/');
 	$prefclipids = get_config('openclipatar', 'prefclipids');
 	$defsearch = get_config('openclipatar', 'defsearch');

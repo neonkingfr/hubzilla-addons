@@ -163,9 +163,7 @@ class Cart_manualcat {
     Cart_manualcat::get_catalog($skus);
     //Cart_manualcat::filter_catalog($skus);
     
-    logger("SKUS: ".print_r($skus,true),LOGGER_DEBUG);
     ksort($skus,SORT_STRING);
-    logger("SKUS: ".print_r($skus,true),LOGGER_DEBUG);
     $skulist = '';
     $templatevalues=Array("security_token"=>get_form_security_token(),"skus"=>$skus);
     $skulist .= replace_macros(get_markup_template('manualcat.itemadmin.skulist.tpl','addon/cart/submodules/'),$templatevalues);

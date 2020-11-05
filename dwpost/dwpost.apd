@@ -1,4 +1,4 @@
-version: 1
+version: 1.1
 url: $baseurl/dwpost
 requires: local_channel
 name: Dreamwidth Crosspost Connector

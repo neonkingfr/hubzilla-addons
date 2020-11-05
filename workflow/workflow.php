@@ -488,12 +488,31 @@ class Workflow_Utils {
 
 		foreach($items as $itemidx => $item) {
 			foreach ($item['related'] as $idx => $related) {
-
-				$rellink = preg_replace("/^http:/i", "https:", $related['relatedlink']);
-				if (strpos($rellink,'?') === false) {
-					$relurl = $rellink.'?zid='.get_my_address();
+				$relatedislocal = false;
+				$relatedlink = $related['relatedlink'];
+				$reliteminfo = q("select plink,llink from item where uid=%d and
+							(plink like '%s' or llink like '%s') and item_deleted = 0
+							and item_hidden = 0 and item_unpublished = 0 
+							and item_delayed = 0 and item_pending_remove = 0",
+							$uid,
+							dbesc($relatedlink).'%',
+							dbesc($relatedlink).'%'
+						);
+				if ($reliteminfo) {
+					$relurl = $reliteminfo[0]['llink'];
+					$relatedislocal = true;
 				} else {
-				        $relurl = self::queryvars_stripzid($rellink).'&zid='.get_my_address();
+					$relhost = parse_url($relatedlink,PHP_URL_HOST);
+					$knownhub = q("select hubloc_host from hubloc where
+							hubloc_host = '%s' limit 1",
+							dbesc($relhost));
+					if ($knownhub) {
+						if ((strpos($relatedlink,'?') === false)) {
+							$relurl = $relatedlink.'?zid='.get_my_address();
+						} else {
+				        		$relurl = self::queryvars_stripzid($relatedlink).'&zid='.get_my_address();
+						}
+					}
 				}
 				$items[$itemidx]['related'][$idx]['jsondata'] = json_encode(['iframeurl'=>$relurl,'action'=>'getmodal_getiframe','raw'=>'raw']);
 				$items[$itemidx]['related'][$idx]['jsoneditdata'] = json_encode(['action'=>'form_addlink','uuid'=>$uuid,'mid'=>$item['mid'],'iframeurl'=>$posturl,'relatedlink'=>$related['relatedlink']]);
@@ -596,7 +615,8 @@ class Workflow_Utils {
 	protected static function wfitems_with_relatedlink($uid,$link) {
 		// self::$related_to_wfitems = [ [uid]=>[[link]=> { [ %wfitem% ] || null } ] ]
 
-		if (!local_channel()) {
+		//if (!local_channel()) {
+		if (!get_observer_hash()) {
 			return null;
 		}
 
@@ -626,10 +646,20 @@ class Workflow_Utils {
 	}
 
 	public static function prepare_body_final(&$prep_arr) {
+		if (Activity::activity_obj_mapper($prep_arr['item']['obj_type']) != "Note") {
+			return;
+		}
+
+		if (!get_observer_hash()) {
+			return;
+		}
 
 		$uid = local_channel();
 		if (!$uid) {
 			$uid = App::$profile_uid;
+			if (!perm_is_allowed($uid,get_observer_hash(),'workflow_user')) {
+				return;
+			}
 		}
 		
 		if (!$uid || (!Apps::addon_app_installed($uid,'workflow'))) {
@@ -639,6 +669,9 @@ class Workflow_Utils {
 		$arr = $prep_arr;
 
 		$related = self::wfitems_with_relatedlink($uid,$arr['item']['plink']);
+		if (!$related) {
+			$related = self::wfitems_with_relatedlink($uid,$arr['item']['llink']);
+		}
 
 		$templatevars = [
 			'relateditems' => $related
@@ -1640,7 +1673,7 @@ class Workflow_Utils {
 		return self::item_create($data,$owner_portid);
 	}
 
-	protected static function item_create($data,$owner_portid = null) {
+	public static function item_create($data,$owner_portid = null) {
 
 		if (($owner_portid) && !($owner_portid == \App::$channel['channel_portable_id'])) {
 			return false;

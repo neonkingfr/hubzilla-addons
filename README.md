@@ -1,6 +1,6 @@
 Addons
 ======
 
-These are addons for red sites
+Official addons for Hubzilla
 
 

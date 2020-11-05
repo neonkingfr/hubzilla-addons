@@ -13,6 +13,7 @@ function openstreetmap_load() {
 	register_hook('generate_map', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_generate_map');
 	register_hook('generate_named_map', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_generate_named_map');
 	register_hook('page_header', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_alterheader');
+	register_hook('content_security_policy','addon/openstreetmap/openstreetmap.php','openstreetmap_content_security_policy');
 
 	logger("installed openstreetmap");
 }
@@ -22,6 +23,7 @@ function openstreetmap_unload() {
 	unregister_hook('generate_map', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_generate_map');
 	unregister_hook('generate_named_map', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_generate_named_map');
 	unregister_hook('page_header', 'addon/openstreetmap/openstreetmap.php', 'openstreetmap_alterheader');
+	unregister_hook('content_security_policy','addon/openstreetmap/openstreetmap.php','openstreetmap_content_security_policy');
 
 	logger("removed openstreetmap");
 }
@@ -135,7 +137,7 @@ function openstreetmap_generate_map(&$a,&$b) {
 
 }
 
-function openstreetmap_plugin_admin(&$a, &$o) {
+function openstreetmap_plugin_admin(&$o) {
 	$t = get_markup_template("admin.tpl", "addon/openstreetmap/");
 
 	$tmsserver = get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org');
@@ -157,7 +159,7 @@ function openstreetmap_plugin_admin(&$a, &$o) {
 			'$marker' => array('marker', t('Include marker on map'), $marker, t('Include a marker on the map.')),
 	));
 }
-function openstreetmap_plugin_admin_post(&$a) {
+function openstreetmap_plugin_admin_post() {
 	$urltms = ((x($_POST, 'tmsserver')) ? notags(trim($_POST['tmsserver'])) : '');
 	$urlnom = ((x($_POST, 'nomserver')) ? notags(trim($_POST['nomserver'])) : '');
 	$zoom = ((x($_POST, 'zoom')) ? intval(trim($_POST['zoom'])) : 16);
@@ -167,4 +169,8 @@ function openstreetmap_plugin_admin_post(&$a) {
 	set_config('openstreetmap', 'zoom', $zoom);
 	set_config('openstreetmap', 'marker', $marker);
 	info( t('Settings updated.') . EOL);
+}
+
+function openstreetmap_content_security_policy(&$a, &$csp) {
+	$csp["frame-src"][] = 'www.openstreetmap.org';
 }

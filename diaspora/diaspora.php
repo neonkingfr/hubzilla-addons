@@ -3,7 +3,7 @@
 
 /**
  * Name: Diaspora Protocol
- * Description: Diaspora Protocol. Install 'Statistics' first if you wish to use public tag relays
+ * Description: Diaspora Protocol
  * Version: 1.0
  * Author: Mike Macgirvin
  * Maintainer: none
@@ -54,7 +54,6 @@ function diaspora_load() {
 
 	Zotlabs\Extend\Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
 
-	diaspora_init_relay();
 }
 
 function diaspora_unload() {
@@ -62,20 +61,44 @@ function diaspora_unload() {
 	Zotlabs\Extend\Route::unregister('addon/diaspora/Mod_Diaspora.php','diaspora');
 }
 
+function diaspora_plugin_admin(&$o) {
+	if(! plugin_is_installed('statistics')) {
+		$o = t('Please install the statistics addon to be able to configure a diaspora relay');
+		return;
+	}
+	
+	$t = get_markup_template("admin.tpl", "addon/diaspora/");
 
-function diaspora_init_relay() {
-	if(! get_config('diaspora','relay_handle')) {
-		if(plugin_is_installed('statistics')) {
-			$x = ['author' => [ 'address' => 'relay@relay.iliketoast.net', 'network' => 'diaspora' ], 'result' => false ];
-			diaspora_import_author($x);
-			if($x['result']) {
-				set_config('diaspora','relay_handle',$x['result']);
-				// Now register
-				$url = "https://the-federation.info/register/" . App::get_hostname();
-				$ret = z_fetch_url($url);
-			}
+	$relay = get_config('diaspora', 'relay_handle', '');
+
+	$o = replace_macros($t, array(
+			'$submit' => t('Submit'),
+			'$relay_handle' => array('relay_handle', t('Diaspora Relay Handle'), $relay, t('Address of a diaspora relay. Example: relay@diasporarelay.tld'))
+	));
+}
+
+function diaspora_plugin_admin_post() {
+
+	if(! plugin_is_installed('statistics'))
+		return;
+
+	$relay = ((x($_POST, 'relay_handle')) ? notags(trim($_POST['relay_handle'])) : '');
+
+	if($relay) {
+		$x = ['author' => [ 'address' => $relay, 'network' => 'diaspora' ], 'result' => false ];
+		diaspora_import_author($x);
+
+		if($x['result']) {
+			set_config('diaspora','relay_handle',$x['result']);
+			info( t('Settings updated.') . EOL);
+		}
+		else {
+			notice( t('Diaspora relay could not be imported') . EOL);
 		}
 	}
+	else
+		set_config('diaspora', 'relay_handle', '');
+
 }
 
 function diaspora_author_is_pmable(&$b) {
@@ -713,12 +736,12 @@ function diaspora_discover(&$b) {
 		else {
 			$r = xchan_store_lowlevel(
 				[
-					'xchan_hash'         => $addr,
-					'xchan_guid'         => $guid,
-					'xchan_pubkey'       => $pubkey,
-					'xchan_addr'         => $addr,
-					'xchan_url'          => $profile,
-					'xchan_name'         => $vcard['fn'],
+					'xchan_hash'         => escape_tags($addr),
+					'xchan_guid'         => escape_tags($guid),
+					'xchan_pubkey'       => escape_tags($pubkey),
+					'xchan_addr'         => escape_tags($addr),
+					'xchan_url'          => escape_tags($profile),
+					'xchan_name'         => escape_tags($vcard['fn']),
 					'xchan_name_date'    => datetime_convert(),
 					'xchan_network'      => $network
 				]
@@ -732,22 +755,23 @@ function diaspora_discover(&$b) {
 		if(! $r) {
 			$r = hubloc_store_lowlevel(
 				[
-					'hubloc_guid'     => $guid,
-					'hubloc_hash'     => $addr,
-					'hubloc_addr'     => $addr,
+					'hubloc_guid'     => escape_tags($guid),
+					'hubloc_hash'     => escape_tags($addr),
+					'hubloc_addr'     => escape_tags($addr),
 					'hubloc_network'  => $network,
 					'hubloc_url'      => trim($diaspora_base,'/'),
-					'hubloc_host'     => $hostname,
+					'hubloc_host'     => escape_tags($hostname),
 					'hubloc_callback' => $notify,
 					'hubloc_updated'  => datetime_convert(),
-					'hubloc_primary'  => 1
+					'hubloc_primary'  => 1,
+					'hubloc_id_url'   => escape_tags($profile)
 				]
 			);
 		}
 
 		$photos = import_xchan_photo($vcard['photo'],$addr);
 		$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
-			dbescdate(datetime_convert()),
+			dbescdate($photos[5]),
 			dbesc($photos[0]),
 			dbesc($photos[1]),
 			dbesc($photos[2]),
@@ -828,7 +852,7 @@ function diaspora_post_local(&$item) {
 
 				$rawobj = ((is_array($item['obj'])) ? $item['obj'] : json_decode($item['obj'],true));
 				if($rawobj) {
-					$ev = bbtoevent($rawobj);
+					$ev = bbtoevent($rawobj['content']);
 					if($ev && $ev['hash'] && defined('DIASPORA_V2')) {
 						$meta = [
 							'author'      => $handle,
@@ -1210,6 +1234,7 @@ function diaspora_queue_deliver(&$b) {
 					dbesc($base)
 				);
 			}
+
 			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s'",
 				dbesc('accepted for delivery'),
 				dbescdate(datetime_convert()),

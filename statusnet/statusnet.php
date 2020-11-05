@@ -541,7 +541,7 @@ function statusnet_queue_deliver(&$a,&$b) {
 	$b['handled'] = true;
 }
 
-function statusnet_plugin_admin_post(&$a){
+function statusnet_plugin_admin_post(){
 	
 	$sites = array();
 	
@@ -571,7 +571,7 @@ function statusnet_plugin_admin_post(&$a){
 	
 }
 
-function statusnet_plugin_admin(&$a, &$o){
+function statusnet_plugin_admin(&$o){
 
 	$sites = get_config('statusnet','sites');
 	$sitesform=array();

@@ -24,10 +24,11 @@ function pubcrawl_load() {
 	Hook::register_array('addon/pubcrawl/pubcrawl.php', [
 		'module_loaded'              => 'pubcrawl_load_module',
 		'webfinger'                  => 'pubcrawl_webfinger',
+//		'activity_mod_init'          => 'pubcrawl_activity_mod_init',
 		'channel_mod_init'           => 'pubcrawl_channel_mod_init',
 		'profile_mod_init'           => 'pubcrawl_profile_mod_init',
 		'follow_mod_init'            => 'pubcrawl_follow_mod_init',
-		'item_mod_init'              => 'pubcrawl_item_mod_init',
+//		'item_mod_init'              => 'pubcrawl_item_mod_init',
 		'thing_mod_init'             => 'pubcrawl_thing_mod_init',
 		'locs_mod_init'              => 'pubcrawl_locs_mod_init',
 		'follow_allow'               => 'pubcrawl_follow_allow',
@@ -46,7 +47,7 @@ function pubcrawl_load() {
 		'channel_protocols'          => 'pubcrawl_channel_protocols',
 		'federated_transports'       => 'pubcrawl_federated_transports',
 		'create_identity'            => 'pubcrawl_create_identity',
-		'can_comment_on_post'        => 'pubcrawl_can_comment_on_post'
+//		'can_comment_on_post'        => 'pubcrawl_can_comment_on_post'
 	]);
 	Route::register('addon/pubcrawl/Mod_Pubcrawl.php','pubcrawl');
 }
@@ -250,7 +251,7 @@ function pubcrawl_import_author(&$b) {
 	if(! $url)
 		return;
 
-	$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' and xchan_network = 'activitypub' limit 1",
+	$r = q("select xchan_hash from xchan where xchan_hash = '%s' and xchan_network = 'activitypub' limit 1",
 		dbesc($url)
 	);
 	if($r) {
@@ -262,6 +263,9 @@ function pubcrawl_import_author(&$b) {
 	$x = discover_by_webbie($url);
 
 	if($x) {
+		$b['result'] = $x;
+			return;
+/*
 		$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' limit 1",
 			dbesc($url)
 		);
@@ -269,9 +273,8 @@ function pubcrawl_import_author(&$b) {
 			$b['result'] = $r[0]['xchan_hash'];
 			return;
 		}
+*/
 	}
-
-	return;
 
 }
 
@@ -288,11 +291,6 @@ function pubcrawl_load_module(&$b) {
 	if($b['module'] === 'outbox') {
 		require_once('addon/pubcrawl/Mod_Outbox.php');
 		$b['controller'] = new \Zotlabs\Module\Outbox();
-		$b['installed'] = true;
-	}
-	if($b['module'] === 'activity') {
-		require_once('addon/pubcrawl/Mod_Activity.php');
-		$b['controller'] = new \Zotlabs\Module\Activity();
 		$b['installed'] = true;
 	}
 	if($b['module'] === 'nullbox') {
@@ -376,6 +374,65 @@ function pubcrawl_salmon_sign($data,$channel) {
 
 }
 
+function pubcrawl_activity_mod_init($x) {
+
+	if(pubcrawl_is_as_request()) {
+
+/*
+
+		$item_id = argv(1);
+		if(! $item_id)
+			return;
+
+		$item_normal = " and item.item_hidden = 0 and item.item_type = 0 and item.item_unpublished = 0 
+			and item.item_delayed = 0 and item.item_blocked = 0 ";
+
+		$sql_extra = item_permissions_sql(0);
+
+		$r = q("select * from item where uuid = '%s' $item_normal $sql_extra limit 1",
+			dbesc($item_id)
+		);
+		if(! $r) {
+			$r = q("select * from item where uuid = '%s' $item_normal limit 1",
+				dbesc($item_id)
+			);
+
+			if($r) {
+				http_status_exit(403, 'Forbidden');
+			}
+			http_status_exit(404, 'Not found');
+		}
+
+		xchan_query($r,true);
+		$items = fetch_post_tags($r,true);
+
+		$chan = channelx_by_n($items[0]['uid']);
+
+		$x = array_merge(['@context' => [
+			ACTIVITYSTREAMS_JSONLD_REV,
+			'https://w3id.org/security/v1',
+			z_root() . ZOT_APSCHEMA_REV
+			]], asencode_activity($items[0]));
+
+
+		$headers = [];
+		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
+
+		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
+		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
+		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
+		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
+		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
+		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
+		HTTPSig::set_headers($h);
+		echo $ret;
+		killme();
+*/
+	}
+}
+
+
+
 function pubcrawl_channel_mod_init($x) {
 	
 	if(pubcrawl_is_as_request()) {
@@ -383,7 +440,7 @@ function pubcrawl_channel_mod_init($x) {
 		if(! $chan)
 			http_status_exit(404, 'Not found');
 
-		if(! Apps::addon_app_installed($chan['channel_id'],'pubcrawl'))
+		if(! Apps::addon_app_installed($chan['channel_id'],'pubcrawl') && argv(1) !== 'sys')
 			http_status_exit(404, 'Not found');
 
 		$y = asencode_person($chan);
@@ -439,7 +496,17 @@ function pubcrawl_notifier_process(&$arr) {
 		$arr['recipients'][] = '\'' . $arr['parent_item']['author']['xchan_hash'] . '\'';
 	}
 
+
 	// deliver to local subscribers directly
+	$sys = get_sys_channel();
+
+	$arr['env_recips'][] = [
+		'guid'     => $sys['channel_guid'],
+		'guid_sig' => $sys['channel_guid_sig'],
+		'hash'     => $sys['channel_hash']
+	];
+	$arr['recipients'][] = '\'' . $sys['channel_hash'] . '\'';
+
 	$r = q("SELECT channel_guid, channel_guid_sig, channel_hash FROM channel WHERE channel_id IN ( SELECT abook_channel FROM abook WHERE abook_xchan = '%s' AND abook_channel != %d )",
 		dbesc($arr['target_item']['owner_xchan']),
 		intval($arr['channel']['channel_id'])
@@ -959,8 +1026,10 @@ function pubcrawl_profile_mod_init($x) {
 
 
 function pubcrawl_item_mod_init($x) {
-	
+
 	if(pubcrawl_is_as_request()) {
+
+/*
 		$item_id = argv(1);
 		if(! $item_id)
 			http_status_exit(404, 'Not found');
@@ -1032,12 +1101,6 @@ function pubcrawl_item_mod_init($x) {
 		xchan_query($r,true);
 		$items = fetch_post_tags($r,true);
 
-		// Wrong object type
-
-		if(! in_array(activity_obj_mapper($items[0]['obj_type']), [ 'Note', 'Article' ])) {
-			http_status_exit(418, "I'm a teapot"); 
-		}
-
 		$chan = channelx_by_n($items[0]['uid']);
 
 		if(! $chan)
@@ -1049,7 +1112,6 @@ function pubcrawl_item_mod_init($x) {
 		$i = asencode_item($items[0]);
 		if(! $i)
 			http_status_exit(404, 'Not found');
-
 
 		$x = array_merge(['@context' => [
 			ACTIVITYSTREAMS_JSONLD_REV,
@@ -1070,6 +1132,7 @@ function pubcrawl_item_mod_init($x) {
 		HTTPSig::set_headers($h);
 		echo $ret;
 		killme();
+*/
 	}
 }
 
@@ -1246,11 +1309,13 @@ function pubcrawl_queue_deliver(&$b) {
 		$chan = channelx_by_n($outq['outq_channel']);
 
 		$retries = 0;
+		$m = parse_url($outq['outq_posturl']);
 
 		$headers = [];
 		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 		$ret = $outq['outq_msg'];
 		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
+		$headers['Host'] = $m['host'];
 		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
 		$headers['(request-target)'] = 'post ' . get_request_string($outq['outq_posturl']);
 
@@ -1309,6 +1374,7 @@ function pubcrawl_create_identity($b) {
 }
 
 function pubcrawl_can_comment_on_post(&$x) {
+/*
 	if(local_channel()) {
 		$c = App::get_channel();
 		$recips = get_iconfig($x['item'],'activitypub','recips',[]);
@@ -1319,5 +1385,6 @@ function pubcrawl_can_comment_on_post(&$x) {
 		if(isset($recips['cc']) && (in_array(ACTIVITY_PUBLIC_INBOX, $recips['cc']) || in_array(channel_url($c), $recips['cc'])))
 			$x['allowed'] = Apps::addon_app_installed($c['channel_id'], 'pubcrawl');
 	}
+*/
 }
 

@@ -976,12 +976,12 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 	else {
 		$r = xchan_store_lowlevel(
 			[
-				'xchan_hash'		 => $address,
-				'xchan_guid'		 => $uri,
-				'xchan_pubkey'       => $salmon_key,
-				'xchan_addr'		 => $address,
-				'xchan_url'          => $uri,
-				'xchan_name'		 => $fullname,
+				'xchan_hash'	     => escape_tags($address),
+				'xchan_guid'	     => escape_tags($uri),
+				'xchan_pubkey'       => escape_tags($salmon_key),
+				'xchan_addr'	     => escape_tags($address),
+				'xchan_url'          => escape_tags($uri),
+				'xchan_name'	     => escape_tags($fullname),
 				'xchan_name_date'    => datetime_convert(),
 				'xchan_network'      => 'gnusoc'
 			]
@@ -994,22 +994,23 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 	if(! $r) {
 		$r = hubloc_store_lowlevel(
 			[
-				'hubloc_guid'     => $uri,
-				'hubloc_hash'     => $address,
-				'hubloc_addr'     => $address,
+				'hubloc_guid'     => escape_tags($uri),
+				'hubloc_hash'     => escape_tags($address),
+				'hubloc_addr'     => escape_tags($address),
 				'hubloc_network'  => 'gnusoc',
 				'hubloc_url'	  => $base,
 				'hubloc_host'     => $host,
 				'hubloc_callback' => $salmon,
 				'hubloc_updated'  => datetime_convert(),
-				'hubloc_primary'  => 1
+				'hubloc_primary'  => 1,
+				'hubloc_id_url'   => escape_tags($uri)
 			]
 		);
 	}
 
 	$photos = import_xchan_photo($avatar,$address);
 	$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
-		dbesc(datetime_convert()),
+		dbesc($photos[5]),
 		dbesc($photos[0]),
 		dbesc($photos[1]),
 		dbesc($photos[2]),

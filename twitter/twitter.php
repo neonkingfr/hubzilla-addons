@@ -210,8 +210,13 @@ function twitter_shortenmsg($b) {
 
 	// Looking for the first image
 	$image = '';
-	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $matches))
-		$image = html_entity_decode($matches[2]);
+	if(preg_match("/\[[zi]mg(=[0-9]+x[0-9]+)?\]([^\[]+)/is", $body, $matches)) {
+	    if($matches[1]) {
+	        $sizes = array_map('intval', explode('x', substr($matches[1],1)));
+	        if($sizes[0] >= 480)
+	            $image = html_entity_decode($matches[2]);
+	    }
+	}
 	
 	// Choose first URL 
 	$link = '';
@@ -222,7 +227,7 @@ function twitter_shortenmsg($b) {
 	$body = str_replace(array("[quote", "[/quote]"), array("\n[quote", "[/quote]\n"), $body);
 
 	// Remove URL bookmark
-	$body = str_replace("#^[", "[", $body);
+	$body = str_replace("#^[", "&#128279 [", $body);
 
 	// At first convert the text to html
 	$msg = bbcode($body, [ 'tryoembed' => false ]);
@@ -481,7 +486,7 @@ function twitter_post_hook(&$a,&$b) {
 }
 
 
-function twitter_plugin_admin_post(&$a){
+function twitter_plugin_admin_post(){
 	$consumerkey	=	((x($_POST,'consumerkey'))		? notags(trim($_POST['consumerkey']))	: '');
 	$consumersecret	=	((x($_POST,'consumersecret'))	? notags(trim($_POST['consumersecret'])): '');
 	set_config('twitter','consumerkey',$consumerkey);
@@ -490,7 +495,7 @@ function twitter_plugin_admin_post(&$a){
 }
 
 
-function twitter_plugin_admin(&$a, &$o){
+function twitter_plugin_admin(&$o){
 logger('Twitter admin');
 	$t = get_markup_template( "admin.tpl", "addon/twitter/" );
 

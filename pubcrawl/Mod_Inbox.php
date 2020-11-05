@@ -2,6 +2,7 @@
 namespace Zotlabs\Module;
 
 use Zotlabs\Web\HTTPSig;
+use Zotlabs\Lib\ActivityStreams;
 
 
 class Inbox extends \Zotlabs\Web\Controller {
@@ -22,18 +23,84 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		logger('inbox_activity: ' . jindent($data), LOGGER_DATA);
 
-		HTTPSig::verify($data);
+		$hsig = HTTPSig::verify($data);
 
-		$AS = new \Zotlabs\Lib\ActivityStreams($data);
+		if (! ($hsig['header_signed'] && $hsig['header_valid'] && $hsig['content_signed'] && $hsig['content_valid'])) {
+			logger('HTTPSig::verify() failed: ' . print_r($hsig,true), LOGGER_DEBUG);
+			http_status_exit(403,'Permission denied');
+		}
 
-		//logger('debug: ' . $AS->debug());
+		$AS = new ActivityStreams($data);
 
-		if(! $AS->is_valid())
+		if ($AS->is_valid() && $AS->type === 'Announce' && is_array($AS->obj)
+			&& array_key_exists('object',$AS->obj) && array_key_exists('actor',$AS->obj)) {
+			// This is a relayed/forwarded Activity (as opposed to a shared/boosted object)
+			// Reparse the encapsulated Activity and use that instead
+			logger('relayed activity',LOGGER_DEBUG);
+			$AS = new ActivityStreams($AS->obj);
+		}
+
+		// logger('debug: ' . $AS->debug());
+
+		if (! $AS->is_valid()) {
+			if ($AS->deleted) {
+				// process mastodon user deletion activities, but only if we can validate the signature
+				if ($hsig['header_valid'] && $hsig['content_valid'] && $hsig['portable_id']) {
+					logger('removing deleted actor');
+					remove_all_xchan_resources($hsig['portable_id']);
+				}
+				else {
+					logger('ignoring deleted actor', LOGGER_DEBUG, LOG_INFO);
+				}
+			}
 			return;
+		}
+
+
+		// $observer_hash in this case is the sender
+
+/* TODO: this doesnot seem to work as expected yet.
+		if ($hsig['header_valid'] && $hsig['content_valid'] && $hsig['portable_id']) {
+			$observer_hash = $hsig['portable_id'];
+			// fetch the portable_id for the actor, which may or may not be the sender
+			$v = q("select hubloc_hash from hubloc where hubloc_id_url = '%s' or hubloc_hash = '%s'",
+				dbesc($AS->actor['id']),
+				dbesc($AS->actor['id'])
+			);
+			// only allow relayed activities if the activity is signed with LDSigs
+			// AND the signature is valid AND the signer is the actor.
+			if ($v && $v[0]['hubloc_hash'] !== $observer_hash) {
+				if ($AS->signer && $AS->signer !== $AS->actor['id']) {
+					return;
+				}
+				if (! $AS->sigok) {
+					return;
+				}
+			}
+		}
+		else {
+			$observer_hash = $AS->actor['id'];
+		}
+*/
 
 		$observer_hash = $AS->actor['id'];
-		if(! $observer_hash)
+
+		if (! $observer_hash) {
 			return;
+		}
+
+		// update the hubloc_connected timestamp, ignore failures
+		q("update hubloc set hubloc_connected = '%s' where hubloc_hash = '%s' and hubloc_network = 'activitypub'",
+			dbesc(datetime_convert()),
+			dbesc($observer_hash)
+		);
+
+		$m = parse_url($observer_hash);
+		if ($m['scheme'] && $m['host']) {
+			q("update site set site_dead = 0 where site_dead = 1 and site_url = '%s'",
+				dbesc($m['scheme'] . '://' . $m['host'])
+			);
+		}
 
 		if($AS->type == 'Update' && $AS->obj['type'] == 'Person') {
 			$x['recipient']['xchan_network'] = 'activitypub';
@@ -42,33 +109,15 @@ class Inbox extends \Zotlabs\Web\Controller {
 			return;
 		}
 
-		if(is_array($AS->actor) && array_key_exists('id',$AS->actor))
+		if(is_array($AS->actor) && array_key_exists('id',$AS->actor)) {
 			as_actor_store($AS->actor['id'],$AS->actor);
+		}
+
 
 		if($AS->type == 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo',$AS->obj)) {
-
 			$arr = [];
-			$x = [];
-
-			$arr['author']['url'] = $AS->obj['attributedTo'];
-
+			$arr['author']['url'] = as_get_attributed_to_person($AS);
 			pubcrawl_import_author($arr);
-
-			if(! empty($arr['result'])) {
-				$x['hash'] = $arr['result'];
-			}
-			else {
-				logger('pubcrawl_import_author failed for announce activity');
-				return;
-			}
-
-			$AS->sharee = xchan_fetch($x);
-			if(! $AS->sharee) {
-				//TODO: what do we do with sharees from other networks (for now mainly gnusocial)?
-				logger('got announce activity but could not import share author');
-				return;
-			}
-
 		}
 
 		$is_public = false;
@@ -145,7 +194,6 @@ class Inbox extends \Zotlabs\Web\Controller {
 		}
 		$AS->set_recips($saved_recips);
 
-
 		foreach($channels as $channel) {
 
 			if(($AS->obj) && (! is_array($AS->obj))) {
@@ -153,6 +201,10 @@ class Inbox extends \Zotlabs\Web\Controller {
 				$o = \Zotlabs\Lib\Activity::fetch($AS->obj,$channel);
 				if(is_array($o)) {
 					$AS->obj = $o;
+				}
+				else {
+					logger('could not fetch object: ' . print_r($AS, true));
+					continue;
 				}
 			}
 
@@ -185,10 +237,15 @@ class Inbox extends \Zotlabs\Web\Controller {
 			switch($AS->type) {
 				case 'Create':
 				case 'Update':
+				case 'Announce':
 					as_create_action($channel,$observer_hash,$AS);
 					break;
 				case 'Like':
 				case 'Dislike':
+//				case 'Accept':
+//				case 'Reject':
+//				case 'TentativeAccept':
+//				case 'TentativeReject':
 					as_like_action($channel,$observer_hash,$AS);
 					break;
 				case 'Undo':
@@ -204,10 +261,6 @@ class Inbox extends \Zotlabs\Web\Controller {
 				case 'Remove':
 					break;
 
-				case 'Announce':
-					as_create_action($channel,$observer_hash,$AS);
-					//as_announce_action($channel,$observer_hash,$AS);
-					break;
 				default:
 					break;
 

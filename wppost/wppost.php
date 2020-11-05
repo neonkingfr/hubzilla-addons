@@ -3,7 +3,7 @@
 /**
  * Name: WordPress Post Connector
  * Description: Post to WordPress (or anything else which uses the wordpress XMLRPC API)
- * Version: 1.0
+ * Version: 1.1
  * Author: Mike Macgirvin <zot:mike@zothub.com>
  * Maintainer: Mike Macgirvin <mike@macgirvin.com>
  */
@@ -158,10 +158,24 @@ function wppost_send(&$b) {
 	if($wp_username && $wp_password && $wp_blog) {
 
 		require_once('include/bbcode.php');
+		
+		push_lang(($b['lang'] ? $b['lang'] : 'en'));
+
+		$post = $b['body'];
+
+		// Add source URL
+		if(get_pconfig($b['uid'],'wppost','post_source_url')) {
+			if(get_pconfig($b['uid'],'wppost','post_source_urltext')) {
+				$urltext = get_pconfig($b['uid'],'wppost','post_source_urltext');
+				$post .= "\n\n" . '[url=' . $b['plink'] . ']' . $urltext . '[/url]';
+			}
+			else
+			    $post .= "\n\n" . t('Source') . ": [url]" . $b['plink'] . "[/url]";
+		}
 
 		$data = array(
 			'post_title'     => trim($b['title']),
-			'post_content'   => bbcode($b['body']),
+			'post_content'   => bbcode($post),
 			'post_type'      => 'post',
 			'post_status'    => 'publish',
 			'comment_status' => 'open',

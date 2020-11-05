@@ -1,0 +1,6 @@
+version: 1
+url: $baseurl/mail/combined
+requires: local_channel
+name: Mail
+photo: icon:envelope
+categories: Productivity, Social
