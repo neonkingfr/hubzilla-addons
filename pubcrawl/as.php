@@ -1377,10 +1377,10 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	$announce_author = as_get_attributed_to_person($act);
 
-	$s['author_xchan'] = (($announce) ? $announce_author : $observer_hash);
+	$s['author_xchan'] = (($announce) ? $announce_author : $act->actor['id']);
 
 	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
-		dbesc($observer_hash),
+		dbesc($s['author_xchan']),
 		intval($channel['channel_id'])
 	);
 	
@@ -1515,6 +1515,10 @@ function as_create_note($channel,$observer_hash,$act) {
 					dbesc($s['parent_mid']),
 					intval($s['uid'])
 				);
+				if(! $p) {
+					logger('parent not found.');
+					return;
+				}
 			}
 			else {
 				logger('could not fetch parents');
@@ -1827,7 +1831,7 @@ function as_like_note($channel,$observer_hash,$act) {
 	$parent_item = $r[0];
 
 	if($parent_item['owner_xchan'] === $channel['channel_hash']) {
-		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'post_comments')) {
+		if(! perm_is_allowed($channel['channel_id'], $act->actor['id'], 'post_comments')) {
 			logger('no comment permission.');
 			return;
 		}
@@ -1845,7 +1849,7 @@ function as_like_note($channel,$observer_hash,$act) {
 	// Make sure we use the zot6 identity where applicable
 
 	$s['owner_xchan']  = Activity::find_best_identity($parent_item['owner_xchan']);
-	$s['author_xchan'] = Activity::find_best_identity($observer_hash);
+	$s['author_xchan'] = Activity::find_best_identity($act->actor['id']);
 
 	if(!$s['author_xchan']) {
 		logger('No author: ' . print_r($act, true));
