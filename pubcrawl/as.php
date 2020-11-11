@@ -1259,7 +1259,7 @@ function as_actor_store($url,$person_obj) {
 			return;
 
 		// update existing record
-		$r = q("update xchan set xchan_name = '%s', xchan_pubkey = '%s', xchan_network = '%s', xchan_name_date = '%s' where xchan_hash = '%s'",
+		q("update xchan set xchan_name = '%s', xchan_pubkey = '%s', xchan_network = '%s', xchan_name_date = '%s' where xchan_hash = '%s'",
 			dbesc(escape_tags($name)),
 			dbesc(escape_tags($pubkey)),
 			dbesc('activitypub'),
@@ -1277,13 +1277,14 @@ function as_actor_store($url,$person_obj) {
 		dbesc($url)
 	);
 
-	$m = parse_url($url);
-	if($m) {
-		$hostname = $m['host'];
-		$baseurl = $m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '');
-	}
-
 	if(! $r) {
+
+		$m = parse_url($url);
+		if($m) {
+			$hostname = $m['host'];
+			$baseurl = $m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '');
+		}
+
 		$r = hubloc_store_lowlevel(
 			[
 				'hubloc_guid'     => escape_tags($url),
@@ -1301,7 +1302,7 @@ function as_actor_store($url,$person_obj) {
 	}
 
 	$photos = import_xchan_photo($icon,$url);
-	$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
+	q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
 		dbescdate($photos[5]),
 		dbesc($photos[0]),
 		dbesc($photos[1]),
