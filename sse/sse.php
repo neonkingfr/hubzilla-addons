@@ -61,6 +61,9 @@ function sse_item_stored($item) {
 	if(! $hashes)
 		return;
 
+	$r[0] = $item;
+	xchan_query($r);
+
 	foreach($hashes as $hash) {
 
 		if($sys) {
@@ -78,9 +81,6 @@ function sse_item_stored($item) {
 
 		if($hash === $item['author_xchan'])
 			continue;
-
-		$r[0] = $item;
-		xchan_query($r);
 
 		XConfig::Load($hash);
 
