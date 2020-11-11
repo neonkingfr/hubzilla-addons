@@ -3,6 +3,7 @@ namespace Zotlabs\Module;
 
 use Zotlabs\Web\HTTPSig;
 use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\Activity;
 
 
 class Inbox extends \Zotlabs\Web\Controller {
@@ -72,6 +73,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 			$arr = [];
 			$arr['author']['url'] = as_get_attributed_to_person($AS);
 			pubcrawl_import_author($arr);
+
 		}
 
 		$observer_hash = '';
@@ -233,9 +235,15 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 			if(($AS->obj) && (! is_array($AS->obj))) {
 				// fetch object using current credentials
-				$o = \Zotlabs\Lib\Activity::fetch($AS->obj,$channel);
+				$o = Activity::fetch($AS->obj,$channel);
 				if(is_array($o)) {
 					$AS->obj = $o;
+					if($AS->type == 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo',$AS->obj)) {
+						$arr = [];
+						$arr['author']['url'] = as_get_attributed_to_person($AS);
+						$arr['channel'] = $channel;
+						pubcrawl_import_author($arr);
+					}
 				}
 				else {
 					logger('could not fetch object: ' . print_r($AS, true));

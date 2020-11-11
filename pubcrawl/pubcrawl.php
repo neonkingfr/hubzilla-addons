@@ -17,6 +17,7 @@ use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Web\HTTPSig;
+use Zotlabs\Lib\Activity;
 
 require_once('addon/pubcrawl/as.php');
 
@@ -199,7 +200,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	}
 	
 	if(($url) && (strpos($url,'http') === 0)) {
-		$x = as_fetch($url);
+		$x = Activity::fetch($url);
 		if(! $x) {
 			return;
 		}
@@ -208,7 +209,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 		return;
 	}
 
-	$AS = new \Zotlabs\Lib\ActivityStreams($x);
+	$AS = new ActivityStreams($x);
 
 	if(! $AS->is_valid()) {
 		return;
@@ -247,11 +248,12 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 function pubcrawl_import_author(&$b) {
 
 	$url = $b['author']['url'];
+	$channel = (($b['channel']) ? $b['channel'] : null);
 
 	if(! $url)
 		return;
 
-	$r = q("select xchan_hash from xchan where xchan_hash = '%s' and xchan_network = 'activitypub' limit 1",
+	$r = q("select xchan_hash from xchan where xchan_hash = '%s' and xchan_network = 'activitypub'",
 		dbesc($url)
 	);
 	if($r) {
@@ -264,17 +266,34 @@ function pubcrawl_import_author(&$b) {
 
 	if($x) {
 		$b['result'] = $x;
-			return;
-/*
-		$r = q("select xchan_hash, xchan_url, xchan_name, xchan_photo_s from xchan where xchan_hash = '%s' limit 1",
-			dbesc($url)
-		);
-		if($r) {
-			$b['result'] = $r[0]['xchan_hash'];
-			return;
-		}
-*/
+		return;
 	}
+
+	$x = Activity::fetch($url, $channel);
+	if(! $x) {
+		return;
+	}
+
+	$AS = new ActivityStreams($x);
+
+	if(! $AS->is_valid()) {
+		return;
+	}
+
+	// Now find the actor
+
+	$person_obj = null;
+	if(in_array($AS->type, [ 'Application', 'Group', 'Organization', 'Person', 'Service' ])) {
+		$person_obj = $AS->data;
+	}
+	elseif($AS->obj && ( in_array($AS->obj['type'], [ 'Application', 'Group', 'Organization', 'Person', 'Service' ] ))) {
+		$person_obj = $AS->obj;
+	}
+	else {
+		return;
+	}
+
+	as_actor_store($url,$person_obj);
 
 }
 
