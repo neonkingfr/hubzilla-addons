@@ -295,6 +295,8 @@ function pubcrawl_import_author(&$b) {
 
 	as_actor_store($url,$person_obj);
 
+	$b['result'] = $url;
+
 }
 
 
