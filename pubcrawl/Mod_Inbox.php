@@ -3,6 +3,7 @@ namespace Zotlabs\Module;
 
 use Zotlabs\Web\HTTPSig;
 use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\Activity;
 
 
 class Inbox extends \Zotlabs\Web\Controller {
@@ -56,37 +57,91 @@ class Inbox extends \Zotlabs\Web\Controller {
 			return;
 		}
 
+		if (is_array($AS->actor) && array_key_exists('id',$AS->actor)) {
+			as_actor_store($AS->actor['id'],$AS->actor);
+		}
 
-		// $observer_hash in this case is the sender
+		if (is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
+			as_actor_store($AS->obj['id'],$AS->obj);
+		}
 
-/* TODO: this doesnot seem to work as expected yet.
+		if (is_array($AS->obj) && is_array($AS->obj['actor']) && array_key_exists('id',$AS->obj['actor']) && $AS->obj['actor']['id'] !== $AS->actor['id']) {
+			as_actor_store($AS->obj['actor']['id'],$AS->obj['actor']);
+		}
+
+		if($AS->type == 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo',$AS->obj)) {
+			$arr = [];
+			$arr['author']['url'] = as_get_attributed_to_person($AS);
+			pubcrawl_import_author($arr);
+
+		}
+
+		$observer_hash = '';
+
+		// Validate that the channel that sent us this activity has authority to do so.
+		// Require a valid HTTPSignature with a signed Digest header.
+
+		// Only permit relayed activities if the activity is signed with LDSigs
+		// AND the signature is valid AND the signer is the actor.
+
 		if ($hsig['header_valid'] && $hsig['content_valid'] && $hsig['portable_id']) {
-			$observer_hash = $hsig['portable_id'];
+
 			// fetch the portable_id for the actor, which may or may not be the sender
 			$v = q("select hubloc_hash from hubloc where hubloc_id_url = '%s' or hubloc_hash = '%s'",
 				dbesc($AS->actor['id']),
 				dbesc($AS->actor['id'])
 			);
-			// only allow relayed activities if the activity is signed with LDSigs
-			// AND the signature is valid AND the signer is the actor.
-			if ($v && $v[0]['hubloc_hash'] !== $observer_hash) {
-				if ($AS->signer && $AS->signer !== $AS->actor['id']) {
-					return;
-				}
-				if (! $AS->sigok) {
-					return;
-				}
-			}
-		}
-		else {
-			$observer_hash = $AS->actor['id'];
-		}
-*/
 
-		$observer_hash = $AS->actor['id'];
+			if ($v && $v[0]['hubloc_hash'] !== $hsig['portable_id']) {
+
+				// The sender is not actually the activity actor, so verify the LD signature.
+				// litepub activities (with no LD signature) will always have a matching actor and sender
+
+				if ($AS->signer && $AS->signer['id'] !== $AS->actor['id'])  {
+					// the activity wasn't signed by the activity actor
+					logger('activity not signed by activity actor: ' . print_r($hsig,true), LOGGER_DEBUG);
+					logger('http signer hubloc: ' . print_r($v,true));
+					logger('AS: ' . print_r($AS,true));
+					return;
+				}
+
+				if (! $AS->sigok) {
+					// The activity signature isn't valid.
+					logger('activity signature not valid: ' . print_r($hsig,true), LOGGER_DEBUG);
+					logger('http signer hubloc: ' . print_r($v,true));
+					logger('AS: ' . print_r($AS,true));
+					return;
+				}
+
+			}
+
+			if ($v) {
+				// The sender has been validated and stored
+				$observer_hash = $hsig['portable_id'];
+			}
+
+		}
 
 		if (! $observer_hash) {
 			return;
+		}
+
+		// verify that this site has permitted communication with the sender.
+
+		$m = parse_url($observer_hash);
+
+		if ($m && $m['scheme'] && $m['host']) {
+			if (! check_siteallowed($m['scheme'] . '://' . $m['host'])) {
+				http_status_exit(403,'Permission denied');
+			}
+			// this site obviously isn't dead because they are trying to communicate with us. 
+			q("update site set site_dead = 0 where site_dead = 1 and site_url = '%s' ",
+				dbesc($m['scheme'] . '://' . $m['host'])
+			);
+		}
+
+		if (! check_channelallowed($observer_hash)) {
+			http_status_exit(403,'Permission denied');
 		}
 
 		// update the hubloc_connected timestamp, ignore failures
@@ -95,29 +150,11 @@ class Inbox extends \Zotlabs\Web\Controller {
 			dbesc($observer_hash)
 		);
 
-		$m = parse_url($observer_hash);
-		if ($m['scheme'] && $m['host']) {
-			q("update site set site_dead = 0 where site_dead = 1 and site_url = '%s'",
-				dbesc($m['scheme'] . '://' . $m['host'])
-			);
-		}
-
 		if($AS->type == 'Update' && $AS->obj['type'] == 'Person') {
 			$x['recipient']['xchan_network'] = 'activitypub';
 			$x['recipient']['xchan_hash'] = $observer_hash;
 			pubcrawl_permissions_update($x);
 			return;
-		}
-
-		if(is_array($AS->actor) && array_key_exists('id',$AS->actor)) {
-			as_actor_store($AS->actor['id'],$AS->actor);
-		}
-
-
-		if($AS->type == 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo',$AS->obj)) {
-			$arr = [];
-			$arr['author']['url'] = as_get_attributed_to_person($AS);
-			pubcrawl_import_author($arr);
 		}
 
 		$is_public = false;
@@ -198,9 +235,15 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 			if(($AS->obj) && (! is_array($AS->obj))) {
 				// fetch object using current credentials
-				$o = \Zotlabs\Lib\Activity::fetch($AS->obj,$channel);
+				$o = Activity::fetch($AS->obj,$channel);
 				if(is_array($o)) {
 					$AS->obj = $o;
+					if($AS->type == 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo',$AS->obj)) {
+						$arr = [];
+						$arr['author']['url'] = as_get_attributed_to_person($AS);
+						$arr['channel'] = $channel;
+						pubcrawl_import_author($arr);
+					}
 				}
 				else {
 					logger('could not fetch object: ' . print_r($AS, true));
