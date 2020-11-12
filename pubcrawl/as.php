@@ -1208,6 +1208,13 @@ function as_actor_store($url,$person_obj) {
 
 	$inbox = $person_obj['inbox'];
 
+	// invalid identity
+
+	if (! $inbox) {
+		return;
+	} 
+
+
 	$collections = [];
 
 	if($inbox) {
