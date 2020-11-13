@@ -1135,7 +1135,7 @@ function as_actor_store($url,$person_obj) {
 	if(! $person_obj['publicKey']['publicKeyPem']) {
 		$fix_pubkey = true;
 
-		$x = as_fetch($url);
+		$x = Activity::fetch($url);
 		if(! $x)
 			return;
 
@@ -1157,6 +1157,13 @@ function as_actor_store($url,$person_obj) {
 		}
 	}
 
+	$inbox = $person_obj['inbox'];
+
+	// invalid identity
+
+	if (! $inbox || strpos($inbox,z_root()) !== false) {
+		return;
+	}
 
 	$icon = '';
 	$name = $person_obj['name'];
@@ -1205,15 +1212,6 @@ function as_actor_store($url,$person_obj) {
 	if (! $profile) {
 		$profile = $url;
 	}
-
-	$inbox = $person_obj['inbox'];
-
-	// invalid identity
-
-	if (! $inbox) {
-		return;
-	} 
-
 
 	$collections = [];
 
