@@ -584,6 +584,11 @@ function diaspora_discover(&$b) {
 
 	$webbie = $b['address'];
 
+	if(! $webbie) {
+		logger('no webbie: ' . print_r($b,true));
+		return;
+	}
+
 	$protocol = $b['protocol'];
 	if($protocol && strtolower($protocol) !== 'diaspora')
 		return;
@@ -685,6 +690,12 @@ function diaspora_discover(&$b) {
 			$addr = str_replace('acct:', '', $webbie);
 			$hostname = substr($webbie,strpos($webbie,'@')+1);
 		}
+
+		if(! $addr) {
+			logger('no address: ' . print_r($b,true));
+			return;
+		}
+
 		$network = 'diaspora';
 		// until we get a dfrn layer, we'll use diaspora protocols for Friendica,
 		// but give it a different network so we can go back and fix these when we get proper support. 
