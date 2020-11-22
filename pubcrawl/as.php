@@ -617,6 +617,9 @@ function asencode_activity($i) {
 		$ret['to'] = (($ret['to']) ? array_merge($ret['to'],$mentions) : $mentions);
 	}
 
+	//remove values from to in cc
+	$ret['cc'] = array_diff($ret['cc'], $ret['to']);
+
 	// poll answers should be addressed only to the poll owner
 	if($i['item_private'] && $i['obj_type'] === 'Answer') {
 		$ret['to'] = $i['owner']['xchan_url'];
@@ -650,14 +653,22 @@ function as_map_mentions($i) {
 	}
 
 	$list = [];
+	$str_list = [];
 
 	foreach ($i['term'] as $t) {
 		if($t['ttype'] == TERM_MENTION) {
 			$list[] = $t['url'];
+			$str_list[] = '\'' . dbesc($t['url']) . '\'';
 		}
 	}
 
-	return $list;
+	$qlist = implode(',',$str_list);
+
+	$r = dbq("SELECT xchan_hash FROM xchan WHERE xchan_url IN ( $qlist )");
+
+	$ret = ids_to_array($r, 'xchan_hash');
+
+	return $ret;
 }
 
 function as_map_acl($i,$mentions = false) {
@@ -673,20 +684,21 @@ function as_map_acl($i,$mentions = false) {
 		if(! $x)
 			return;
 
-		$details = q("select xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") and xchan_network = 'activitypub'");
+		$details = q("select xchan_hash, xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") and xchan_network = 'activitypub'");
 		if($details) {
 			foreach($details as $d) {
 				if($mentions) {
 					$list[] = [ 'type' => 'Mention', 'href' => $d['xchan_url'], 'name' => '@' . (($d['xchan_addr']) ? $d['xchan_addr'] : $d['xchan_name']) ];
 				}
 				else { 
-					$list[] = $d['xchan_url'];
+					$list[] = $d['xchan_hash'];
 				}
 			}
 		}
 	}
 
 	return $list;
+
 
 }
 
