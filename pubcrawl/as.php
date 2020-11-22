@@ -585,6 +585,7 @@ function asencode_activity($i) {
 			}
 
 			$ret['to'] = [ $reply_url ];
+			$ret['cc'] = [];
 		}
 		else {
 			$ret['to'] = []; //this is important for pleroma
@@ -617,14 +618,14 @@ function asencode_activity($i) {
 		$ret['to'] = (($ret['to']) ? array_merge($ret['to'],$mentions) : $mentions);
 	}
 
-	//remove values from to in cc
-	$ret['cc'] = array_diff($ret['cc'], $ret['to']);
-
 	// poll answers should be addressed only to the poll owner
 	if($i['item_private'] && $i['obj_type'] === 'Answer') {
 		$ret['to'] = $i['owner']['xchan_url'];
-		unset($ret['cc']);
+		$ret['cc'] = [];
 	}
+
+	//remove values from to in cc
+	$ret['cc'] = array_diff($ret['cc'], $ret['to']);
 
 	if(array_path_exists('object/type', $ret) && in_array($ret['object']['type'], [ 'Note', 'Article', 'Question' ])) {
 		if(isset($ret['to']))
