@@ -625,7 +625,7 @@ function asencode_activity($i) {
 	}
 
 	//remove values from to in cc
-	$ret['cc'] = array_diff($ret['cc'], $ret['to']);
+	$ret['cc'] = array_values(array_diff($ret['cc'], $ret['to']));
 
 	if(array_path_exists('object/type', $ret) && in_array($ret['object']['type'], [ 'Note', 'Article', 'Question' ])) {
 		if(isset($ret['to']))
@@ -665,7 +665,10 @@ function as_map_mentions($i) {
 
 	$qlist = implode(',',$str_list);
 
-	$r = dbq("SELECT xchan_hash FROM xchan WHERE xchan_url IN ( $qlist )");
+	// The xchan_url for mastodon is a text/html rendering.
+	// We need to convert the mention url to an ActivityPub id.
+
+	$r = dbq("SELECT xchan_hash FROM xchan WHERE xchan_url IN ( $qlist ) and xchan_network = 'activitypub'");
 
 	$ret = ids_to_array($r, 'xchan_hash');
 
