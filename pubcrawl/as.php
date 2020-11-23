@@ -479,6 +479,9 @@ function asdecode_attachment($item) {
 
 function asencode_activity($i) {
 
+	if($i['item_deleted'])
+		return Activity::encode_activity($i);
+
 	$ret   = [];
 	$reply = false;
 
@@ -632,17 +635,6 @@ function asencode_activity($i) {
 			$ret['object']['to'] = $ret['to'];
 		if(isset($ret['cc']))
 			$ret['object']['cc'] = $ret['cc'];
-	}
-
-	if(intval($i['item_deleted'])) {
-		$del_ret['type'] = 'Delete';
-		$del_ret['actor'] = $actor;
-		$del_ret['id'] = $ret['id'];
-		$del_ret['to'] = $ret['to'];
-		$del_ret['cc'] = $ret['cc'];
-		$del_ret['object'] = $ret['object'];
-
-		return $del_ret;
 	}
 
 	return $ret;
