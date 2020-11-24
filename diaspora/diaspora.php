@@ -281,7 +281,13 @@ function diaspora_process_outbound(&$arr) {
 	logger('upstream: ' . intval($arr['upstream']));
 //	logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
 
+	if($arr['target_item']['item_rss']) {
+		return;
+	}
 
+	if($arr['parent_item']['item_rss']) {
+		return;
+	}
 
 	// allow this to be set per message
 

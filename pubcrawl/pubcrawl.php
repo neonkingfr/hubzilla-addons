@@ -550,6 +550,14 @@ function pubcrawl_notifier_hub(&$arr) {
 	if($arr['hub']['hubloc_network'] !== 'activitypub')
 		return;
 
+	if($arr['target_item']['item_rss']) {
+		return;
+	}
+
+	if($arr['parent_item']['item_rss']) {
+		return;
+	}
+
 	$allowed = Apps::addon_app_installed($arr['channel']['channel_id'],'pubcrawl');
 	if(! $allowed) {
 		logger('pubcrawl: disallowed for channel ' . $arr['channel']['channel_name']);
