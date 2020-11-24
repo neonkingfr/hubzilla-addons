@@ -641,12 +641,15 @@ function asencode_activity($i) {
 }
 
 function as_map_mentions($i) {
-	if(! $i['term']) {
-		return [];
-	}
 
 	$list = [];
 	$str_list = [];
+	$fixed_list = [];
+	$ret = [];
+
+	if(! $i['term']) {
+		return $ret;
+	}
 
 	foreach ($i['term'] as $t) {
 		if($t['ttype'] == TERM_MENTION) {
@@ -655,14 +658,17 @@ function as_map_mentions($i) {
 		}
 	}
 
-	$qlist = implode(',',$str_list);
-
 	// The xchan_url for mastodon is a text/html rendering.
 	// We need to convert the mention url to an ActivityPub id.
 
-	$r = dbq("SELECT xchan_hash FROM xchan WHERE xchan_url IN ( $qlist ) and xchan_network = 'activitypub'");
+	$qlist = implode(',',$str_list);
 
-	$ret = ids_to_array($r, 'xchan_hash');
+	if($qlist) {
+		$r = dbq("SELECT xchan_hash FROM xchan WHERE xchan_url IN ( $qlist ) and xchan_network = 'activitypub'");
+		$fixed_list = ids_to_array($r, 'xchan_hash');
+	}
+
+	$ret = (($fixed_list) ? $fixed_list : $list);
 
 	return $ret;
 }
