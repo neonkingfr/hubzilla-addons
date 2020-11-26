@@ -281,8 +281,6 @@ function diaspora_process_outbound(&$arr) {
 	logger('upstream: ' . intval($arr['upstream']));
 //	logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
 
-
-
 	// allow this to be set per message
 
 	if(($arr['mail']) && intval($arr['item']['raw'])) {
