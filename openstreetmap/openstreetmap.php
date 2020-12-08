@@ -172,5 +172,5 @@ function openstreetmap_plugin_admin_post() {
 }
 
 function openstreetmap_content_security_policy(&$a, &$csp) {
-	$csp["frame-src"][] = 'www.openstreetmap.org';
+	$csp["frame-src"][] = "'" . get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org') . "'";
 }
