@@ -1321,7 +1321,7 @@ function as_actor_store($url,$person_obj) {
 	}
 
 	$photos = import_xchan_photo($icon,$url);
-	q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
+	$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
 		dbescdate($photos[5]),
 		dbesc($photos[0]),
 		dbesc($photos[1]),
