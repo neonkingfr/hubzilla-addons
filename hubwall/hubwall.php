@@ -14,7 +14,7 @@ function hubwall_module() {}
 
 
 
-function hubwall_plugin_admin(&$a, &$o) {
+function hubwall_plugin_admin(&$o) {
 
 	$o = '<div></div>&nbsp;&nbsp;&nbsp;&nbsp;<a href="' . z_root() . '/hubwall">' . t('Send email to all members') . '</a></br/>';
 

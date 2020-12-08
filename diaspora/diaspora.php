@@ -3,7 +3,7 @@
 
 /**
  * Name: Diaspora Protocol
- * Description: Diaspora Protocol. Install 'Statistics' first if you wish to use public tag relays
+ * Description: Diaspora Protocol
  * Version: 1.0
  * Author: Mike Macgirvin
  * Maintainer: none
@@ -54,7 +54,6 @@ function diaspora_load() {
 
 	Zotlabs\Extend\Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
 
-	diaspora_init_relay();
 }
 
 function diaspora_unload() {
@@ -62,20 +61,44 @@ function diaspora_unload() {
 	Zotlabs\Extend\Route::unregister('addon/diaspora/Mod_Diaspora.php','diaspora');
 }
 
+function diaspora_plugin_admin(&$o) {
+	if(! plugin_is_installed('statistics')) {
+		$o = t('Please install the statistics addon to be able to configure a diaspora relay');
+		return;
+	}
+	
+	$t = get_markup_template("admin.tpl", "addon/diaspora/");
 
-function diaspora_init_relay() {
-	if(! get_config('diaspora','relay_handle')) {
-		if(plugin_is_installed('statistics')) {
-			$x = ['author' => [ 'address' => 'relay@relay.iliketoast.net', 'network' => 'diaspora' ], 'result' => false ];
-			diaspora_import_author($x);
-			if($x['result']) {
-				set_config('diaspora','relay_handle',$x['result']);
-				// Now register
-				$url = "https://the-federation.info/register/" . App::get_hostname();
-				$ret = z_fetch_url($url);
-			}
+	$relay = get_config('diaspora', 'relay_handle', '');
+
+	$o = replace_macros($t, array(
+			'$submit' => t('Submit'),
+			'$relay_handle' => array('relay_handle', t('Diaspora Relay Handle'), $relay, t('Address of a diaspora relay. Example: relay@diasporarelay.tld'))
+	));
+}
+
+function diaspora_plugin_admin_post() {
+
+	if(! plugin_is_installed('statistics'))
+		return;
+
+	$relay = ((x($_POST, 'relay_handle')) ? notags(trim($_POST['relay_handle'])) : '');
+
+	if($relay) {
+		$x = ['author' => [ 'address' => $relay, 'network' => 'diaspora' ], 'result' => false ];
+		diaspora_import_author($x);
+
+		if($x['result']) {
+			set_config('diaspora','relay_handle',$x['result']);
+			info( t('Settings updated.') . EOL);
+		}
+		else {
+			notice( t('Diaspora relay could not be imported') . EOL);
 		}
 	}
+	else
+		set_config('diaspora', 'relay_handle', '');
+
 }
 
 function diaspora_author_is_pmable(&$b) {
@@ -257,8 +280,6 @@ function diaspora_process_outbound(&$arr) {
 
 	logger('upstream: ' . intval($arr['upstream']));
 //	logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
-
-
 
 	// allow this to be set per message
 
@@ -561,6 +582,11 @@ function diaspora_discover(&$b) {
 
 	$webbie = $b['address'];
 
+	if(! $webbie) {
+		logger('no webbie: ' . print_r($b,true));
+		return;
+	}
+
 	$protocol = $b['protocol'];
 	if($protocol && strtolower($protocol) !== 'diaspora')
 		return;
@@ -662,6 +688,12 @@ function diaspora_discover(&$b) {
 			$addr = str_replace('acct:', '', $webbie);
 			$hostname = substr($webbie,strpos($webbie,'@')+1);
 		}
+
+		if(! $addr) {
+			logger('no address: ' . print_r($b,true));
+			return;
+		}
+
 		$network = 'diaspora';
 		// until we get a dfrn layer, we'll use diaspora protocols for Friendica,
 		// but give it a different network so we can go back and fix these when we get proper support. 

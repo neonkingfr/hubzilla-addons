@@ -42,7 +42,7 @@ class Cart_orderoptions {
       Hook::register('cart_order_additem', 'addon/cart/submodules/orderoptions.php', 'Cart_orderoptions::order_additem',1,1002);
       Hook::register('cart_do_updateitem', 'addon/cart/submodules/orderoptions.php', 'Cart_orderoptions::update_item_hook',1,1002);
       Hook::register('cart_post_update_item','addon/cart/submodules/orderoptions.php','Cart_orderoptions::update_orderopts',1,1002);
-
+      Hook::register('cart_addons_myshop_prep_display','addon/cart/submodules/orderoptions.php','Cart_orderoptions::myshop_display',1,1002);
     }
 
     static public function unload () {
@@ -488,6 +488,90 @@ class Cart_orderoptions {
     if (!local_channel() || !$orderoptenabled) {
 		return;
 	}
+  }
+
+  static public function myshop_display(&$hookdata) {
+	$data = $hookdata;
+	$catgalog = cart_get_catalog(false);
+
+	foreach ($data['items'] as $key=>$item) {
+		$itemopts = isset($item['item_meta']['item_opts']) ? $item['item_meta']['item_opts'] : [];
+		if ($catalog[$item['item_sku']]['item_type']=='subscription') {
+			$subinfo = Cart_subscriptions::get_subinfo($item["item_sku"]);
+			$sku=$subinfo["item_sku"];
+		} else {
+			$sku=$item['item_sku'];
+		}
+		$catalogopts = self::get_item($sku);
+		$catalogopts = $catalogopts['itemoptions'];
+		$itemextras='';
+		$confirmed = $data['order_checkedout'] > NULL_DATE ;
+
+		foreach ($catalogopts as $optkey=>$opt) {
+			$type = $opt['type'];
+			$type = isset(self::$validopttypes[$type]) ? $type : 'text';
+			$itemoption = $itemopts[$opt['uuid']];
+			if (isset($itemopts[$opt['uuid']])) {
+				$opt['value'] = $itemoption['value'];
+			} else {
+				$opt['default'] = isset($opt['default']) ? $opt['default'] : '';
+			}
+			$tpl = 'itemoption_'.$type.'.tpl';
+			$opt['itemid']=$key;
+			$opt['confirmed']=$confirmed;
+    			$itemextras .= replace_macros(get_markup_template($tpl,'addon/cart/submodules/'), $opt);
+			unset($itemopts[$opt['uuid']]);
+		}
+		foreach ($itemopts as $opt) {
+			$type = $opt['type'];
+			$type = isset(self::$validopttypes[$type]) ? $type : 'text';
+			$itemoption = $itemopts[$opt['uuid']];
+			$tpl = 'itemoption_'.$type.'.tpl';
+			$opt['itemid']=$key;
+			$opt['confirmed']=$confirmed;
+    			$itemextras .= replace_macros(get_markup_template($tpl,'addon/cart/submodules/'), $opt);
+		}
+
+		$data['items'][$key]['meta']['data']['html'] .= $itemextras ? $itemextras : null;
+	}
+
+	$orderopts = self::get_item();
+	$orderopts = $orderopts['orderoptions'];
+	$curropts = $data['order_meta']['orderoptions'];
+	$orderextras='';
+	foreach ($orderopts as $optkey=>$opt) {
+		$type = $opt['type'];
+		$type = isset(self::$validopttypes[$type]) ? $type : 'text';
+		$orderoption = $curropts[$opt['uuid']];
+		if (isset($orderopts[$opt['uuid']])) {
+			$opt['value'] = $orderoption['value'];
+		} else {
+			$opt['value'] = isset($opt['default']) ? $opt['default'] : '';
+		}
+		$tpl = 'itemoption_'.$type.'.tpl';
+		$opt['itemid']='order';
+		$opt['confirmed']=$confirmed;
+    		$orderextras .= replace_macros(get_markup_template($tpl,'addon/cart/submodules/'), $opt);
+		if ($opt['required'] && !isset($opt['value'])) {
+			$data['readytopay']=0;
+		}
+		unset($curopts[$opt['uuid']]);
+	}
+	foreach ($curopts as $opt) {
+		$type = $opt['type'];
+		$type = isset(self::$validopttypes[$type]) ? $type : 'text';
+		$orderoption = $orderopts[$opt['uuid']];
+		$tpl = 'itemoption_'.$type.'.tpl';
+		$opt['itemid']='order';
+		$opt['confirmed']=$confirmed;
+    		$orderextras .= replace_macros(get_markup_template($tpl,'addon/cart/submodules/'), $opt);
+	}
+
+	if ($orderextras != '') {
+		$data['orderextras'] = $orderextras;
+	}
+
+	$hookdata = $data;
   }
 
   static public function display_before(&$hookdata) {

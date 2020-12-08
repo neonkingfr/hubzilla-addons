@@ -4,6 +4,7 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Daemon\Master;
 use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\Libzot;
 
 require_once('include/event.php');
 
@@ -47,7 +48,7 @@ function asencode_object($x) {
 
 	return $x;
 
-}	
+}
 
 function asfetch_person($x) {
 	return asfetch_profile($x);
@@ -63,12 +64,12 @@ function asfetch_event($x) {
 
 			if(! $ev['timezone'])
 				$ev['timezone'] = 'UTC';
-					
+
 			$actor = null;
 			if(array_key_exists('author',$x) && array_key_exists('link',$x['author'])) {
 				$actor = $x['author']['link'][0]['href'];
 			}
-			$y = [ 
+			$y = [
 				'type'      => 'Event',
 				'id'        => z_root() . '/event/' . $ev['event_hash'],
 				'summary'   => bbcode($ev['summary'], [ 'cache' => true ]),
@@ -82,7 +83,7 @@ function asfetch_event($x) {
 			if(! $ev['nofinish']) {
 				$y['endTime'] = (($ev['adjust']) ? datetime_convert($ev['timezone'],'UTC',$ev['dtend'], ATOM_TIME) : datetime_convert('UTC','UTC',$ev['dtend'],'Y-m-d\\TH:i:s-00:00'));
 			}
-				
+
 			// copy attachments from the passed object - these are already formatted for ActivityStreams
 
 			if($x['attachment']) {
@@ -108,11 +109,11 @@ function asfetch_image($x) {
 		'name' => $x['title'],
 		'content' => bbcode($x['body'], ['cache' => true ]),
 		'source' => [ 'mediaType' => 'text/bbcode', 'content' => $x['body'] ],
-		'published' => datetime_convert('UTC','UTC',$x['created'],ATOM_TIME), 
+		'published' => datetime_convert('UTC','UTC',$x['created'],ATOM_TIME),
 		'updated' => datetime_convert('UTC','UTC', $x['edited'],ATOM_TIME),
 		'url' => [
 			'type'      => 'Link',
-			'mediaType' => $x['link'][0]['type'], 
+			'mediaType' => $x['link'][0]['type'],
 			'href'      => $x['link'][0]['href'],
 			'width'     => $x['link'][0]['width'],
   			'height'    => $x['link'][0]['height']
@@ -131,7 +132,7 @@ function asfetch_profile($x) {
 			dbesc($x['id'])
 		);
 
-	} 
+	}
 	if(! $r)
 		return [];
 
@@ -258,7 +259,7 @@ function asencode_item($i) {
 
 	if ($ret['type'] === 'Note' && $objtype !== 'Question') {
 		$images = false;
-		$has_images = preg_match_all('/\[[zi]mg(.*?)\](.*?)\[/ism',$i['body'],$images,PREG_SET_ORDER); 
+		$has_images = preg_match_all('/\[[zi]mg(.*?)\](.*?)\[/ism',$i['body'],$images,PREG_SET_ORDER);
 
 		if((! $has_images) || get_pconfig($i['uid'],'activitypub','downgrade_media',true))
 			$ret['type'] = 'Note';
@@ -357,7 +358,7 @@ function asencode_item($i) {
 	if($has_images && $ret['type'] === 'Note') {
 		$img = [];
 		foreach($images as $match) {
-			$img[] =  [ 'type' => 'Image', 'url' => $match[2] ]; 
+			$img[] =  [ 'type' => 'Image', 'url' => $match[2] ];
 		}
 		if(! $ret['attachment'])
 			$ret['attachment'] = [];
@@ -478,6 +479,9 @@ function asdecode_attachment($item) {
 
 function asencode_activity($i) {
 
+	if($i['item_deleted'])
+		return Activity::encode_activity($i);
+
 	$ret   = [];
 	$reply = false;
 
@@ -494,7 +498,7 @@ function asencode_activity($i) {
 
 	if($i['title'])
 		$ret['name'] = html2plain(bbcode($i['title'], ['cache' => true ]));
-		
+
 	// Remove URL bookmark
 	$i['body'] = str_replace("#^[", "[", $i['body']);
 
@@ -520,7 +524,7 @@ function asencode_activity($i) {
 	if($actor)
 		$ret['actor'] = $actor;
 	else
-		return []; 
+		return [];
 
 
 	if($i['obj']) {
@@ -584,6 +588,7 @@ function asencode_activity($i) {
 			}
 
 			$ret['to'] = [ $reply_url ];
+			$ret['cc'] = [];
 		}
 		else {
 			$ret['to'] = []; //this is important for pleroma
@@ -619,8 +624,11 @@ function asencode_activity($i) {
 	// poll answers should be addressed only to the poll owner
 	if($i['item_private'] && $i['obj_type'] === 'Answer') {
 		$ret['to'] = $i['owner']['xchan_url'];
-		unset($ret['cc']);
+		$ret['cc'] = [];
 	}
+
+	//remove values from to in cc
+	$ret['cc'] = array_values(array_diff($ret['cc'], $ret['to']));
 
 	if(array_path_exists('object/type', $ret) && in_array($ret['object']['type'], [ 'Note', 'Article', 'Question' ])) {
 		if(isset($ret['to']))
@@ -629,34 +637,40 @@ function asencode_activity($i) {
 			$ret['object']['cc'] = $ret['cc'];
 	}
 
-	if(intval($i['item_deleted'])) {
-		$del_ret['type'] = 'Delete';
-		$del_ret['actor'] = $actor;
-		$del_ret['id'] = $ret['id'];
-		$del_ret['to'] = $ret['to'];
-		$del_ret['cc'] = $ret['cc'];
-		$del_ret['object'] = $ret['object'];
-
-		return $del_ret;
-	}
-
 	return $ret;
 }
 
 function as_map_mentions($i) {
-	if(! $i['term']) {
-		return [];
-	}
 
 	$list = [];
+	$str_list = [];
+	$fixed_list = [];
+	$ret = [];
+
+	if(! $i['term']) {
+		return $ret;
+	}
 
 	foreach ($i['term'] as $t) {
 		if($t['ttype'] == TERM_MENTION) {
 			$list[] = $t['url'];
+			$str_list[] = '\'' . dbesc($t['url']) . '\'';
 		}
 	}
 
-	return $list;
+	// The xchan_url for mastodon is a text/html rendering.
+	// We need to convert the mention url to an ActivityPub id.
+
+	$qlist = implode(',',$str_list);
+
+	if($qlist) {
+		$r = dbq("SELECT xchan_hash FROM xchan WHERE xchan_url IN ( $qlist ) and xchan_network = 'activitypub'");
+		$fixed_list = ids_to_array($r, 'xchan_hash');
+	}
+
+	$ret = (($fixed_list) ? $fixed_list : $list);
+
+	return $ret;
 }
 
 function as_map_acl($i,$mentions = false) {
@@ -672,20 +686,21 @@ function as_map_acl($i,$mentions = false) {
 		if(! $x)
 			return;
 
-		$details = q("select xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") and xchan_network = 'activitypub'");
+		$details = q("select xchan_hash, xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") and xchan_network = 'activitypub'");
 		if($details) {
 			foreach($details as $d) {
 				if($mentions) {
 					$list[] = [ 'type' => 'Mention', 'href' => $d['xchan_url'], 'name' => '@' . (($d['xchan_addr']) ? $d['xchan_addr'] : $d['xchan_name']) ];
 				}
-				else { 
-					$list[] = $d['xchan_url'];
+				else {
+					$list[] = $d['xchan_hash'];
 				}
 			}
 		}
 	}
 
 	return $list;
+
 
 }
 
@@ -808,13 +823,13 @@ function activity_mapper($verb) {
 	if(strpos($verb,ACTIVITY_POKE) !== false)
 		return 'Activity';
 
-	if($verb === 'Announce') 
+	if($verb === 'Announce')
 		return $verb;
 
 
-	// We should return false, however this will trigger an uncaught execption  and crash 
+	// We should return false, however this will trigger an uncaught execption  and crash
 	// the delivery system if encountered by the JSON-LDSignature library
- 
+
 	logger('Unmapped activity: ' . $verb);
 	return 'Create';
 //	return false;
@@ -883,10 +898,10 @@ function as_follow($channel,$act) {
 	$their_follow_id = null;
 
 	/*
-	 * 
-	 * if $act->type === 'Follow', actor is now following $channel 
-	 * if $act->type === 'Accept', actor has approved a follow request from $channel 
-	 *	 
+	 *
+	 * if $act->type === 'Follow', actor is now following $channel
+	 * if $act->type === 'Accept', actor has approved a follow request from $channel
+	 *
 	 */
 
 	$person_obj = $act->actor;
@@ -907,7 +922,7 @@ function as_follow($channel,$act) {
 
 		as_actor_store($person_obj['id'],$person_obj);
 
-		// Find any existing abook record 
+		// Find any existing abook record
 
 		$r = q("select * from abook left join xchan on abook_xchan = xchan_hash where abook_xchan = '%s' and abook_channel = %d limit 1",
 			dbesc($person_obj['id']),
@@ -923,7 +938,7 @@ function as_follow($channel,$act) {
 
 	if($contact && $contact['abook_id']) {
 
-		// A relationship of some form already exists on this site. 
+		// A relationship of some form already exists on this site.
 
 		switch($act->type) {
 
@@ -954,18 +969,18 @@ function as_follow($channel,$act) {
 				$abook_instance = $contact['abook_instance'];
 
 				if(strpos($abook_instance,z_root()) === false) {
-					if($abook_instance) 
+					if($abook_instance)
 						$abook_instance .= ',';
 					$abook_instance .= z_root();
 
-					$r = q("update abook set abook_instance = '%s', abook_not_here = 0 
+					$r = q("update abook set abook_instance = '%s', abook_not_here = 0
 						where abook_id = %d and abook_channel = %d",
 						dbesc($abook_instance),
 						intval($contact['abook_id']),
 						intval($channel['channel_id'])
 					);
 				}
-		
+
 				return;
 			default:
 				return;
@@ -1018,7 +1033,7 @@ function as_follow($channel,$act) {
 			'abook_instance'  => z_root()
 		]
 	);
-		
+
 	if($my_perms)
 		foreach($my_perms as $k => $v)
 			set_abconfig($channel['channel_id'],$ret['xchan_hash'],'my_perms',$k,$v);
@@ -1061,7 +1076,7 @@ function as_follow($channel,$act) {
 			unset($clone['abook_id']);
 			unset($clone['abook_account']);
 			unset($clone['abook_channel']);
-		
+
 			$abconfig = load_abconfig($channel['channel_id'],$clone['abook_xchan']);
 
 			if($abconfig)
@@ -1126,6 +1141,44 @@ function as_actor_store($url,$person_obj) {
 	if(! is_array($person_obj))
 		return;
 
+	// it seems we were loosing public keys due to an issue Lib/Activity::encode_person()
+	// if so, refetch the person object and fix it.
+
+	$fix_pubkey = false;
+
+	if(! $person_obj['publicKey']['publicKeyPem']) {
+		$fix_pubkey = true;
+
+		$x = Activity::fetch($url);
+		if(! $x)
+			return;
+
+		$AS = new ActivityStreams($x);
+
+		if(! $AS->is_valid()) {
+			return;
+		}
+
+		$person_obj = null;
+		if(in_array($AS->type, [ 'Application', 'Group', 'Organization', 'Person', 'Service' ])) {
+			$person_obj = $AS->data;
+		}
+		elseif($AS->obj && ( in_array($AS->obj['type'], [ 'Application', 'Group', 'Organization', 'Person', 'Service' ] ))) {
+			$person_obj = $AS->obj;
+		}
+		else {
+			return;
+		}
+	}
+
+	$inbox = $person_obj['inbox'];
+
+	// invalid identity
+
+	if (! $inbox || strpos($inbox,z_root()) !== false) {
+		return;
+	}
+
 	$icon = '';
 	$name = $person_obj['name'];
 	if(! $name)
@@ -1143,7 +1196,7 @@ function as_actor_store($url,$person_obj) {
 		else
 			$icon = $person_obj['icon'];
 	}
-	
+
 	$links = false;
 	$profile = false;
 
@@ -1173,8 +1226,6 @@ function as_actor_store($url,$person_obj) {
 	if (! $profile) {
 		$profile = $url;
 	}
-
-	$inbox = $person_obj['inbox'];
 
 	$collections = [];
 
@@ -1221,14 +1272,13 @@ function as_actor_store($url,$person_obj) {
 	else {
 
 		// Record exists. Cache existing records for one week at most
-		// then refetch to catch updated profile photos, names, etc. 
-
+		// then refetch to catch updated profile photos, names, etc.
 		$d = datetime_convert('UTC','UTC','now - 1 week');
-		if($r[0]['xchan_name_date'] > $d)
+		if($r[0]['xchan_name_date'] > $d && $fix_pubkey === false)
 			return;
 
 		// update existing record
-		$r = q("update xchan set xchan_name = '%s', xchan_pubkey = '%s', xchan_network = '%s', xchan_name_date = '%s' where xchan_hash = '%s'",
+		q("update xchan set xchan_name = '%s', xchan_pubkey = '%s', xchan_network = '%s', xchan_name_date = '%s' where xchan_hash = '%s'",
 			dbesc(escape_tags($name)),
 			dbesc(escape_tags($pubkey)),
 			dbesc('activitypub'),
@@ -1246,13 +1296,14 @@ function as_actor_store($url,$person_obj) {
 		dbesc($url)
 	);
 
-	$m = parse_url($url);
-	if($m) {
-		$hostname = $m['host'];
-		$baseurl = $m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '');
-	}
-
 	if(! $r) {
+
+		$m = parse_url($url);
+		if($m) {
+			$hostname = $m['host'];
+			$baseurl = $m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '');
+		}
+
 		$r = hubloc_store_lowlevel(
 			[
 				'hubloc_guid'     => escape_tags($url),
@@ -1338,21 +1389,25 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	if(!$parent) {
 		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
-			logger('no permission');
-			return;
+			// Fall through on update activities since we already accepted the item.
+			// We might have got it via announce or imported it manually.
+			if($act->type !== 'Update') {
+				logger('no permission');
+				return;
+			}
 		}
 		$s['owner_xchan'] = $observer_hash;
 	}
 
 	$announce_author = as_get_attributed_to_person($act);
 
-	$s['author_xchan'] = (($announce) ? $announce_author : $observer_hash);
+	$s['author_xchan'] = (($announce) ? $announce_author : $act->actor['id']);
 
 	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
-		dbesc($observer_hash),
+		dbesc($s['author_xchan']),
 		intval($channel['channel_id'])
 	);
-	
+
 	$content = as_get_content($act->obj);
 
 	$s['aid'] = $channel['channel_account_id'];
@@ -1370,7 +1425,7 @@ function as_create_note($channel,$observer_hash,$act) {
 
 		if(array_key_exists('url',$act->obj)) {
 			if(is_array($act->obj['url'])) {
-				if(array_key_exists(0,$act->obj['url'])) {				
+				if(array_key_exists(0,$act->obj['url'])) {
 					$ptr = $act->obj['url'];
 				}
 				else {
@@ -1419,7 +1474,7 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	if($summary)
 		$summary = '[summary]' . $summary . '[/summary]';
-	
+
 	$s['title']    = as_bb_content($content,'name');
 	$s['body']     = $summary . as_bb_content($content,'content');
 	$s['verb']     = (($announce) ? ACTIVITY_SHARE : ACTIVITY_POST);
@@ -1484,6 +1539,10 @@ function as_create_note($channel,$observer_hash,$act) {
 					dbesc($s['parent_mid']),
 					intval($s['uid'])
 				);
+				if(! $p) {
+					logger('parent not found.');
+					return;
+				}
 			}
 			else {
 				logger('could not fetch parents');
@@ -1520,6 +1579,22 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['owner_xchan'] = $p[0]['owner_xchan'];
 	}
 
+	// Make sure we use the zot6 identity where applicable
+
+	$s['author_xchan'] = Activity::find_best_identity($s['author_xchan']);
+	$s['owner_xchan']  = Activity::find_best_identity($s['owner_xchan']);
+
+	if(!$s['author_xchan']) {
+		logger('No author: ' . print_r($act, true));
+	}
+
+	if(!$s['owner_xchan']) {
+		logger('No owner: ' . print_r($act, true));
+	}
+
+	if(!$s['author_xchan'] || !$s['owner_xchan'])
+		return;
+
 	$a = Activity::decode_taxonomy($act->obj);
 	if($a) {
 		$s['term'] = $a;
@@ -1538,31 +1613,189 @@ function as_create_note($channel,$observer_hash,$act) {
 	// right now just link to the largest mp4 we find that will fit in our
 	// standard content region
 
-	if($act->obj['type'] === 'Video') {
+	if(! ActivityStreams::is_response_activity($act->type)) {
+		if ($act->obj['type'] === 'Video') {
 
-		$vtypes = [
-			'video/mp4',
-			'video/ogg',
-			'video/webm'
-		];
+			$vtypes = [
+				'video/mp4',
+				'video/ogg',
+				'video/webm'
+			];
 
-		$mps = [];
-		if(array_key_exists('url',$act->obj) && is_array($act->obj['url'])) {
-			foreach($act->obj['url'] as $vurl) {
-				if(in_array($vurl['mimeType'], $vtypes)) {
-					if(! array_key_exists('width',$vurl)) {
-						$vurl['width'] = 0;
+			$mps    = [];
+			$poster = null;
+			$ptr    = null;
+
+			// try to find a poster to display on the video element
+
+			if (array_key_exists('icon',$act->obj)) {
+				if (is_array($act->obj['icon'])) {
+					if (array_key_exists(0,$act->obj['icon'])) {
+						$ptr = $act->obj['icon'];
 					}
-					$mps[] = $vurl;
+					else {
+						$ptr = [ $act->obj['icon'] ];
+					}
+				}
+				if ($ptr) {
+					foreach ($ptr as $foo) {
+						if (is_array($foo) && array_key_exists('type',$foo) && $foo['type'] === 'Image' && is_string($foo['url'])) {
+							$poster = $foo['url'];
+						}
+					}
+				}
+			}
+
+			$tag = (($poster) ? '[video poster=&quot;' . $poster . '&quot;]' : '[video]' );
+			$ptr = null;
+
+			if (array_key_exists('url',$act->obj)) {
+				if (is_array($act->obj['url'])) {
+					if (array_key_exists(0,$act->obj['url'])) {
+						$ptr = $act->obj['url'];
+					}
+					else {
+						$ptr = [ $act->obj['url'] ];
+					}
+					// handle peertube's weird url link tree if we find it here
+					// 0 => html link, 1 => application/x-mpegURL with 'tag' set to an array of actual media links
+					/* this seems to be for a fragmented playlist which is not what we are looking for atm.
+					foreach ($ptr as $idex) {
+						if (is_array($idex) && array_key_exists('mediaType',$idex)) {
+							if ($idex['mediaType'] === 'application/x-mpegURL' && isset($idex['tag']) && is_array($idex['tag'])) {
+								$ptr = $idex['tag'];
+								break;
+							}
+						}
+					}
+					*/
+					foreach ($ptr as $vurl) {
+						if (array_key_exists('mediaType',$vurl)) {
+							if (in_array($vurl['mediaType'], $vtypes)) {
+								if (! array_key_exists('height',$vurl)) {
+									$vurl['height'] = 0;
+								}
+								$mps[] = $vurl;
+							}
+						}
+					}
+				}
+				if ($mps) {
+					usort($mps,[ '\Zotlabs\Lib\Activity', 'vid_sort' ]);
+					foreach ($mps as $m) {
+						if (intval($m['height']) < 500 && Activity::media_not_in_body($m['href'],$s['body'])) {
+							$s['body'] .= "\n\n" . $tag . $m['href'] . '[/video]';
+							break;
+						}
+					}
+				}
+				elseif (is_string($act->obj['url']) && Activity::media_not_in_body($act->obj['url'],$s['body'])) {
+					$s['body'] .= "\n\n" . $tag . $act->obj['url'] . '[/video]';
+				}
+
+			}
+		}
+
+		if ($act->obj['type'] === 'Audio') {
+
+			$atypes = [
+				'audio/mpeg',
+				'audio/ogg',
+				'audio/wav'
+			];
+
+			$ptr = null;
+
+			if (array_key_exists('url',$act->obj)) {
+				if (is_array($act->obj['url'])) {
+					if (array_key_exists(0,$act->obj['url'])) {
+						$ptr = $act->obj['url'];
+					}
+					else {
+						$ptr = [ $act->obj['url'] ];
+					}
+					foreach ($ptr as $vurl) {
+						if (in_array($vurl['mediaType'], $atypes) && Activity::media_not_in_body($vurl['href'],$s['body'])) {
+							$s['body'] .= "\n\n" . '[audio]' . $vurl['href'] . '[/audio]';
+							break;
+						}
+					}
+				}
+				elseif (is_string($act->obj['url']) && Activity::media_not_in_body($act->obj['url'],$s['body'])) {
+					$s['body'] .= "\n\n" . '[audio]' . $act->obj['url'] . '[/audio]';
+				}
+			}
+			// Pleroma audio scrobbler
+			elseif ($act->type === 'Listen' && array_key_exists('artist', $act->obj) && array_key_exists('title',$act->obj) && $s['body'] === EMPTY_STR) {
+				$s['body'] .= "\n\n" . sprintf('Listening to \"%1$s\" by %2$s', escape_tags($act->obj['title']), escape_tags($act->obj['artist']));
+				if(isset($act->obj['album'])) {
+					$s['body'] .= "\n" . sprintf('(%s)', escape_tags($act->obj['album']));
 				}
 			}
 		}
-		if($mps) {
-			usort($mps,'as_vid_sort');
-			foreach($mps as $m) {
-				if(intval($m['width']) < 500) {
-					$s['body'] .= "\n\n" . '[video]' . $m['href'] . '[/video]';
-					break;
+
+		if ($act->obj['type'] === 'Image' && strpos($s['body'],'zrl=') === false) {
+
+			$ptr = null;
+
+			if (array_key_exists('url',$act->obj)) {
+				if (is_array($act->obj['url'])) {
+					if (array_key_exists(0,$act->obj['url'])) {
+						$ptr = $act->obj['url'];
+					}
+					else {
+						$ptr = [ $act->obj['url'] ];
+					}
+					foreach ($ptr as $vurl) {
+						if (strpos($s['body'],$vurl['href']) === false) {
+							$s['body'] = '[zmg]' . $vurl['href'] . '[/zmg]' . "\n\n" . $s['body'];
+							break;
+						}
+					}
+				}
+				elseif (is_string($act->obj['url'])) {
+					if (strpos($s['body'],$act->obj['url']) === false) {
+						$s['body'] = '[zmg]' . $act->obj['url'] . '[/zmg]' .  "\n\n" .  $s['body'];
+					}
+				}
+			}
+		}
+
+		if ($act->obj['type'] === 'Page' && ! $s['body'])  {
+
+			$ptr  = null;
+			$purl = EMPTY_STR;
+
+			if (array_key_exists('url',$act->obj)) {
+				if (is_array($act->obj['url'])) {
+					if (array_key_exists(0,$act->obj['url'])) {
+						$ptr = $act->obj['url'];
+					}
+					else {
+						$ptr = [ $act->obj['url'] ];
+					}
+					foreach ($ptr as $vurl) {
+						if (array_key_exists('mediaType',$vurl) && $vurl['mediaType'] === 'text/html') {
+							$purl = $vurl['href'];
+							break;
+						}
+						elseif (array_key_exists('mimeType',$vurl) && $vurl['mimeType'] === 'text/html') {
+							$purl = $vurl['href'];
+							break;
+						}
+					}
+				}
+				elseif (is_string($act->obj['url'])) {
+					$purl = $act->obj['url'];
+				}
+				if ($purl) {
+					$li = z_fetch_url(z_root() . '/linkinfo?binurl=' . bin2hex($purl));
+					if ($li['success'] && $li['body']) {
+						$s['body'] .= "\n" . $li['body'];
+					}
+					else {
+						$s['body'] .= "\n\n" . $purl;
+					}
 				}
 			}
 		}
@@ -1694,13 +1927,13 @@ function as_announce_note($channel,$observer_hash,$act) {
 		$s['attach'] = $a;
 	}
 
-	$body = "[share author='" . urlencode($act->sharee['name']) . 
-		"' profile='" . $act->sharee['url'] . 
-		"' avatar='" . $act->sharee['photo_s'] . 
-		"' link='" . ((is_array($act->obj['url'])) ? $act->obj['url']['href'] : $act->obj['url']) . 
-		"' auth='" . ((is_matrix_url($act->obj['url'])) ? 'true' : 'false' ) . 
-		"' posted='" . $act->obj['published'] . 
-		"' message_id='" . $act->obj['id'] . 
+	$body = "[share author='" . urlencode($act->sharee['name']) .
+		"' profile='" . $act->sharee['url'] .
+		"' avatar='" . $act->sharee['photo_s'] .
+		"' link='" . ((is_array($act->obj['url'])) ? $act->obj['url']['href'] : $act->obj['url']) .
+		"' auth='" . ((is_matrix_url($act->obj['url'])) ? 'true' : 'false' ) .
+		"' posted='" . $act->obj['published'] .
+		"' message_id='" . $act->obj['id'] .
 	"']";
 
 	if($content['name'])
@@ -1780,7 +2013,7 @@ function as_like_note($channel,$observer_hash,$act) {
 	$parent_item = $r[0];
 
 	if($parent_item['owner_xchan'] === $channel['channel_hash']) {
-		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'post_comments')) {
+		if(! perm_is_allowed($channel['channel_id'], $act->actor['id'], 'post_comments')) {
 			logger('no comment permission.');
 			return;
 		}
@@ -1794,8 +2027,22 @@ function as_like_note($channel,$observer_hash,$act) {
 		$s['parent_mid'] = $parent_item['parent_mid'];
 	}
 
-	$s['owner_xchan'] = $parent_item['owner_xchan'];
-	$s['author_xchan'] = $observer_hash;
+
+	// Make sure we use the zot6 identity where applicable
+
+	$s['owner_xchan']  = Activity::find_best_identity($parent_item['owner_xchan']);
+	$s['author_xchan'] = Activity::find_best_identity($act->actor['id']);
+
+	if(!$s['author_xchan']) {
+		logger('No author: ' . print_r($act, true));
+	}
+
+	if(!$s['owner_xchan']) {
+		logger('No owner: ' . print_r($act, true));
+	}
+
+	if(!$s['author_xchan'] || !$s['owner_xchan'])
+		return;
 
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
@@ -1814,11 +2061,11 @@ function as_like_note($channel,$observer_hash,$act) {
 
 	$body = $parent_item['body'];
 
-	$z = q("select * from xchan where xchan_hash = '%s' limit 1",
+	$z = q("select * from xchan where xchan_hash = '%s'",
 		dbesc($parent_item['author_xchan'])
 	);
 	if($z)
-		$item_author = $z[0];		
+		$item_author = Libzot::zot_record_preferred($z, 'xchan_network');
 
 	$object = json_encode(array(
 		'type'    => $post_type,
@@ -1848,8 +2095,8 @@ function as_like_note($channel,$observer_hash,$act) {
 	if($act->type === 'Dislike')
 		$bodyverb = t('%1$s doesn\'t like %2$s\'s %3$s');
 
-	$ulink = '[url=' . $item_author['xchan_url'] . ']' . $item_author['xchan_name'] . '[/url]';
-	$alink = '[url=' . $parent_item['author']['xchan_url'] . ']' . $parent_item['author']['xchan_name'] . '[/url]';
+	$ulink = '[url=' . $item_author['xchan_url'] . '][bdi]' . $item_author['xchan_name'] . '[/bdi][/url]';
+	$alink = '[url=' . $parent_item['author']['xchan_url'] . '][bdi]' . $parent_item['author']['xchan_name'] . '[/bdi][/url]';
 	$plink = '[url='. z_root() . '/display/' . gen_link_id($act->id) . ']' . $post_type . '[/url]';
 	$s['body'] =  sprintf( $bodyverb, $ulink, $alink, $plink );
 
@@ -1978,16 +2225,16 @@ function as_get_content($act) {
 				$adjust = true;
 				$event['adjust'] = 1;
 			}
-			$event['dtstart'] = datetime_convert('UTC','UTC',$act['startTime'] . (($adjust) ? '' : 'Z')); 
+			$event['dtstart'] = datetime_convert('UTC','UTC',$act['startTime'] . (($adjust) ? '' : 'Z'));
 		}
 		if(array_key_exists('endTime',$act)) {
-			$event['dtend'] = datetime_convert('UTC','UTC',$act['endTime'] . (($adjust) ? '' : 'Z')); 
+			$event['dtend'] = datetime_convert('UTC','UTC',$act['endTime'] . (($adjust) ? '' : 'Z'));
  		}
 		else {
 			$event['nofinish'] = true;
 		}
 	}
-	
+
 	foreach([ 'name', 'summary', 'content' ] as $a) {
 		if(($x = as_get_textfield($act,$a)) !== false) {
 			$content[$a] = $x;
@@ -2010,7 +2257,7 @@ function as_get_content($act) {
 
 
 function as_get_textfield($act,$field) {
-	
+
 	$content = false;
 
 	if(! $act) {

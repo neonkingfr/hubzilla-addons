@@ -106,7 +106,7 @@ function gravatar_get_profile_photo($a, &$b) {
 /**
  * Display admin settings for this addon
  */
-function gravatar_plugin_admin (&$a, &$o) {
+function gravatar_plugin_admin (&$o) {
 	$t = get_markup_template( "admin.tpl", "addon/gravatar/" );
 	$default_avatar = get_config('gravatar', 'default_img');
 	$rating = get_config('gravatar', 'rating');
@@ -156,7 +156,7 @@ function gravatar_plugin_admin (&$a, &$o) {
 /**
  * Save admin settings
  */
-function gravatar_plugin_admin_post (&$a) {
+function gravatar_plugin_admin_post () {
 	check_form_security_token('gravatarsave');
 	$default_avatar = ((x($_POST, 'avatar')) ? notags(trim($_POST['avatar'])) : 'identicon');
 	$rating = ((x($_POST, 'rating')) ? notags(trim($_POST['rating'])) : 'g');

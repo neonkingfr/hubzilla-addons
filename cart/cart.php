@@ -55,10 +55,105 @@ class Cart {
         return (isset(\App::$profile["profile_uid"]) && \App::$profile["profile_uid"] != null) ? \App::$profile["profile_uid"] : Cart::$seller["channel_id"];
   }
 
+  public static function z6trans_seller($hash) {
+
+        $x = q("select * from xchan where xchan_hash = '%s'",
+                dbesc($hash)
+        );
+
+        if ($x) {
+
+		$channels = [];
+
+                // include xchans for all zot-like networks
+                $xchans = q("select xchan_hash,xchan_network from xchan where xchan_hash = '%s' OR ( xchan_guid = '%s' AND xchan_pubkey = '%s' ) ",
+                        dbesc($hash),
+                        dbesc($x[0]['xchan_guid']),
+                        dbesc($x[0]['xchan_pubkey'])
+                );
+
+                if ($xchans) {
+			foreach ($xchans as $xchan) {
+				$channels[$xchan['xchan_network']] = $xchan['xchan_hash'];
+			}
+		}
+
+		if (array_key_exists('zot6',$channels) && array_key_exists('zot',$channels)) {
+			q("update cart_orders set seller_channel = '%s' where seller_channel = '%s'",
+				$channels['zot6'],
+				$channels['zot']
+			  );
+		}
+
+		return $channels['zot6'];
+	} 
+
+
+  }
+
+	private static $xchanhash_cache = [];
+
+	public static function get_xchan_hashes ($hash) {
+		if (isset(self::$xchanhash_cache[$hash])) {
+			return self::$xchanhash_cache[$hash];
+		}
+
+    		$xchanhashes = [];
+		$secids = get_security_ids(null,$hash);
+		$xchanhashes = $secids['allow_cid'];
+
+		self::$xchanhash_cache[$hash] = $xchanhashes;
+
+		return (self::$xchanhash_cache[$hash]);
+	}
+
+	public static function channel_hashes_sql ($hashes,$field) {
+		$hashes_sql = $field." in ('".implode("','",$hashes)."')";
+
+		return $hashes_sql;
+	}
+
+  public static function z6trans_buyer($hash) {
+
+        $x = q("select * from xchan where xchan_hash = '%s'",
+                dbesc($hash)
+        );
+
+        if ($x) {
+
+		$channels = [];
+
+                // include xchans for all zot-like networks
+                $xchans = q("select xchan_hash,xchan_network from xchan where xchan_hash = '%s' OR ( xchan_guid = '%s' AND xchan_pubkey = '%s' ) ",
+                        dbesc($hash),
+                        dbesc($x[0]['xchan_guid']),
+                        dbesc($x[0]['xchan_pubkey'])
+                );
+
+                if ($xchans) {
+			foreach ($xchans as $xchan) {
+				$channels[$xchan['xchan_network']] = $xchan['xchan_hash'];
+			}
+		}
+
+		if (array_key_exists('zot6',$channels) && array_key_exists('zot',$channels)) {
+			q("update cart_orders set buyer_xchan = '%s' where buyer_xchan = '%s'",
+				$channels['zot6'],
+				$channels['zot']
+			  );
+		}
+	} 
+
+  }
+
   public static function set_seller_by_hash($channel_hash) {
     Cart::$seller=Array();
     $params=Array("channel_id","channel_account_id","channel_primary","channel_name","channel_address","channel_hash","channel_timezone");
-    $channel=channelx_by_hash($channel_hash);
+    //$channel=channelx_by_hash($channel_hash);
+    //if (!$channel) {
+      $channel_hash = Cart::z6trans_seller($channel_hash);
+      $channel = channelx_by_hash($channel_hash);
+    //} 
     if ($channel) {
       foreach($params as $key) {
         Cart::$seller[$key]=$channel[$key];
@@ -73,7 +168,11 @@ class Cart {
 
   public static function set_buyer_by_hash($channel_hash) {
     Cart::$buyer=Array();
-    $channel = channelx_by_hash($channel_hash);
+    //$channel = channelx_by_hash($channel_hash);
+    //if (!$channel) {
+      $channel_hash = Cart::z6trans_buyer($channel_hash);
+      $channel = channelx_by_hash($channel_hash);
+    //} 
     if ($channel) {
         $params=Array("channel_id","channel_account_id","channel_primary","channel_name","channel_address","channel_hash","channel_timezone");
         foreach($params as $key) {
@@ -308,6 +407,7 @@ function cart_dbUpgrade () {
 	return $response;
 }
 
+
 function cart_loadorder ($orderhash) {
         // @TODO: Only allow loading of orders where BUYER or SELLER hash = logged in user hash
 	$r = q ("select * from cart_orders where order_hash = '%s' LIMIT 1",dbesc($orderhash));
@@ -367,6 +467,11 @@ function cart_getorderhash ($create=false) {
 	$channel=channelx_by_n(Cart::get_seller_id());
 	$channel_hash=$channel["channel_hash"];
 
+	$buyerhashes=Cart::get_xchan_hashes($observerhash);
+	logger("BUYERHASHES = ".json_encode($buyerhashes));
+	$sellerhashes=Cart::get_xchan_hashes($channel_hash);
+	logger("SELLERHASHES = ".json_encode($sellerhashes));
+
 	if ($orderhash) {
 		$r = q("select * from cart_orders where order_hash = '%s' limit 1",dbesc($orderhash));
 		if (!$r) {
@@ -376,7 +481,13 @@ function cart_getorderhash ($create=false) {
 
                     $orderhash = $order["order_hash"];
 
-		    if ($order["buyer_xchan"]!=$observerhash) {
+
+		    //if ($order["buyer_xchan"]!=$observerhash) {
+		    if (!in_array($order["buyer_xchan"],$buyerhashes)) {
+			$orderhash=null;
+		    }
+
+		    if (!in_array($order["seller_channel"],$sellerhashes)) {
 			$orderhash=null;
 		    }
 
@@ -386,10 +497,14 @@ function cart_getorderhash ($create=false) {
                }
 	}
 	if (!$orderhash) {
-      $r = q("select * from cart_orders where
-			           buyer_xchan = '%s'
-	               and seller_channel = '%s'
-                 and order_checkedout is null limit 1",dbesc($observerhash),dbesc($channel_hash));
+
+		$buyerhashes_sql = Cart::channel_hashes_sql($buyerhashes,'buyer_xchan');
+		$sellerhashes_sql = Cart::channel_hashes_sql($sellerhashes,'seller_channel');
+
+		$r = q("select * from cart_orders where
+			           $buyerhashes_sql AND
+	               		   $sellerhashes_sql
+                 and order_checkedout is null limit 1");
 
       if (!$r) {
           $orderhash=null;
@@ -1234,7 +1349,7 @@ function cart_formatamount($amount) {
 	return sprintf(cart_getcurrencyformat(),$amount);
 }
 
-function cart_plugin_admin_post(&$s) {
+function cart_plugin_admin_post() {
 
   $prev_dropval = cart_getsysconfig("dropTablesOnUninstall");
 
@@ -1245,7 +1360,7 @@ function cart_plugin_admin_post(&$s) {
   }
 }
 
-function cart_plugin_admin(&$a,&$s) {
+function cart_plugin_admin(&$s) {
 
     $dropdbonuninstall = intval(cart_getsysconfig("dropTablesOnUninstall"));
 
@@ -1464,14 +1579,20 @@ function cart_pagecontent($a=null) {
 			return "<h1>Order Not Found</h1>";
 		} else {
 	                $observerhash = get_observer_hash();
-	                if ($observerhash === '') { $observerhash = null; }
-		        $r = q("select * from cart_orders where order_hash = '%s' and buyer_xchan = '%s' limit 1",
-                                 dbesc($orderhash),dbesc($observerhash));
+			$r = null;
+	                if ($observerhash === '') { 
+				$observerhash = null; 
+			} else {
+				$buyerhashes=Cart::get_xchan_hashes($observerhash);
+				$buyerhashes_sql = Cart::channel_hashes_sql ($buyerhashes,'buyer_xchan');
+		        	$r = q("select * from cart_orders where order_hash = '%s' and %s limit 1",
+                                 	dbesc($orderhash),$buyerhashes_sql);
+			}
                         if (!$r) {
 			  notice ( t('Access denied.' . EOL));
 			  return "<h1>Access denied</h1>";
-        }
-      }
+        		}
+      		}
                 $order=cart_loadorder($orderhash);
 		return cart_do_display($order);
 	}

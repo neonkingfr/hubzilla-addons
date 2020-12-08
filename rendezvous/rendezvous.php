@@ -73,7 +73,7 @@ function rendezvous_uninstall() {
     return;
 }
 
-function rendezvous_plugin_admin_post(&$a) {
+function rendezvous_plugin_admin_post() {
     $mapboxAccessToken = ((x($_POST, 'mapboxAccessToken')) ? $_POST['mapboxAccessToken'] : '');
     $dropTablesOnUninstall = ((x($_POST, 'dropTablesOnUninstall')) ? intval($_POST['dropTablesOnUninstall']) : 0);
     logger('Rendezvous drop tables admin setting: ' . $dropTablesOnUninstall, LOGGER_DEBUG);
@@ -82,7 +82,7 @@ function rendezvous_plugin_admin_post(&$a) {
     info(t('Settings updated.') . EOL);
 }
 
-function rendezvous_plugin_admin(&$a, &$o) {
+function rendezvous_plugin_admin(&$o) {
     $t = get_markup_template("admin.tpl", "addon/rendezvous/");
 
     $dropTablesOnUninstall = get_config('rendezvous', 'dropTablesOnUninstall');

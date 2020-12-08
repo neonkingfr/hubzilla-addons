@@ -14,7 +14,7 @@ function mailtest_module() {}
 
 
 
-function mailtest_plugin_admin(&$a, &$o) {
+function mailtest_plugin_admin(&$o) {
 
 	$o = '<div></div>&nbsp;&nbsp;&nbsp;&nbsp;<a href="' . z_root() . '/mailtest">' . t('Send test email') . '</a></br/>';
 

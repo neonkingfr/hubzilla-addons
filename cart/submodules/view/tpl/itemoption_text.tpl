@@ -15,5 +15,5 @@
 	<div class="col-12">
 		{{if $instructions}}<small id="help_{{$itemid}}_{{$uuid}}" class="form-text text-muted">{{$instructions}}</small>{{/if}}<BR />
 	</div>
-{{/if}}
 </div>
+{{/if}}

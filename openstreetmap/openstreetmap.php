@@ -137,7 +137,7 @@ function openstreetmap_generate_map(&$a,&$b) {
 
 }
 
-function openstreetmap_plugin_admin(&$a, &$o) {
+function openstreetmap_plugin_admin(&$o) {
 	$t = get_markup_template("admin.tpl", "addon/openstreetmap/");
 
 	$tmsserver = get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org');
@@ -159,7 +159,7 @@ function openstreetmap_plugin_admin(&$a, &$o) {
 			'$marker' => array('marker', t('Include marker on map'), $marker, t('Include a marker on the map.')),
 	));
 }
-function openstreetmap_plugin_admin_post(&$a) {
+function openstreetmap_plugin_admin_post() {
 	$urltms = ((x($_POST, 'tmsserver')) ? notags(trim($_POST['tmsserver'])) : '');
 	$urlnom = ((x($_POST, 'nomserver')) ? notags(trim($_POST['nomserver'])) : '');
 	$zoom = ((x($_POST, 'zoom')) ? intval(trim($_POST['zoom'])) : 16);
