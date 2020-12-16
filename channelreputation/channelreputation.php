@@ -158,7 +158,7 @@ class ChannelReputation_Utils {
 			return;
 		}
 
-                check_form_security_token_redirectOnErr('channelreputation/settings','channelreputation');
+                check_form_security_token_redirectOnErr('/channelreputation/settings','channelreputation');
 
 		$prev_enable = get_pconfig ($id,'channelreputation','enable');
 		set_pconfig( local_channel(), 'channelreputation', 'enable', intval($_POST['channelrep_enable']) );

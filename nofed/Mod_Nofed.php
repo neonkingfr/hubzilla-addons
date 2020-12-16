@@ -15,7 +15,7 @@ class Nofed extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'nofed'))
 			return;
 
-		check_form_security_token_redirectOnErr('nofed', 'nofed');
+		check_form_security_token_redirectOnErr('/nofed', 'nofed');
 
 		set_pconfig(local_channel(), 'nofed', 'post_by_default', intval($_POST['nofed_default']));
 		info( t('nofed Settings saved.') . EOL);

@@ -16,7 +16,7 @@ class Dwpost extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'dwpost'))
 			return;
 
-		check_form_security_token_redirectOnErr('dwpost', 'dwpost');
+		check_form_security_token_redirectOnErr('/dwpost', 'dwpost');
 
 		set_pconfig(local_channel(),'dwpost','dw_username',trim($_POST['dw_username']));
 		set_pconfig(local_channel(),'dwpost','dw_password',z_obscure(trim($_POST['dw_password'])));

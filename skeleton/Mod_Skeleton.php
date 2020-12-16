@@ -15,7 +15,7 @@ class Skeleton extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'skeleton'))
 			return;
 
-		check_form_security_token_redirectOnErr('skeleton', 'skeleton');
+		check_form_security_token_redirectOnErr('/skeleton', 'skeleton');
 
 		set_pconfig(local_channel(), 'skeleton', 'some_setting', $_POST['some_setting']);
 

@@ -17,7 +17,7 @@ class Statusnet extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'statusnet'))
 			return;
 
-		check_form_security_token_redirectOnErr('statusnet', 'statusnet');
+		check_form_security_token_redirectOnErr('/statusnet', 'statusnet');
 
 		if(isset($_POST['statusnet-disconnect'])) {
 

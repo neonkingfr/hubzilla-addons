@@ -16,7 +16,7 @@ class Pageheader extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'pageheader'))
 			return;
 
-		check_form_security_token_redirectOnErr('pageheader', 'pageheader');
+		check_form_security_token_redirectOnErr('/pageheader', 'pageheader');
 
 		set_config('pageheader','text',trim(strip_tags($_POST['pageheader-words'])));
 		info( t('pageheader Settings saved.') . EOL);

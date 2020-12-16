@@ -18,7 +18,7 @@ class Pubcrawl extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'pubcrawl'))
 			return;
 
-		check_form_security_token_redirectOnErr('pubcrawl', 'pubcrawl');
+		check_form_security_token_redirectOnErr('/pubcrawl', 'pubcrawl');
 
 		set_pconfig(local_channel(),'activitypub','downgrade_media', 1 - intval($_POST['activitypub_send_media']));
 		set_pconfig(local_channel(),'activitypub','include_groups',intval($_POST['include_groups']));		
