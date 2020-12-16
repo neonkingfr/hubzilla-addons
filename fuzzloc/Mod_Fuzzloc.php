@@ -15,7 +15,7 @@ class Fuzzloc extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'fuzzloc'))
 			return;
 
-		check_form_security_token_redirectOnErr('fuzzloc', 'fuzzloc');
+		check_form_security_token_redirectOnErr('/fuzzloc', 'fuzzloc');
 
 		set_pconfig(local_channel(),'fuzzloc','minfuzz',intval($_POST['minfuzz']));
 		set_pconfig(local_channel(),'fuzzloc','maxfuzz',intval($_POST['maxfuzz']));

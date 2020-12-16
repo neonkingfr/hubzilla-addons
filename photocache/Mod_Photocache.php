@@ -16,7 +16,7 @@ class Photocache extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'photocache'))
 			return;
 		
-		check_form_security_token_redirectOnErr('photocache', 'photocache');
+		check_form_security_token_redirectOnErr('/photocache', 'photocache');
 		
 		$minres = intval($_POST['cache_minres']);
 		if($minres > 1024)

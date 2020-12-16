@@ -341,7 +341,7 @@ class SocialAuth extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'socialauth'))
 			return;
 
-		check_form_security_token_redirectOnErr('socialauth', 'socialauth');
+		check_form_security_token_redirectOnErr('/socialauth', 'socialauth');
 
 		require_once __DIR__ . '/include/config.php';
 

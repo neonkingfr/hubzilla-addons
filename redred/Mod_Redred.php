@@ -15,7 +15,7 @@ class Redred extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'redred'))
 			return;
 
-		check_form_security_token_redirectOnErr('redred', 'redred');
+		check_form_security_token_redirectOnErr('/redred', 'redred');
 
 		$channel = App::get_channel();
 		// Don't let somebody post to their self channel. Since we aren't passing message-id this would be very very bad.

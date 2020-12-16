@@ -19,7 +19,7 @@ class Diaspora extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'diaspora'))
 			return;
 
-		check_form_security_token_redirectOnErr('diaspora', 'diaspora');
+		check_form_security_token_redirectOnErr('/diaspora', 'diaspora');
 
 		set_pconfig(local_channel(),'system','diaspora_public_comments',intval($_POST['dspr_pubcomment']));
 		set_pconfig(local_channel(),'system','prevent_tag_hijacking',intval($_POST['dspr_hijack']));

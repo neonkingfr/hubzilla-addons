@@ -17,7 +17,7 @@ class Pumpio extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'pumpio'))
 			return;
 
-		check_form_security_token_redirectOnErr('pumpio', 'pumpio');
+		check_form_security_token_redirectOnErr('/pumpio', 'pumpio');
 
 		// filtering the username if it is filled wrong
 		$user = $_POST['pumpio_user'];

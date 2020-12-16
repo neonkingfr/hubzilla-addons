@@ -16,7 +16,7 @@ class Ljpost extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'ljpost'))
 			return;
 
-		check_form_security_token_redirectOnErr('ljpost', 'ljpost');
+		check_form_security_token_redirectOnErr('/ljpost', 'ljpost');
 
 		set_pconfig(local_channel(),'ljpost','lj_username',trim($_POST['lj_username']));
 		set_pconfig(local_channel(),'ljpost','lj_password',z_obscure(trim($_POST['lj_password'])));

@@ -16,7 +16,7 @@ class Libertree extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'libertree'))
 			return;
 
-		check_form_security_token_redirectOnErr('libertree', 'libertree');
+		check_form_security_token_redirectOnErr('/libertree', 'libertree');
 
 		set_pconfig(local_channel(),'libertree','post_by_default',intval($_POST['libertree_bydefault']));
 		set_pconfig(local_channel(),'libertree','libertree_api_token',trim($_POST['libertree_api_token']));
