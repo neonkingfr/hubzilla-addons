@@ -6,7 +6,7 @@
  * Description: Server sent events notifications
  * Version: 1.0
  * Author: Mario Vavti
- * Maintainer: Mario Vavti <mario@hub.somaton.com> 
+ * Maintainer: Mario Vavti <mario@hub.somaton.com>
  * MinVersion: 4.7
  */
 
@@ -115,7 +115,7 @@ function sse_item_stored($item) {
 			if(($vnotify & VNOTIFY_NETWORK) && !$item['item_wall'] && !$is_file && in_array(intval($item['item_private']), [0, 1]))
 				$x['network']['notifications'][] = Enotify::format($r[0]);
 
-			if(($vnotify & VNOTIFY_MAIL) && !$item['item_wall'] && !$is_file && intval($item['item_private']) === 2)
+			if(($vnotify & VNOTIFY_MAIL) && !$is_file && intval($item['item_private']) === 2)
 				$x['dm']['notifications'][] = Enotify::format($r[0]);
 
 			if(($vnotify & VNOTIFY_FILES) && $is_file)
