@@ -206,7 +206,7 @@ class QueueWorkerUtils {
 
 			case DBTYPE_POSTGRES:
 				q('BEGIN');
-				q('LOCK TABLE '.$tablename.' IN ACCESS EXCLUSIVE MODE');
+				//q('LOCK TABLE '.$tablename.' IN ACCESS EXCLUSIVE MODE');
 				break;
 		}
 		return;
@@ -252,7 +252,8 @@ class QueueWorkerUtils {
 			$workinfo = ['argc'=>$argc,'argv'=>$argv];
 		
         		$r = q("select * from workerq where workerq_data = '%s'",
-                		dbesc(self::maybejson($workinfo)));
+                		dbesc(self::maybejson($workinfo))
+			);
         		if ($r) {
                 		logger("Ignoring duplicate workerq task",LOGGER_DEBUG);
                 		return;
@@ -261,12 +262,14 @@ class QueueWorkerUtils {
 			self::qbegin('workerq');
 			$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
 				intval($priority),
-				dbesc(self::maybejson($workinfo)));
-			self::qcommit();
+				dbesc(self::maybejson($workinfo))
+			);
 			if (!$r) {
+				self::qrollback();
 				logger("INSERT FAILED",LOGGER_DEBUG);
 				return;
 			}
+			self::qcommit();
 			logger('INSERTED: '.self::maybejson($workinfo),LOGGER_DEBUG);
 		}
 		$argv=[];
@@ -277,6 +280,7 @@ class QueueWorkerUtils {
 			$phpbin = get_config('system','phpbin','php');
 			proc_run($phpbin,'Zotlabs/Daemon/Master.php',['Queueworker']);
 		}
+
 	}
 
 	public static function MasterRelease(&$arr) {
@@ -289,22 +293,26 @@ class QueueWorkerUtils {
 			$workinfo = ['argc'=>$argc,'argv'=>$argv];
 		
         		$r = q("select * from workerq where workerq_data = '%s'",
-                		dbesc(self::maybejson($workinfo)));
-        		if (!$r) {
+                		dbesc(self::maybejson($workinfo))
+			);
 
-				self::qbegin('workerq');
-				$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
-					intval($priority),
-					dbesc(self::maybejson($workinfo)));
-				self::qcommit();
-				if (!$r) {
-					logger("Insert failed: ".json_encode($workinfo),LOGGER_DEBUG);
-					return;
-				}
-				logger('INSERTED: '.self::maybejson($workinfo),LOGGER_DEBUG);
-			} else {
+        		if ($r) {
                 		logger("Duplicate task - do not insert.",LOGGER_DEBUG);
+				return;
         		}
+
+			self::qbegin('workerq');
+			$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
+				intval($priority),
+				dbesc(self::maybejson($workinfo))
+			);
+			if (!$r) {
+				self::qrollback();
+				logger("Insert failed: ".json_encode($workinfo),LOGGER_DEBUG);
+				return;
+			}
+			self::qcommit();
+			logger('INSERTED: '.self::maybejson($workinfo),LOGGER_DEBUG);
 		}
 		$argv=[];
 		$arr=['argv'=>$argv];
@@ -320,7 +328,14 @@ class QueueWorkerUtils {
 			self::$workermaxage = get_config('queueworker','max_queueworker_age');
 			self::$workermaxage = (self::$workermaxage > 120) ? self::$workermaxage : 300;
 		}
-		q("update workerq set workerq_reservationid = null where workerq_processtimeout < %s", db_utcnow());
+
+		q("update workerq set workerq_reservationid = null where workerq_reservationid is not null and workerq_processtimeout < %s", db_utcnow());
+/*
+		// this might work better for mysql8 and postgresql 9.5 upwards. Not for mariadb!  
+		dbq("update workerq set workerq_reservationid = null where workerq_id in (
+			select workerq_id from workerq where workerq_processtimeout < " . db_utcnow() . " and workerq_reservationid is not null FOR UPDATE SKIP LOCKED
+		)");
+*/
 		usleep(self::$workersleep); 
 		$workers = q("select distinct workerq_reservationid from workerq");
 		$workers = isset($workers) ? intval(count($workers)) : 1;
@@ -333,7 +348,6 @@ class QueueWorkerUtils {
 			return self::$queueworker;
 		}
 
-	
 		$wid = uniqid('',true);
 		usleep(mt_rand(500000,3000000)); //Sleep .5 - 3 seconds before creating a new worker.
 		$workers = self::GetWorkerCount();
@@ -351,21 +365,26 @@ class QueueWorkerUtils {
 		self::GetWorkerCount();
 
 		self::qbegin('workerq');
-		$work = q("select workerq_id from workerq 
-				where workerq_reservationid is null
-				order by workerq_priority,workerq_id limit 1;");
+
+		if(ACTIVE_DBTYPE == DBTYPE_POSTGRES) {
+			$work = dbq("SELECT workerq_id FROM workerq WHERE workerq_reservationid IS NULL ORDER BY workerq_priority, workerq_id LIMIT 1 FOR UPDATE SKIP LOCKED;");
+		}
+		else {
+			$work = dbq("SELECT workerq_id FROM workerq WHERE workerq_reservationid IS NULL ORDER BY workerq_priority, workerq_id LIMIT 1;");
+		}
 
 		if (!$work) {
 			self::qrollback();
 			return false;
 		}
-
 		$id = $work[0]['workerq_id'];
-                $work = q("update workerq set workerq_reservationid='%s', workerq_processtimeout = %s + interval %s where workerq_id = %d",
-                        self::$queueworker,
+
+                $work = q("UPDATE workerq SET workerq_reservationid = '%s', workerq_processtimeout = %s + INTERVAL %s WHERE workerq_id = %d",
+			self::$queueworker,
 			db_utcnow(),
 			db_quoteinterval(self::$workermaxage." SECOND"),
-                        intval($id));
+			intval($id)
+		);
 
 		if (!$work) {
 			self::qrollback();
@@ -395,8 +414,18 @@ class QueueWorkerUtils {
 			//	    other metric.
 
 			self::qbegin('workerq');
-                        $workitem = q("select * from workerq where workerq_id = %d",
-				$workid);
+
+			if(ACTIVE_DBTYPE == DBTYPE_POSTGRES) {
+		                $workitem = q("SELECT * FROM workerq WHERE workerq_id = %d FOR UPDATE SKIP LOCKED",
+					$workid
+				);
+			}
+			else {
+		                $workitem = q("SELECT * FROM workerq WHERE workerq_id = %d",
+					$workid
+				);
+			}
+
 			self::qcommit();
 
                         if (isset($workitem[0])) {
@@ -419,15 +448,17 @@ class QueueWorkerUtils {
 				$argv = flatten_array_recursive($argv);
 				$argc = count($argv);
                                 $cls::run($argc,$argv);
+
+
                                 //@FIXME: Right now we assume that if we get a return, everything is OK.
                                 //At some point we may want to test whether the run returns true/false
                                 //    and requeue the work to be tried again if needed.  But we probably want
                                 //    to implement some sort of "retry interval" first.
 			
 				self::qbegin('workerq');
-
                                 q("delete from workerq where workerq_id = %d",
-                                        $workid);
+                                        $workid
+				);
 				self::qcommit();
                         } else {
 				logger("NO WORKITEM!",LOGGER_DEBUG);
