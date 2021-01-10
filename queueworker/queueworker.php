@@ -329,13 +329,15 @@ class QueueWorkerUtils {
 			self::$workermaxage = (self::$workermaxage > 120) ? self::$workermaxage : 300;
 		}
 
-		q("update workerq set workerq_reservationid = null where workerq_reservationid is not null and workerq_processtimeout < %s", db_utcnow());
-/*
-		// this might work better for mysql8 and postgresql 9.5 upwards. Not for mariadb!  
-		dbq("update workerq set workerq_reservationid = null where workerq_id in (
-			select workerq_id from workerq where workerq_processtimeout < " . db_utcnow() . " and workerq_reservationid is not null FOR UPDATE SKIP LOCKED
-		)");
-*/
+		if(ACTIVE_DBTYPE == DBTYPE_POSTGRES) {
+			dbq("update workerq set workerq_reservationid = null where workerq_id in (
+				select workerq_id from workerq where workerq_processtimeout < " . db_utcnow() . " and workerq_reservationid is not null FOR UPDATE SKIP LOCKED
+			)");
+		}
+		else {
+			q("update workerq set workerq_reservationid = null where workerq_reservationid is not null and workerq_processtimeout < %s", db_utcnow());
+		}
+
 		usleep(self::$workersleep); 
 		$workers = q("select distinct workerq_reservationid from workerq");
 		$workers = isset($workers) ? intval(count($workers)) : 1;
