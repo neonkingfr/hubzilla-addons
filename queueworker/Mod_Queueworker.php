@@ -15,19 +15,18 @@ class Queueworker extends Controller {
 
 	function post() {
 
-		if ((!local_channel()) || 
-			(!is_site_admin())) {
-			
+		if ((!local_channel()) || (!is_site_admin())) {
 			goaway(z_root().'/queueworker');
-    		}
+		}
 
 		check_form_security_token('form_security_token','queueworker');
+
 		$maxqueueworkers = intval($_POST['queueworker_maxworkers']);
 		$maxqueueworkers = ($maxqueueworkers > 3) ? $maxqueueworkers : 4;
 		set_config('queueworker','max_queueworkers',$maxqueueworkers);
 
 		$maxworkerage = intval($_POST['queueworker_max_age']);
-		$maxworkerage = ($maxworkerage > 100) ? $maxworkerage : 300;
+		$maxworkerage = ($maxworkerage >= 120) ? $maxworkerage : 300;
 		set_config('queueworker','queueworker_max_age',$maxworkerage);
 
 		$queueworkersleep = intval($_POST['queue_worker_sleep']);
@@ -70,41 +69,40 @@ class Queueworker extends Controller {
 		$maxqueueworkers = ($maxqueueworkers > 3) ? $maxqueueworkers : 4;
 		set_config('queueworker','max_queueworkers',$maxqueueworkers);
 
-
 		$sc .= replace_macros(get_markup_template('field_input.tpl'), [
 			'$field' => [
 				'queueworker_maxworkers',
 				t('Max queueworker threads'),
 				$maxqueueworkers,
-				'',
+				t('Minimum 3, default 4'),
 				$paths
 			]
 		]);
 
-                $workermaxage = get_config('queueworker','queueworker_max_age');
-                $workermaxage = ($workermaxage > 120) ? $workermaxage : 300;
+		$workermaxage = get_config('queueworker','queueworker_max_age');
+		$workermaxage = ($workermaxage >= 120) ? $workermaxage : 300;
 		set_config('queueworker','max_queueworker_age',$workermaxage);
 
 		$sc .= replace_macros(get_markup_template('field_input.tpl'), [
 			'$field' => [
 				'queueworker_max_age',
-				t('Assume workers dead after ___ seconds'),
+				t('Assume workers dead after'),
 				$workermaxage,
-				'',
+				t('Minimum 120, default 300 seconds'),
 				$paths
 			]
 		]);
 
-                $queueworkersleep = get_config('queueworker','queue_worker_sleep');
-                $queueworkersleep = ($queueworkersleep > 100) ? $queueworkersleep : 100;
+		$queueworkersleep = get_config('queueworker','queue_worker_sleep');
+		$queueworkersleep = ($queueworkersleep > 100) ? $queueworkersleep : 100;
 		set_config('queueworker','queue_worker_sleep',$queueworkersleep);
 
 		$sc .= replace_macros(get_markup_template('field_input.tpl'), [
 			'$field' => [
 				'queue_worker_sleep',
-				t('Pause before starting next task: (microseconds.  Minimum 100 = .0001 seconds)'),
+				t('Pause before starting next task'),
 				$queueworkersleep,
-				'',
+				t('Minimum 100, default 100 microseconds'),
 				$paths
 			]
 		]);
