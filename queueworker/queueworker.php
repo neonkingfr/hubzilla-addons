@@ -236,7 +236,7 @@ class QueueWorkerUtils {
 			$priority = 0; //Default priority @TODO allow reprioritization
 			$workinfo = ['argc' => $argc, 'argv' => $argv];
 			$r = q("select * from workerq where workerq_data = '%s'",
-				dbesc(self::maybejson($workinfo))
+				self::maybejson($workinfo)
 			);
 			if ($r) {
 				logger("Ignoring duplicate workerq task", LOGGER_DEBUG);
@@ -246,7 +246,7 @@ class QueueWorkerUtils {
 			self::qbegin('workerq');
 			$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
 				intval($priority),
-				dbesc(self::maybejson($workinfo))
+				self::maybejson($workinfo)
 			);
 			if (!$r) {
 				self::qrollback();
@@ -275,7 +275,7 @@ class QueueWorkerUtils {
 			$workinfo = ['argc' => $argc, 'argv' => $argv];
 
 			$r = q("select * from workerq where workerq_data = '%s'",
-				dbesc(self::maybejson($workinfo))
+				self::maybejson($workinfo)
 			);
 
 			if ($r) {
@@ -286,7 +286,7 @@ class QueueWorkerUtils {
 			self::qbegin('workerq');
 			$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
 				intval($priority),
-				dbesc(self::maybejson($workinfo))
+				self::maybejson($workinfo)
 			);
 			if (!$r) {
 				self::qrollback();
