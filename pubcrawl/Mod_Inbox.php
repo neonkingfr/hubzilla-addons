@@ -134,7 +134,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 			if (! check_siteallowed($m['scheme'] . '://' . $m['host'])) {
 				http_status_exit(403,'Permission denied');
 			}
-			// this site obviously isn't dead because they are trying to communicate with us. 
+			// this site obviously isn't dead because they are trying to communicate with us.
 			q("update site set site_dead = 0 where site_dead = 1 and site_url = '%s' ",
 				dbesc($m['scheme'] . '://' . $m['host'])
 			);
@@ -171,7 +171,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 			$parent = ((is_array($AS->obj) && array_key_exists('inReplyTo',$AS->obj)) ? urldecode($AS->obj['inReplyTo']) : '');
 
 			if($parent) {
-				// this is a comment - deliver to everybody who owns the parent 
+				// this is a comment - deliver to everybody who owns the parent
 				$channels = q("SELECT * FROM channel WHERE channel_id IN ( SELECT uid FROM item WHERE mid = '%s' OR mid = '%s' )",
 					dbesc($parent),
 					dbesc(basename($parent))
@@ -186,11 +186,17 @@ class Inbox extends \Zotlabs\Web\Controller {
 			}
 			else {
 				// Pleroma sends follow activities to the publicInbox and therefore requires special handling.
-
-				if($AS->type === 'Follow' && $AS->obj && $AS->obj['type'] === 'Person') {
+				if ($AS->type === 'Follow' && $AS->obj && $AS->obj['type'] === 'Person') {
 					$channels = q("SELECT * from channel where channel_address = '%s' and channel_removed = 0 ",
 						dbesc(basename($AS->obj['id']))
 					);
+				}
+				elseif ($AS->type === 'Update') {
+					// deliver to anyone who owns the item (this will also catch updates on announced items)
+					$channels = q("SELECT * from channel where channel_id in ( SELECT uid FROM item WHERE mid = '%s' ) and channel_removed = 0 and channel_system = 0",
+						dbesc($AS->obj['id'])
+					);
+
 				}
 				else {
 					// deliver to anybody following $AS->actor
@@ -215,7 +221,6 @@ class Inbox extends \Zotlabs\Web\Controller {
 				if(! $sys_disabled) {
 					$channels[] = get_sys_channel();
 				}
-
 			}
 
 		}
@@ -275,7 +280,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 			}
 
 
-			// These activities require permissions		
+			// These activities require permissions
 
 			switch($AS->type) {
 				case 'Create':

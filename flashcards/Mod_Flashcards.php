@@ -319,7 +319,7 @@ class Flashcards extends Controller {
 			return false;
 		}
 		
-		$dirFlashcards = new Directory($nick . '/flashcards/', $this->authObserver);
+		$dirFlashcards = new Directory($nick . '/flashcards/', [], $this->authObserver);
 		try {
 			$boxFiles = $dirFlashcards->getChildren();
 		} catch (\Exception $e) {
@@ -356,7 +356,7 @@ class Flashcards extends Controller {
         $boxes = [];
 
 		foreach ($nicks as $nick_fc) {		
-			$dirFlashcards = new Directory($nick_fc . '/flashcards/', $this->authObserver);
+			$dirFlashcards = new Directory($nick_fc . '/flashcards/', [], $this->authObserver);
 			$boxFiles;
 			try {
 				$boxFiles = $dirFlashcards->getChildren();
@@ -545,7 +545,7 @@ class Flashcards extends Controller {
             $this->boxesDir->createDirectory($box_id);
         }
 
-        $boxDirObserver = new Directory('/'. $this->owner['channel_address'] . '/flashcards/' . $box_id, $this->getAuth());
+        $boxDirObserver = new Directory('/'. $this->owner['channel_address'] . '/flashcards/' . $box_id, [], $this->getAuth());
         if(! $boxDirObserver) {
             json_return_and_die(array('message' => 'Directory for observer box can not be created.', 'success' => false));
         }
@@ -939,7 +939,7 @@ class Flashcards extends Controller {
         
         $channelAddress = $this->owner['channel_address'];
         
-        $shareDir = new Directory('/'. $channelAddress . '/flashcards/share', $this->getAuth());
+        $shareDir = new Directory('/'. $channelAddress . '/flashcards/share', [], $this->getAuth());
         
         if(! $shareDir) {
             json_return_and_die(array('message' => 'Directory share is missing.', 'success' => false));
@@ -956,7 +956,7 @@ class Flashcards extends Controller {
         
         $channelAddress = $this->owner['channel_address'];
         
-        $recoverDir = new Directory('/'. $channelAddress . '/flashcards/recover', $this->getAuth());
+        $recoverDir = new Directory('/'. $channelAddress . '/flashcards/recover', [], $this->getAuth());
         
         if(! $recoverDir) {
             json_return_and_die(array('message' => 'Directory recover is missing.', 'success' => false));
@@ -971,13 +971,13 @@ class Flashcards extends Controller {
 
         $channelAddress = $this->owner['channel_address'];
 
-        $channelDir = new Directory('/' . $channelAddress, $this->getAuth());
+        $channelDir = new Directory('/' . $channelAddress, [], $this->getAuth());
         
         if(! $channelDir->childExists('flashcards')) {
             $channelDir->createDirectory('flashcards');
         }
         
-        $this->boxesDir = new Directory('/'. $channelAddress . '/flashcards', $this->getAuth());
+        $this->boxesDir = new Directory('/'. $channelAddress . '/flashcards', [], $this->getAuth());
         if(! $this->boxesDir) {
             json_return_and_die(array('message' => 'Directory flashcards is missing.', 'success' => false));
         }
@@ -986,7 +986,7 @@ class Flashcards extends Controller {
     
     private function getRootDir() {
 
-        $rootDirectory = new Directory('/', $this->getAuth());
+        $rootDirectory = new Directory('/', [], $this->getAuth());
 
         $channelAddress = $this->owner['channel_address'];
 
