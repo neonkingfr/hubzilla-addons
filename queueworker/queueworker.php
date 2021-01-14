@@ -240,7 +240,7 @@ class QueueWorkerUtils {
 			);
 			if ($r) {
 				logger("Ignoring duplicate workerq task", LOGGER_DEBUG);
-				$arr=[ 'argv' => [] ];
+				$arr = ['argv' => []];
 				return;
 			}
 
@@ -281,7 +281,7 @@ class QueueWorkerUtils {
 
 			if ($r) {
 				logger("Duplicate task - do not insert.", LOGGER_DEBUG);
-				$arr=[ 'argv' => [] ];
+				$arr = ['argv' => []];
 				return;
 			}
 
