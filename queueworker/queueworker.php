@@ -1,6 +1,5 @@
 <?php
 
-use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Route;
 use Zotlabs\Extend\Hook;
 
