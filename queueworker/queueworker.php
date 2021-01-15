@@ -383,7 +383,7 @@ class QueueWorkerUtils {
 
 	public static function Process() {
 		self::$workersleep = get_config('queueworker', 'queue_worker_sleep');
-		self::$workersleep = intval($workersleep) > 100 ? intval($workersleep) : 100;
+		self::$workersleep = intval(self::$workersleep) > 100 ? intval(self::$workersleep) : 100;
 
 		if (!self::GetWorkerID()) {
 			logger('Unable to get worker ID. Exiting.', LOGGER_DEBUG);
@@ -393,7 +393,7 @@ class QueueWorkerUtils {
 		$jobs = 0;
 		$workid = self::getworkid();
 		while ($workid) {
-			sleep($workersleep);
+			sleep(self::$workersleep);
 			// @FIXME:  Currently $workersleep is a fixed value.  It may be a good idea
 			// to implement a "backoff" instead - based on load average or some
 			// other metric.
