@@ -392,7 +392,7 @@ class QueueWorkerUtils {
 		$jobs = 0;
 		$workid = self::getworkid();
 		while ($workid) {
-			sleep(self::$workersleep);
+			usleep(self::$workersleep);
 			// @FIXME:  Currently $workersleep is a fixed value.  It may be a good idea
 			// to implement a "backoff" instead - based on load average or some
 			// other metric.
