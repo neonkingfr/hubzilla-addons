@@ -315,24 +315,17 @@ class QueueWorkerUtils {
 		q("update workerq set workerq_reservationid = null where workerq_reservationid is not null and workerq_processtimeout < %s",
 			db_utcnow()
 		);
-		/*
-		// this might work better for mysql8 and postgresql 9.5 upwards. Not for mariadb!
-		dbq("update workerq set workerq_reservationid = null where workerq_id in (
-			select workerq_id from workerq where workerq_processtimeout < " . db_utcnow() . " and workerq_reservationid is not null FOR UPDATE SKIP LOCKED
-		)");
-		*/
+
 		usleep(self::$workersleep);
-		$workers = q("select distinct workerq_reservationid from workerq");
-		$workers = isset($workers) ? intval(count($workers)) : 1;
-		logger("WORKERCOUNT: $workers", LOGGER_DEBUG);
-		return intval($workers);
+		$workers = q("select count(distinct workerq_reservationid) as total from workerq where workerq_reservationid is not null");
+		logger("WORKERCOUNT: " . $workers[0]['total'], LOGGER_DEBUG);
+		return intval($workers[0]['total']);
 	}
 
 	public static function GetWorkerID() {
 		if (self::$queueworker) {
 			return self::$queueworker;
 		}
-
 		$wid = uniqid('', true);
 		usleep(mt_rand(500000, 3000000)); //Sleep .5 - 3 seconds before creating a new worker.
 		$workers = self::GetWorkerCount();
@@ -340,9 +333,7 @@ class QueueWorkerUtils {
 			logger("Too many active workers ($workers) max = " . self::$maxworkers, LOGGER_DEBUG);
 			return false;
 		}
-
 		self::$queueworker = $wid;
-
 		return $wid;
 	}
 
@@ -446,7 +437,6 @@ class QueueWorkerUtils {
 			$workid = self::getworkid();
 		}
 		logger('Master: Worker Thread: queue items processed:' . $jobs, LOGGER_DEBUG);
-		del_config('queueworkers', 'workerstarted_' . self::$queueworker);
 	}
 
 	public static function ClearQueue() {
