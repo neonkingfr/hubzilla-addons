@@ -61,7 +61,9 @@ class Queueworker extends Controller {
 
 		$content .= "<H4>There are " . $r[0]['qentries'] . " queue items to be processed.</H4>";
 
-		$content .= "\n\n";
+		$r = dbq("select count(distinct workerq_reservationid) as qworkers from workerq where workerq_reservationid is not null");
+
+		$content .= "<H4>Active workers: " . $r[0]['qworkers'] . "</H4>";
 
 		$maxqueueworkers = get_config('queueworker', 'max_queueworkers', 4);
 		$maxqueueworkers = ($maxqueueworkers > 3) ? $maxqueueworkers : 4;

@@ -317,7 +317,7 @@ class QueueWorkerUtils {
 		);
 
 		usleep(self::$workersleep);
-		$workers = q("select count(distinct workerq_reservationid) as total from workerq where workerq_reservationid is not null");
+		$workers = dbq("select count(distinct workerq_reservationid) as total from workerq where workerq_reservationid is not null");
 		logger("WORKERCOUNT: " . $workers[0]['total'], LOGGER_DEBUG);
 		return intval($workers[0]['total']);
 	}
