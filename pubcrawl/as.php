@@ -1995,7 +1995,7 @@ function as_like_note($channel,$observer_hash,$act) {
 	);
 
 	if(! $r) {
-		$p = Activity::fetch_and_store_parents($channel, $s);
+		$p = Activity::fetch_and_store_parents($channel, $act, $s);
 		if($p) {
 			$r = q("select * from item where uid = %d and ( mid = '%s' or  mid = '%s' ) limit 1",
 				intval($channel['channel_id']),
