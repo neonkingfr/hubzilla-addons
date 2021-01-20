@@ -16,7 +16,7 @@ class Twitter extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'twitter'))
 			return;
 
-		check_form_security_token_redirectOnErr('twitter', 'twitter');
+		check_form_security_token_redirectOnErr('/twitter', 'twitter');
 
 		if (isset($_POST['twitter-disconnect'])) {
 			/***

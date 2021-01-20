@@ -16,7 +16,7 @@ class Startpage extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'startpage'))
 			return;
 
-		check_form_security_token_redirectOnErr('startpage', 'startpage');
+		check_form_security_token_redirectOnErr('/startpage', 'startpage');
 
 		$channel = App::get_channel();
 

@@ -15,7 +15,7 @@ class Nsfw extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'nsfw'))
 			return;
 
-		check_form_security_token_redirectOnErr('nsfw', 'nsfw');
+		check_form_security_token_redirectOnErr('/nsfw', 'nsfw');
 
 		set_pconfig(local_channel(),'nsfw','words',trim($_POST['nsfw-words']));
 

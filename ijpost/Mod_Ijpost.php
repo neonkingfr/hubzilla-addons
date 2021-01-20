@@ -15,7 +15,7 @@ class Ijpost extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'ijpost'))
 			return;
 
-		check_form_security_token_redirectOnErr('ijpost', 'ijpost');
+		check_form_security_token_redirectOnErr('/ijpost', 'ijpost');
 
 		set_pconfig(local_channel(),'ijpost','post_by_default',intval($_POST['ij_bydefault']));
 		set_pconfig(local_channel(),'ijpost','ij_username',trim($_POST['ij_username']));

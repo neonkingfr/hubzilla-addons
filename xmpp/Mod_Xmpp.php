@@ -15,7 +15,7 @@ class Xmpp extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'xmpp'))
 			return;
 
-		check_form_security_token_redirectOnErr('xmpp', 'xmpp');
+		check_form_security_token_redirectOnErr('/xmpp', 'xmpp');
 
 		set_pconfig(local_channel(),'xmpp','individual',intval($_POST['xmpp_individual']));
 		set_pconfig(local_channel(),'xmpp','bosh_proxy',$_POST['xmpp_bosh_proxy']);

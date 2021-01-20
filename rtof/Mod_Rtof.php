@@ -15,7 +15,7 @@ class Rtof extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'rtof'))
 			return;
 
-		check_form_security_token_redirectOnErr('rtof', 'rtof');
+		check_form_security_token_redirectOnErr('/rtof', 'rtof');
 		
 		set_pconfig(local_channel(), 'rtof', 'baseapi',         trim($_POST['rtof_baseapi']));
 		set_pconfig(local_channel(), 'rtof', 'username',        trim($_POST['rtof_username']));

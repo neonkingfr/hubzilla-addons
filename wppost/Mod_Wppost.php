@@ -15,7 +15,7 @@ class Wppost extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'wppost'))
 			return;
 
-		check_form_security_token_redirectOnErr('wppost', 'wppost');
+		check_form_security_token_redirectOnErr('/wppost', 'wppost');
 
 		set_pconfig(local_channel(),'wppost','post',intval($_POST['wppost']));
 		set_pconfig(local_channel(),'wppost','post_by_default',intval($_POST['wp_bydefault']));

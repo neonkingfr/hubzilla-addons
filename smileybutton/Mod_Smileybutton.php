@@ -16,7 +16,7 @@ class Smileybutton extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'smileybutton'))
 			return;
 
-		check_form_security_token_redirectOnErr('smileybutton', 'smileybutton');
+		check_form_security_token_redirectOnErr('/smileybutton', 'smileybutton');
 
 		set_pconfig(local_channel(),'smileybutton','nobutton',intval($_POST['smileybutton']));
 		set_pconfig(local_channel(),'smileybutton','deactivated',intval($_POST['deactivated']));
