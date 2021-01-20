@@ -1533,7 +1533,7 @@ function as_create_note($channel,$observer_hash,$act) {
 			intval($s['uid'])
 		);
 		if(! $p) {
-			$a = Activity::fetch_and_store_parents($channel, $s);
+			$a = Activity::fetch_and_store_parents($channel, $act, $s);
 			if($a) {
 				$p = q("select parent_mid, owner_xchan from item where mid = '%s' and uid = %d limit 1",
 					dbesc($s['parent_mid']),
