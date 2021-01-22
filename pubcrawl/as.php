@@ -1533,7 +1533,7 @@ function as_create_note($channel,$observer_hash,$act) {
 			intval($s['uid'])
 		);
 		if(! $p) {
-			$a = Activity::fetch_and_store_parents($channel, $s);
+			$a = Activity::fetch_and_store_parents($channel, $observer_hash, $s);
 			if($a) {
 				$p = q("select parent_mid, owner_xchan from item where mid = '%s' and uid = %d limit 1",
 					dbesc($s['parent_mid']),
@@ -1995,7 +1995,7 @@ function as_like_note($channel,$observer_hash,$act) {
 	);
 
 	if(! $r) {
-		$p = Activity::fetch_and_store_parents($channel, $s);
+		$p = Activity::fetch_and_store_parents($channel, $observer_hash, $s);
 		if($p) {
 			$r = q("select * from item where uid = %d and ( mid = '%s' or  mid = '%s' ) limit 1",
 				intval($channel['channel_id']),
