@@ -231,8 +231,6 @@ class QueueWorkerUtils {
 	public static function MasterSummon(&$arr) {
 		$argv = $arr['argv'];
 		$argc = count($argv);
-		if ($argv[0] == 'Cache_query')
-			return;
 		if ($argv[0] != 'Queueworker') {
 			$priority = 0; //Default priority @TODO allow reprioritization
 			$workinfo = ['argc' => $argc, 'argv' => $argv];
@@ -271,8 +269,6 @@ class QueueWorkerUtils {
 	public static function MasterRelease(&$arr) {
 		$argv = $arr['argv'];
 		$argc = count($argv);
-		if ($argv[0] == 'Cache_query')
-			return;
 		if ($argv[0] != 'Queueworker') {
 			$priority = 0; //Default priority @TODO allow reprioritization
 
