@@ -1,5 +1,7 @@
 <?php
 
+use Ramsey\Uuid\Uuid;
+use Ramsey\Uuid\Exception\UnableToBuildUuidException;
 use Zotlabs\Extend\Route;
 use Zotlabs\Extend\Hook;
 
@@ -10,7 +12,6 @@ use Zotlabs\Extend\Hook;
  * Author: Matthew Dent <dentm42@dm42.net>
  * MinVersion: 4.2.1
  */
-
 class QueueWorkerUtils {
 
 	public static $queueworker_version = '0.8.0';
@@ -34,7 +35,7 @@ class QueueWorkerUtils {
 		}
 
 		$checkver = explode('.', $minver);
-		$ver = explode('.', $curver);
+		$ver      = explode('.', $curver);
 
 		$major = intval($checkver[0]) <= intval($ver[0]);
 		$minor = intval($checkver[1]) <= intval($ver[1]);
@@ -42,7 +43,8 @@ class QueueWorkerUtils {
 
 		if ($major && $minor && $patch) {
 			return true;
-		} else {
+		}
+		else {
 			return false;
 		}
 	}
@@ -50,13 +52,13 @@ class QueueWorkerUtils {
 	public static function dbCleanup() {
 		$success = UPDATE_SUCCESS;
 
-		$sqlstmts[DBTYPE_MYSQL] = [
+		$sqlstmts[DBTYPE_MYSQL]    = [
 			1 => ["DROP TABLE IF EXISTS workerq;"],
 		];
 		$sqlstmts[DBTYPE_POSTGRES] = [
 			1 => ["DROP TABLE IF EXISTS workerq;"],
 		];
-		$dbsql = $sqlstmts[ACTIVE_DBTYPE];
+		$dbsql                     = $sqlstmts[ACTIVE_DBTYPE];
 		foreach ($dbsql as $updatever => $sql) {
 			foreach ($sql as $query) {
 				$r = q($query);
@@ -69,7 +71,8 @@ class QueueWorkerUtils {
 		if ($success == UPDATE_SUCCESS) {
 			logger('dbCleanup successful.', LOGGER_NORMAL);
 			self::delsysconfig("dbver");
-		} else {
+		}
+		else {
 			logger('Error in dbCleanup.', LOGGER_NORMAL);
 		}
 		return $success;
@@ -92,6 +95,11 @@ class QueueWorkerUtils {
 					KEY `workerq_reservationid` (`workerq_reservationid`),
 					KEY `workerq_processtimeout` (`workerq_processtimeout`)
 				) ENGINE = InnoDB DEFAULT CHARSET=utf8mb4;"
+			],
+			2 => [
+				"ALTER TABLE workerq 
+					ADD COLUMN workerq_uuid char(36) NOT NULL DEFAULT '', 
+					ADD INDEX (workerq_uuid);"
 			]
 		];
 
@@ -108,6 +116,10 @@ class QueueWorkerUtils {
 				"CREATE INDEX idx_workerq_priority ON workerq (workerq_priority);",
 				"CREATE INDEX idx_workerq_reservationid ON workerq (workerq_reservationid);",
 				"CREATE INDEX idx_workerq_processtimeout ON workerq (workerq_processtimeout);",
+			],
+			2 => [
+				"ALTER TABLE workerq ADD workerq_uuid UUID NOT NULL DEFAULT '';",
+				"CREATE INDEX idx_workerq_uuid ON workerq (workerq_uuid);"
 			]
 		];
 
@@ -134,13 +146,15 @@ class QueueWorkerUtils {
 
 		if ($value != null) {
 			$decoded = json_decode($value, true);
-		} else {
+		}
+		else {
 			return null;
 		}
 
 		if (json_last_error() == JSON_ERROR_NONE) {
 			return $decoded;
-		} else {
+		}
+		else {
 			return $value;
 		}
 	}
@@ -150,20 +164,22 @@ class QueueWorkerUtils {
 			if (!is_array($value)) {
 				$decoded = json_decode($value, true);
 			}
-		} else {
+		}
+		else {
 			return null;
 		}
 
 		if (is_array($value) || json_last_error() != JSON_ERROR_NONE) {
 			$encoded = json_encode($value, $options);
 			return $encoded;
-		} else {
+		}
+		else {
 			return $value;
 		}
 	}
 
 	public static function checkver() {
-		if (QueueWorkerUtils::getsysconfig("appver") ==	self::$queueworker_version) {
+		if (QueueWorkerUtils::getsysconfig("appver") == self::$queueworker_version) {
 			return true;
 		}
 
@@ -214,6 +230,7 @@ class QueueWorkerUtils {
 		}
 		return;
 	}
+
 	private static function qrollback() {
 		switch (ACTIVE_DBTYPE) {
 			case DBTYPE_MYSQL:
@@ -232,10 +249,13 @@ class QueueWorkerUtils {
 		$argv = $arr['argv'];
 		$argc = count($argv);
 		if ($argv[0] != 'Queueworker') {
-			$priority = 0; //Default priority @TODO allow reprioritization
-			$workinfo = ['argc' => $argc, 'argv' => $argv];
-			$r = q("select * from workerq where workerq_data = '%s'",
-				self::maybejson($workinfo)
+			$priority      = 0; //Default priority @TODO allow reprioritization
+			$workinfo      = ['argc' => $argc, 'argv' => $argv];
+			$workinfo_json = self::maybejson($workinfo);
+			$uuid          = self::get_uuid($workinfo_json);
+
+			$r = q("SELECT * FROM workerq WHERE workerq_uuid = '%s'",
+				dbesc($uuid)
 			);
 			if ($r) {
 				logger("Ignoring duplicate workerq task", LOGGER_DEBUG);
@@ -244,9 +264,10 @@ class QueueWorkerUtils {
 			}
 
 			self::qbegin('workerq');
-			$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
+			$r = q("INSERT INTO workerq (workerq_priority, workerq_data, workerq_uuid) VALUES (%d, '%s', '%s')",
 				intval($priority),
-				self::maybejson($workinfo)
+				$workinfo_json,
+				dbesc($uuid)
 			);
 			if (!$r) {
 				self::qrollback();
@@ -256,8 +277,8 @@ class QueueWorkerUtils {
 			self::qcommit();
 			logger('INSERTED: ' . self::maybejson($workinfo), LOGGER_DEBUG);
 		}
-		$argv = [];
-		$arr = ['argv' => $argv];
+		$argv    = [];
+		$arr     = ['argv' => $argv];
 		$workers = self::GetWorkerCount();
 		if ($workers < self::$maxworkers) {
 			logger("Less than max active workers ($workers) max = " . self::$maxworkers . ".", LOGGER_DEBUG);
@@ -270,14 +291,14 @@ class QueueWorkerUtils {
 		$argv = $arr['argv'];
 		$argc = count($argv);
 		if ($argv[0] != 'Queueworker') {
-			$priority = 0; //Default priority @TODO allow reprioritization
+			$priority      = 0; //Default priority @TODO allow reprioritization
+			$workinfo      = ['argc' => $argc, 'argv' => $argv];
+			$workinfo_json = self::maybejson($workinfo);
+			$uuid          = self::get_uuid($workinfo_json);
 
-			$workinfo = ['argc' => $argc, 'argv' => $argv];
-
-			$r = q("select * from workerq where workerq_data = '%s'",
-				self::maybejson($workinfo)
+			$r = q("SELECT * FROM workerq WHERE workerq_uuid = '%s'",
+				dbesc($uuid)
 			);
-
 			if ($r) {
 				logger("Duplicate task - do not insert.", LOGGER_DEBUG);
 				$arr = ['argv' => []];
@@ -285,9 +306,10 @@ class QueueWorkerUtils {
 			}
 
 			self::qbegin('workerq');
-			$r = q("insert into workerq (workerq_priority,workerq_data) values (%d,'%s')",
+			$r = q("INSERT INTO workerq (workerq_priority, workerq_data, workerq_uuid) VALUES (%d, '%s', '%s')",
 				intval($priority),
-				self::maybejson($workinfo)
+				$workinfo_json,
+				dbesc($uuid)
 			);
 			if (!$r) {
 				self::qrollback();
@@ -298,7 +320,7 @@ class QueueWorkerUtils {
 			logger('INSERTED: ' . self::maybejson($workinfo), LOGGER_DEBUG);
 		}
 		$argv = [];
-		$arr = ['argv' => $argv];
+		$arr  = ['argv' => $argv];
 		self::Process();
 	}
 
@@ -344,7 +366,8 @@ class QueueWorkerUtils {
 
 		if (ACTIVE_DBTYPE == DBTYPE_POSTGRES) {
 			$work = dbq("SELECT workerq_id FROM workerq WHERE workerq_reservationid IS NULL ORDER BY workerq_priority, workerq_id LIMIT 1 FOR UPDATE SKIP LOCKED;");
-		} else {
+		}
+		else {
 			$work = dbq("SELECT workerq_id FROM workerq WHERE workerq_reservationid IS NULL ORDER BY workerq_priority, workerq_id LIMIT 1;");
 		}
 
@@ -380,7 +403,7 @@ class QueueWorkerUtils {
 			killme();
 		}
 
-		$jobs = 0;
+		$jobs   = 0;
 		$workid = self::getworkid();
 		while ($workid) {
 			usleep(self::$workersleep);
@@ -394,7 +417,8 @@ class QueueWorkerUtils {
 				$workitem = q("SELECT * FROM workerq WHERE workerq_id = %d FOR UPDATE SKIP LOCKED",
 					$workid
 				);
-			} else {
+			}
+			else {
 				$workitem = q("SELECT * FROM workerq WHERE workerq_id = %d",
 					$workid
 				);
@@ -415,10 +439,10 @@ class QueueWorkerUtils {
 				logger("Workinfo: " . $workitem[0]['workerq_data'], LOGGER_DEBUG);
 
 				$workinfo = self::maybeunjson($workitem[0]['workerq_data']);
-				$argv = $workinfo['argv'];
+				$argv     = $workinfo['argv'];
 				logger('Master: process: ' . json_encode($argv), LOGGER_DEBUG);
 
-				$cls = '\\Zotlabs\\Daemon\\' . $argv[0];
+				$cls  = '\\Zotlabs\\Daemon\\' . $argv[0];
 				$argv = flatten_array_recursive($argv);
 				$argc = count($argv);
 				$cls::run($argc, $argv);
@@ -431,7 +455,8 @@ class QueueWorkerUtils {
 				self::qbegin('workerq');
 				q("delete from workerq where workerq_id = %d", $workid);
 				self::qcommit();
-			} else {
+			}
+			else {
 				logger("NO WORKITEM!", LOGGER_DEBUG);
 			}
 			$workid = self::getworkid();
@@ -444,8 +469,8 @@ class QueueWorkerUtils {
 		while ($work) {
 			foreach ($work as $workitem) {
 				$workinfo = self::maybeunjson($workitem['v']);
-				$argc = $workinfo['argc'];
-				$argv = $workinfo['argv'];
+				$argc     = $workinfo['argc'];
+				$argv     = $workinfo['argv'];
 				logger('Master: process: ' . print_r($argv, true), LOGGER_ALL, LOG_DEBUG);
 				if (!isset($argv[0])) {
 					q("delete from workerq where workerq_id = %d",
@@ -469,6 +494,24 @@ class QueueWorkerUtils {
 		}
 		return;
 	}
+
+	/**
+	 * @brief Generate a name-based v5 UUID with custom namespace
+	 *
+	 * @param string $data
+	 * @return string $uuid
+	 */
+	private static function get_uuid($data) {
+		$namespace = '3a112e42-f147-4ccf-a78b-f6841339ea2a';
+		try {
+			$uuid = Uuid::uuid5($namespace, $data)->toString();
+		} catch (UnableToBuildUuidException $e) {
+			logger('UUID generation failed');
+			return '';
+		}
+		return $uuid;
+	}
+
 	public static function uninstall() {
 		logger('Uninstall start.');
 		//Prevent new work form being added.
