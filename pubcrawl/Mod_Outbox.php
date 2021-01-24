@@ -11,6 +11,9 @@ class Outbox extends \Zotlabs\Web\Controller {
 
 	function get() {
 
+		$outbox = new Zotfeed();
+		return $outbox->init();
+
 		if(observer_prohibited(true)) {
 			killme();
 		}
