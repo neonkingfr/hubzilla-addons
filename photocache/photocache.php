@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.14
+ * Version: 0.2.15
  * Author: Max Kostikov <https://tiksi.net/channel/kostikov>
  * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  * MinVersion: 3.9.5
@@ -11,6 +11,8 @@
 use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
+
+use Zotlabs\Lib\Hashpath;
 
 require_once('include/photo/photo_driver.php');
  
@@ -322,8 +324,8 @@ function photocache_url(&$cache = []) {
 				
 				if($k || $oldsize != 0) {
 				    $cache['item']['filesize'] = strlen($ph->imageString());
-				    $path = 'store/[data]/[cache]/' .  substr($cache['item']['xchan'],0,1) . '/' . substr($cache['item']['xchan'],1,1);
-				    $os_path = $path . '/' . $cache['item']['xchan'];
+				    $os_path = Hashpath::path($cache['item']['xchan'], 'store/[data]/[cache]', 2, 1);
+				    $path = dirname($os_path);
 				    $cache['item']['os_syspath'] = $os_path;
 				    if(! is_dir($path))
 				        if(! os_mkdir($path, STORAGE_DEFAULT_PERMISSIONS, true))
