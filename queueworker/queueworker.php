@@ -118,7 +118,7 @@ class QueueWorkerUtils {
 				"CREATE INDEX idx_workerq_processtimeout ON workerq (workerq_processtimeout);",
 			],
 			2 => [
-				"ALTER TABLE workerq ADD workerq_uuid UUID NOT NULL DEFAULT '';",
+				"ALTER TABLE workerq ADD workerq_uuid UUID NOT NULL;",
 				"CREATE INDEX idx_workerq_uuid ON workerq (workerq_uuid);"
 			]
 		];
