@@ -758,7 +758,7 @@ function diaspora_discover(&$b) {
 		}
 
 		$r = q("select * from hubloc where hubloc_hash = '%s' limit 1",
-			dbesc($webbie)
+			dbesc($addr)
 		);
 
 		if(! $r) {
