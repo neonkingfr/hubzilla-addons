@@ -1,6 +1,8 @@
 <?php
 
 
+use Zotlabs\Lib\Libzot;
+
 function diaspora_handle_from_contact($contact_hash) {
 
 	logger("diaspora_handle_from_contact: contact id is " . $contact_hash, LOGGER_DEBUG);
@@ -55,19 +57,14 @@ function find_diaspora_person_by_handle($handle) {
 	if(diaspora_is_blacklisted($handle))
 		return false;
 
-	$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' and hubloc_network in ('diaspora', 'friendica-over-diaspora') limit 1",
+	$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s'",
 		dbesc($handle)
 	);
-	if(! $r) {
-		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' limit 1",
-			dbesc($handle)
-		);
-	}
 
 	if($r) {
-		$person = $r[0];
+		$person = Libzot::zot_record_preferred($r);
 		logger('find_diaspora_person_by handle: in cache ' . print_r($r,true), LOGGER_DATA, LOG_DEBUG);
-		if(($person['xchan_name_date'] < datetime_convert('UTC','UTC', 'now - 1 month')) || $person['xchan_pubkey'] === '') {
+		if(in_array($person['hubloc_network'], ['diaspora', 'friendica-over-diaspora']) && $person['xchan_name_date'] < datetime_convert('UTC','UTC', 'now - 1 month') || $person['xchan_pubkey'] === '') {
 			logger('Updating Diaspora cached record for ' . $handle);
 			$refresh = true;
 		}
@@ -81,16 +78,12 @@ function find_diaspora_person_by_handle($handle) {
 		$result = discover_by_webbie($handle);
 		if($result) {
 
-			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' and hubloc_network in ('diaspora', 'friendica-over-diaspora') limit 1",
+			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s'",
 				dbesc(str_replace('acct:','',$handle))
 			);
-			if(! $r) {
-				$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' limit 1",
-					dbesc(str_replace('acct:','',$handle))
-				);
-			}
+
 			if($r) {
-				$person = $r[0];
+				$person = Libzot::zot_record_preferred($r);
 				logger('find_diaspora_person_by handle: discovered ' . print_r($r,true), LOGGER_DATA, LOG_DEBUG);
 			}
 		}
