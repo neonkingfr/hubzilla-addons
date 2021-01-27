@@ -455,7 +455,6 @@ function pubcrawl_activity_mod_init($x) {
 
 
 function pubcrawl_channel_mod_init($x) {
-	
 	if(pubcrawl_is_as_request()) {
 		$chan = channelx_by_nick(argv(1));
 		if(! $chan)
