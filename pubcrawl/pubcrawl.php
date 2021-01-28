@@ -16,6 +16,7 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\Libzot;
 use Zotlabs\Web\HTTPSig;
 use Zotlabs\Lib\Activity;
 
@@ -45,7 +46,8 @@ function pubcrawl_load() {
 		'federated_transports'       => 'pubcrawl_federated_transports',
 		'create_identity'            => 'pubcrawl_create_identity',
 		'is_as_request'              => 'pubcrawl_is_as_request',
-		'get_accept_header_string'   => 'pubcrawl_get_accept_header_string'
+		'get_accept_header_string'   => 'pubcrawl_get_accept_header_string',
+		'encode_person'              => 'pubcrawl_encode_person'
 	]);
 	Route::register('addon/pubcrawl/Mod_Pubcrawl.php', 'pubcrawl');
 }
@@ -78,6 +80,63 @@ function pubcrawl_get_accept_header_string(&$arr) {
 			return;
 	}
 	$arr['data'] = 'application/x-zot-activity+json, application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
+}
+
+function pubcrawl_encode_person(&$arr) {
+	if (array_key_exists('channel', $arr) && Apps::addon_app_installed($arr['channel']['channel_id'], 'pubcrawl')) {
+		$arr['encoded']['inbox'] = z_root() . '/inbox/' . $arr['channel']['channel_address'];
+
+		$arr['encoded']['outbox']    = z_root() . '/outbox/' . $arr['channel']['channel_address'];
+		$arr['encoded']['followers'] = z_root() . '/followers/' . $arr['channel']['channel_address'];
+		$arr['encoded']['following'] = z_root() . '/following/' . $arr['channel']['channel_address'];
+
+		$arr['encoded']['endpoints']    = ['sharedInbox' => z_root() . '/inbox'];
+		$arr['encoded']['discoverable'] = ((1 - intval($arr['channel']['xchan_hidden'])) ? true : false);
+
+		// map other nomadic identities linked with this channel
+		$locations = [];
+		$locs      = Libzot::encode_locations($arr['channel']);
+		if ($locs) {
+			foreach ($locs as $loc) {
+				if ($loc['url'] !== z_root()) {
+					$locations[] = $loc['id_url'];
+				}
+			}
+		}
+
+		if ($locations) {
+			if (count($locations) === 1) {
+				$locations = array_shift($locations);
+			}
+			$arr['encoded']['copiedTo']    = $locations;
+			$arr['encoded']['alsoKnownAs'] = $locations;
+		}
+
+		$cp = get_cover_photo($arr['channel']['channel_id'], 'array');
+		if ($cp) {
+			$arr['encoded']['image'] = [
+				'type'      => 'Image',
+				'mediaType' => $cp['type'],
+				'url'       => $cp['url']
+			];
+		}
+		$dp = q("select about from profile where uid = %d and is_default = 1",
+			intval($arr['channel']['channel_id'])
+		);
+		if ($dp && $dp[0]['about']) {
+			$arr['encoded']['summary'] = bbcode($dp[0]['about'], ['export' => true]);
+		}
+	}
+	else {
+		$collections = get_xconfig($arr['xchan']['xchan_hash'], 'activitypub', 'collections', []);
+		if ($collections) {
+			$arr['encoded'] = array_merge($arr['encoded'], $collections);
+		}
+		else {
+			$arr['encoded']['inbox']  = null;
+			$arr['encoded']['outbox'] = null;
+		}
+	}
 }
 
 function pubcrawl_channel_protocols(&$b) {
