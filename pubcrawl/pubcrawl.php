@@ -25,11 +25,7 @@ function pubcrawl_load() {
 	Hook::register_array('addon/pubcrawl/pubcrawl.php', [
 		'module_loaded'              => 'pubcrawl_load_module',
 		'webfinger'                  => 'pubcrawl_webfinger',
-//		'activity_mod_init'          => 'pubcrawl_activity_mod_init',
-		'channel_mod_init'           => 'pubcrawl_channel_mod_init',
-		'profile_mod_init'           => 'pubcrawl_profile_mod_init',
 		'follow_mod_init'            => 'pubcrawl_follow_mod_init',
-//		'item_mod_init'              => 'pubcrawl_item_mod_init',
 		'thing_mod_init'             => 'pubcrawl_thing_mod_init',
 		'locs_mod_init'              => 'pubcrawl_locs_mod_init',
 		'follow_allow'               => 'pubcrawl_follow_allow',
@@ -48,7 +44,8 @@ function pubcrawl_load() {
 		'channel_protocols'          => 'pubcrawl_channel_protocols',
 		'federated_transports'       => 'pubcrawl_federated_transports',
 		'create_identity'            => 'pubcrawl_create_identity',
-//		'can_comment_on_post'        => 'pubcrawl_can_comment_on_post'
+		'is_as_request'              => 'pubcrawl_is_as_request',
+		'get_accept_header_string'   => 'pubcrawl_get_accept_header_string'
 	]);
 	Route::register('addon/pubcrawl/Mod_Pubcrawl.php','pubcrawl');
 }
@@ -58,6 +55,30 @@ function pubcrawl_unload() {
 	Route::unregister('addon/pubcrawl/Mod_Pubcrawl.php','pubcrawl');
 }
 
+function pubcrawl_is_as_request(&$arr) {
+	if(array_key_exists('channel', $arr)) {
+		$channel_id = $arr['channel']['channel_id'];
+		$is_sys = intval($arr['channel']['channel_system']);
+		if(!$is_sys && !Apps::addon_app_installed($channel_id,'pubcrawl'))
+			return;
+	}
+	$arr['data'] = [
+		'application/x-zot-activity+json',
+		'application/ld+json;profile="https://www.w3.org/ns/activitystreams"',
+		'application/activity+json',
+		'application/ld+json;profile="http://www.w3.org/ns/activitystreams"',
+	];
+}
+
+function pubcrawl_get_accept_header_string(&$arr){
+	if(array_key_exists('channel', $arr)) {
+		$channel_id = $arr['channel']['channel_id'];
+		$is_sys = intval($arr['channel']['channel_system']);
+		if(!$is_sys && !Apps::addon_app_installed($channel_id,'pubcrawl'))
+			return;
+	}
+	$arr['data'] = 'application/x-zot-activity+json, application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
+}
 
 function pubcrawl_channel_protocols(&$b) {
 
@@ -336,27 +357,6 @@ function pubcrawl_load_module(&$b) {
 	}
 }
 
-
-function pubcrawl_is_as_request() {
-
-	if(strpos($_SERVER['HTTP_ACCEPT'],'activity') !== false) {
-		logger('Accept: ' . $_SERVER['HTTP_ACCEPT'], LOGGER_DATA);
-	}
-
-	if($_REQUEST['module_format'] === 'json')
-		return true;
-
-	$x = getBestSupportedMimeType([
-		'application/ld+json;profile="https://www.w3.org/ns/activitystreams"',
-		'application/activity+json',
-		'application/ld+json;profile="http://www.w3.org/ns/activitystreams"'
-	]);
-
-	return(($x) ? true : false);
-
-}
-
-
 function pubcrawl_magic_env_allowed() {
 
 	$x = getBestSupportedMimeType([
@@ -393,100 +393,6 @@ function pubcrawl_salmon_sign($data,$channel) {
 		]
 	]);
 
-}
-
-function pubcrawl_activity_mod_init($x) {
-
-	if(pubcrawl_is_as_request()) {
-
-/*
-
-		$item_id = argv(1);
-		if(! $item_id)
-			return;
-
-		$item_normal = " and item.item_hidden = 0 and item.item_type = 0 and item.item_unpublished = 0 
-			and item.item_delayed = 0 and item.item_blocked = 0 ";
-
-		$sql_extra = item_permissions_sql(0);
-
-		$r = q("select * from item where uuid = '%s' $item_normal $sql_extra limit 1",
-			dbesc($item_id)
-		);
-		if(! $r) {
-			$r = q("select * from item where uuid = '%s' $item_normal limit 1",
-				dbesc($item_id)
-			);
-
-			if($r) {
-				http_status_exit(403, 'Forbidden');
-			}
-			http_status_exit(404, 'Not found');
-		}
-
-		xchan_query($r,true);
-		$items = fetch_post_tags($r,true);
-
-		$chan = channelx_by_n($items[0]['uid']);
-
-		$x = array_merge(['@context' => [
-			ACTIVITYSTREAMS_JSONLD_REV,
-			'https://w3id.org/security/v1',
-			z_root() . ZOT_APSCHEMA_REV
-			]], asencode_activity($items[0]));
-
-
-		$headers = [];
-		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
-
-		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
-		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
-		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
-		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
-		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
-		HTTPSig::set_headers($h);
-		echo $ret;
-		killme();
-*/
-	}
-}
-
-
-
-function pubcrawl_channel_mod_init($x) {
-	if(pubcrawl_is_as_request()) {
-		$chan = channelx_by_nick(argv(1));
-		if(! $chan)
-			http_status_exit(404, 'Not found');
-
-		if(! Apps::addon_app_installed($chan['channel_id'],'pubcrawl') && argv(1) !== 'sys')
-			http_status_exit(404, 'Not found');
-
-		$y = asencode_person($chan);
-		if(! $y)
-			http_status_exit(404, 'Not found');
-
-		$x = array_merge(['@context' => [
-			ACTIVITYSTREAMS_JSONLD_REV,
-			'https://w3id.org/security/v1',
-			z_root() . ZOT_APSCHEMA_REV
-			]], $y);
-
-
-		$headers = [];
-		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
-		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
-		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
-		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
-		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
-
-		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
-		HTTPSig::set_headers($h);
-		echo $ret;
-		killme();
-	}
 }
 
 function pubcrawl_notifier_process(&$arr) {
@@ -1003,163 +909,10 @@ function pubcrawl_permissions_accept(&$x) {
 }
 
 
-function pubcrawl_profile_mod_init($x) {
-	
-	if(pubcrawl_is_as_request()) {
-		$chan = channelx_by_nick(argv(1));
-		if(! $chan)
-			http_status_exit(404, 'Not found');
-
-
-
-		if(! Apps::addon_app_installed($chan['channel_id'],'pubcrawl'))
-			http_status_exit(404, 'Not found');
-
-		$p = asencode_person($chan);
-		if(! $p)
-			http_status_exit(404, 'Not found');
-
-		$x = [
-			'@context' => [ 
-				ACTIVITYSTREAMS_JSONLD_REV,
-				'https://w3id.org/security/v1',
-				z_root() . ZOT_APSCHEMA_REV
-			],
-			'type' => 'Profile',
-			'describes' => $p
-		];
-				
-		$headers = [];
-		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
-		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
-		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
-		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
-		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
-
-		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
-		HTTPSig::set_headers($h);
-		echo $ret;
-		killme();
-	}
-}
-
-
-function pubcrawl_item_mod_init($x) {
-
-	if(pubcrawl_is_as_request()) {
-
-/*
-		$item_id = argv(1);
-		if(! $item_id)
-			http_status_exit(404, 'Not found');
-
-		$portable_id = EMPTY_STR;
-
-		$item_normal = " and item.item_hidden = 0 and item.item_type = 0 and item.item_unpublished = 0 and item.item_delayed = 0 and item.item_blocked = 0 ";
-
-		$i = null;
-
-		// do we have the item (at all)?
-
-		$r = q("select * from item where mid = '%s' or uuid = '%s' $item_normal limit 1",
-			dbesc(z_root() . '/item/' . $item_id),
-			dbesc($item_id)
-		);
-
-		if (! $r) {
-			http_status_exit(404,'Not found');
-		}
-
-		// process an authenticated fetch
-
-		$sigdata = HTTPSig::verify(EMPTY_STR);
-		if($sigdata['portable_id'] && $sigdata['header_valid']) {
-			$portable_id = $sigdata['portable_id'];
-			observer_auth($portable_id);
-
-			// first see if we have a copy of this item's parent owned by the current signer
-			// include xchans for all zot-like networks - these will have the same guid and public key
-
-			$x = q("select * from xchan where xchan_hash = '%s'",
-				dbesc($sigdata['portable_id'])
-			);
-
-			if ($x) {
-				$xchans = q("select xchan_hash from xchan where xchan_hash = '%s' OR ( xchan_guid = '%s' AND xchan_pubkey = '%s' ) ",
-					dbesc($sigdata['portable_id']),
-					dbesc($x[0]['xchan_guid']),
-					dbesc($x[0]['xchan_pubkey'])
-				);
-
-				if ($xchans) {
-					$hashes = ids_to_querystr($xchans,'xchan_hash',true);
-
-					$i = q("select id as item_id from item where mid = '%s' $item_normal and owner_xchan in ( " . protect_sprintf($hashes) . " )  limit 1",
-						dbesc($r[0]['parent_mid'])
-					);
-				}
-			}
-		}
-
-		// if we don't have a parent id belonging to the signer see if we can obtain one as a visitor that we have permission to access
-
-		$sql_extra = item_permissions_sql(0);
-
-		if (! $i) {
-			$i = q("select id as item_id from item where mid = '%s' $item_normal $sql_extra limit 1",
-				dbesc($r[0]['parent_mid'])
-			);
-		}
-
-		if(! $i) {
-			http_status_exit(403,'Forbidden');
-		}
-
-		// If we get to this point we have determined we can access the original in $r (fetched much further above), so use it.
-
-		xchan_query($r,true);
-		$items = fetch_post_tags($r,true);
-
-		$chan = channelx_by_n($items[0]['uid']);
-
-		if(! $chan)
-			http_status_exit(404, 'Not found');
-
-		if(! perm_is_allowed($chan['channel_id'],get_observer_hash(),'view_stream'))
-			http_status_exit(403, 'Forbidden');
-
-		$i = asencode_item($items[0]);
-		if(! $i)
-			http_status_exit(404, 'Not found');
-
-		$x = array_merge(['@context' => [
-			ACTIVITYSTREAMS_JSONLD_REV,
-			'https://w3id.org/security/v1',
-			z_root() . ZOT_APSCHEMA_REV
-			]], $i);
-
-
-		$headers = [];
-		$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
-		$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
-		$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
-		$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
-		$headers['Digest'] = HTTPSig::generate_digest_header($ret);
-		$headers['(request-target)'] = strtolower($_SERVER['REQUEST_METHOD']) . ' ' . $_SERVER['REQUEST_URI'];
-
-		$h = HTTPSig::create_sig($headers,$chan['channel_prvkey'],channel_url($chan));
-		HTTPSig::set_headers($h);
-		echo $ret;
-		killme();
-*/
-	}
-}
-
 
 function pubcrawl_thing_mod_init($x) {
 	
-	if(pubcrawl_is_as_request()) {
+	if(ActivityStreams::is_as_request()) {
 		$item_id = argv(1);
 		if(! $item_id)
 			return;
@@ -1211,7 +964,7 @@ function pubcrawl_thing_mod_init($x) {
 
 function pubcrawl_locs_mod_init($x) {
 	
-	if(pubcrawl_is_as_request()) {
+	if(ActivityStreams::is_as_request()) {
 		$channel_address = argv(1);
 		if(! $channel_address)
 			return;
@@ -1265,7 +1018,7 @@ function pubcrawl_locs_mod_init($x) {
 
 function pubcrawl_follow_mod_init($x) {
 
-	if(pubcrawl_is_as_request() && argc() == 2) {
+	if(ActivityStreams::is_as_request() && argc() == 2) {
 
 
 		$abook_id = intval(argv(1));
@@ -1391,20 +1144,5 @@ function pubcrawl_create_identity($b) {
 		Apps::app_install($b, 'Activitypub Protocol');
 	}
 
-}
-
-function pubcrawl_can_comment_on_post(&$x) {
-/*
-	if(local_channel()) {
-		$c = App::get_channel();
-		$recips = get_iconfig($x['item'],'activitypub','recips',[]);
-
-		if(isset($recips['to']) && (in_array(ACTIVITY_PUBLIC_INBOX, $recips['to']) || in_array(channel_url($c), $recips['to'])))
-			$x['allowed'] = Apps::addon_app_installed($c['channel_id'], 'pubcrawl');
-
-		if(isset($recips['cc']) && (in_array(ACTIVITY_PUBLIC_INBOX, $recips['cc']) || in_array(channel_url($c), $recips['cc'])))
-			$x['allowed'] = Apps::addon_app_installed($c['channel_id'], 'pubcrawl');
-	}
-*/
 }
 

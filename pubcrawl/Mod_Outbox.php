@@ -1,9 +1,9 @@
 <?php
 namespace Zotlabs\Module;
 
-use Zotlabs\Web\HTTPSig;
+use Zotlabs\Web\Controller;
 
-class Outbox extends \Zotlabs\Web\Controller {
+class Outbox extends Controller {
 
 	function post() {
 
@@ -14,6 +14,7 @@ class Outbox extends \Zotlabs\Web\Controller {
 		$outbox = new Zotfeed();
 		return $outbox->init();
 
+/*
 		if(observer_prohibited(true)) {
 			killme();
 		}
@@ -79,7 +80,7 @@ class Outbox extends \Zotlabs\Web\Controller {
 			killme();
 
     	}
-
+*/
 	}
 
 }

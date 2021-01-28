@@ -1,13 +1,16 @@
 <?php
 namespace Zotlabs\Module;
 
+use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\LDSignatures;
+use Zotlabs\Web\Controller;
 use Zotlabs\Web\HTTPSig;
 
-class Activity extends \Zotlabs\Web\Controller {
+class Activity extends Controller {
 
 	function init() {
 
-		if(pubcrawl_is_as_request()) {
+		if(ActivityStreams::is_as_request()) {
 			$item_id = argv(1);
 			if(! $item_id)
 				return;
@@ -46,7 +49,7 @@ class Activity extends \Zotlabs\Web\Controller {
 			$headers = [];
 			$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
 
-			$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$chan);
+			$x['signature'] = LDSignatures::dopplesign($x,$chan);
 			$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
 			$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 			$headers['Digest'] = HTTPSig::generate_digest_header($ret);
