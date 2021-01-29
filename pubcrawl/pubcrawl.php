@@ -83,19 +83,22 @@ function pubcrawl_get_accept_header_string(&$arr) {
 }
 
 function pubcrawl_encode_person(&$arr) {
-	if (array_key_exists('channel', $arr) && Apps::addon_app_installed($arr['channel']['channel_id'], 'pubcrawl')) {
-		$arr['encoded']['inbox'] = z_root() . '/inbox/' . $arr['channel']['channel_address'];
 
-		$arr['encoded']['outbox']    = z_root() . '/outbox/' . $arr['channel']['channel_address'];
-		$arr['encoded']['followers'] = z_root() . '/followers/' . $arr['channel']['channel_address'];
-		$arr['encoded']['following'] = z_root() . '/following/' . $arr['channel']['channel_address'];
+
+
+	if (isset($arr['xchan']['channel_id']) && Apps::addon_app_installed($arr['xchan']['channel_id'], 'pubcrawl')) {
+		$arr['encoded']['inbox'] = z_root() . '/inbox/' . $arr['xchan']['channel_address'];
+
+		$arr['encoded']['outbox']    = z_root() . '/outbox/' . $arr['xchan']['channel_address'];
+		$arr['encoded']['followers'] = z_root() . '/followers/' . $arr['xchan']['channel_address'];
+		$arr['encoded']['following'] = z_root() . '/following/' . $arr['xchan']['channel_address'];
 
 		$arr['encoded']['endpoints']    = ['sharedInbox' => z_root() . '/inbox'];
-		$arr['encoded']['discoverable'] = ((1 - intval($arr['channel']['xchan_hidden'])) ? true : false);
+		$arr['encoded']['discoverable'] = ((1 - intval($arr['xchan']['xchan_hidden'])) ? true : false);
 
 		// map other nomadic identities linked with this channel
 		$locations = [];
-		$locs      = Libzot::encode_locations($arr['channel']);
+		$locs      = Libzot::encode_locations($arr['xchan']);
 		if ($locs) {
 			foreach ($locs as $loc) {
 				if ($loc['url'] !== z_root()) {
@@ -112,7 +115,7 @@ function pubcrawl_encode_person(&$arr) {
 			$arr['encoded']['alsoKnownAs'] = $locations;
 		}
 
-		$cp = get_cover_photo($arr['channel']['channel_id'], 'array');
+		$cp = get_cover_photo($arr['xchan']['channel_id'], 'array');
 		if ($cp) {
 			$arr['encoded']['image'] = [
 				'type'      => 'Image',
@@ -121,7 +124,7 @@ function pubcrawl_encode_person(&$arr) {
 			];
 		}
 		$dp = q("select about from profile where uid = %d and is_default = 1",
-			intval($arr['channel']['channel_id'])
+			intval($arr['xchan']['channel_id'])
 		);
 		if ($dp && $dp[0]['about']) {
 			$arr['encoded']['summary'] = bbcode($dp[0]['about'], ['export' => true]);
@@ -294,7 +297,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	if (!$AS->is_valid()) {
 		return;
 	}
-	// Now find the actor and see if there is something we can follow	
+	// Now find the actor and see if there is something we can follow
 
 	$person_obj = null;
 	if (in_array($AS->type, ['Application', 'Group', 'Organization', 'Person', 'Service'])) {
@@ -563,7 +566,7 @@ function pubcrawl_notifier_hub(&$arr) {
 
 		// If we have an activity already stored with an LD-signature
 		// which we are sending downstream, use that signed activity as is.
-		// The channel will then sign the HTTP transaction. 
+		// The channel will then sign the HTTP transaction.
 		if ($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) {
 			$signed_msg = get_iconfig($arr['target_item'], 'activitypub', 'rawmsg');
 		}
@@ -1166,9 +1169,9 @@ function pubcrawl_queue_deliver(&$b) {
 			);
 			remove_queue_item($outq['outq_hash']);
 
-			// server is responding - see if anything else is going to this destination and is piled up 
-			// and try to send some more. We're relying on the fact that do_delivery() results in an 
-			// immediate delivery otherwise we could get into a queue loop. 
+			// server is responding - see if anything else is going to this destination and is piled up
+			// and try to send some more. We're relying on the fact that do_delivery() results in an
+			// immediate delivery otherwise we could get into a queue loop.
 
 			if (!$immediate) {
 				$x = q("select outq_hash from outq where outq_posturl = '%s' and outq_delivered = 0",
