@@ -83,16 +83,11 @@ function pubcrawl_get_accept_header_string(&$arr) {
 }
 
 function pubcrawl_encode_person(&$arr) {
-
-
-
 	if (isset($arr['xchan']['channel_id']) && Apps::addon_app_installed($arr['xchan']['channel_id'], 'pubcrawl')) {
-		$arr['encoded']['inbox'] = z_root() . '/inbox/' . $arr['xchan']['channel_address'];
-
-		$arr['encoded']['outbox']    = z_root() . '/outbox/' . $arr['xchan']['channel_address'];
-		$arr['encoded']['followers'] = z_root() . '/followers/' . $arr['xchan']['channel_address'];
-		$arr['encoded']['following'] = z_root() . '/following/' . $arr['xchan']['channel_address'];
-
+		$arr['encoded']['inbox']        = z_root() . '/inbox/' . $arr['xchan']['channel_address'];
+		$arr['encoded']['outbox']       = z_root() . '/outbox/' . $arr['xchan']['channel_address'];
+		$arr['encoded']['followers']    = z_root() . '/followers/' . $arr['xchan']['channel_address'];
+		$arr['encoded']['following']    = z_root() . '/following/' . $arr['xchan']['channel_address'];
 		$arr['encoded']['endpoints']    = ['sharedInbox' => z_root() . '/inbox'];
 		$arr['encoded']['discoverable'] = ((1 - intval($arr['xchan']['xchan_hidden'])) ? true : false);
 
@@ -134,10 +129,6 @@ function pubcrawl_encode_person(&$arr) {
 		$collections = get_xconfig($arr['xchan']['xchan_hash'], 'activitypub', 'collections', []);
 		if ($collections) {
 			$arr['encoded'] = array_merge($arr['encoded'], $collections);
-		}
-		else {
-			$arr['encoded']['inbox']  = null;
-			$arr['encoded']['outbox'] = null;
 		}
 	}
 }

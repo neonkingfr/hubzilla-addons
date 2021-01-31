@@ -72,7 +72,7 @@ function find_diaspora_person_by_handle($handle) {
 
 	if((! $person) || ($refresh)) {
 
-		// try webfinger. Make sure to distinguish between diaspora, 
+		// try webfinger. Make sure to distinguish between diaspora,
 		// hubzilla w/diaspora protocol and friendica w/diaspora protocol.
 
 		$result = discover_by_webbie($handle);
@@ -104,7 +104,7 @@ function get_diaspora_key($handle) {
 /**
  * Some utility functions for processing the Diaspora comment virus.
  *
- */  
+ */
 
 
 
@@ -139,7 +139,7 @@ function diaspora_verify_fields($fields,$sig,$pubkey) {
 	}
 
 	$s = implode(';',$n);
-	logger('signing_string: ' . $s);
+	hz_syslog('signing_string: ' . $s);
 	return rsa_verify($s,base64_decode($sig),$pubkey);
 
 }
@@ -176,7 +176,7 @@ function diaspora_build_relay_tags() {
 	$ret = z_fetch_url($url);
 
 }
-	
+
 
 function diaspora_magic_env($channel,$msg) {
 
@@ -193,7 +193,7 @@ function diaspora_magic_env($channel,$msg) {
 		[
 			'$data'      => $data,
 			'$encoding'  => $encoding,
-			'$algorithm' => $algorithm, 
+			'$algorithm' => $algorithm,
 			'$keyhash'   => $keyhash,
 			'$signature' => $signature
 		]
@@ -257,7 +257,7 @@ function diaspora_build_status($item,$owner) {
 
 	if($ev) {
 		$ev_obj = diaspora_create_event($ev, $myaddr);
-		$body = $ev_obj['summary'];		
+		$body = $ev_obj['summary'];
 	}
 
 	$poll = '';
@@ -293,12 +293,12 @@ function diaspora_build_status($item,$owner) {
 			$arr['root_author'] = $ret['root_handle'];
 			$arr['root_guid']   = $ret['root_guid'];
 			$msg = arrtoxml('reshare', $arr);
-		} 
+		}
 		elseif((! $item['item_private']) && ($ret = diaspora_is_repeat($item))) {
 			$arr['root_author'] = $ret['root_handle'];
 			$arr['root_guid']   = $ret['root_guid'];
 			$msg = arrtoxml('reshare', $arr);
-		} 
+		}
 		else {
 			$arr['public'] = $public;
 			$arr['text']   = $body;
@@ -329,7 +329,7 @@ function diaspora_build_status($item,$owner) {
 					'$provider' => (($item['app']) ? $item['app'] : t('$projectname'))
 				]
 			);
-		} 
+		}
 		else {
 			$msg = replace_macros(get_markup_template('diaspora_post.tpl','addon/diaspora'),
 				[
@@ -390,7 +390,7 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 		$encoding = $base->encoding;
 		$alg      = $base->alg;
 
-		$signed_data = $data  . '.' . base64url_encode($type,false) . '.' 
+		$signed_data = $data  . '.' . base64url_encode($type,false) . '.'
 			. base64url_encode($encoding,false) . '.' . base64url_encode($alg,false);
 
 		// decode the data
@@ -418,7 +418,7 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 		if(! $verify) {
 			logger('Message did not verify. Discarding.', LOGGER_NORMAL, LOG_ERR);
 			return false;
-		}	
+		}
 
 		logger('Message verified.');
 
@@ -447,7 +447,7 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 	}
 
 	if($source_xml) {
-		if(array_key_exists('xml',$source_xml) && array_key_exists('post',$source_xml['xml'])) 
+		if(array_key_exists('xml',$source_xml) && array_key_exists('post',$source_xml['xml']))
 			$source_xml = $source_xml['xml']['post'];
 	}
 
@@ -456,10 +456,10 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 	}
 
 	// see if it's a reshare of a reshare
-	
+
 	if($source_xml['reshare'])
 		$xml = $source_xml['reshare'];
-	else 
+	else
 		return false;
 
 	if(($xml['root_diaspora_id'] || $xml['root_author']) && $xml['root_guid'] && $recurse < 15) {

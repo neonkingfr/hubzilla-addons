@@ -46,7 +46,7 @@ function diaspora_dispatch_public($msg) {
 
 
 
-function diaspora_dispatch($importer,$msg) {
+function diaspora_dispatch($importer, $msg, $force = false) {
 
 	$ret = 0;
 
@@ -76,16 +76,16 @@ function diaspora_dispatch($importer,$msg) {
 
 	/**
 	 * xml2array is based on libxml(/expat?) which loses whitespace in Cyrillic text presented as HTML entities
-	 * Here is a test string. The first space character is nearly always lost in parsing when included in an XML tagged structure. 
-	 * Spaces after punctuation seem to be preserved. We've ruled out character encoding/charset specification issues but 
+	 * Here is a test string. The first space character is nearly always lost in parsing when included in an XML tagged structure.
+	 * Spaces after punctuation seem to be preserved. We've ruled out character encoding/charset specification issues but
 	 * clearly there is a character encoding/charset issue involved. When called with a custom libxml parser, the content is mangled
-	 * before it ever reaches a parsing callback. 
+	 * before it ever reaches a parsing callback.
 	 * &#x41D;&#x430;&#x447;&#x430;&#x43B; &#x437;&#x430;&#x43C;&#x435;&#x447;&#x430;&#x442;&#x44C;, &#x447;&#x442;&#x43E; &#x43F;&#x43E;&#x440;&#x43D;&#x43E;&#x441;&#x43F;&#x430;&#x43C; &#x434;&#x43E;&#x431;&#x440;&#x430;&#x43B;&#x441;&#x44F; &#x434;&#x43E; &#x444;&#x435;&#x434;&#x435;&#x440;&#x430;&#x442;&#x438;&#x432;&#x43D;&#x44B;&#x445; &#x441;&#x435;&#x442;&#x435;&#x439;. &#x41D;&#x430;&#x43F;&#x440;&#x438;&#x43C;&#x435;&#x440;, &#x43A; &#x43D;&#x435;&#x441;&#x43A;&#x43E;&#x43B;&#x44C;&#x43A;&#x438;&#x43C; &#x43F;&#x43E;&#x441;&#x442;&#x430;&#x43C;
 	 * parse_xml_string() uses simplexml and doesn't have this issue, but cannot be easily used with XML that provides more structure
-	 * (attributes and namespaces). Therefore we can't easily use this to parse salmon magic envelopes. At this higher level, we can 
-	 * use xml2array() however because the unicode content has been base64'd and doesn't trigger the bug. 
+	 * (attributes and namespaces). Therefore we can't easily use this to parse salmon magic envelopes. At this higher level, we can
+	 * use xml2array() however because the unicode content has been base64'd and doesn't trigger the bug.
 	 * @FIXME
-	 * We're using parse_xml_string() with some additional hacks to make the output resemble the simple case of xml2array() 
+	 * We're using parse_xml_string() with some additional hacks to make the output resemble the simple case of xml2array()
 	 * Ideally we^H^Hyou should figure out what's wrong with libxml and figure out how to get the correct output from xml2array()
 	 * or get the root cause fixed upstream in libxml and php. Change here and in diaspora/util.php
 	 */
@@ -185,7 +185,7 @@ function diaspora_dispatch($importer,$msg) {
 		logger('diaspora_dispatch: unknown message type: ' . print_r($xmlbase,true));
 	}
 
-	$rec = new Diaspora_Receiver($importer,$base,$msg);
+	$rec = new Diaspora_Receiver($importer,$base,$msg,$force);
 
 	$ret = $rec->$fn();
 
@@ -214,7 +214,7 @@ function diaspora_is_blacklisted($s) {
  * diaspora_decode($importer,$xml,$format)
  *   array $importer -> from user table
  *   string $xml -> urldecoded Diaspora salmon
- *   string $format 'legacy', 'salmon', or 'json' 
+ *   string $format 'legacy', 'salmon', or 'json'
  *
  * Returns array
  * 'message' -> decoded Diaspora XML message
@@ -278,7 +278,7 @@ function diaspora_decode($importer,$xml,$format) {
 			    [sig] => ((the RSA-SHA256 signature of the above data))
 			)
 		**/
-	} 
+	}
 	else {
 
 		$children = $basedom->children('https://joindiaspora.com/protocol');
@@ -328,7 +328,7 @@ function diaspora_decode($importer,$xml,$format) {
 			logger('decrypted: ' . $decrypted, LOGGER_DATA);
 			$idom = parse_xml_string($decrypted,false);
 			if($idom === false) {
-				logger('failed to parse decrypted content');				
+				logger('failed to parse decrypted content');
 				http_status_exit(400);
 			}
 
@@ -338,7 +338,7 @@ function diaspora_decode($importer,$xml,$format) {
 			$author_link = str_replace('acct:','',$idom->author_id);
 		}
 	}
-	
+
 	$dom = $basedom->children(NAMESPACE_SALMON_ME);
 
 	// figure out where in the DOM tree our data is hiding
@@ -410,7 +410,7 @@ function diaspora_decode($importer,$xml,$format) {
 
 	logger('mod-diaspora: Message verified.');
 
-	return array('message' => $final_msg, 'author' => $author_link, 'key' => $key, 'format' => $format);
+	return array('message' => $final_msg, 'author' => $author_link, 'key' => $key, 'signature' => base64url_encode($signature), 'format' => $format);
 
 }
 
