@@ -118,14 +118,13 @@ function diaspora_fetch_provider(&$arr) {
 
 	$id         = $path_parts['basename'];
 	$thread_url = $parts['scheme'] . '://' . $parts['host'] . '/posts/' . $id;
-	$thread_data = [];
 
 	// fetch the json
 	$x = z_fetch_url($thread_url, false, 1, ['headers' => ['Accept: application/json']]);
+	if (!$x['success'])
+		return;
 
-	if ($x['success'])
-		$thread_data = json_decode($x['body'], true);
-
+	$thread_data = json_decode($x['body'], true);
 	$guid   = $thread_data['guid'];
 	$public = $thread_data['public'];
 
@@ -138,6 +137,7 @@ function diaspora_fetch_provider(&$arr) {
 
 	$fetch_url = $parts['scheme'] . '://' . $parts['host'] . '/fetch/post/' . $guid;
 	$x         = z_fetch_url($fetch_url);
+
 	if (!$x['success'])
 		return;
 

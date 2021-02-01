@@ -715,7 +715,7 @@ class Diaspora_Receiver {
 		if($result['success']) {
 			sync_an_item($this->importer['channel_id'],$result['item_id']);
 			if($this->force)
-				diaspora_send_participation($this->importer, $xchan, $result['item']);
+				diaspora_send_participation($this->importer, $contact, $result['item']);
 		}
 
 		return;
