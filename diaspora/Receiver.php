@@ -1016,7 +1016,7 @@ class Diaspora_Receiver {
 		// the check would nearly always be superfluous and redundant.
 
 		if ($parent_item['owner_xchan'] === $this->importer['channel_hash']) {
-			$allowed = perm_is_allowed($this->importer['channel_hash'], $xchan['xchan_hash'], 'post_comments');
+			$allowed = perm_is_allowed($this->importer['channel_id'], $xchan['xchan_hash'], 'post_comments');
 
 			// let the plugin setting (Allow any Diaspora member to comment on your public posts)
 			// over-ride possibly more loose channel permission limits (anyone on the internet).
@@ -1534,7 +1534,7 @@ class Diaspora_Receiver {
 		// the check would nearly always be superfluous and redundant.
 
 		if ($parent_item['owner_xchan'] === $this->importer['channel_hash']) {
-			$allowed = perm_is_allowed($this->importer['channel_hash'], $xchan['xchan_hash'], 'post_comments');
+			$allowed = perm_is_allowed($this->importer['channel_id'], $xchan['xchan_hash'], 'post_comments');
 
 			// let the plugin setting (Allow any Diaspora member to comment/like your public posts)
 			// over-ride possibly more loose channel permission limits (anyone on the internet).
