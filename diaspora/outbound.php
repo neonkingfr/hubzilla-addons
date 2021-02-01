@@ -6,7 +6,7 @@ function diaspora_prepare_outbound($msg,$owner,$contact,$owner_prvkey,$contact_p
 
 	if(defined('DIASPORA_V2')) {
 		$post = diaspora_v2_build($msg,$owner,$contact,$owner_prvkey,$contact_pubkey,$public);
-		hz_syslog('diaspora_v2:' . print_r($post,true));
+		logger('diaspora_v2:' . print_r($post,true));
 		return $post;
 	}
 	else {

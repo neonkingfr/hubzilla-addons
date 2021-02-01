@@ -116,36 +116,39 @@ function diaspora_fetch_provider(&$arr) {
 	if (!in_array($path_parts['dirname'], ['/posts']))
 		return;
 
-	$guid        = $path_parts['basename'];
-	$fetch_url   = $parts['scheme'] . '://' . $parts['host'] . '/fetch/post/' . $guid;
-	$return_guid = $parts['fragment'] ? $parts['fragment'] : $guid;
+	$id         = $path_parts['basename'];
+	$thread_url = $parts['scheme'] . '://' . $parts['host'] . '/posts/' . $id;
 
-	$x = z_fetch_url($fetch_url);
+	// fetch the json
+	$x = z_fetch_url($thread_url, false, 1, ['headers' => ['Accept: application/json']]);
 
+	if ($x['success'])
+		$thread_data = json_decode($x['body'], true);
+
+	$guid   = $thread_data['guid'];
+	$public = $thread_data['public'];
+
+	if (!$public)
+		return;
+
+	$return_guid = (($parts['fragment']) ? $parts['fragment'] : $guid);
+
+	// We will first fetch the parent via the /fetch endpoint
+
+	$fetch_url = $parts['scheme'] . '://' . $parts['host'] . '/fetch/post/' . $guid;
+	$x         = z_fetch_url($fetch_url);
 	if (!$x['success'])
 		return;
 
-	$msg = diaspora_decode($importer, $x['body'], 'salmon');
-
-	// It should be safe to assume that the message is public
-	// since only public messages are fetchable.
-	$msg['public'] = 1;
+	$msg           = diaspora_decode($importer, $x['body'], 'salmon');
+	$msg['public'] = $public;
 
 	// dispatch toplevel post
 	diaspora_dispatch($importer, $msg, true);
 
 	// Here is the deal: there is no way to fetch comments or likes in diaspora.
 	// There is however a workaround that is internally used by diaspora to fetch public content.
-	// There are no signatures provided - so we can not check them. Since we fetch the comments directly
-	// from the post owner it should be relatively safe though since the post owner is supposed to verify them.
-
-	$thread_url = $parts['scheme'] . '://' . $parts['host'] . '/posts/' . $guid;
-	$x          = z_fetch_url($thread_url, false, 1, ['headers' => ['Accept: application/json']]);
-
-	if (!$x['success'])
-		return;
-
-	$thread_data = json_decode($x['body'], true);
+	// There are no signatures provided - so we can not check them.
 
 	if ($thread_data && array_path_exists('interactions/comments', $thread_data)) {
 		$comments = $thread_data['interactions']['comments'];

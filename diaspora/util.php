@@ -139,7 +139,7 @@ function diaspora_verify_fields($fields,$sig,$pubkey) {
 	}
 
 	$s = implode(';',$n);
-	hz_syslog('signing_string: ' . $s);
+	logger('signing_string: ' . $s);
 	return rsa_verify($s,base64_decode($sig),$pubkey);
 
 }
