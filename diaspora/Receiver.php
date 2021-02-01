@@ -764,7 +764,7 @@ class Diaspora_Receiver {
 		$local_parent_item = (strpos($parent_item['mid'], z_root()) === 0);
 		if ($local_parent_item) {
 			// find the owner channel_id
-			$r                = q("SELECT uid FROM item WHERE item_origin = 1 AND uuid = '%s' LIMIT 1",
+			$r = q("SELECT uid FROM item WHERE item_origin = 1 AND uuid = '%s' LIMIT 1",
 				dbesc($parent_guid)
 			);
 			$parent_owner_uid = $r[0]['uid'];
