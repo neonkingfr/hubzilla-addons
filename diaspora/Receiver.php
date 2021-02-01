@@ -1,6 +1,10 @@
 <?php
 
+use Zotlabs\Access\PermissionRoles;
+use Zotlabs\Access\Permissions;
+use Zotlabs\Lib\Enotify;
 use Zotlabs\Lib\MessageFilter;
+use Zotlabs\Daemon\Master;
 
 class Diaspora_Receiver {
 
@@ -51,8 +55,8 @@ class Diaspora_Receiver {
 		// Please note some permissions such as PERMS_R_PAGES are impossible for Disapora.
 		// They cannot currently authenticate to our system.
 
-		$x = \Zotlabs\Access\PermissionRoles::role_perms('social');
-		$their_perms = \Zotlabs\Access\Permissions::FilledPerms($x['perms_connect']);
+		$x = PermissionRoles::role_perms('social');
+		$their_perms = Permissions::FilledPerms($x['perms_connect']);
 
 		if(! $sharing) {
 			$their_perms['view_stream'] = 0;
@@ -93,7 +97,7 @@ class Diaspora_Receiver {
 			return;
 		}
 
-		$p = \Zotlabs\Access\Permissions::connect_perms($this->importer['channel_id']);
+		$p = Permissions::connect_perms($this->importer['channel_id']);
 		$my_perms  = $p['perms'];
 		$automatic = $p['automatic'];
 
@@ -135,7 +139,7 @@ class Diaspora_Receiver {
 			if($new_connection) {
 
 				if($following && $sharing) {
-					\Zotlabs\Lib\Enotify::submit(
+					Enotify::submit(
 						[
 							'type'	       => NOTIFY_INTRO,
 							'from_xchan'   => $ret['xchan_hash'],
@@ -195,7 +199,6 @@ class Diaspora_Receiver {
 	}
 
 
-
 	function post() {
 
 		$guid            = notags($this->get_property('guid'));
@@ -204,22 +207,22 @@ class Diaspora_Receiver {
 		$raw_location    = $this->get_property('location');
 
 
-		if($diaspora_handle != $this->msg['author']) {
+		if ($diaspora_handle != $this->msg['author']) {
 			logger('diaspora_post: Potential forgery. Message handle is not the same as envelope sender.');
 			return 202;
 		}
 
 		$xchan = find_diaspora_person_by_handle($diaspora_handle);
 
-		if(! $xchan) {
+		if (!$xchan) {
 			logger('Cannot resolve diaspora handle ' . $diaspora_handle);
 			return;
 		}
 
-		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$diaspora_handle);
+		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'], $diaspora_handle);
 
-		if(! $app) {
-			if(strstr($xchan['xchan_network'],'friendica'))
+		if (!$app) {
+			if (strstr($xchan['xchan_network'], 'friendica'))
 				$app = 'Friendica';
 			else
 				$app = 'Diaspora';
@@ -238,10 +241,10 @@ class Diaspora_Receiver {
 		);
 
 
-		if($r) {
+		if ($r) {
 
-			$edited_str = datetime_convert('UTC','UTC',(($edited) ? $edited : $created));
-			if($edited_str > $r[0]['edited']) {
+			$edited_str = datetime_convert('UTC', 'UTC', (($edited) ? $edited : $created));
+			if ($edited_str > $r[0]['edited']) {
 				$updated = true;
 				$orig_id = $r[0]['id'];
 			}
@@ -252,23 +255,23 @@ class Diaspora_Receiver {
 		}
 
 
-		$body = markdown_to_bb($this->get_body(), false, [ 'diaspora' => true, 'preserve_lf' => true ]);
+		$body = markdown_to_bb($this->get_body(), false, ['diaspora' => true, 'preserve_lf' => true]);
 
 
 		// photo could be a single photo or an array of photos.
 		// Turn singles into an array of one.
 
 		$photos = $this->get_property('photo');
-		if(is_array($photos) && !empty($photos['guid']))
-			$photos = array($photos);
+		if (is_array($photos) && !empty($photos['guid']))
+			$photos = [$photos];
 
-		if($photos) {
+		if ($photos) {
 			$tmp = '';
-			foreach($photos as $ph) {
+			foreach ($photos as $ph) {
 				// If there are multiple photos we get an array of objects here.
 				// Typecast them to array here to make sure we deal with an array in any case.
-				$ph = (array) $ph;
-				if((! $ph['remote_photo_path']) || (strpos($ph['remote_photo_path'],'http') !== 0))
+				$ph = (array)$ph;
+				if ((!$ph['remote_photo_path']) || (strpos($ph['remote_photo_path'], 'http') !== 0))
 					continue;
 				$tmp .= '[img]' . $ph['remote_photo_path'] . $ph['remote_photo_name'] . '[/img]' . "\n\n";
 			}
@@ -277,15 +280,15 @@ class Diaspora_Receiver {
 		}
 
 		$event = $this->get_property('event');
-		if(is_array($event) && !empty($event['guid'])) {
-			$ev = [];
-			$dts = $this->get_property('start',$event);
-			if($dts) {
-				$ev['dtstart'] = datetime_convert('UTC','UTC', $dts);
+		if (is_array($event) && !empty($event['guid'])) {
+			$ev  = [];
+			$dts = $this->get_property('start', $event);
+			if ($dts) {
+				$ev['dtstart'] = datetime_convert('UTC', 'UTC', $dts);
 			}
-			$dte = $this->get_property('end',$event);
-			if($dte) {
-				$ev['dtend'] = datetime_convert('UTC','UTC', $dte);
+			$dte = $this->get_property('end', $event);
+			if ($dte) {
+				$ev['dtend'] = datetime_convert('UTC', 'UTC', $dte);
 			}
 			else {
 				$ev['nofinish'] = true;
@@ -295,49 +298,49 @@ class Diaspora_Receiver {
 
 //			$ev_author = notags($this->get_author($event));
 //			$ev_xchan = find_diaspora_person_by_handle($ev_author);
-			$ev['event_hash'] = notags($this->get_property('guid',$event));
-			$ev['summary'] = escape_tags($this->get_property('summary',$event));
-			$ev['adjust'] = (($this->get_property('all_day',$event)) ? false : true);
-			$ev_timezone = notags($this->get_property('timezone',$event));
-			$ev['description'] = markdown_to_bb($this->get_property('description',$event), false, [ 'diaspora' => true ]);
-			$ev_loc = $this->get_property('location',$event);
-			if($ev_loc) {
-				$ev_address = escape_tags($this->get_property('address',$ev_loc));
-				$ev_lat = notags($this->get_property('lat',$ev_loc));
-				$ev_lon = notags($this->get_property('lon',$ev_loc));
+			$ev['event_hash']  = notags($this->get_property('guid', $event));
+			$ev['summary']     = escape_tags($this->get_property('summary', $event));
+			$ev['adjust']      = (($this->get_property('all_day', $event)) ? false : true);
+			$ev_timezone       = notags($this->get_property('timezone', $event));
+			$ev['description'] = markdown_to_bb($this->get_property('description', $event), false, ['diaspora' => true]);
+			$ev_loc            = $this->get_property('location', $event);
+			if ($ev_loc) {
+				$ev_address = escape_tags($this->get_property('address', $ev_loc));
+				$ev_lat     = notags($this->get_property('lat', $ev_loc));
+				$ev_lon     = notags($this->get_property('lon', $ev_loc));
 			}
 			$ev['location'] = '';
-			if($ev_address) {
-				$ev['location'] .=  '[map]' . $ev_address . '[/map]' . "\n\n";
+			if ($ev_address) {
+				$ev['location'] .= '[map]' . $ev_address . '[/map]' . "\n\n";
 			}
-			if(! (is_null($ev_lat) || is_null($ev_lon))) {
+			if (!(is_null($ev_lat) || is_null($ev_lon))) {
 				$ev['location'] .= '[map=' . $ev_lat . ',' . $ev_lon . ']';
 			}
 
-			if($ev['start'] && $ev['event_hash'] && $ev['summary']) {
+			if ($ev['start'] && $ev['event_hash'] && $ev['summary']) {
 				$body .= format_event_bbcode($ev);
 			}
-			set_iconfig($datarray,'system','event_id',$ev['event_hash'],true);
+			set_iconfig($datarray, 'system', 'event_id', $ev['event_hash'], true);
 		}
 
 		$maxlen = get_max_import_size();
 
-		if($maxlen && mb_strlen($body) > $maxlen) {
-			$body = mb_substr($body,0,$maxlen,'UTF-8');
+		if ($maxlen && mb_strlen($body) > $maxlen) {
+			$body = mb_substr($body, 0, $maxlen, 'UTF-8');
 			logger('message length exceeds max_import_size: truncated');
 		}
 
-		$datarray = array();
+		$datarray = [];
 
 		// Look for tags and linkify them
 		$results = linkify_tags($body, $this->importer['channel_id'], false);
 
-		$datarray['term'] = array();
+		$datarray['term'] = [];
 
-		if($results) {
-			foreach($results as $result) {
+		if ($results) {
+			foreach ($results as $result) {
 				$success = $result['success'];
-				if($success['replaced']) {
+				if ($success['replaced']) {
 					$datarray['term'][] = [
 						'uid'   => $this->importer['channel_id'],
 						'ttype' => $success['termtype'],
@@ -349,11 +352,11 @@ class Diaspora_Receiver {
 			}
 		}
 
-		$found_tags = false;
-		$followed_tags = get_pconfig($this->importer['channel_id'],'diaspora','followed_tags');
-		if($followed_tags && $datarray['term']) {
-			foreach($datarray['term'] as $t) {
-				if(in_array(mb_strtolower($t['term']),array_map('mb_strtolower',$followed_tags))) {
+		$found_tags    = false;
+		$followed_tags = get_pconfig($this->importer['channel_id'], 'diaspora', 'followed_tags');
+		if ($followed_tags && $datarray['term']) {
+			foreach ($datarray['term'] as $t) {
+				if (in_array(mb_strtolower($t['term']), array_map('mb_strtolower', $followed_tags))) {
 					$found_tags = true;
 					break;
 				}
@@ -361,9 +364,9 @@ class Diaspora_Receiver {
 		}
 
 
-		$cnt = preg_match_all('/@\[url=(.*?)\](.*?)\[\/url\]/ism',$body,$matches,PREG_SET_ORDER);
-		if($cnt) {
-			foreach($matches as $mtch) {
+		$cnt = preg_match_all('/@\[url=(.*?)\](.*?)\[\/url\]/ism', $body, $matches, PREG_SET_ORDER);
+		if ($cnt) {
+			foreach ($matches as $mtch) {
 				$datarray['term'][] = [
 					'uid'   => $this->importer['channel_id'],
 					'ttype' => TERM_MENTION,
@@ -374,9 +377,9 @@ class Diaspora_Receiver {
 			}
 		}
 
-		$cnt = preg_match_all('/@\[zrl=(.*?)\](.*?)\[\/zrl\]/ism',$body,$matches,PREG_SET_ORDER);
-		if($cnt) {
-			foreach($matches as $mtch) {
+		$cnt = preg_match_all('/@\[zrl=(.*?)\](.*?)\[\/zrl\]/ism', $body, $matches, PREG_SET_ORDER);
+		if ($cnt) {
+			foreach ($matches as $mtch) {
 				$datarray['term'][] = [
 					'uid'   => $this->importer['channel_id'],
 					'ttype' => TERM_MENTION,
@@ -387,9 +390,9 @@ class Diaspora_Receiver {
 			}
 		}
 
-		$cnt = preg_match_all('/\!\[url=(.*?)\](.*?)\[\/url\]/ism',$body,$matches,PREG_SET_ORDER);
-		if($cnt) {
-			foreach($matches as $mtch) {
+		$cnt = preg_match_all('/\!\[url=(.*?)\](.*?)\[\/url\]/ism', $body, $matches, PREG_SET_ORDER);
+		if ($cnt) {
+			foreach ($matches as $mtch) {
 				$datarray['term'][] = [
 					'uid'   => $this->importer['channel_id'],
 					'ttype' => TERM_FORUM,
@@ -400,9 +403,9 @@ class Diaspora_Receiver {
 			}
 		}
 
-		$cnt = preg_match_all('/\!\[zrl=(.*?)\](.*?)\[\/zrl\]/ism',$body,$matches,PREG_SET_ORDER);
-		if($cnt) {
-			foreach($matches as $mtch) {
+		$cnt = preg_match_all('/\!\[zrl=(.*?)\](.*?)\[\/zrl\]/ism', $body, $matches, PREG_SET_ORDER);
+		if ($cnt) {
+			foreach ($matches as $mtch) {
 				$datarray['term'][] = [
 					'uid'   => $this->importer['channel_id'],
 					'ttype' => TERM_FORUM,
@@ -414,60 +417,51 @@ class Diaspora_Receiver {
 		}
 
 
-		$plink = service_plink($xchan,$guid);
+		$plink = service_plink($xchan, $guid);
 
-		if(is_array($raw_location)) {
-			if(!empty($raw_location['address']))
+		if (is_array($raw_location)) {
+			if (!empty($raw_location['address']))
 				$datarray['location'] = unxmlify($raw_location['address']);
-			if(!empty($raw_location['lat']) && !empty($raw_location['lng']))
+			if (!empty($raw_location['lat']) && !empty($raw_location['lng']))
 				$datarray['coord'] = floatval(unxmlify($raw_location['lat']))
 					. ' ' . floatval(unxmlify($raw_location['lng']));
 		}
 
-
-		$datarray['aid'] = $this->importer['channel_account_id'];
-		$datarray['uid'] = $this->importer['channel_id'];
-
+		$datarray['aid']  = $this->importer['channel_account_id'];
+		$datarray['uid']  = $this->importer['channel_id'];
 		$datarray['verb'] = ACTIVITY_POST;
 		$datarray['uuid'] = $guid;
+		$datarray['mid']  = $datarray['parent_mid'] = $guid;
 
-		$datarray['mid'] = $datarray['parent_mid'] = $guid;
-
-		if($updated) {
+		if ($updated) {
 			$datarray['changed'] = $datarray['edited'] = $edited;
 		}
 		else {
-			$datarray['changed'] = $datarray['created'] = $datarray['edited'] = datetime_convert('UTC','UTC',$created);
+			$datarray['changed'] = $datarray['created'] = $datarray['edited'] = datetime_convert('UTC', 'UTC', $created);
 		}
 
-		if($orig_id) {
+		if ($orig_id) {
 			$datarray['id'] = $orig_id;
 		}
 
-		$datarray['item_private'] = $private;
-
-		$datarray['plink'] = $plink;
-
-		$datarray['author_xchan'] = $xchan['xchan_hash'];
-		$datarray['owner_xchan']  = $xchan['xchan_hash'];
-
-		$datarray['body'] = $body;
-
-		$datarray['app']  = $app;
-
-		$datarray['item_unseen'] = 1;
+		$datarray['item_private']    = $private;
+		$datarray['plink']           = $plink;
+		$datarray['author_xchan']    = $xchan['xchan_hash'];
+		$datarray['owner_xchan']     = $xchan['xchan_hash'];
+		$datarray['body']            = $body;
+		$datarray['app']             = $app;
+		$datarray['item_unseen']     = 1;
 		$datarray['item_thread_top'] = 1;
 
-		$tgroup = tgroup_check($this->importer['channel_id'],$datarray);
+		$tgroup = tgroup_check($this->importer['channel_id'], $datarray);
 
-		if((! $this->importer['system']) && (! perm_is_allowed($this->importer['channel_id'],$xchan['xchan_hash'],'send_stream')) && (! $tgroup) && (! $found_tags) && (! $this->force)) {
+		if ((!$this->importer['system']) && (!perm_is_allowed($this->importer['channel_id'], $xchan['xchan_hash'], 'send_stream')) && (!$tgroup) && (!$found_tags) && (!$this->force)) {
 			logger('diaspora_post: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
 
-		if($this->importer['system']) {
-			if(! MessageFilter::evaluate($datarray,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
-
+		if ($this->importer['system']) {
+			if (!MessageFilter::evaluate($datarray, get_config('system', 'pubstream_incl'), get_config('system', 'pubstream_excl'))) {
 				logger('diaspora_post: filtering this author.');
 				return 202;
 			}
@@ -476,25 +470,25 @@ class Diaspora_Receiver {
 		// Diaspora allows anybody to comment on public posts in theory
 		// In fact the comment will be rejected unless it is correctly signed
 
-		if($this->importer['system'] || $this->msg['public']) {
+		if ($this->importer['system'] || $this->msg['public']) {
 			$datarray['comment_policy'] = 'network: diaspora';
 		}
 
-		if(($contact) && (! post_is_importable($datarray,$contact)) && (! $this->force)) {
+		if (($contact) && (!post_is_importable($datarray, $contact)) && (!$this->force)) {
 			logger('diaspora_post: filtering this author.');
 			return 202;
 		}
 
-		if($updated) {
+		if ($updated) {
 			$result = item_store_update($datarray);
 		}
 		else {
 			$result = item_store($datarray);
 		}
 
-		if($result['success']) {
-			sync_an_item($this->importer['channel_id'],$result['item_id']);
-			if($this->force)
+		if ($result['success']) {
+			sync_an_item($this->importer['channel_id'], $result['item_id']);
+			if ($this->force)
 				diaspora_send_participation($this->importer, $xchan, $result['item']);
 
 			return $result;
@@ -503,8 +497,6 @@ class Diaspora_Receiver {
 		return;
 
 	}
-
-
 
 
 	function reshare() {
@@ -701,10 +693,6 @@ class Diaspora_Receiver {
 			}
 		}
 
-
-
-
-
 		if(! post_is_importable($datarray,$contact) && !$this->force) {
 			logger('diaspora_reshare: filtering this author.');
 			return 202;
@@ -768,12 +756,14 @@ class Diaspora_Receiver {
 
 		// does the parent originate from this site?
 		$local_parent_item = (strpos($parent_item['mid'], z_root()) === 0);
+		$parent_owner_uid  = null;
 		if ($local_parent_item) {
 			// find the owner channel_id
 			$r = q("SELECT uid FROM item WHERE item_origin = 1 AND uuid = '%s' LIMIT 1",
 				dbesc($parent_guid)
 			);
-			$parent_owner_uid = $r[0]['uid'];
+			if ($r)
+				$parent_owner_uid = $r[0]['uid'];
 		}
 
 		$xchan = find_diaspora_person_by_handle($diaspora_handle);
@@ -1457,78 +1447,115 @@ class Diaspora_Receiver {
 		return;
 	}
 
-
-
-
 	function like() {
 		$guid = notags($this->get_property('guid'));
-		if(! $guid) {
+		if (!$guid) {
 			logger('diaspora_like: missing guid' . print_r($this->msg, true), LOGGER_DEBUG);
 			return;
 		}
 
 		$parent_guid = notags($this->get_property('parent_guid'));
-		if(! $parent_guid) {
+		if (!$parent_guid) {
 			logger('diaspora_like: missing parent_guid' . print_r($this->msg, true), LOGGER_DEBUG);
 			return;
 		}
 
 		$diaspora_handle = notags($this->get_author());
-		if(! $diaspora_handle) {
+		if (!$diaspora_handle) {
 			logger('diaspora_like: missing author' . print_r($this->msg, true), LOGGER_DEBUG);
 			return;
 		}
 
-		$target_type = notags($this->get_ptype());
-		$positive = notags($this->get_property('positive'));
-		$author_signature = notags($this->get_property('author_signature'));
+		$target_type             = notags($this->get_ptype());
+		$positive                = notags($this->get_property('positive'));
+		$author_signature        = notags($this->get_property('author_signature'));
 		$parent_author_signature = $this->get_property('parent_author_signature');
 
-		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$this->msg['author']);
-
-		// by default comments on public posts are allowed from anybody on Diaspora. That is their policy.
-		// Once this setting is set to something we'll track your preference and it will over-ride the default.
-		$pubcomment = get_pconfig($this->importer['channel_id'],'system','diaspora_public_comments',1);
-		if(($pubcomment || $this->force) && (! $contact))
-			$contact = find_diaspora_person_by_handle($this->msg['author']);
-
-		if(! $contact) {
-			logger('diaspora_like: cannot find contact: ' . $this->msg['author'] . ' for channel ' . $this->importer['channel_name']);
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
+			intval($this->importer['channel_id']),
+			dbesc($parent_guid)
+		);
+		if (!$r) {
+			logger('diaspora_comment: parent item not found: parent: ' . $parent_guid . ' item: ' . $guid);
 			return;
 		}
 
-		// @fixme - check 3rd party like permissions. E.g. fred@server1 is liking something posted by bob@server2 which you (mick@server3) receive a copy
+		$parent_item = $r[0];
 
+		if (intval($parent_item['item_nocomment']) || $parent_item['comment_policy'] === 'none'
+			|| ($parent_item['comments_closed'] > NULL_DATE && $parent_item['comments_closed'] < datetime_convert())) {
+			logger('diaspora_comment: comments disabled for post ' . $parent_item['mid']);
+			return;
+		}
 
-		if((! $this->importer['system']) && (! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'post_comments')) && (!$this->force)) {
+		// does the parent originate from this site?
+		$local_parent_item = (strpos($parent_item['mid'], z_root()) === 0);
+		$parent_owner_uid  = null;
+		if ($local_parent_item) {
+			// find the owner channel_id
+			$r = q("SELECT uid FROM item WHERE item_origin = 1 AND uuid = '%s' LIMIT 1",
+				dbesc($parent_guid)
+			);
+			if ($r)
+				$parent_owner_uid = $r[0]['uid'];
+		}
+
+		$xchan = find_diaspora_person_by_handle($diaspora_handle);
+
+		if (!$xchan) {
+			logger('Cannot resolve diaspora handle ' . $diaspora_handle);
+			return;
+		}
+
+		$contact = diaspora_get_contact_by_handle((($parent_owner_uid) ? $parent_owner_uid : $this->importer['channel_id']), $this->msg['author']);
+
+		if (is_array($contact)) {
+			$abook_contact = true;
+		}
+		else {
+			$contact       = find_diaspora_person_by_handle($this->msg['author']);
+			$abook_contact = false;
+		}
+
+		$pub_comment = 1;
+
+		// By default comments on public posts are allowed from anybody on Diaspora. That is their policy.
+		// If the parent item originates from this hub we can over-ride the default comment policy.
+
+		if ($parent_owner_uid)
+			$pub_comment = get_pconfig($parent_owner_uid, 'system', 'diaspora_public_comments', 1);
+
+		if (intval($parent_item['item_private']))
+			$pub_comment = 0;
+
+		// If it's a like to one of our own posts, check if the liker has permission to like.
+		// We should probably check send_stream permission if the stream owner isn't us,
+		// but we did import the parent post so at least at that time we did allow it and
+		// the check would nearly always be superfluous and redundant.
+
+		if ($parent_item['owner_xchan'] === $this->importer['channel_hash']) {
+			$allowed = perm_is_allowed($this->importer['channel_hash'], $xchan['xchan_hash'], 'post_comments');
+
+			// let the plugin setting (Allow any Diaspora member to comment/like your public posts)
+			// over-ride possibly more loose channel permission limits (anyone on the internet).
+			if ($allowed && !$pub_comment && !$abook_contact)
+				$allowed = false;
+		}
+		else {
+			$allowed = true;
+		}
+
+		if (!$allowed) {
 			logger('diaspora_like: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
 
 		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
 			intval($this->importer['channel_id']),
-			dbesc($parent_guid)
-		);
-		if(! $r) {
-			logger('diaspora_like: parent item not found: ' . $guid);
-			return;
-		}
-
-		xchan_query($r);
-		$parent_item = $r[0];
-
-		if(intval($parent_item['item_nocomment']) || $parent_item['comment_policy'] === 'none'
-			|| ($parent_item['comments_closed'] > NULL_DATE && $parent_item['comments_closed'] < datetime_convert())) {
-			logger('diaspora_like: comments disabled for post ' . $parent_item['mid']);
-			return;
-		}
-
-		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
-			intval($this->importer['channel_id']),
 			dbesc($guid)
 		);
-		if($r) {
-			if($positive === 'true') {
+		if ($r) {
+			if ($positive === 'true') {
 				logger('diaspora_like: duplicate like: ' . $guid);
 				return;
 			}
@@ -1536,7 +1563,7 @@ class Diaspora_Receiver {
 			// Note: I don't think "Like" objects with positive = "false" are ever actually used
 			// It looks like "RelayableRetractions" are used for "unlike" instead
 
-			if($positive === 'false') {
+			if ($positive === 'false') {
 				logger('diaspora_like: received a like with positive set to "false"...ignoring');
 				// perhaps call drop_item()
 				// FIXME--actually don't unless it turns out that Diaspora does indeed send out "false" likes
@@ -1548,13 +1575,13 @@ class Diaspora_Receiver {
 		$i = q("select * from xchan where xchan_hash = '%s' limit 1",
 			dbesc($parent_item['author_xchan'])
 		);
-		if($i)
+		if ($i)
 			$item_author = $i[0];
 
 		// Note: I don't think "Like" objects with positive = "false" are ever actually used
 		// It looks like "RelayableRetractions" are used for "unlike" instead
 
-		if($positive === 'true') {
+		if ($positive === 'true') {
 			$activity = ACTIVITY_LIKE;
 			$bodyverb = t('%1$s likes %2$s\'s %3$s');
 		}
@@ -1563,17 +1590,14 @@ class Diaspora_Receiver {
 			$bodyverb = t('%1$s dislikes %2$s\'s %3$s');
 		}
 
-		// old style signature
-		$signed_data = $positive . ';' . $guid . ';' . $target_type . ';' . $parent_guid . ';' . $diaspora_handle;
-
 		$key = $this->msg['key'];
 
-		if($parent_author_signature && !$this->force) {
+		if ($parent_author_signature && !$this->force) {
 			// If a parent_author_signature exists, then we've received the like
 			// relayed from the top-level post owner.
 
-			$x = diaspora_verify_fields($this->xmlbase,$parent_author_signature,$key);
-			if(! $x) {
+			$x = diaspora_verify_fields($this->xmlbase, $parent_author_signature, $key);
+			if (!$x) {
 				logger('diaspora_like: top-level owner verification failed.');
 				return;
 			}
@@ -1585,131 +1609,118 @@ class Diaspora_Receiver {
 			// our post, so he/she must be a contact of ours and his/her public key
 			// should be in $this->msg['key']
 
-			$x = diaspora_verify_fields($this->xmlbase,$author_signature,$key);
-			if(! $x) {
+			$x = diaspora_verify_fields($this->xmlbase, $author_signature, $key);
+			if (!$x) {
 				logger('diaspora_like: author verification failed.');
 				return;
 			}
 
-			if(defined('DIASPORA_V2'))
-				$this->xmlbase['parent_author_signature'] = diaspora_sign_fields($this->xmlbase,$this->importer['channel_prvkey']);
+			if (defined('DIASPORA_V2'))
+				$this->xmlbase['parent_author_signature'] = diaspora_sign_fields($this->xmlbase, $this->importer['channel_prvkey']);
 		}
 
-		logger('diaspora_like: signature check complete.',LOGGER_DEBUG);
+		logger('diaspora_like: signature check complete.', LOGGER_DEBUG);
 
 		// Phew! Everything checks out. Now create an item.
 
 		// Find the original comment author information.
 		// We need this to make sure we display the comment author
 		// information (name and avatar) correctly.
-		if(strcasecmp($diaspora_handle,$this->msg['author']) == 0)
+		if (strcasecmp($diaspora_handle, $this->msg['author']) == 0)
 			$person = $contact;
 		else {
 			$person = find_diaspora_person_by_handle($diaspora_handle);
 
-			if(! is_array($person)) {
+			if (!is_array($person)) {
 				logger('diaspora_like: unable to find author details');
 				return;
 			}
 		}
 
-		$uri = $diaspora_handle . ':' . $guid;
-
-
 		$post_type = (($parent_item['resource_type'] === 'photo') ? t('photo') : t('status'));
+		$links     = [['rel' => 'alternate', 'type' => 'text/html', 'href' => $parent_item['plink']]];
+		$objtype   = (($parent_item['resource_type'] === 'photo') ? ACTIVITY_OBJ_PHOTO : ACTIVITY_OBJ_NOTE);
 
-		$links = array(array('rel' => 'alternate','type' => 'text/html', 'href' => $parent_item['plink']));
-		$objtype = (($parent_item['resource_type'] === 'photo') ? ACTIVITY_OBJ_PHOTO : ACTIVITY_OBJ_NOTE );
-
-		$body = $parent_item['body'];
-
-
-		$object = json_encode(array(
+		$object = json_encode([
 			'type'    => $post_type,
-			'id'	  => $parent_item['mid'],
-			'asld'    => \Zotlabs\Lib\Activity::fetch_item( [ 'id' => $parent_item['mid'] ] ),
+			'id'      => $parent_item['mid'],
+			'asld'    => \Zotlabs\Lib\Activity::fetch_item(['id' => $parent_item['mid']]),
 			'parent'  => (($parent_item['thr_parent']) ? $parent_item['thr_parent'] : $parent_item['parent_mid']),
-			'link'	  => $links,
+			'link'    => $links,
 			'title'   => $parent_item['title'],
 			'content' => $parent_item['body'],
 			'created' => $parent_item['created'],
 			'edited'  => $parent_item['edited'],
-			'author'  => array(
+			'author'  => [
 				'name'     => $item_author['xchan_name'],
 				'address'  => $item_author['xchan_addr'],
 				'guid'     => $item_author['xchan_guid'],
 				'guid_sig' => $item_author['xchan_guid_sig'],
-				'link'     => array(
-					array('rel' => 'alternate', 'type' => 'text/html', 'href' => $item_author['xchan_url']),
-					array('rel' => 'photo', 'type' => $item_author['xchan_photo_mimetype'], 'href' => $item_author['xchan_photo_m'])),
-				),
-			));
+				'link'     => [
+					['rel' => 'alternate', 'type' => 'text/html', 'href' => $item_author['xchan_url']],
+					['rel' => 'photo', 'type' => $item_author['xchan_photo_mimetype'], 'href' => $item_author['xchan_photo_m']]],
+			],
+		]);
 
-
-		$arr = array();
-
-		$arr['uid'] = $this->importer['channel_id'];
-		$arr['aid'] = $this->importer['channel_account_id'];
-		$arr['uuid'] = $guid;
-		$arr['mid'] = $guid;
-
+		$arr               = [];
+		$arr['uid']        = $this->importer['channel_id'];
+		$arr['aid']        = $this->importer['channel_account_id'];
+		$arr['uuid']       = $guid;
+		$arr['mid']        = $guid;
 		$arr['parent_mid'] = $parent_item['mid'];
 
-		if($parent_item['mid'] !== $parent_guid) {
+		if ($parent_item['mid'] !== $parent_guid) {
 			$arr['thr_parent'] = $parent_guid;
 
 			// use a URI for thr_parent if we have it
-
-			if(strpos($parent_item['mid'],'/') !== false && $arr['thr_parent'] === basename($parent_item['mid'])) {
+			if (strpos($parent_item['mid'], '/') !== false && $arr['thr_parent'] === basename($parent_item['mid'])) {
 				$arr['thr_parent'] = $parent_item['mid'];
 			}
 
 		}
 
-		$arr['owner_xchan'] = $parent_item['owner_xchan'];
+		$arr['owner_xchan']  = $parent_item['owner_xchan'];
 		$arr['author_xchan'] = $person['xchan_hash'];
+		$ulink               = '[url=' . $item_author['xchan_url'] . ']' . $item_author['xchan_name'] . '[/url]';
+		$alink               = '[url=' . $parent_item['author']['xchan_url'] . ']' . $parent_item['author']['xchan_name'] . '[/url]';
+		$plink               = '[url=' . z_root() . '/display/' . $guid . ']' . $post_type . '[/url]';
+		$arr['body']         = sprintf($bodyverb, $ulink, $alink, $plink);
 
-		$ulink = '[url=' . $item_author['xchan_url'] . ']' . $item_author['xchan_name'] . '[/url]';
-		$alink = '[url=' . $parent_item['author']['xchan_url'] . ']' . $parent_item['author']['xchan_name'] . '[/url]';
-		$plink = '[url='. z_root() .'/display/'.$guid.']'.$post_type.'[/url]';
-		$arr['body'] =  sprintf( $bodyverb, $ulink, $alink, $plink );
-
-		$arr['app']  = 'Diaspora';
+		$arr['app'] = 'Diaspora';
 
 		// set the route to that of the parent so downstream hubs won't reject it.
 		$arr['route'] = $parent_item['route'];
 
 		$arr['item_private'] = $parent_item['item_private'];
-		$arr['verb'] = $activity;
-		$arr['obj_type'] = $objtype;
-		$arr['obj'] = $object;
+		$arr['verb']         = $activity;
+		$arr['obj_type']     = $objtype;
+		$arr['obj']          = $object;
 
-		if($this->xmlbase) {
+		if ($this->xmlbase) {
 			$unxml = [];
-			foreach($this->xmlbase as $k => $v) {
-				if($k === 'diaspora_handle')
+			foreach ($this->xmlbase as $k => $v) {
+				if ($k === 'diaspora_handle')
 					$k = 'author';
-				if($k === 'target_type')
+				if ($k === 'target_type')
 					$k = 'parent_type';
-				if(is_string($v))
+				if (is_string($v))
 					$v = unxmlify($v);
 				$unxml[$k] = $v;
 			}
 		}
 
-
-		set_iconfig($arr,'diaspora','fields',$unxml,true);
+		set_iconfig($arr, 'diaspora', 'fields', $unxml, true);
 
 		$result = item_store($arr);
 
-		if($result['success']) {
+		if ($result['success']) {
 			// if the message isn't already being relayed, notify others
 			// the existence of parent_author_signature means the parent_author or owner
 			// is already relaying. The parent_item['origin'] indicates the message was created on our system
 
-			if(intval($parent_item['item_origin']) && (! $parent_author_signature))
-				Zotlabs\Daemon\Master::Summon(array('Notifier','comment-import',$result['item_id']));
-			sync_an_item($this->importer['channel_id'],$result['item_id']);
+			if (intval($parent_item['item_origin']) && (!$parent_author_signature))
+				Master::Summon(['Notifier', 'comment-import', $result['item_id']]);
+			sync_an_item($this->importer['channel_id'], $result['item_id']);
 		}
 
 		return;

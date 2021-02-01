@@ -909,7 +909,7 @@ function diaspora_send_participation($channel, $contact, $item) {
 			'author'      => channel_reddress($channel),
 			'guid'        => new_uuid(),
 			'parent_type' => 'Post',
-			'parent_guid' => $item['parent_mid']
+			'parent_guid' => $item['uuid']
 		]
 	);
 
