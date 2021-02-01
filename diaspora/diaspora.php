@@ -118,6 +118,7 @@ function diaspora_fetch_provider(&$arr) {
 
 	$id         = $path_parts['basename'];
 	$thread_url = $parts['scheme'] . '://' . $parts['host'] . '/posts/' . $id;
+	$thread_data = [];
 
 	// fetch the json
 	$x = z_fetch_url($thread_url, false, 1, ['headers' => ['Accept: application/json']]);

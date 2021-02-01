@@ -522,7 +522,11 @@ class Diaspora_Receiver {
 		}
 
 		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$diaspora_handle);
-		if(! $contact)
+
+		if(!$contact && $this->force)
+			$contact = find_diaspora_person_by_handle($diaspora_handle);
+
+		if(! $contact )
 			return;
 
 		$r = q("SELECT id FROM item WHERE uid = %d AND uuid = '%s' LIMIT 1",
@@ -685,7 +689,7 @@ class Diaspora_Receiver {
 
 		$tgroup = tgroup_check($this->importer['channel_id'],$datarray);
 
-		if((! $this->importer['system']) && (! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'send_stream')) && (! $tgroup)) {
+		if((! $this->importer['system']) && (! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'send_stream')) && (! $tgroup) && (! $this->force)) {
 			logger('diaspora_reshare: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
@@ -701,7 +705,7 @@ class Diaspora_Receiver {
 
 
 
-		if(! post_is_importable($datarray,$contact)) {
+		if(! post_is_importable($datarray,$contact) && !$this->force) {
 			logger('diaspora_reshare: filtering this author.');
 			return 202;
 		}
@@ -710,6 +714,8 @@ class Diaspora_Receiver {
 
 		if($result['success']) {
 			sync_an_item($this->importer['channel_id'],$result['item_id']);
+			if($this->force)
+				diaspora_send_participation($this->importer, $xchan, $result['item']);
 		}
 
 		return;
