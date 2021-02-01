@@ -295,7 +295,7 @@ function photocache_url(&$cache = []) {
 
 		if($i['success']) {
 			// New data received (HTTP 200)
-			$type = guess_image_type($cache['item']['display_path'], $i['header']);
+			$type = guess_image_type($cache['item']['display_path'], $i);
 			if(strpos($type, 'image') === false)
 				return logger('wrong image type detected ' . $type, LOGGER_DEBUG);
 			$cache['item']['mimetype'] = $type;
