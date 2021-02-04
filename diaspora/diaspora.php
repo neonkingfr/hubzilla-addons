@@ -11,6 +11,7 @@
 
 use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Keyutils;
 
 // use the new federation protocol
 define('DIASPORA_V2',1);
@@ -260,7 +261,7 @@ function diaspora_personal_xrd(&$b) {
 		[
 			'$baseurl'   => z_root(),
 			'$dspr_guid' => $b['user']['channel_guid'] . str_replace('.','',\App::get_hostname()),
-			'$dspr_key'  => base64_encode(pemtorsa($b['user']['channel_pubkey']))
+			'$dspr_key'  => base64_encode(Keyutils::pemToRsa($b['user']['channel_pubkey']))
 		]
 	);
 
@@ -713,7 +714,7 @@ function diaspora_discover(&$b) {
 				if($link['rel'] === 'diaspora-public-key') {
 					$diaspora_key = escape_tags(base64_decode($link['href']));
 					if(strstr($diaspora_key,'RSA '))
-						$pubkey = rsatopem($diaspora_key);
+						$pubkey = Keyutils::rsaToPem($diaspora_key);
 					else
 						$pubkey = $diaspora_key;
 					$diaspora = true;
@@ -756,7 +757,7 @@ function diaspora_discover(&$b) {
 				if($link['@attributes']['rel'] === 'diaspora-public-key') {
 					$diaspora_key = escape_tags(base64_decode(unamp($link['@attributes']['href'])));
 					if(strstr($diaspora_key,'RSA '))
-						$pubkey = rsatopem($diaspora_key);
+						$pubkey = Keyutils::rsaToPem($diaspora_key);
 					else
 						$pubkey = $diaspora_key;
 					$diaspora = true;
@@ -803,7 +804,7 @@ function diaspora_discover(&$b) {
 			if($vcard['public_key']) {
 				$diaspora_key = $vcard['public_key'];
 				if(strstr($diaspora_key,'RSA '))
-					$pubkey = rsatopem($diaspora_key);
+					$pubkey = Keyutils::rsaToPem($diaspora_key);
 				else
 					$pubkey = $diaspora_key;
 			}
@@ -1032,7 +1033,7 @@ function diaspora_profile_sidebar(&$x) {
 		[
 			'$podloc'     => z_root(),
 			'$guid'       => $profile['channel_guid'] . str_replace('.','',App::get_hostname()),
-			'$pubkey'     => pemtorsa($profile['channel_pubkey']),
+			'$pubkey'     => Keyutils::pemToRsa($profile['channel_pubkey']),
 			'$searchable' => ((observer_prohibited()) ? 'false' : 'true'),
 			'$nickname'   => $profile['channel_address'],
 			'$fullname'   => $profile['channel_name'],

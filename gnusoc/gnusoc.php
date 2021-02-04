@@ -12,6 +12,7 @@
 use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
+use Zotlabs\Lib\Keyutils;
 
 require_once('include/crypto.php');
 require_once('include/items.php');
@@ -143,7 +144,7 @@ function gnusoc_federated_transports(&$a,&$x) {
 function gnusoc_webfinger(&$a,&$b) {
 	if(! $b['channel'])
 		return;
-	
+
 	if(! Apps::addon_app_installed($b['channel']['channel_id'], 'gnusoc'))
 		return;
 
@@ -179,12 +180,12 @@ function gnusoc_follow_allow(&$a, &$b) {
 function gnusoc_follow_local(&$a,&$b) {
 
 	// we are calling this function to handle both
-	// 'follow_local' and 'accept_follow' and which both 
+	// 'follow_local' and 'accept_follow' and which both
 	// have slightly different hook params
 
 	if(array_key_exists('channel',$b)) {
 		$channel = $b['channel'];
-	}	
+	}
 	else {
 		$channel = channelx_by_n($b['channel_id']);
 	}
@@ -228,7 +229,7 @@ function gnusoc_cron_daily($a,&$b) {
 }
 
 function gnusoc_connection_remove(&$a,&$b) {
-		  
+
 	$r = q("SELECT abook.*, xchan.*
 		FROM abook left join xchan on abook_xchan = xchan_hash
 		WHERE abook_channel = %d and abook_id = %d LIMIT 1",
@@ -242,7 +243,7 @@ function gnusoc_connection_remove(&$a,&$b) {
 	require_once('addon/pubsubhubbub/pubsubhubbub.php');
 
 	$channel = channelx_by_n($b['channel_id']);
-	
+
 	$hubs = get_xconfig($r[0]['xchan_hash'],'system','push_hubs');
 	if($hubs) {
 		foreach($hubs as $hub) {
@@ -300,7 +301,7 @@ function get_salmon_key($uri,$keyhash) {
 	if(count($ret)) {
 		for($x = 0; $x < count($ret); $x ++) {
 			if(substr($ret[$x],0,5) === 'data:') {
-				$ret[$x] = convert_salmon_key($ret[$x]);
+				$ret[$x] = Keyutils::convertSalmonKey($ret[$x]);
 			}
 		}
 	}
@@ -350,11 +351,11 @@ function slapper($owner,$url,$slap) {
 	// create a magic envelope
 
 
-	$data      = base64url_encode($slap, false); // do not strip padding 
+	$data      = base64url_encode($slap, false); // do not strip padding
 	$data_type = 'application/atom+xml';
 	$encoding  = 'base64url';
 	$algorithm = 'RSA-SHA256';
-	$keyhash   = base64url_encode(hash('sha256',salmon_key($owner['channel_pubkey'])),true);
+	$keyhash   = base64url_encode(hash('sha256',Keyutils::salmonKey($owner['channel_pubkey'])),true);
 
 	$data = str_replace(array(" ","\t","\r","\n"),array("","","",""),$data);
 
@@ -533,7 +534,7 @@ function gnusoc_notifier_process(&$a,&$b) {
 
 	// also send salmon slaps to anybody who was mentioned in the comment to match OStatus expected behaviour;
 	// however they need to be registered on this site (have a valid xchan and hubloc) from some prior
-	// activity and also be OStatus. 
+	// activity and also be OStatus.
 
 	if((array_key_exists('term',$b['target_item'])) && is_array($b['target_item']['term']) && count($b['target_item']['term'])) {
 		foreach($b['target_item']['term'] as $t) {
@@ -591,7 +592,7 @@ function gnusoc_notifier_process(&$a,&$b) {
 	      xmlns:ostatus="http://ostatus.org/schema/1.0" 
 		  xmlns:statusnet="http://status.net/schema/api/1/" >',$slap);
 
- 
+
 		foreach($recips as $recip) {
 			$h = slapper($channel,$recip['hubloc_callback'],$slap);
         	$b['queued'][] = $h;
@@ -685,7 +686,7 @@ function gnusoc_follow_from_feed(&$a,&$b) {
 		$closeness = get_pconfig($importer['channel_id'],'system','new_abook_closeness');
 		if($closeness === false)
 			$closeness = 80;
-		
+
 		$r = abook_store_lowlevel(
 			[
 				'abook_account'   => intval($importer['channel_account_id']),
@@ -717,7 +718,7 @@ function gnusoc_follow_from_feed(&$a,&$b) {
 				intval($importer['channel_id']),
 				dbesc($xchan['xchan_hash'])
 			);
-		
+
 			if($new_connection) {
 				\Zotlabs\Lib\Enotify::submit(array(
 					'type'       => NOTIFY_INTRO,
@@ -744,14 +745,14 @@ function gnusoc_follow_from_feed(&$a,&$b) {
 				unset($clone['abook_channel']);
 
 				$abconfig = load_abconfig($importer['channel_id'],$clone['abook_xchan']);
-	
+
 		 		if($abconfig)
 					$clone['abconfig'] = $abconfig;
 
 				build_sync_packet($importer['channel_id'], array('abook' => array($clone)));
 
 				/* If there is a default group for this channel and friending is automatic, add this member to it */
-	
+
 				if($importer['channel_default_group'] && $automatic) {
 					require_once('include/group.php');
 					$g = group_rec_byhash($importer['channel_id'],$importer['channel_default_group']);
@@ -789,7 +790,7 @@ function gnusoc_atom_entry($a,&$b) {
 	if(is_array($item['term']) && $item['term']) {
 		foreach($item['term'] as $t) {
 			if($t['ttype'] == TERM_MENTION) {
-				$o .=  '<link rel="mentioned" ostatus:object-type="http://activitystrea.ms/schema/1.0/person" href="' . xmlify($t['url']) . '"/>' . "\r\n";		
+				$o .=  '<link rel="mentioned" ostatus:object-type="http://activitystrea.ms/schema/1.0/person" href="' . xmlify($t['url']) . '"/>' . "\r\n";
 			}
 		}
 	}
@@ -807,7 +808,7 @@ function gnusoc_atom_feed_top($a,&$b) {
 	if($b['channel'] && $b['params']['compat']) {
         $b['xml'] = str_replace('</generator>','</generator>' . "\r\n  " .
         '<link rel="salmon" href="' . z_root() . '/salmon/' . $b['channel']['channel_address'] . '" />' . "\r\n  " .
-        '<link rel="http://salmon-protocol.org/ns/salmon-replies" href="' . z_root() . '/salmon/' . $b['channel']['channel_address'] . '" />' . 
+        '<link rel="http://salmon-protocol.org/ns/salmon-replies" href="' . z_root() . '/salmon/' . $b['channel']['channel_address'] . '" />' .
 		"\r\n  " .
         '<link rel="http://salmon-protocol.org/ns/salmon-mention" href="' . z_root() . '/salmon/' . $b['channel']['channel_address'] . '" />',$b['xml']);
 
@@ -887,7 +888,7 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 			if(array_key_exists('rel',$link)) {
 				if($link['rel'] == 'magic-public-key') {
 					if(substr($link['href'],0,5) === 'data:') {
-						$salmon_key = convert_salmon_key($link['href']);
+						$salmon_key = Keyutils::convertSalmonKey($link['href']);
 					}
 				}
 				if($link['rel'] == 'salmon') {
@@ -925,7 +926,7 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 	$k = z_fetch_url($atom_feed);
 	if($k['success'])
 		$feed_meta = feed_meta($k['body']);
-		
+
 	if($feed_meta) {
 
 		// stash any discovered pubsubhubbub hubs in case we need to follow them
@@ -1018,7 +1019,7 @@ function gnusoc_discover_channel_webfinger($a,&$b) {
 		dbesc($address)
 	);
 
-	$b['xchan']   = $address;	
+	$b['xchan']   = $address;
 	$b['success'] = true;
 
 }

@@ -4,6 +4,7 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Daemon\Master;
 use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\Keyutils;
 use Zotlabs\Lib\Libzot;
 
 require_once('include/event.php');
@@ -1245,7 +1246,7 @@ function as_actor_store($url,$person_obj) {
 		if($person_obj['id'] === $person_obj['publicKey']['owner']) {
 			$pubkey = $person_obj['publicKey']['publicKeyPem'];
 			if(strstr($pubkey,'RSA ')) {
-				$pubkey = rsatopem($pubkey);
+				$pubkey = Keyutils::rsaToPem($pubkey);
 			}
 		}
 	}
