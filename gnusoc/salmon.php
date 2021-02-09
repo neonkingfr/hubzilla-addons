@@ -1,6 +1,7 @@
 <?php
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Crypto;
 
 require_once('include/crypto.php');
 require_once('include/items.php');
@@ -32,11 +33,11 @@ function salmon_post(&$a) {
 	else {
 		$xml = file_get_contents('php://input');
 	}
-	
+
 	logger('mod-salmon: new salmon ' . $xml, LOGGER_DATA);
 
 	$nick       = ((argc() > 1) ? trim(argv(1)) : '');
-	
+
 	$importer = channelx_by_nick($nick);
 
 	if(! $importer)
@@ -105,14 +106,14 @@ function salmon_post(&$a) {
 	logger('decoded: ' . $data, LOGGER_DATA);
 
 	// GNU-Social doesn't send a legal Atom feed over salmon, only an Atom entry. Unfortunately
-	// our parser is a bit strict about compliance so we'll insert just enough of a feed 
-	// tag to trick it into believing it's a compliant feed. 
+	// our parser is a bit strict about compliance so we'll insert just enough of a feed
+	// tag to trick it into believing it's a compliant feed.
 
 	if(! strstr($data,'<feed')) {
-		$data = str_replace('<entry ','<feed xmlns="http://www.w3.org/2005/Atom"><entry ',$data); 
+		$data = str_replace('<entry ','<feed xmlns="http://www.w3.org/2005/Atom"><entry ',$data);
 		$data .= '</feed>';
-	} 
- 
+	}
+
 	$datarray = process_salmon_feed($data,$importer);
 
 	if((! is_array($datarray)) || (empty($datarray))) {
@@ -156,16 +157,16 @@ function salmon_post(&$a) {
 
 	// We should have everything we need now. Let's see if it verifies.
 
-	$verify = rsa_verify($signed_data,$signature,$pubkey);
+	$verify = Crypto::verify($signed_data,$signature,$pubkey);
 
 	if(! $verify) {
 		logger('mod-salmon: message did not verify using protocol. Trying padding hack.');
-		$verify = rsa_verify($compliant_format,$signature,$pubkey);
+		$verify = Crypto::verify($compliant_format,$signature,$pubkey);
 	}
 
 	if(! $verify) {
 		logger('mod-salmon: message did not verify using padding. Trying old statusnet hack.');
-		$verify = rsa_verify($stnet_signed_data,$signature,$pubkey);
+		$verify = Crypto::verify($stnet_signed_data,$signature,$pubkey);
 	}
 
 	if(! $verify) {
@@ -217,9 +218,9 @@ function salmon_post(&$a) {
 
 		$cb = [
 			'item'    => $item,
-			'channel' => $importer, 
-			'xchan'   => $xchan, 
-			'author'  => $datarray['author'], 
+			'channel' => $importer,
+			'xchan'   => $xchan,
+			'author'  => $datarray['author'],
 			'caught'  => false
 		];
 
@@ -234,9 +235,9 @@ function salmon_post(&$a) {
 
 		$cb = [
 			'item'    => $item,
-			'channel' => $importer, 
-			'xchan'   => $xchan, 
-			'author'  => $datarray['author'], 
+			'channel' => $importer,
+			'xchan'   => $xchan,
+			'author'  => $datarray['author'],
 			'caught'  => false
 		];
 
@@ -245,12 +246,12 @@ function salmon_post(&$a) {
 			http_status_exit(200);
 
 	}
-		
+
 
 	$m = parse_url($xchan['xchan_url']);
 	if($m) {
 		$host = $m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '');
-		
+
     	q("update site set site_dead = 0, site_update = '%s' where site_type = %d and site_url = '%s'",
         	dbesc(datetime_convert()),
 	        intval(SITE_TYPE_NOTZOT),
@@ -270,7 +271,7 @@ function salmon_post(&$a) {
 
 	unset($datarray['author']);
 
-	// we will only set and return the status code for operations 
+	// we will only set and return the status code for operations
 	// on an importer channel and not for the sys channel
 
 	$status = 200;
@@ -291,7 +292,7 @@ function salmon_post(&$a) {
 			);
 			$importer['send_downstream'] = true;
 		}
-		
+
 		consume_feed($data,$importer,$xchan,1);
 		consume_feed($data,$importer,$xchan,2);
 
@@ -302,6 +303,6 @@ function salmon_post(&$a) {
 	}
 
 	http_status_exit($status);
-	
+
 }
 

@@ -12,6 +12,7 @@
 use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
+use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Keyutils;
 
 require_once('include/crypto.php');
@@ -363,7 +364,7 @@ function slapper($owner,$url,$slap) {
 
 	$precomputed = '.YXBwbGljYXRpb24vYXRvbSt4bWw=.YmFzZTY0dXJs.UlNBLVNIQTI1Ng==';
 
-	$signature  = base64url_encode(rsa_sign($data . $precomputed,$owner['channel_prvkey']));
+	$signature  = base64url_encode(Crypto::sign($data . $precomputed,$owner['channel_prvkey']));
 
 	$salmon_tpl = get_markup_template('magicsig.tpl','addon/gnusoc/');
 

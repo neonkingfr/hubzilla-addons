@@ -11,6 +11,7 @@
 
 use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Keyutils;
 
 // use the new federation protocol
@@ -413,9 +414,9 @@ function diaspora_process_outbound(&$arr) {
 	if($target_item && array_key_exists('item_obscured',$target_item) && intval($target_item['item_obscured'])) {
 		$key = get_config('system','prvkey');
 		if($target_item['title'])
-			$target_item['title'] = crypto_unencapsulate(json_decode($target_item['title'],true),$key);
+			$target_item['title'] = Crypto::unencapsulate(json_decode($target_item['title'],true),$key);
 		if($target_item['body'])
-			$target_item['body'] = crypto_unencapsulate(json_decode($target_item['body'],true),$key);
+			$target_item['body'] = Crypto::unencapsulate(json_decode($target_item['body'],true),$key);
 	}
 
 	$prv_recips = $arr['env_recips'];

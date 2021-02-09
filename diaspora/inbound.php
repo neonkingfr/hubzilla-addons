@@ -1,6 +1,7 @@
 <?php
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Crypto;
 
 require_once('addon/diaspora/Receiver.php');
 
@@ -401,7 +402,7 @@ function diaspora_decode($importer,$xml,$format) {
 		http_status_exit(400);
 	}
 
-	$verify = rsa_verify($signed_data,$signature,$key);
+	$verify = Crypto::verify($signed_data,$signature,$key);
 
 	if(! $verify) {
 		logger('mod-diaspora: Message did not verify. Discarding.', LOGGER_NORMAL, LOG_ERR);

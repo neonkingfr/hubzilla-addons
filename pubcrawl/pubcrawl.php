@@ -16,6 +16,7 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Libzot;
 use Zotlabs\Web\HTTPSig;
 use Zotlabs\Lib\Activity;
@@ -433,7 +434,7 @@ function pubcrawl_salmon_sign($data, $channel) {
 
 	$precomputed = '.' . base64url_encode($data_type, false) . '.YmFzZTY0dXJs.UlNBLVNIQTI1Ng==';
 
-	$signature = base64url_encode(rsa_sign($data . $precomputed, $channel['channel_prvkey']));
+	$signature = base64url_encode(Crypto::sign($data . $precomputed, $channel['channel_prvkey']));
 
 	return ([
 		'data'      => $data,

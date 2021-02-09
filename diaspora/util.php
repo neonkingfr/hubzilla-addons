@@ -1,6 +1,7 @@
 <?php
 
 
+use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Libzot;
 
 function diaspora_handle_from_contact($contact_hash) {
@@ -122,7 +123,7 @@ function diaspora_sign_fields($fields,$prvkey) {
 
 	$s = implode(';',$n);
 	logger('signing_string: ' . $s);
-	return base64_encode(rsa_sign($s,$prvkey));
+	return base64_encode(Crypto::sign($s,$prvkey));
 
 }
 
@@ -140,7 +141,7 @@ function diaspora_verify_fields($fields,$sig,$pubkey) {
 
 	$s = implode(';',$n);
 	logger('signing_string: ' . $s);
-	return rsa_verify($s,base64_decode($sig),$pubkey);
+	return Crypto::verify($s,base64_decode($sig),$pubkey);
 
 }
 
@@ -187,7 +188,7 @@ function diaspora_magic_env($channel,$msg) {
 	$encoding    = 'base64url';
 	$algorithm   = 'RSA-SHA256';
 	$precomputed = '.YXBwbGljYXRpb24vYXRvbSt4bWw=.YmFzZTY0dXJs.UlNBLVNIQTI1Ng==';
-	$signature   = base64url_encode(rsa_sign($data . $precomputed, $channel['channel_prvkey']));
+	$signature   = base64url_encode(Crypto::sign($data . $precomputed, $channel['channel_prvkey']));
 
 	return replace_macros(get_markup_template('magicsig.tpl','addon/diaspora'),
 		[
@@ -413,7 +414,7 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 			return false;
 		}
 
-		$verify = rsa_verify($signed_data,$signature,$key);
+		$verify = Crypto::verify($signed_data,$signature,$key);
 
 		if(! $verify) {
 			logger('Message did not verify. Discarding.', LOGGER_NORMAL, LOG_ERR);

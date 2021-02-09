@@ -1,6 +1,7 @@
 <?php
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Crypto;
 
 function diaspora_prepare_outbound($msg,$owner,$contact,$owner_prvkey,$contact_pubkey,$public = false) {
 
@@ -32,7 +33,7 @@ function diaspora_v2_build($msg,$channel,$contact,$prvkey,$pubkey,$public = fals
 	$signable_data = $data  . '.' . base64url_encode($type,false) . '.'
 		. base64url_encode($encoding,false) . '.' . base64url_encode($alg,false) ;
 
-	$signature = rsa_sign($signable_data,$prvkey);
+	$signature = Crypto::sign($signable_data,$prvkey);
 	$sig = base64url_encode($signature,false);
 
 $magic_env = <<< EOT
@@ -90,7 +91,7 @@ function diaspora_pubmsg_build($msg,$channel,$contact,$prvkey,$pubkey) {
 	$signable_data = $data  . '.' . base64url_encode($type,false) . '.'
 		. base64url_encode($encoding,false) . '.' . base64url_encode($alg,false) ;
 
-	$signature = rsa_sign($signable_data,$prvkey);
+	$signature = Crypto::sign($signable_data,$prvkey);
 	$sig = base64url_encode($signature,false);
 
 $magic_env = <<< EOT
@@ -159,7 +160,7 @@ function diaspora_msg_build($msg,$channel,$contact,$prvkey,$pubkey,$public = fal
 
 	logger('diaspora_msg_build: signable_data: ' . $signable_data, LOGGER_DATA, LOG_DEBUG);
 
-	$signature = rsa_sign($signable_data,$prvkey);
+	$signature = Crypto::sign($signable_data,$prvkey);
 	$sig = base64url_encode($signature,false);
 
 $decrypted_header = <<< EOT
@@ -743,7 +744,7 @@ function diaspora_send_mail($item,$owner,$contact) {
 	$signed_text =  $item['mid'] . ';' . $parent_ptr . ';' . $body .  ';'
 		. $created . ';' . $myaddr . ';' . $cnv['guid'];
 
-	$sig = base64_encode(rsa_sign($signed_text,$owner['channel_prvkey'],'sha256'));
+	$sig = base64_encode(Crypto::sign($signed_text,$owner['channel_prvkey'],'sha256'));
 
 	$msg = array(
 		'guid' => xmlify($item['mid']),

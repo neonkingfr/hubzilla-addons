@@ -2,6 +2,7 @@
 
 use Zotlabs\Access\PermissionRoles;
 use Zotlabs\Access\Permissions;
+use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Enotify;
 use Zotlabs\Lib\MessageFilter;
 use Zotlabs\Daemon\Master;
@@ -1185,7 +1186,7 @@ class Diaspora_Receiver {
 					}
 				}
 
-				if(! rsa_verify($author_signed_data,$author_signature,$key,'sha256')) {
+				if(! Crypto::verify($author_signed_data,$author_signature,$key,'sha256')) {
 					logger('diaspora_conversation: verification failed.');
 					continue;
 				}
@@ -1203,7 +1204,7 @@ class Diaspora_Receiver {
 
 				$key = $this->msg['key'];
 
-				if(! rsa_verify($owner_signed_data,$parent_author_signature,$key,'sha256')) {
+				if(! Crypto::verify($owner_signed_data,$parent_author_signature,$key,'sha256')) {
 					logger('diaspora_conversation: owner verification failed.');
 					continue;
 				}
@@ -1329,7 +1330,7 @@ class Diaspora_Receiver {
 				return;
 			}
 
-			if(! rsa_verify($author_signed_data,$author_signature,$key,'sha256')) {
+			if(! Crypto::verify($author_signed_data,$author_signature,$key,'sha256')) {
 				logger('diaspora_message: verification failed.');
 				return;
 			}
@@ -1820,7 +1821,7 @@ class Diaspora_Receiver {
 
 			$parent_author_signature = base64_decode($parent_author_signature);
 
-			if(! rsa_verify($signed_data,$parent_author_signature,$key,'sha256')) {
+			if(! Crypto::verify($signed_data,$parent_author_signature,$key,'sha256')) {
 				logger('diaspora_signed_retraction: top-level post owner verification failed');
 				return;
 			}
@@ -1829,7 +1830,7 @@ class Diaspora_Receiver {
 
 			$sig_decode = base64_decode($sig);
 
-			if(! rsa_verify($signed_data,$sig_decode,$key,'sha256')) {
+			if(! Crypto::verify($signed_data,$sig_decode,$key,'sha256')) {
 				logger('diaspora_signed_retraction: retraction owner verification failed.' . print_r($this->msg,true));
 				return;
 			}
@@ -2373,8 +2374,8 @@ class Diaspora_Receiver {
 
 		// check signature against old and new identities. Either can sign this message.
 
-		if(! (rsa_verify($signed_text,$sig_decode,$new_contact['xchan_pubkey'],'sha256')
-			|| rsa_verify($signed_text,$sig_decode,$contact['xchan_pubkey'],'sha256'))) {
+		if(! (Crypto::verify($signed_text,$sig_decode,$new_contact['xchan_pubkey'],'sha256')
+			|| Crypto::verify($signed_text,$sig_decode,$contact['xchan_pubkey'],'sha256'))) {
 			logger('message verification failed.');
 			return 202;
 		}
