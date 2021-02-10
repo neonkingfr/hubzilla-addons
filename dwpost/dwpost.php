@@ -96,7 +96,7 @@ function dwpost_send(&$a,&$b) {
 	if($b['parent'] != $b['id'])
 		return;
 
-	// Dreamwidth post in the DW user's timezone. 
+	// Dreamwidth post in the DW user's timezone.
 	// Hopefully the person's Friendica account
 	// will be set to the same thing.
 
@@ -109,14 +109,14 @@ function dwpost_send(&$a,&$b) {
 		$tz = $x[0]['channel_timezone'];
 
 	$dw_username = get_pconfig($b['uid'],'dwpost','dw_username');
-	$dw_password = z_unobscure(get_pconfig($b['uid'],'dwpost','dw_password'));
+	$dw_password = unobscurify(get_pconfig($b['uid'],'dwpost','dw_password'));
 	$dw_blog = 'https://www.dreamwidth.org/interface/xmlrpc';
 
 	if($dw_username && $dw_password && $dw_blog) {
 
 		require_once('include/bbcode.php');
 		require_once('include/datetime.php');
-		
+
 		push_lang(($b['lang'] ? $b['lang'] : 'en'));
 
 		$title = $b['title'];

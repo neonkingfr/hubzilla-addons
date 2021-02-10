@@ -6,7 +6,7 @@
  * Version: 1.0
  * Maintainer: none
  */
- 
+
 /*
  *   Hubzilla to Hubzilla
  */
@@ -46,7 +46,7 @@ function redred_jot_nets(&$a,&$b) {
 
 	$redred_defpost = get_pconfig(local_channel(),'redred','post_by_default');
 	$selected = ((intval($redred_defpost) == 1) ? ' checked="checked" ' : '');
-	$b .= '<div class="profile-jot-net"><input type="checkbox" name="redred_enable"' . $selected . ' value="1" /> ' 
+	$b .= '<div class="profile-jot-net"><input type="checkbox" name="redred_enable"' . $selected . ' value="1" /> '
 		. '<i class="fa fa-fw fa-hubzilla"></i> ' . t('Post to Hubzilla') . '</div>';
 }
 
@@ -105,12 +105,12 @@ function redred_post_hook(&$a,&$b) {
 
 	load_pconfig($b['uid'], 'redred');
 
-	
+
 	$api      = get_pconfig($b['uid'], 'redred', 'baseapi');
 	if(substr($api,-1,1) != '/')
 		$api .= '/';
 	$username = get_pconfig($b['uid'], 'redred', 'username');
-	$password = z_unobscure(get_pconfig($b['uid'], 'redred', 'password'));
+	$password = unobscurify(get_pconfig($b['uid'], 'redred', 'password'));
 	$channel  = get_pconfig($b['uid'], 'redred', 'channel');
 
 	$msg = $b['body'];

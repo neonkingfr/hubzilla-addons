@@ -38,7 +38,7 @@ function wppost_jot_nets(&$b) {
 
 	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
 		return;
-	
+
 	$wp_post = Apps::addon_app_installed(local_channel(), 'wppost');
 	if($wp_post) {
 		$wp_defpost = get_pconfig(local_channel(),'wppost','post_by_default');
@@ -105,7 +105,7 @@ function wppost_send(&$b) {
 		return;
 
 	$edited = (($b['created'] !== $b['edited']) ? true : false);
-		
+
 	if($b['parent'] != $b['id'])
 		return;
 
@@ -146,11 +146,11 @@ function wppost_send(&$b) {
 		$terms_names['post_tag'] = $tags;
 	if($categories)
 		$terms_names['category'] = $categories;
-		
+
 
 
 	$wp_username = get_pconfig($b['uid'],'wppost','wp_username');
-	$wp_password = z_unobscure(get_pconfig($b['uid'],'wppost','wp_password'));
+	$wp_password = unobscurify(get_pconfig($b['uid'],'wppost','wp_password'));
 	$wp_blogid   = get_pconfig($b['uid'],'wppost','wp_blogid');
 	if(! $wp_blogid)
 		$wp_blogid = 1;
@@ -158,7 +158,7 @@ function wppost_send(&$b) {
 	if($wp_username && $wp_password && $wp_blog) {
 
 		require_once('include/bbcode.php');
-		
+
 		push_lang(($b['lang'] ? $b['lang'] : 'en'));
 
 		$post = $b['body'];
@@ -185,7 +185,7 @@ function wppost_send(&$b) {
 			$data['terms_names'] = $terms_names;
 
 		// We currently have Incutio set to produce debugging output, which goes to stdout.
-		// We'll catch the stdout buffer contents and direct them to the logfile at LOGGER_ALL 
+		// We'll catch the stdout buffer contents and direct them to the logfile at LOGGER_ALL
 		// level if a failure is encountered.
 
 		ob_start();
@@ -259,7 +259,7 @@ function wppost_post_remote_end(&$b) {
 	if(! $wp_forward_comments)
 		return;
 
-	// how about our stream permissions? 
+	// how about our stream permissions?
 
 	if(! perm_is_allowed($b['uid'],'','view_stream',false))
 		return;
@@ -284,7 +284,7 @@ function wppost_post_remote_end(&$b) {
 	logger('Wordpress xpost comment invoked', LOGGER_DEBUG);
 
 	$edited = (($b['created'] !== $b['edited']) ? true : false);
-		
+
 	if($edited) {
 		$r = q("select * from iconfig left join item on iconfig.iid = item.id
 			where cat = 'system' and k = 'wordpress' and iid = %d and uid = %d limit 1",
@@ -298,7 +298,7 @@ function wppost_post_remote_end(&$b) {
 	}
 
 	$wp_username = get_pconfig($b['uid'],'wppost','wp_username');
-	$wp_password = z_unobscure(get_pconfig($b['uid'],'wppost','wp_password'));
+	$wp_password = unobscurify(get_pconfig($b['uid'],'wppost','wp_password'));
 	$wp_blog     = get_pconfig($b['uid'],'wppost','wp_blog');
 	$wp_blogid   = get_pconfig($b['uid'],'wppost','wp_blogid');
 	if(! $wp_blogid)
@@ -378,7 +378,7 @@ function wppost_drop_item(&$b) {
 	$post_id = basename($r[0]['v']);
 
 	$wp_username = get_pconfig($b['item']['uid'],'wppost','wp_username');
-	$wp_password = z_unobscure(get_pconfig($b['item']['uid'],'wppost','wp_password'));
+	$wp_password = unobscurify(get_pconfig($b['item']['uid'],'wppost','wp_password'));
 	$wp_blog     = get_pconfig($b['item']['uid'],'wppost','wp_blog');
 	$wp_blogid   = get_pconfig($b['uid'],'wppost','wp_blogid');
 	if(! $wp_blogid)
@@ -394,9 +394,9 @@ function wppost_drop_item(&$b) {
 		}
 		$client = new IXR_Client($wp_blog,false,$port);
 
-		if($b['item']['id'] == $b['item']['parent']) 
+		if($b['item']['id'] == $b['item']['parent'])
 			$res = $client->query('wp.deletePost',$wp_blogid,$wp_username,$wp_password,$post_id);
-		else	
+		else
 			$res = $client->query('wp.deleteComment',$wp_blogid,$wp_username,$wp_password,$post_id);
 
 		if(! $res) {
@@ -407,7 +407,7 @@ function wppost_drop_item(&$b) {
 		$result = intval($client->getResponse());
 
 		logger('wppost: delete post returns: ' . $result, LOGGER_DEBUG);
-	
+
 	}
 
 }
