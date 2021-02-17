@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.15
+ * Version: 0.2.16
  * Author: Max Kostikov <https://tiksi.net/channel/kostikov>
  * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  * MinVersion: 3.9.5
