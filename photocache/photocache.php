@@ -2,7 +2,7 @@
 /**
  * Name: Photo Cache
  * Description: Local photo cache implementation
- * Version: 0.2.15
+ * Version: 0.2.16
  * Author: Max Kostikov <https://tiksi.net/channel/kostikov>
  * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  * MinVersion: 3.9.5
@@ -239,7 +239,7 @@ function photocache_url(&$cache = []) {
 		}
 	}
 		
-	$exp = strtotime($cache['item']['expires']);
+	$exp = strtotime($cache['item']['expires']) + date('Z');
 	// fetch the image if the cache has expired or we need to cache and it has not yet been done
 	$url = (($cache['item']['height'] == 0) || ((($cache['item']['height'] >= $minres || $cache['item']['width'] >= $minres) && ($exp - 60 < time() || $cache['item']['filesize'] == 0))) ? html_entity_decode($cache['item']['display_path'], ENT_QUOTES) : '');
 	
@@ -247,7 +247,7 @@ function photocache_url(&$cache = []) {
 		// Get data from remote server
 		$hdrs = [];
 		if($cache['item']['filesize'] > 0) {
-			$hdrs[] = "If-Modified-Since: " . gmdate("D, d M Y H:i:s", $exp . "Z") . " GMT";
+			$hdrs[] = "If-Modified-Since: " . gmdate("D, d M Y H:i:s", $exp) . " GMT";
 			if(! empty($cache['item']['description']))
 				$hdrs[] = "If-None-Match: " . $cache['item']['description'];
 		}
