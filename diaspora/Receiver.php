@@ -552,7 +552,7 @@ class Diaspora_Receiver {
 
 		$source_xml = get_diaspora_reshare_xml($source_url);
 
-		if($source_xml['status_message']) {
+		if(is_array($source_xml) && $source_xml['status_message']) {
 			$body = markdown_to_bb($this->get_body($source_xml['status_message']), false, [ 'diaspora' => true, 'preserve_lf' => true ]);
 
 			$orig_author = $this->get_author($source_xml['status_message']);
@@ -1112,7 +1112,7 @@ class Diaspora_Receiver {
 			if($subject)
 				$nsubject = str_rot47(base64url_encode($subject));
 
-			$r = q("insert into conv (uid, guid, creator, created, updated, subject, recips) 
+			$r = q("insert into conv (uid, guid, creator, created, updated, subject, recips)
 				values( %d, '%s', '%s', '%s', '%s', '%s', '%s') ",
 				intval($this->importer['channel_id']),
 				dbesc($guid),
