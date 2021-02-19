@@ -395,7 +395,9 @@ function diaspora_decode($importer,$xml,$format) {
 	// This will also convert diaspora public key from pkcs#1 to pkcs#8
 
 	logger('mod-diaspora: Fetching key for ' . $author_link );
- 	$key = get_diaspora_key($author_link);
+
+	$p = find_diaspora_person_by_handle($author_link);
+	$key = $p['xchan_pubkey'];
 
 	if(! $key) {
 		logger('mod-diaspora: Could not retrieve author key.', LOGGER_NORMAL, LOG_WARNING);
@@ -411,7 +413,7 @@ function diaspora_decode($importer,$xml,$format) {
 
 	logger('mod-diaspora: Message verified.');
 
-	return array('message' => $final_msg, 'author' => $author_link, 'key' => $key, 'signature' => base64url_encode($signature), 'format' => $format);
+	return array('message' => $final_msg, 'author' => $author_link, 'key' => $key, 'hubloc_url' => $p['hubloc_url'], 'format' => $format);
 
 }
 

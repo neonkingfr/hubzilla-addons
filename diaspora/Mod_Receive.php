@@ -14,7 +14,7 @@ require_once('include/crypto.php');
 
 
 class Receive extends Controller {
-	
+
 	function post() {
 
 		$public = false;
@@ -36,11 +36,11 @@ class Receive extends Controller {
 			// the hostname but remove any periods so that it doesn't mess up URLs.
 			// (This was an occasional issue with message_ids that include the hostname,
 			// and we learned from that experience).
-			// Without the hostname bit the Diaspora side would not be able to share 
-			// with two channels which have the same GUID (e.g. channel clones). In this step 
+			// Without the hostname bit the Diaspora side would not be able to share
+			// with two channels which have the same GUID (e.g. channel clones). In this step
 			// we're stripping the hostname part which Diaspora thinks is our GUID so
-			// that we can locate our channel by the channel_guid. On our network, 
-			// channel clones have the same GUID even if they are on different sites. 
+			// that we can locate our channel by the channel_guid. On our network,
+			// channel clones have the same GUID even if they are on different sites.
 
 			$hn = str_replace('.','',App::get_hostname());
 			if(($x = strpos($guid,$hn)) > 0)
@@ -61,8 +61,8 @@ class Receive extends Controller {
 		// Diaspora traditionally urlencodes or base64 encodes things a superfluous number of times.
 		// The legacy format is double url-encoded for an unknown reason. At the time of this writing
 		// the new formats have not yet been seen crossing the wire, so we're being proactive and decoding
-		// until we see something reasonable. Once we know how many times we are expected to decode we can 
-		// refine this.   
+		// until we see something reasonable. Once we know how many times we are expected to decode we can
+		// refine this.
 
 		if($_POST['xml']) {
 			$xml = ltrim($_POST['xml']);
@@ -115,6 +115,15 @@ class Receive extends Controller {
 
 		if(! is_array($msg))
 			http_status_exit(500);
+
+		if(isset($msg['hubloc_url']) {
+			q("UPDATE site SET site_update = '%s', site_dead = 0 WHERE site_url = '%s' AND site_update < %s - INTERVAL %s",
+				dbesc(datetime_convert()),
+				dbesc($msg['hubloc_url'),
+				db_utcnow(),
+				db_quoteinterval('1 DAY')
+			);
+		}
 
 		logger('mod-diaspora: dispatching', LOGGER_DEBUG);
 

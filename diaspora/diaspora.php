@@ -446,7 +446,7 @@ function diaspora_process_outbound(&$arr) {
 		foreach($prv_recips as $recip)
 			$hashes[] = "'" . $recip['hash'] . "'";
 
-		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s' 
+		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
 			and xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
 			dbesc($arr['hub']['hubloc_url'])
 		);
