@@ -248,11 +248,13 @@ function diaspora_build_status($item,$owner) {
 
 	$images = array();
 
-	$title = $item['title'];
+	$body = ((isset($item['title'])) ? '[h3]' . $item['title'] . '[/h3]' . "\n" : '');
+	$body .= ((isset($item['summary'])) ? '[h5]' . $item['summary'] . '[/h5]' . "\n" : '');
+	$body .= $item['body'];
+
+	$body = bb_to_markdown($body, [ 'diaspora' ]);
 
 	$ev = bbtoevent($item['body']);
-
-	$body = bb_to_markdown((($title) ? '[h3]' . $title . '[/h3]' . "\n" : '') . $item['body'], [ 'diaspora' ]);
 
 	$ev_obj = null;
 
