@@ -292,6 +292,10 @@ function asencode_item($i) {
 	if(isset($i['summary']))
 		$ret['summary'] = bbcode($i['summary'], ['cache' => true ]);
 
+	if (strpos($i['body'], '[/crypt]') !== false) {
+		$i['body'] = preg_replace_callback("/\[crypt (.*?)\](.*?)\[\/crypt\]/ism", 'bb_parse_b64_crypt', $i['body']);
+	}
+
 	$ret['content'] = bbcode($i['body'], ['cache' => true ]);
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);

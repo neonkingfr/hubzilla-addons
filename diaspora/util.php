@@ -252,8 +252,11 @@ function diaspora_build_status($item,$owner) {
 	$body .= ((isset($item['summary'])) ? '[h5]' . $item['summary'] . '[/h5]' . "\n" : '');
 	$body .= $item['body'];
 
-	$body = bb_to_markdown($body, [ 'diaspora' ]);
+	if (strpos($body, '[/crypt]') !== false) {
+		$body = preg_replace_callback("/\[crypt (.*?)\](.*?)\[\/crypt\]/ism", 'bb_parse_b64_crypt', $body);
+	}
 
+	$body = bb_to_markdown($body, [ 'diaspora' ]);
 	$ev = bbtoevent($item['body']);
 
 	$ev_obj = null;
@@ -313,6 +316,7 @@ function diaspora_build_status($item,$owner) {
 				//@TODO once we figure out if they will accept location and coordinates separately,
 				// at present it seems you need both and fictitious locations aren't acceptable
 			}
+
 			$msg = arrtoxml('status_message', $arr);
 		}
 	}
