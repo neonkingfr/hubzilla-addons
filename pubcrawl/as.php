@@ -286,8 +286,13 @@ function asencode_item($i) {
 
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
 
-	if($i['title'])
+	if(isset($i['title']))
 		$ret['name'] = bbcode($i['title'], ['cache' => true ]);
+
+	if(isset($i['summary']))
+		$ret['summary'] = bbcode($i['summary'], ['cache' => true ]);
+
+	$ret['content'] = bbcode($i['body'], ['cache' => true ]);
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);
 	if($i['created'] !== $i['edited'])
@@ -326,18 +331,6 @@ function asencode_item($i) {
 		$ret['conversation'] = $cnv;
 	}
 
-	if(strpos($i['body'],'[/summary]') !== false) {
-		$match = '';
-		preg_match("/\[summary\](.*?)\[\/summary\]/ism",$i['body'],$match);
-		$ret['summary'] = $match[1];
-
-		$body_content = preg_replace("/^(.*?)\[summary\](.*?)\[\/summary\](.*?)$/ism", '', $i['body']);
-		$ret['content'] = bbcode(trim($body_content), ['cache' => true ]);
-	}
-	else {
-		$ret['content'] = bbcode($i['body'], ['cache' => true ]);
-	}
-
 	$actor = $i['author']['xchan_url']; //asencode_person($i['author']);
 	if($actor)
 		$ret['actor'] = $actor;
@@ -348,8 +341,6 @@ function asencode_item($i) {
 	if($t) {
 		$ret['tag']       = $t;
 	}
-
-
 
 	$a = asencode_attachment($i);
 	if($a) {
@@ -1471,13 +1462,9 @@ function as_create_note($channel,$observer_hash,$act) {
 	if(! $s['parent_mid'])
 		$s['parent_mid'] = $parent ? $parent : $s['mid'];
 
-	$summary = as_bb_content($content,'summary');
-
-	if($summary)
-		$summary = '[summary]' . $summary . '[/summary]';
-
 	$s['title']    = as_bb_content($content,'name');
-	$s['body']     = $summary . as_bb_content($content,'content');
+	$s['summary']  = as_bb_content($content,'summary');
+	$s['body']     = as_bb_content($content,'content');
 	$s['verb']     = (($announce) ? ACTIVITY_SHARE : ACTIVITY_POST);
 	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
 	$s['obj']      = '';
