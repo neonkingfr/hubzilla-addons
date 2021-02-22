@@ -566,6 +566,7 @@ function pubcrawl_notifier_hub(&$arr) {
 		// If we don't have a signed message and we are not the author,
 		// the message will be misattributed in mastodon
 		if (($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) && (!$signed_msg)) {
+			logger('relayed post with no signed message');
 			return;
 		}
 	}
@@ -573,7 +574,21 @@ function pubcrawl_notifier_hub(&$arr) {
 	$prv_recips = $arr['env_recips'];
 
 	if ($signed_msg) {
+
 		$jmsg = $signed_msg;
+
+		// If the signed activitypub message comes from zot, it is nested in the attachment.
+		// TODO: this will not work for likes since the object is not the like but the liked item.
+		$signed_msg_arr = json_decode($signed_msg, true);
+		if ($signed_msg_arr['type'] === 'Create' && array_path_exists('object/attachment', $signed_msg_arr)) {
+			foreach($signed_msg_arr['object']['attachment'] as $a) {
+				if (isset($a['type']) && $a['type'] === 'PropertyValue' && isset($a['name']) && $a['name'] === 'zot.activitypub.rawmsg') {
+					if (isset($a['value'])) {
+						$jmsg = $a['value'];
+					}
+				}
+			}
+		}
 	}
 
 	if ($target_item && !$signed_msg) {
@@ -588,7 +603,7 @@ function pubcrawl_notifier_hub(&$arr) {
 		]], $ti);
 
 		$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $arr['channel']);
-		$jmsg             = json_encode($msg, JSON_UNESCAPED_SLASHES);
+		$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
 	}
 
 	if ($is_profile) {
@@ -658,7 +673,7 @@ function pubcrawl_notifier_hub(&$arr) {
 		if ($x && $x['sharedInbox']) {
 			logger('using publicInbox delivery for ' . $arr['hub']['hubloc_url'], LOGGER_DEBUG);
 			$contact['hubloc_callback'] = $x['sharedInbox'];
-			$qi                         = pubcrawl_queue_message($jmsg, $arr['channel'], $contact, $target_item['mid']);
+			$qi = pubcrawl_queue_message($jmsg, $arr['channel'], $contact, $target_item['mid']);
 			if ($qi) {
 				$arr['queued'][] = $qi;
 			}

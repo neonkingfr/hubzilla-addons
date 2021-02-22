@@ -97,8 +97,8 @@ class QueueWorkerUtils {
 				) ENGINE = InnoDB DEFAULT CHARSET=utf8mb4;"
 			],
 			2 => [
-				"ALTER TABLE workerq 
-					ADD COLUMN workerq_uuid char(36) NOT NULL DEFAULT '', 
+				"ALTER TABLE workerq
+					ADD COLUMN workerq_uuid char(36) NOT NULL DEFAULT '',
 					ADD INDEX (workerq_uuid);"
 			]
 		];
