@@ -354,7 +354,12 @@ function asencode_item($i) {
 	if($has_images && $ret['type'] === 'Note') {
 		$img = [];
 		foreach($images as $match) {
-			$img[] =  [ 'type' => 'Image', 'url' => $match[2] ];
+			if (strpos($match[1],'=http') === 0) {
+				$img[] =  [ 'type' => 'Image', 'url' => substr($match[1],1) ];
+			}
+			else {
+				$img[] =  [ 'type' => 'Image', 'url' => $match[2] ];
+			}
 		}
 		if(! $ret['attachment'])
 			$ret['attachment'] = [];
