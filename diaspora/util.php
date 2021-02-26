@@ -58,7 +58,7 @@ function find_diaspora_person_by_handle($handle) {
 	if(diaspora_is_blacklisted($handle))
 		return false;
 
-	$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s'",
+	$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where xchan_network != 'activitypub' hubloc_addr = '%s'",
 		dbesc($handle)
 	);
 
