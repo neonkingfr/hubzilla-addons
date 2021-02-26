@@ -15,14 +15,14 @@ use Zotlabs\Extend\Route;
 use Zotlabs\Lib\Hashpath;
 
 require_once('include/photo/photo_driver.php');
- 
+
 function photocache_load() {
 
 	Hook::register('cache_mode_hook', 'addon/photocache/photocache.php', 'photocache_mode');
 	Hook::register('cache_url_hook', 'addon/photocache/photocache.php', 'photocache_url');
 	Hook::register('cache_body_hook', 'addon/photocache/photocache.php', 'photocache_body');
 	Route::register('addon/photocache/Mod_Photocache.php', 'photocache');
-	
+
 	logger('Photo Cache is loaded');
 }
 
@@ -39,7 +39,7 @@ function photocache_unload() {
 	    intval(PHOTO_CACHE)
 	);
 	logger('All cached photos was marked as expired and will be removed', LOGGER_DEBUG);
-	
+
 	logger('Photo Cache is unloaded');
 }
 
@@ -100,12 +100,12 @@ function photocache_mode_key($key) {
  * @param string $url
  * @return boolean
  *
- */	
+ */
 function photocache_isgrid($url) {
 
 	if(photocache_mode_key('grid'))
 		return false;
-		
+
 	return is_matrix_url($url);
 }
 
@@ -130,11 +130,11 @@ function photocache_hash($str, $alg = 'sha256') {
  * @param array $s
  * * 'body' => string
  * * 'uid' => int
- * @return array $s 
+ * @return array $s
  *
  */
  function photocache_body(&$s) {
-	 
+
 	if(! $s['uid'])
 		return;
 
@@ -144,7 +144,7 @@ function photocache_hash($str, $alg = 'sha256') {
 	$x = channelx_by_n($s['uid']);
 	if(! $x)
 		return logger('invalid channel ID received ' . $s['uid'], LOGGER_DEBUG);
-	
+
 	$matches = null;
 	$cnt = preg_match_all("/\<img(.+?)src=([\"'])(https?\:.*?)\\2(.*?)\>/", $s['body'], $matches, PREG_SET_ORDER);
 	if($cnt) {
@@ -197,22 +197,22 @@ function photocache_hash($str, $alg = 'sha256') {
  *
  */
 function photocache_url(&$cache = []) {
-	
+
 	if(! local_channel() && ! photocache_mode_key('leak'))
 		return;
 
 	if(empty($cache))
 		return logger('undefined resource', LOGGER_DEBUG, LOG_INFO);
-	
+
 	$cache_mode = [];
 	photocache_mode($cache_mode);
-		
+
 	$minres = intval(get_pconfig($cache['item']['uid'], 'photocache', 'cache_minres'));
 	if($minres == 0)
 		$minres = $cache_mode['minres'];
 
 	logger('info: processing ' . $cache['item']['resource_id'] . ' (' . $cache['item']['display_path'] .') for ' . $cache['item']['uid']  . ' (min. ' . $minres . ' px)', LOGGER_DEBUG);
-	
+
 	if($cache['item']['height'] == 0) {
 		// If new resource id
 		$k = q("SELECT * FROM photo WHERE xchan = '%s' AND photo_usage = %d AND height > 0 ORDER BY filesize DESC LIMIT 1",
@@ -234,15 +234,15 @@ function photocache_url(&$cache = []) {
 			$ph = photo_factory('');
 			if(! $ph->save($cache['item'], true))
 				return logger('could not duplicate cached URL ' . $cache['item']['display_path'] . ' for ' . $cache['item']['uid'], LOGGER_DEBUG);
-			
+
 			logger('info: duplicate ' . $cache['item']['resource_id'] . ' data from cache for ' . $k[0]['uid'], LOGGER_DEBUG);
 		}
 	}
-		
+
 	$exp = strtotime($cache['item']['expires']) + date('Z');
 	// fetch the image if the cache has expired or we need to cache and it has not yet been done
 	$url = (($cache['item']['height'] == 0) || ((($cache['item']['height'] >= $minres || $cache['item']['width'] >= $minres) && ($exp - 60 < time() || $cache['item']['filesize'] == 0))) ? html_entity_decode($cache['item']['display_path'], ENT_QUOTES) : '');
-	
+
 	if($url) {
 		// Get data from remote server
 		$hdrs = [];
@@ -252,23 +252,23 @@ function photocache_url(&$cache = []) {
 				$hdrs[] = "If-None-Match: " . $cache['item']['description'];
 		}
 		$i = z_fetch_url($url, true, 0, [ 'headers' => $hdrs ]);
-	
+
 		if((! $i['success']) && $i['return_code'] != 304)
 			return logger('photo could not be fetched (HTTP code ' . $i['return_code'] . ')', LOGGER_DEBUG);
-	
+
 		$hdrs = [];
 		$h = explode("\n", $i['header']);
 		foreach ($h as $l) {
 			list($t,$v) = array_map("trim", explode(":", trim($l), 2));
 			$hdrs[strtolower($t)] = $v;
 		}
-	
+
 		if(array_key_exists('expires', $hdrs)) {
 			$expires = strtotime($hdrs['expires']);
 			if($expires - 60 < time())
 				return logger('fetched item expired ' . $hdrs['expires'], LOGGER_DEBUG);
 		}
-	
+
 		$cc = '';
 		if(array_key_exists('cache-control', $hdrs))
 			$cc = $hdrs['cache-control'];
@@ -287,9 +287,9 @@ function photocache_url(&$cache = []) {
 		$maxexp = time() + 86400 * get_config('system','default_expire_days', 30);
 		if($expires > $maxexp)
 			$expires = $maxexp;
-		
+
 		$cache['item']['expires'] = gmdate('Y-m-d H:i:s', $expires);
-		
+
 		if(array_key_exists('last-modified', $hdrs))
 			$cache['item']['edited'] = gmdate('Y-m-d H:i:s', strtotime($hdrs['last-modified']));
 
@@ -301,16 +301,16 @@ function photocache_url(&$cache = []) {
 			$cache['item']['mimetype'] = $type;
 
 			$ph = photo_factory($i['body'], $type);
-		
+
 			if(! is_object($ph))
 				return logger('photo processing failure', LOGGER_DEBUG);
 
 			if($ph->is_valid()) {
 				$orig_width = $ph->getWidth();
 				$orig_height = $ph->getHeight();
-				
+
 				$oldsize = $cache['item']['filesize'];
-			
+
 				if($orig_width > 1024 || $orig_height > 1024) {
 					$ph->scaleImage(1024);
 					logger('photo resized: ' . $orig_width . '->' . $ph->getWidth() . 'w ' . $orig_height . '->' . $ph->getHeight() . 'h', LOGGER_DEBUG);
@@ -319,9 +319,9 @@ function photocache_url(&$cache = []) {
 				$cache['item']['width'] = $ph->getWidth();
 				$cache['item']['height'] = $ph->getHeight();
 				$cache['item']['description'] = (array_key_exists('etag', $hdrs) ? $hdrs['etag'] : '');
-				
-				$k = ((($cache['item']['width'] >= $minres || $cache['item']['height'] >= $minres) && $oldsize == 0) ? true : false); 
-				
+
+				$k = ((($cache['item']['width'] >= $minres || $cache['item']['height'] >= $minres) && $oldsize == 0) ? true : false);
+
 				if($k || $oldsize != 0) {
 				    $cache['item']['filesize'] = strlen($ph->imageString());
 				    $os_path = Hashpath::path($cache['item']['xchan'], 'store/[data]/[cache]', 2, 1);
@@ -334,22 +334,22 @@ function photocache_url(&$cache = []) {
 				        @unlink($os_path);
 				    if(! $ph->saveImage($os_path))
 				        return logger('could not save file ' . $os_path, LOGGER_DEBUG);
-					
+
 					logger('image saved: ' . $os_path . '; ' . $cache['item']['mimetype'] . ', ' . $cache['item']['width'] . 'w x ' . $cache['item']['height'] . 'h, ' . $cache['item']['filesize'] . ' bytes', LOGGER_DEBUG);
 				}
-				
+
 				if($k) {
 					// if this is first seen image
 					if(! $ph->save($cache['item'], true))
 						logger('can not save image in database', LOGGER_DEBUG);
 				}
 				elseif($oldsize != 0 && $oldsize != $cache['item']['filesize']) {
-					// update 
+					// update
 					$x = q("UPDATE photo SET filesize = %d WHERE xchan = '%s' AND photo_usage = %d AND filesize > 0",
 						intval($cache['item']['filesize']),
 						dbesc($cache['item']['xchan']),
 						intval(PHOTO_CACHE)
-					);						
+					);
 				}
 			}
 			else
@@ -367,10 +367,10 @@ function photocache_url(&$cache = []) {
 			intval(PHOTO_CACHE)
 		);
 	}
-	
+
 	if($cache['item']['filesize'] > 0)
 		$cache['status'] = true;
-		
-	
+
+
 	logger('info: ' . $cache['item']['display_path'] . ($cache['status'] ? ' is cached as ' . $cache['item']['resource_id'] . ' for ' . $cache['item']['uid'] : ' is not cached'));
 }
