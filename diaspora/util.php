@@ -31,18 +31,18 @@ function diaspora_get_contact_by_handle($uid,$handle) {
 
 	$sys = get_sys_channel();
 	if(($sys) && ($sys['channel_id'] == $uid)) {
-		$r = q("SELECT * FROM xchan where xchan_addr = '%s' limit 1",
+		$r = q("SELECT * FROM xchan where xchan_addr = '%s' and xchan_network != 'activitypub'",
 			dbesc($handle)
 		);
 	}
 	else {
-		$r = q("SELECT * FROM abook left join xchan on xchan_hash = abook_xchan where xchan_addr = '%s' and abook_channel = %d limit 1",
+		$r = q("SELECT * FROM abook left join xchan on xchan_hash = abook_xchan where xchan_addr = '%s' and abook_channel = %d and xchan_network != 'activitypub'",
 			dbesc($handle),
 			intval($uid)
 		);
 	}
 
-	return (($r) ? $r[0] : false);
+	return (($r) ? Libzot::zot_record_preferred($r) : false);
 }
 
 function find_diaspora_person_by_handle($handle) {
@@ -58,7 +58,7 @@ function find_diaspora_person_by_handle($handle) {
 	if(diaspora_is_blacklisted($handle))
 		return false;
 
-	$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where xchan_network != 'activitypub' and hubloc_addr = '%s'",
+	$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' and xchan_network != 'activitypub'",
 		dbesc($handle)
 	);
 
@@ -79,7 +79,7 @@ function find_diaspora_person_by_handle($handle) {
 		$result = discover_by_webbie($handle);
 		if($result) {
 
-			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s'",
+			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' and xchan_network != 'activitypub'",
 				dbesc(str_replace('acct:','',$handle))
 			);
 
