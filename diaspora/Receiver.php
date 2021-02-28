@@ -663,7 +663,7 @@ class Diaspora_Receiver {
 		$plink = service_plink($contact,$guid);
 		$datarray['aid'] = $this->importer['channel_account_id'];
 		$datarray['uid'] = $this->importer['channel_id'];
-		$datarray['mid'] = $datarray['parent_mid'] = z_root() . '/item/' . $guid;
+		$datarray['mid'] = $datarray['parent_mid'] = z_root() . '/activity/' . $guid;
 		$datarray['uuid'] = $guid;
 		$datarray['changed'] = $datarray['created'] = $datarray['edited'] = datetime_convert('UTC','UTC',$created);
 		$datarray['item_private'] = $private;
@@ -1669,11 +1669,11 @@ class Diaspora_Receiver {
 		$arr               = [];
 		$arr['uid']        = $this->importer['channel_id'];
 		$arr['aid']        = $this->importer['channel_account_id'];
+		$arr['mid']        = z_root() . '/activity/' . $guid;
 		$arr['uuid']       = $guid;
-		$arr['mid']        = $guid;
 		$arr['parent_mid'] = $parent_item['mid'];
 
-		if ($parent_item['mid'] !== $parent_guid) {
+		if ($parent_item['uuid'] !== $parent_guid) {
 			$arr['thr_parent'] = $parent_guid;
 
 			// use a URI for thr_parent if we have it
@@ -2228,7 +2228,7 @@ class Diaspora_Receiver {
 
 		$arr['uid'] = $this->importer['channel_id'];
 		$arr['aid'] = $this->importer['channel_account_id'];
-		$arr['mid'] = z_root() . '/item/' . $guid;
+		$arr['mid'] = z_root() . '/activity/' . $guid;
 		$arr['uuid'] = $guid;
 
 		$arr['parent_mid'] = $parent_item['mid'];
