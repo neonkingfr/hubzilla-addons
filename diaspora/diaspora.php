@@ -1258,7 +1258,7 @@ function diaspora_bb_to_markdown_bb(&$x) {
 
 function diaspora_bb_to_markdown_mention_callback($match) {
 
-    $r = q("select xchan_addr, xchan_url from xchan where xchan_url = '%s' and xchan_network not in('rss', 'anon', 'unknown')",
+    $r = q("select xchan_addr, xchan_url from xchan where xchan_url = '%s' and xchan_network not in('rss', 'anon', 'unknown') order by xchan_addr desc",
         dbesc($match[2])
     );
 
