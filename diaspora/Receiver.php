@@ -431,8 +431,8 @@ class Diaspora_Receiver {
 		$datarray['aid']  = $this->importer['channel_account_id'];
 		$datarray['uid']  = $this->importer['channel_id'];
 		$datarray['verb'] = ACTIVITY_POST;
+		$datarray['mid']  = $datarray['parent_mid'] = z_root() . '/item/' . $guid;
 		$datarray['uuid'] = $guid;
-		$datarray['mid']  = $datarray['parent_mid'] = $guid;
 
 		if ($updated) {
 			$datarray['changed'] = $datarray['edited'] = $edited;
@@ -663,7 +663,8 @@ class Diaspora_Receiver {
 		$plink = service_plink($contact,$guid);
 		$datarray['aid'] = $this->importer['channel_account_id'];
 		$datarray['uid'] = $this->importer['channel_id'];
-		$datarray['uuid'] = $datarray['mid'] = $datarray['parent_mid'] = $guid;
+		$datarray['mid'] = $datarray['parent_mid'] = z_root() . '/item/' . $guid;
+		$datarray['uuid'] = $guid;
 		$datarray['changed'] = $datarray['created'] = $datarray['edited'] = datetime_convert('UTC','UTC',$created);
 		$datarray['item_private'] = $private;
 		$datarray['plink'] = $plink;
@@ -756,7 +757,7 @@ class Diaspora_Receiver {
 		}
 
 		// does the parent originate from this site?
-		$local_parent_item = (strpos($parent_item['mid'], z_root()) === 0);
+		$local_parent_item = (strpos($parent_item['plink'], z_root()) === 0);
 		$parent_owner_uid  = null;
 		if ($local_parent_item) {
 			// find the owner channel_id
@@ -976,7 +977,8 @@ class Diaspora_Receiver {
 		$datarray['aid']        = $this->importer['channel_account_id'];
 		$datarray['uid']        = $this->importer['channel_id'];
 		$datarray['verb']       = ACTIVITY_POST;
-		$datarray['mid']        = $datarray['uuid'] = $guid;
+		$datarray['mid']        = z_root() . '/item/' . $guid;
+		$datarray['uuid']       = $guid;
 		$datarray['parent_mid'] = $parent_item['mid'];
 		$datarray['thr_parent'] = $thr_parent;
 
@@ -1490,7 +1492,8 @@ class Diaspora_Receiver {
 		}
 
 		// does the parent originate from this site?
-		$local_parent_item = (strpos($parent_item['mid'], z_root()) === 0);
+		$local_parent_item = (strpos($parent_item['plink'], z_root()) === 0);
+
 		$parent_owner_uid  = null;
 		if ($local_parent_item) {
 			// find the owner channel_id
@@ -2111,7 +2114,7 @@ class Diaspora_Receiver {
 
 		if($r) {
 			foreach($r as $rv) {
-				if(($edited) && ($rv['mid'] === $guid)) {
+				if(($edited) && ($rv['uuid'] === $guid)) {
 					if($edited > $rv['created']) {
 						$orig_item = $rv;
 						continue;
@@ -2225,11 +2228,12 @@ class Diaspora_Receiver {
 
 		$arr['uid'] = $this->importer['channel_id'];
 		$arr['aid'] = $this->importer['channel_account_id'];
-		$arr['mid'] = $arr['uuid'] = $guid;
+		$arr['mid'] = z_root() . '/item/' . $guid;
+		$arr['uuid'] = $guid;
 
 		$arr['parent_mid'] = $parent_item['mid'];
 
-		if($parent_item['mid'] !== $parent_guid)
+		if($parent_item['uuid'] !== $parent_guid)
 			$arr['thr_parent'] = $parent_guid;
 
 		$arr['owner_xchan'] = $parent_item['owner_xchan'];
