@@ -127,8 +127,8 @@ function diaspora_fetch_provider(&$arr) {
 		return;
 
 	$thread_data = json_decode($x['body'], true);
-	$guid   = $thread_data['guid'];
-	$public = $thread_data['public'];
+	$guid        = $thread_data['guid'];
+	$public      = $thread_data['public'];
 
 	if (!$public)
 		return;
@@ -189,7 +189,7 @@ function diaspora_fetch_provider(&$arr) {
 		}
 	}
 
-	goaway(z_root() . '/display/' . gen_link_id($return_guid));
+	goaway(z_root() . '/display/' . gen_link_id(z_root() . '/item/' . $return_guid));
 
 }
 
