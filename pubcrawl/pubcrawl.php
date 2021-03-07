@@ -1092,8 +1092,6 @@ function pubcrawl_locs_mod_init($x) {
 function pubcrawl_follow_mod_init($x) {
 
 	if (ActivityStreams::is_as_request() && argc() == 2) {
-
-
 		$abook_id = intval(argv(1));
 		if (!$abook_id)
 			return;
@@ -1138,6 +1136,11 @@ function pubcrawl_follow_mod_init($x) {
 		HTTPSig::set_headers($h);
 		echo $ret;
 		killme();
+	}
+
+	// deal with mastodon remote reply
+	if(isset($_REQUEST['url'])) {
+		goaway(z_root() . '/search?search=' . $_REQUEST['url']);
 	}
 }
 
