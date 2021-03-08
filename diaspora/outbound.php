@@ -1,6 +1,7 @@
 <?php
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Crypto;
 
 function diaspora_prepare_outbound($msg,$owner,$contact,$owner_prvkey,$contact_pubkey,$public = false) {
 
@@ -32,7 +33,7 @@ function diaspora_v2_build($msg,$channel,$contact,$prvkey,$pubkey,$public = fals
 	$signable_data = $data  . '.' . base64url_encode($type,false) . '.'
 		. base64url_encode($encoding,false) . '.' . base64url_encode($alg,false) ;
 
-	$signature = rsa_sign($signable_data,$prvkey);
+	$signature = Crypto::sign($signable_data,$prvkey);
 	$sig = base64url_encode($signature,false);
 
 $magic_env = <<< EOT
@@ -90,7 +91,7 @@ function diaspora_pubmsg_build($msg,$channel,$contact,$prvkey,$pubkey) {
 	$signable_data = $data  . '.' . base64url_encode($type,false) . '.'
 		. base64url_encode($encoding,false) . '.' . base64url_encode($alg,false) ;
 
-	$signature = rsa_sign($signable_data,$prvkey);
+	$signature = Crypto::sign($signable_data,$prvkey);
 	$sig = base64url_encode($signature,false);
 
 $magic_env = <<< EOT
@@ -159,7 +160,7 @@ function diaspora_msg_build($msg,$channel,$contact,$prvkey,$pubkey,$public = fal
 
 	logger('diaspora_msg_build: signable_data: ' . $signable_data, LOGGER_DATA, LOG_DEBUG);
 
-	$signature = rsa_sign($signable_data,$prvkey);
+	$signature = Crypto::sign($signable_data,$prvkey);
 	$sig = base64url_encode($signature,false);
 
 $decrypted_header = <<< EOT
@@ -181,7 +182,7 @@ EOT;
 
 	logger('outer_bundle: ' . $b64_encrypted_outer_key_bundle . ' key: ' . $pubkey, LOGGER_DATA, LOG_DEBUG);
 
-	$encrypted_header_json_object = json_encode(array('aes_key' => base64_encode($encrypted_outer_key_bundle), 
+	$encrypted_header_json_object = json_encode(array('aes_key' => base64_encode($encrypted_outer_key_bundle),
 		'ciphertext' => base64_encode($ciphertext)));
 	$cipher_json = base64_encode($encrypted_header_json_object);
 
@@ -307,7 +308,7 @@ function diaspora_send_status($item,$owner,$contact,$public_batch = false) {
 }
 
 function diaspora_is_reshare($body) {
-	
+
 	$body = trim($body);
 
 	// Skip if it isn't a pure repeated messages
@@ -357,7 +358,7 @@ function diaspora_is_reshare($body) {
 
 
 function diaspora_is_repeat($item) {
-	
+
 
 	if($item['verb'] !== 'Announce') {
 		return false;
@@ -461,7 +462,7 @@ function diaspora_send_upstream($item,$owner,$contact,$public_batch = false,$upl
 			$sub_like = true;
 	}
 
-	if($sub_like) {		
+	if($sub_like) {
 		$p = q("select mid, parent_mid from item where mid = '%s' and uid = %d limit 1",
 			dbesc($item['thr_parent']),
 			intval($item['uid'])
@@ -500,7 +501,7 @@ function diaspora_send_upstream($item,$owner,$contact,$public_batch = false,$upl
 }
 
 // Diaspora will not send comments downstream to the system it originated from.
-// So we have to deliver comments/likes/etc. to everybody on this site that 
+// So we have to deliver comments/likes/etc. to everybody on this site that
 // received the parent. ***IMPORTANT*** check the owner xchan of the parent
 // because others on this system may have received the comment through another
 // route or delivery chain.
@@ -523,7 +524,7 @@ function diaspora_deliver_local_comments($item,$parent) {
 
 	foreach($r as $rv) {
 		if($rv['uid'] === $item['uid'])
-			continue;	 
+			continue;
 		$new_item['uid'] = $rv['uid'];
 		$new_item['aid'] = $rv['aid'];
 		item_store($new_item);
@@ -553,14 +554,14 @@ function diaspora_send_downstream($item,$owner,$contact,$public_batch = false) {
 		$attendance = true;
 	}
 
-	if(activity_match($item['verb'], [ ACTIVITY_LIKE, ACTIVITY_DISLIKE ]) 
+	if(activity_match($item['verb'], [ ACTIVITY_LIKE, ACTIVITY_DISLIKE ])
 		&& activity_match($item['obj_type'],[ ACTIVITY_OBJ_NOTE, ACTIVITY_OBJ_COMMENT ])) {
 		$conv_like = true;
 		if(($item['thr_parent']) && ($item['thr_parent'] != $item['parent_mid']))
 			$sub_like = true;
 	}
 
-	if($sub_like) {		
+	if($sub_like) {
 		$p = q("select mid, parent_mid from item where mid = '%s' and uid = %d limit 1",
 			dbesc($item['thr_parent']),
 			intval($item['uid'])
@@ -590,7 +591,7 @@ function diaspora_send_downstream($item,$owner,$contact,$public_batch = false) {
 		if($conv_like)
 			return;
 		if(get_pconfig($owner['channel_id'],'diaspora','sign_unsigned')) {
-			// copy the data so we can mess with it. 
+			// copy the data so we can mess with it.
 			$fake_item = $item;
 			// change the body to a simulated reshare of the author's content
 			diaspora_share_unsigned($fake_item,(($fake_item['author']) ? $fake_item['author'] : null));
@@ -649,7 +650,7 @@ function diaspora_send_retraction($item,$owner,$contact,$public_batch = false) {
 		'author'      => $author,
 		'target_guid' => $item['uuid'],
 		'target_type' => $target_type
-	]; 
+	];
 
 	$msg = arrtoxml('retraction',$fields);
 
@@ -697,7 +698,7 @@ function diaspora_send_mail($item,$owner,$contact) {
 			$item['body'] = base64url_decode(str_rot47($item['body']));
 	}
 
-	
+
 	// the parent_guid needs to be the conversation guid
 
 	$parent_ptr = $cnv['guid'];
@@ -714,7 +715,7 @@ function diaspora_send_mail($item,$owner,$contact) {
 			'conversation_guid' => $cnv['guid'],
 			'text' => $body,
 			'created_at' => $created
-		]; 
+		];
 
 		if(! $item['mail_isreply']) {
 			$conv = [
@@ -740,10 +741,10 @@ function diaspora_send_mail($item,$owner,$contact) {
 
 	$created = datetime_convert('UTC','UTC',$item['created'],'Y-m-d H:i:s \U\T\C');
 
-	$signed_text =  $item['mid'] . ';' . $parent_ptr . ';' . $body .  ';' 
+	$signed_text =  $item['mid'] . ';' . $parent_ptr . ';' . $body .  ';'
 		. $created . ';' . $myaddr . ';' . $cnv['guid'];
 
-	$sig = base64_encode(rsa_sign($signed_text,$owner['channel_prvkey'],'sha256'));
+	$sig = base64_encode(Crypto::sign($signed_text,$owner['channel_prvkey'],'sha256'));
 
 	$msg = array(
 		'guid' => xmlify($item['mid']),
@@ -780,7 +781,7 @@ function diaspora_profile_change($channel,$recip,$public_batch = false,$profile_
 
 
 	$channel_id = $channel['channel_id'];
-	
+
 	$r = q("SELECT profile.uid AS profile_uid, profile.* , channel.* FROM profile
 		left join channel on profile.uid = channel.channel_id
 		WHERE channel.channel_id = %d and profile.is_default = 1 ",
@@ -899,4 +900,22 @@ function diaspora_profile_change($channel,$recip,$public_batch = false,$profile_
 	return(diaspora_queue($channel,$recip,$slap,$public_batch));
 
 }
+
+function diaspora_send_participation($channel, $contact, $item) {
+	if(intval($item['item_private']))
+		return;
+
+	$msg = arrtoxml('participation',
+		[
+			'author'      => channel_reddress($channel),
+			'guid'        => new_uuid(),
+			'parent_type' => 'Post',
+			'parent_guid' => $item['uuid']
+		]
+	);
+
+	$slap = diaspora_prepare_outbound($msg, $channel, $contact, $channel['channel_prvkey'], $contact['xchan_pubkey']);
+	return (diaspora_queue($channel, $contact, $slap, false));
+}
+
 

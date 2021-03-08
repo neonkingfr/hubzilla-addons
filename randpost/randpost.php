@@ -7,6 +7,8 @@
  * Maintainer: none
  */
 
+use Zotlabs\Lib\Crypto;
+
 require_once('include/crypto.php');
 
 function randpost_load() {
@@ -64,15 +66,15 @@ function randpost_enotify_store(&$a,&$b) {
 		$link = normalise_link(z_root() . '/channel/' . $c[0]['channel_address']);
 		if($v) {
 			foreach($v as $vv) {
-				if(link_compare($vv['url'],$link)) {			
+				if(link_compare($vv['url'],$link)) {
 					$my_conversation = true;
 					break;
 				}
 			}
-		}				
+		}
 	}
-	
-	// don't hijack somebody else's conversation, but respond (once) if invited to. 
+
+	// don't hijack somebody else's conversation, but respond (once) if invited to.
 
 	if(! $my_conversation)
 		return;
@@ -89,8 +91,8 @@ function randpost_enotify_store(&$a,&$b) {
 	if($h && count($h) > $limit)
 		return;
 
- 
-	
+
+
 	// Be gracious and not obnoxious if thanked
 
 	$replies = array(
@@ -198,16 +200,16 @@ function randpost_enotify_store(&$a,&$b) {
 	$x['item_origin'] = 1;
 	$x['item_verified'] = 1;
 
-	// You can't pass a Turing test if you reply in milliseconds. 
+	// You can't pass a Turing test if you reply in milliseconds.
 	// Also I believe we've got ten minutes fudge before we declare a post as time traveling.
-	// Otherwise we'll just set it to now and it will still go out in milliseconds. 
+	// Otherwise we'll just set it to now and it will still go out in milliseconds.
 	// So set the reply to post sometime in the next 15-45 minutes (depends on poller interval)
 
 	$fudge = mt_rand(15,30);
 	$x['created'] = $x['edited'] = datetime_convert('UTC','UTC','now + ' . $fudge . ' minutes');
 
 	$x['body'] = trim($x['body']);
-	$x['sig'] = base64url_encode(rsa_sign($x['body'],$c[0]['channel_prvkey']));
+	$x['sig'] = base64url_encode(Crypto::sign($x['body'],$c[0]['channel_prvkey']));
 
 	$post = item_store($x);
 	$post_id = $post['item_id'];
@@ -216,7 +218,7 @@ function randpost_enotify_store(&$a,&$b) {
 
 	call_hooks('post_local_end', $x);
 
-	Zotlabs\Daemon\Master::Summon(array('Notifier','comment-new',$post_id));	
+	Zotlabs\Daemon\Master::Summon(array('Notifier','comment-new',$post_id));
 
 }
 
@@ -271,7 +273,7 @@ function randpost_fetch(&$a,&$b) {
 				else
 					$x['body'] = $mention . html2bbcode($s['body']);
 
-				$x['sig'] = base64url_encode(rsa_sign($x['body'],$c[0]['channel_prvkey']));
+				$x['sig'] = base64url_encode(Crypto::sign($x['body'],$c[0]['channel_prvkey']));
 
 				$post = item_store($x);
 				$post_id = $post['item_id'];

@@ -19,7 +19,7 @@ class Dwpost extends Controller {
 		check_form_security_token_redirectOnErr('/dwpost', 'dwpost');
 
 		set_pconfig(local_channel(),'dwpost','dw_username',trim($_POST['dw_username']));
-		set_pconfig(local_channel(),'dwpost','dw_password',z_obscure(trim($_POST['dw_password'])));
+		set_pconfig(local_channel(),'dwpost','dw_password',obscurify(trim($_POST['dw_password'])));
 		set_pconfig(local_channel(),'dwpost','post_by_default',intval($_POST['dw_by_default']));
 		set_pconfig(local_channel(),'dwpost','post_source_url',intval($_POST['dw_source_url']));
 		set_pconfig(local_channel(),'dwpost','post_source_urltext',trim($_POST['dw_source_urltext']));
@@ -44,7 +44,7 @@ class Dwpost extends Controller {
 		/* Get the current state of our config variables */
 		$dwpost_on = get_pconfig(local_channel(),'dwpost','post_by_default');
 		$dw_username = get_pconfig(local_channel(), 'dwpost', 'dw_username');
-		$dw_password = z_unobscure(get_pconfig(local_channel(), 'dwpost', 'dw_password'));
+		$dw_password = unobscurify(get_pconfig(local_channel(), 'dwpost', 'dw_password'));
 		$dw_source_urltext = get_pconfig(local_channel(), 'dwpost', 'post_source_urltext');
 
 		/* Add some HTML to the existing form */

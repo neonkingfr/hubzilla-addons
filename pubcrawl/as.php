@@ -4,6 +4,7 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Daemon\Master;
 use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\Keyutils;
 use Zotlabs\Lib\Libzot;
 
 require_once('include/event.php');
@@ -285,8 +286,17 @@ function asencode_item($i) {
 
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/item/' . urlencode($i['mid']));
 
-	if($i['title'])
+	if(isset($i['title']))
 		$ret['name'] = bbcode($i['title'], ['cache' => true ]);
+
+	if(isset($i['summary']))
+		$ret['summary'] = bbcode($i['summary'], ['cache' => true ]);
+
+	if (strpos($i['body'], '[/crypt]') !== false) {
+		$i['body'] = preg_replace_callback("/\[crypt (.*?)\](.*?)\[\/crypt\]/ism", 'bb_parse_b64_crypt', $i['body']);
+	}
+
+	$ret['content'] = bbcode($i['body'], ['cache' => true ]);
 
 	$ret['published'] = datetime_convert('UTC','UTC',$i['created'],ATOM_TIME);
 	if($i['created'] !== $i['edited'])
@@ -325,18 +335,6 @@ function asencode_item($i) {
 		$ret['conversation'] = $cnv;
 	}
 
-	if(strpos($i['body'],'[/summary]') !== false) {
-		$match = '';
-		preg_match("/\[summary\](.*?)\[\/summary\]/ism",$i['body'],$match);
-		$ret['summary'] = $match[1];
-
-		$body_content = preg_replace("/^(.*?)\[summary\](.*?)\[\/summary\](.*?)$/ism", '', $i['body']);
-		$ret['content'] = bbcode(trim($body_content), ['cache' => true ]);
-	}
-	else {
-		$ret['content'] = bbcode($i['body'], ['cache' => true ]);
-	}
-
 	$actor = $i['author']['xchan_url']; //asencode_person($i['author']);
 	if($actor)
 		$ret['actor'] = $actor;
@@ -348,8 +346,6 @@ function asencode_item($i) {
 		$ret['tag']       = $t;
 	}
 
-
-
 	$a = asencode_attachment($i);
 	if($a) {
 		$ret['attachment'] = $a;
@@ -358,7 +354,12 @@ function asencode_item($i) {
 	if($has_images && $ret['type'] === 'Note') {
 		$img = [];
 		foreach($images as $match) {
-			$img[] =  [ 'type' => 'Image', 'url' => $match[2] ];
+			if (strpos($match[1],'=http') === 0) {
+				$img[] =  [ 'type' => 'Image', 'url' => substr($match[1],1) ];
+			}
+			else {
+				$img[] =  [ 'type' => 'Image', 'url' => $match[2] ];
+			}
 		}
 		if(! $ret['attachment'])
 			$ret['attachment'] = [];
@@ -1245,7 +1246,7 @@ function as_actor_store($url,$person_obj) {
 		if($person_obj['id'] === $person_obj['publicKey']['owner']) {
 			$pubkey = $person_obj['publicKey']['publicKeyPem'];
 			if(strstr($pubkey,'RSA ')) {
-				$pubkey = rsatopem($pubkey);
+				$pubkey = Keyutils::rsaToPem($pubkey);
 			}
 		}
 	}
@@ -1470,13 +1471,9 @@ function as_create_note($channel,$observer_hash,$act) {
 	if(! $s['parent_mid'])
 		$s['parent_mid'] = $parent ? $parent : $s['mid'];
 
-	$summary = as_bb_content($content,'summary');
-
-	if($summary)
-		$summary = '[summary]' . $summary . '[/summary]';
-
 	$s['title']    = as_bb_content($content,'name');
-	$s['body']     = $summary . as_bb_content($content,'content');
+	$s['summary']  = as_bb_content($content,'summary');
+	$s['body']     = as_bb_content($content,'content');
 	$s['verb']     = (($announce) ? ACTIVITY_SHARE : ACTIVITY_POST);
 	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
 	$s['obj']      = '';
@@ -1533,7 +1530,7 @@ function as_create_note($channel,$observer_hash,$act) {
 			intval($s['uid'])
 		);
 		if(! $p) {
-			$a = Activity::fetch_and_store_parents($channel, $act, $s);
+			$a = Activity::fetch_and_store_parents($channel, $observer_hash, $s);
 			if($a) {
 				$p = q("select parent_mid, owner_xchan from item where mid = '%s' and uid = %d limit 1",
 					dbesc($s['parent_mid']),
@@ -1995,7 +1992,7 @@ function as_like_note($channel,$observer_hash,$act) {
 	);
 
 	if(! $r) {
-		$p = Activity::fetch_and_store_parents($channel,$act,$s);
+		$p = Activity::fetch_and_store_parents($channel, $observer_hash, $s);
 		if($p) {
 			$r = q("select * from item where uid = %d and ( mid = '%s' or  mid = '%s' ) limit 1",
 				intval($channel['channel_id']),

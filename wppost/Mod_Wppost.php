@@ -21,7 +21,7 @@ class Wppost extends Controller {
 		set_pconfig(local_channel(),'wppost','post_by_default',intval($_POST['wp_bydefault']));
 		set_pconfig(local_channel(),'wppost','wp_blogid',intval($_POST['wp_blogid']));
 		set_pconfig(local_channel(),'wppost','wp_username',trim($_POST['wp_username']));
-		set_pconfig(local_channel(),'wppost','wp_password',z_obscure(trim($_POST['wp_password'])));
+		set_pconfig(local_channel(),'wppost','wp_password',obscurify(trim($_POST['wp_password'])));
 		set_pconfig(local_channel(),'wppost','wp_blog',trim($_POST['wp_blog']));
 		set_pconfig(local_channel(),'wppost','forward_comments',trim($_POST['wp_forward_comments']));
 		set_pconfig(local_channel(),'wppost','post_source_url',intval($_POST['wp_source_url']));
@@ -56,7 +56,7 @@ class Wppost extends Controller {
 		$def_checked = (($def_enabled) ? 1 : false);
 
 		$wp_username = get_pconfig(local_channel(), 'wppost', 'wp_username');
-		$wp_password = z_unobscure(get_pconfig(local_channel(), 'wppost', 'wp_password'));
+		$wp_password = unobscurify(get_pconfig(local_channel(), 'wppost', 'wp_password'));
 		$wp_blog = get_pconfig(local_channel(), 'wppost', 'wp_blog');
 		$wp_blogid = get_pconfig(local_channel(), 'wppost', 'wp_blogid');
 		$url_enabled = get_pconfig(local_channel(),'wppost','post_source_url');
@@ -74,11 +74,11 @@ class Wppost extends Controller {
 		));
 
 		$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-			'$field'	=> array('wp_blog', t('WordPress API URL'), $wp_blog, 
+			'$field'	=> array('wp_blog', t('WordPress API URL'), $wp_blog,
 						 t('Typically https://your-blog.tld/xmlrpc.php'))
 		));
 		$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
-			'$field'	=> array('wp_blogid', t('WordPress blogid'), $wp_blogid, 
+			'$field'	=> array('wp_blogid', t('WordPress blogid'), $wp_blogid,
 						 t('For multi-user sites such as wordpress.com, otherwise leave blank'))
 		));
 

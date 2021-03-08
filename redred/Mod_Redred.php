@@ -32,7 +32,7 @@ class Redred extends Controller {
 
 		set_pconfig(local_channel(), 'redred', 'baseapi',         trim($_POST['redred_baseapi']));
 		set_pconfig(local_channel(), 'redred', 'username',        trim($_POST['redred_username']));
-		set_pconfig(local_channel(), 'redred', 'password',        z_obscure(trim($_POST['redred_password'])));
+		set_pconfig(local_channel(), 'redred', 'password',        obscurify(trim($_POST['redred_password'])));
 		set_pconfig(local_channel(), 'redred', 'channel',         trim($_POST['redred_channel']));
 		set_pconfig(local_channel(), 'redred', 'post_by_default', intval($_POST['redred_default']));
 		info( t('Hubzilla Crosspost Connector Settings saved.') . EOL);
@@ -54,7 +54,7 @@ class Redred extends Controller {
 
 		$api     = get_pconfig(local_channel(), 'redred', 'baseapi');
 		$username    = get_pconfig(local_channel(), 'redred', 'username' );
-		$password = z_unobscure(get_pconfig(local_channel(), 'redred', 'password' ));
+		$password = unobscurify(get_pconfig(local_channel(), 'redred', 'password' ));
 		$channel = get_pconfig(local_channel(), 'redred', 'channel' );
 		$defenabled = get_pconfig(local_channel(),'redred','post_by_default');
 		$defchecked = (($defenabled) ? 1 : false);

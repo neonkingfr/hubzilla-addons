@@ -3,6 +3,7 @@
 namespace Zotlabs\Module;
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Crypto;
 use Zotlabs\Web\Controller;
 
 require_once('include/acl_selectors.php');
@@ -11,9 +12,9 @@ require_once('include/zot.php');
 require_once('include/bbcode.php');
 
 class Mail extends Controller {
-    
-	function init() {		
-	
+
+	function init() {
+
 	}
 
 	function get() {
@@ -25,20 +26,20 @@ class Mail extends Controller {
 			notice( t('Permission denied.') . EOL);
 			return login();
 		}
-	
+
 		$channel = \App::get_channel();
-	
+
 		head_set_icon($channel['xchan_photo_s']);
-	
+
 		$cipher = get_pconfig(local_channel(),'system','default_cipher');
 		if(! $cipher)
 			$cipher = 'aes256';
-	
+
 		$tpl = get_markup_template('mail_head.tpl');
 		$header = replace_macros($tpl, array(
 			'$header' => t('Messages'),
 		));
-	
+
 		if(argc() == 3 && intval(argv(1)) && argv(2) === 'download') {
 
 			$r = q("select * from mail where id = %d and channel_id = %d",
@@ -50,7 +51,7 @@ class Mail extends Controller {
 
 				header('Content-type: ' . $r[0]['mail_mimetype']);
 				header('Content-disposition: attachment; filename="' . t('message') . '-' . $r[0]['id'] . '"' );
-				$body = (($r[0]['mail_obscured']) ? base64url_decode(str_rot47($r[0]['body'])) : $r[0]['body']);				
+				$body = (($r[0]['mail_obscured']) ? base64url_decode(str_rot47($r[0]['body'])) : $r[0]['body']);
 				echo $body;
 				killme();
 			}
@@ -68,7 +69,7 @@ class Mail extends Controller {
 			}
 			goaway(z_root() . '/mail/' . $mailbox);
 		}
-	
+
 		if((argc() == 4) && (argv(2) === 'recall')) {
 			if(! intval(argv(3)))
 				return;
@@ -85,16 +86,16 @@ class Mail extends Controller {
 			if($x) {
 				build_sync_packet(local_channel(),array('mail' => encode_mail($x[0],true)));
 			}
-	
+
 			\Zotlabs\Daemon\Master::Summon(array('Notifier','mail',intval(argv(3))));
-	
+
 			if($r) {
 					info( t('Message recalled.') . EOL );
 			}
 			goaway(z_root() . '/mail/' . $mailbox . '/' . argv(3));
-	
+
 		}
-	
+
 		if((argc() == 4) && (argv(2) === 'dropconv')) {
 			if(! intval(argv(3)))
 				return;
@@ -105,13 +106,13 @@ class Mail extends Controller {
 				info( t('Conversation removed.') . EOL );
 			goaway(z_root() . '/mail/' . $mailbox);
 		}
-	
+
 		if((argc() > 1) && (argv(1) === 'new')) {
-			
+
 			$plaintext = true;
-	
+
 			$tpl = get_markup_template('msg-header.tpl');
-	
+
 			$header = replace_macros($tpl, array(
 				'$baseurl' => z_root(),
 				'$editselect' => (($plaintext) ? 'none' : '/(profile-jot-text|prvmail-text)/'),
@@ -119,26 +120,26 @@ class Mail extends Controller {
 				'$linkurl' => t('Please enter a link URL:'),
 				'$expireswhen' => t('Expires YYYY-MM-DD HH:MM')
 			));
-	
+
 			\App::$page['htmlhead'] .= $header;
-	
+
 			$prename = '';
 			$preid = '';
-	
+
 			if(x($_REQUEST,'hash')) {
-	
+
 				$r = q("select abook.*, xchan.* from abook left join xchan on abook_xchan = xchan_hash
 					where abook_channel = %d and abook_xchan = '%s' limit 1",
 					intval(local_channel()),
 					dbesc($_REQUEST['hash'])
 				);
-	
+
 				if(!$r) {
 					$r = q("select * from xchan where xchan_hash = '%s' and xchan_network = 'zot' limit 1",
 						dbesc($_REQUEST['hash'])
 					);
 				}
-	
+
 				if($r) {
 					$prename = (($r[0]['abook_id']) ? $r[0]['xchan_name'] : $r[0]['xchan_addr']);
 					$preurl = $r[0]['xchan_url'];
@@ -147,9 +148,9 @@ class Mail extends Controller {
 				else {
 					notice( t('Requested channel is not in this network') . EOL );
 				}
-	
+
 			}
-	
+
 			$tpl = get_markup_template('prv_message.tpl');
 			$o .= replace_macros($tpl,array(
 				'$new' => true,
@@ -172,7 +173,7 @@ class Mail extends Controller {
 				'$encrypt' => t('Encrypt text'),
 				'$cipher' => $cipher,
 			));
-	
+
 			return $o;
 		}
 
@@ -197,7 +198,7 @@ class Mail extends Controller {
 					$direct_mid = intval(argv(1));
 				break;
 		}
-	
+
 
 		$last_message = private_messages_list(local_channel(), $mailbox, 0, 1);
 
@@ -205,34 +206,34 @@ class Mail extends Controller {
 
 		if($direct_mid)
 			$mid = $direct_mid;
-	
-	
+
+
 		$plaintext = true;
-	
+
 	//	if( local_channel() && feature_enabled(local_channel(),'richtext') )
 	//		$plaintext = false;
-	
-	
-	
+
+
+
 		if($mailbox == 'combined') {
 			$messages = private_messages_fetch_conversation(local_channel(), $mid, true);
 		}
 		else {
 			$messages = private_messages_fetch_message(local_channel(), $mid, true);
 		}
-	
+
 		if(! $messages) {
 			//info( t('Message not found.') . EOL);
 			return;
 		}
-	
+
 		if($messages[0]['to_xchan'] === $channel['channel_hash'])
 			\App::$poi = $messages[0]['from'];
 		else
 			\App::$poi = $messages[0]['to'];
-	
+
 		$tpl = get_markup_template('msg-header.tpl');
-		
+
 		\App::$page['htmlhead'] .= replace_macros($tpl, array(
 			'$nickname' => $channel['channel_address'],
 			'$baseurl' => z_root(),
@@ -240,21 +241,21 @@ class Mail extends Controller {
 			'$linkurl' => t('Please enter a link URL:'),
 			'$expireswhen' => t('Expires YYYY-MM-DD HH:MM')
 		));
-	
+
 		$mails = array();
-	
+
 		$seen = 0;
 		$unknown = false;
-	
+
 		foreach($messages as $message) {
-	
+
 			$s = theme_attachments($message);
 
 			if($message['mail_raw'])
 				$message['body'] = mail_prepare_binary([ 'id' => $message['id'] ]);
 			else
 				$message['body'] = zidify_links(smilies(bbcode($message['body'])));
-	
+
 			$mails[] = array(
 				'mailbox' => $mailbox,
 				'id' => $message['id'],
@@ -276,13 +277,13 @@ class Mail extends Controller {
 				'date' => datetime_convert('UTC',date_default_timezone_get(),$message['created'], 'c'),
 				'sig' => base64_encode($message['sig'])
 			);
-			
+
 			$seen = $message['seen'];
-	
+
 		}
-	
+
 		$recp = (($message['from_xchan'] === $channel['channel_hash']) ? 'to' : 'from');
-	
+
 		$tpl = get_markup_template('mail_display.tpl');
 		$o = replace_macros($tpl, array(
 			'$mailbox' => $mailbox,
@@ -294,7 +295,7 @@ class Mail extends Controller {
 			'$canreply' => (($unknown) ? false : '1'),
 			'$unknown_text' => t("No secure communications available. You <strong>may</strong> be able to respond from the sender's profile page."),
 			'$mails' => $mails,
-				
+
 			// reply
 			'$header' => t('Send Reply'),
 			'$to' => t('To:'),
@@ -315,14 +316,14 @@ class Mail extends Controller {
 			'$encrypt' => t('Encrypt text'),
 			'$cipher' => $cipher,
 		));
-	
+
 		return $o;
 	}
 
 	function post() {
 		if(! local_channel())
 			return;
-	
+
 		$replyto   = ((x($_REQUEST,'replyto'))      ? notags(trim($_REQUEST['replyto']))      : '');
 		$subject   = ((x($_REQUEST,'subject'))      ? notags(trim($_REQUEST['subject']))      : '');
 		$body      = ((x($_REQUEST,'body'))         ? escape_tags(trim($_REQUEST['body']))    : '');
@@ -332,7 +333,7 @@ class Mail extends Controller {
 		$expires   = ((x($_REQUEST,'expires'))      ? datetime_convert(date_default_timezone_get(),'UTC', $_REQUEST['expires']) : NULL_DATE);
 		$raw       = ((x($_REQUEST,'raw'))          ? intval($_REQUEST['raw'])                : 0);
 		$mimetype  = ((x($_REQUEST,'mimetype'))     ? notags(trim($_REQUEST['mimetype']))     : 'text/bbcode');
-		
+
 		$sig       = ((x($_REQUEST,'signature'))    ? trim($_REQUEST['signature'])            : '');
 		if(strpos($sig,'b64.') === 0)
 		    $sig = base64_decode(str_replace('b64.', '', $sig));
@@ -368,62 +369,62 @@ class Mail extends Controller {
 				echo json_encode(['preview' => zidify_links(smilies(bbcode($body)))]);
 			}
 			killme();
-		} 
+		}
 
 		// If we have a raw string for a recipient which hasn't been auto-filled,
 		// it means they probably aren't in our address book, hence we don't know
 		// if we have permission to send them private messages.
 		// finger them and find out before we try and send it.
-	
+
 		if(! $recipient) {
 			$channel = \App::get_channel();
-	
+
 			$j = \Zotlabs\Zot\Finger::run(punify($rstr),$channel);
-	
+
 			if(! $j['success']) {
 				notice( t('Unable to lookup recipient.') . EOL);
 				return;
-			} 
-	
+			}
+
 			logger('message_post: lookup: ' . $rstr . ' ' . print_r($j,true));
-	
+
 			if(! $j['guid']) {
 				notice( t('Unable to communicate with requested channel.'));
 				return;
 			}
-	
+
 			$x = import_xchan($j);
-	
+
 			if(! $x['success']) {
 				notice( t('Cannot verify requested channel.'));
 				return;
 			}
-	
+
 			$recipient = $x['hash'];
-	
+
 			$their_perms = 0;
-	
+
 			if($j['permissions']['data']) {
-				$permissions = crypto_unencapsulate($j['permissions'],$channel['channel_prvkey']);
+				$permissions = Crypto::unencapsulate($j['permissions'],$channel['channel_prvkey']);
 				if($permissions)
 					$permissions = json_decode($permissions, true);
 				logger('decrypted permissions: ' . print_r($permissions,true), LOGGER_DATA);
 			}
 			else
 				$permissions = $j['permissions'];
-	
+
 			if(! ($permissions['post_mail'])) {
 	 			notice( t('Selected channel has private message restrictions. Send failed.'));
 				// reported issue: let's still save the message and continue. We'll just tell them
-				// that nothing useful is likely to happen. They might have spent hours on it.  
+				// that nothing useful is likely to happen. They might have spent hours on it.
 				//			return;
-	
+
 			}
 		}
-	
+
 		require_once('include/text.php');
 		linkify_tags($body, local_channel());
-	
+
 
 		if(! $recipient) {
 			notice('No recipient found.');
@@ -431,9 +432,9 @@ class Mail extends Controller {
 			\App::$argv[1] = 'new';
 			return;
 		}
-	
+
 		// We have a local_channel, let send_message use the session channel and save a lookup
-		
+
 		$ret = send_message(0, $recipient, $body, $subject, $replyto, $expires, $mimetype, $raw, $sig);
 
 		if($ret['success']) {
@@ -443,7 +444,7 @@ class Mail extends Controller {
 		else {
 			notice($ret['message']);
 		}
-	
+
 		goaway(z_root() . '/mail/combined');
 	}
 

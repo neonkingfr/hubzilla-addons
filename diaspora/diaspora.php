@@ -9,7 +9,10 @@
  * Maintainer: none
  */
 
+use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Crypto;
+use Zotlabs\Lib\Keyutils;
 
 // use the new federation protocol
 define('DIASPORA_V2',1);
@@ -49,7 +52,8 @@ function diaspora_load() {
 		'can_comment_on_post'         => 'diaspora_can_comment_on_post',
 		'queue_deliver'               => 'diaspora_queue_deliver',
 		'webfinger'                   => 'diaspora_webfinger',
-		'channel_protocols'           => 'diaspora_channel_protocols'
+		'channel_protocols'           => 'diaspora_channel_protocols',
+		'fetch_provider'              => 'diaspora_fetch_provider'
 	]);
 
 	Zotlabs\Extend\Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
@@ -66,7 +70,7 @@ function diaspora_plugin_admin(&$o) {
 		$o = t('Please install the statistics addon to be able to configure a diaspora relay');
 		return;
 	}
-	
+
 	$t = get_markup_template("admin.tpl", "addon/diaspora/");
 
 	$relay = get_config('diaspora', 'relay_handle', '');
@@ -98,6 +102,94 @@ function diaspora_plugin_admin_post() {
 	}
 	else
 		set_config('diaspora', 'relay_handle', '');
+
+}
+
+function diaspora_fetch_provider(&$arr) {
+	$url      = $arr['data'];
+	$importer = $arr['channel'];
+
+	if (!Apps::addon_app_installed($importer['channel_id'], 'diaspora'))
+		return;
+
+	$parts      = parse_url($url);
+	$path_parts = pathinfo($parts['path']);
+
+	if (!in_array($path_parts['dirname'], ['/posts']))
+		return;
+
+	$id         = $path_parts['basename'];
+	$thread_url = $parts['scheme'] . '://' . $parts['host'] . '/posts/' . $id;
+
+	// fetch the json
+	$x = z_fetch_url($thread_url, false, 1, ['headers' => ['Accept: application/json']]);
+	if (!$x['success'])
+		return;
+
+	$thread_data = json_decode($x['body'], true);
+	$guid        = $thread_data['guid'];
+	$public      = $thread_data['public'];
+
+	if (!$public)
+		return;
+
+	$return_guid = (($parts['fragment']) ? $parts['fragment'] : $guid);
+
+	// We will first fetch the parent via the /fetch endpoint
+
+	$fetch_url = $parts['scheme'] . '://' . $parts['host'] . '/fetch/post/' . $guid;
+	$x         = z_fetch_url($fetch_url);
+
+	if (!$x['success'])
+		return;
+
+	$msg           = diaspora_decode($importer, $x['body'], 'salmon');
+	$msg['public'] = $public;
+
+	// dispatch toplevel post
+	diaspora_dispatch($importer, $msg, true);
+
+	// Here is the deal: there is no way to fetch comments or likes in diaspora.
+	// There is however a workaround that is internally used by diaspora to fetch public content.
+	// There are no signatures provided - so we can not check them.
+
+	if ($thread_data && array_path_exists('interactions/comments', $thread_data)) {
+		$comments = $thread_data['interactions']['comments'];
+		$msg      = [];
+		foreach ($comments as $comment) {
+			$msg_arr        = [
+				'author'      => $comment['author']['diaspora_id'],
+				'guid'        => $comment['guid'],
+				'parent_guid' => $guid,
+				'created_at'  => $comment['created_at'],
+				'edited_at'   => $comment['edited_at'],
+				'text'        => $comment['text']
+			];
+			$msg['message'] = arrtoxml('comment', $msg_arr);
+			$msg['author']  = $comment['author']['diaspora_id'];
+			diaspora_dispatch(App::get_channel(), $msg, true);
+			$msg = [];
+		}
+	}
+
+	if ($thread_data && array_path_exists('interactions/likes', $thread_data)) {
+		$likes = $thread_data['interactions']['likes'];
+		$msg   = [];
+		foreach ($likes as $like) {
+			$msg_arr        = [
+				'positive'    => 'true', // this is not provided and MUST be a string
+				'author'      => $like['author']['diaspora_id'],
+				'guid'        => $like['guid'],
+				'parent_guid' => $guid,
+				'created_at'  => $like['created_at']
+			];
+			$msg['message'] = arrtoxml('like', $msg_arr);
+			$msg['author']  = $like['author']['diaspora_id'];
+			diaspora_dispatch(App::get_channel(), $msg, true);
+		}
+	}
+
+	goaway(z_root() . '/display/' . gen_link_id(z_root() . '/item/' . $return_guid));
 
 }
 
@@ -148,7 +240,7 @@ function diaspora_well_known(&$b) {
 
 		header('Content-type: application/json');
 		echo json_encode($arr);
-		killme();			
+		killme();
 
 	}
 }
@@ -170,7 +262,7 @@ function diaspora_personal_xrd(&$b) {
 		[
 			'$baseurl'   => z_root(),
 			'$dspr_guid' => $b['user']['channel_guid'] . str_replace('.','',\App::get_hostname()),
-			'$dspr_key'  => base64_encode(pemtorsa($b['user']['channel_pubkey']))
+			'$dspr_key'  => base64_encode(Keyutils::pemToRsa($b['user']['channel_pubkey']))
 		]
 	);
 
@@ -187,7 +279,7 @@ function diaspora_webfinger(&$b) {
 	if(! Apps::addon_app_installed($b['channel']['channel_id'], 'diaspora'))
 		return;
 
-	$b['result']['links'][] = [ 
+	$b['result']['links'][] = [
 		'rel'  => 'http://joindiaspora.com/seed_location',
 		'type' => 'text/html',
 		'href' => z_root()
@@ -195,11 +287,11 @@ function diaspora_webfinger(&$b) {
 
 	$b['result']['properties']['http://purl.org/zot/federation'] .= ',diaspora';
 
-	// Diaspora requires a salmon link. 
+	// Diaspora requires a salmon link.
 	// Use this *only* if the gnusoc plugin is not installed and enabled
 
 	if((! in_array('gnusoc',\App::$plugins)) || (! Apps::addon_app_installed($b['channel']['channel_id'], 'gnusoc'))) {
-		$b['result']['links'][] = [ 
+		$b['result']['links'][] = [
 			'rel'  => 'salmon',
 			'href' => z_root() . '/receive/users/' . $b['channel']['channel_guid'] . str_replace('.','',App::get_hostname())
 		];
@@ -232,7 +324,7 @@ function diaspora_notifier_process(&$arr) {
 
 	if(! ((array_key_exists('target_item',$arr)) && (is_array($arr['target_item'])))) {
 		return;
-	} 
+	}
 
 	// If item_wall doesn't exist, it's not a post - perhaps an email or other DB object
 
@@ -313,7 +405,7 @@ function diaspora_process_outbound(&$arr) {
 	// send to public relay server - not ready for prime time
 
 	if(($arr['top_level_post']) && (! $arr['env_recips'])) {
-		// Add the relay server to the list of hubs.	
+		// Add the relay server to the list of hubs.
 		// = array('hubloc_callback' => 'https://relay.iliketoast.net/receive', 'xchan_pubkey' => 'bogus');
 	}
 
@@ -322,9 +414,9 @@ function diaspora_process_outbound(&$arr) {
 	if($target_item && array_key_exists('item_obscured',$target_item) && intval($target_item['item_obscured'])) {
 		$key = get_config('system','prvkey');
 		if($target_item['title'])
-			$target_item['title'] = crypto_unencapsulate(json_decode($target_item['title'],true),$key);
+			$target_item['title'] = Crypto::unencapsulate(json_decode($target_item['title'],true),$key);
 		if($target_item['body'])
-			$target_item['body'] = crypto_unencapsulate(json_decode($target_item['body'],true),$key);
+			$target_item['body'] = Crypto::unencapsulate(json_decode($target_item['body'],true),$key);
 	}
 
 	$prv_recips = $arr['env_recips'];
@@ -354,7 +446,7 @@ function diaspora_process_outbound(&$arr) {
 		foreach($prv_recips as $recip)
 			$hashes[] = "'" . $recip['hash'] . "'";
 
-		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s' 
+		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
 			and xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
 			dbesc($arr['hub']['hubloc_url'])
 		);
@@ -362,14 +454,14 @@ function diaspora_process_outbound(&$arr) {
 
 		if(! $r) {
 			logger('diaspora_process_outbound: no recipients');
-			return; 
+			return;
 		}
 
 		foreach($r as $contact) {
 
-			// is $contact connected with this channel - and if the channel is cloned, also on this hub? 
+			// is $contact connected with this channel - and if the channel is cloned, also on this hub?
 			$single = deliverable_singleton($arr['channel']['channel_id'],$contact);
-	
+
 			if($arr['packet_type'] == 'refresh' && $single) {
 				// This packet is sent privately to contacts, so we can always send the full profile (the last argument)
 				$qi = diaspora_profile_change($arr['channel'],$contact,false,true);
@@ -402,7 +494,7 @@ function diaspora_process_outbound(&$arr) {
 
 			// singletons will be sent upstream regardless of $single state. They may be rejected.
 
-			if(intval($target_item['item_deleted']) && ($arr['top_level_post'] || $arr['upstream'])) { 
+			if(intval($target_item['item_deleted']) && ($arr['top_level_post'] || $arr['upstream'])) {
 				$qi = diaspora_send_retraction($target_item,$arr['channel'],$contact);
 				if($qi)
 					$arr['queued'][] = $qi;
@@ -423,7 +515,7 @@ function diaspora_process_outbound(&$arr) {
 				logger('Singleton private delivery ignored on this site.');
 				continue;
 			}
-				
+
 			if($arr['top_level_post']) {
 				$qi = diaspora_send_status($target_item,$arr['channel'],$contact);
 				if($qi) {
@@ -455,7 +547,7 @@ function diaspora_process_outbound(&$arr) {
 				$arr['queued'][] = $qi;
 			return;
 		}
-		if(intval($target_item['item_deleted']) 
+		if(intval($target_item['item_deleted'])
 			&& ($target_item['mid'] === $target_item['parent_mid'])) {
 			// top-level retraction
 			logger('delivery: diaspora retract: ' . $loc);
@@ -487,13 +579,13 @@ function diaspora_process_outbound(&$arr) {
 
 	if($is_profile) {
 
-		// with either a public or private profile, send a profile message to the public endpoint of 
+		// with either a public or private profile, send a profile message to the public endpoint of
 		// each hub. $profile_visible indicates if the recipients can see all the data or a limited subset.
 		// @todo also find any other Diaspora pods who should get this message.
 
 		$contact = $arr['hub'];
 		$single = deliverable_singleton($arr['channel']['channel_id'],$contact);
-	
+
 		if($arr['packet_type'] == 'refresh' && $single) {
 			$qi = diaspora_profile_change($arr['channel'],$contact,true,$profile_visible);
 			if($qi)
@@ -523,7 +615,7 @@ function diaspora_queue($owner,$contact,$slap,$public_batch,$message_id = '') {
 		$dest_url = $contact['hubloc_callback'] . '/users/' . $contact['hubloc_guid'];
 
 
-	logger('diaspora_queue: URL: ' . $dest_url, LOGGER_DEBUG);	
+	logger('diaspora_queue: URL: ' . $dest_url, LOGGER_DEBUG);
 
 	if(intval(get_config('system','diaspora_test')) || intval(get_pconfig($owner['channel_id'],'system','diaspora_test'))) {
 		logger('diaspora test mode - delivery disabled');
@@ -610,7 +702,7 @@ function diaspora_discover(&$b) {
 			if(array_key_exists('rel',$link)) {
 
 				if($link['rel'] === NAMESPACE_DFRN)
-					$dfrn = escape_tags($link['href']);				
+					$dfrn = escape_tags($link['href']);
 
 				if($link['rel'] === 'http://joindiaspora.com/seed_location') {
 					$diaspora_base = escape_tags($link['href']);
@@ -623,7 +715,7 @@ function diaspora_discover(&$b) {
 				if($link['rel'] === 'diaspora-public-key') {
 					$diaspora_key = escape_tags(base64_decode($link['href']));
 					if(strstr($diaspora_key,'RSA '))
-						$pubkey = rsatopem($diaspora_key);
+						$pubkey = Keyutils::rsaToPem($diaspora_key);
 					else
 						$pubkey = $diaspora_key;
 					$diaspora = true;
@@ -649,7 +741,7 @@ function diaspora_discover(&$b) {
 		foreach($x as $link) {
 			if(is_array($link)) {
 				if($link['@attributes']['rel'] === NAMESPACE_DFRN)
-					$dfrn = escape_tags(unamp($link['@attributes']['href']));				
+					$dfrn = escape_tags(unamp($link['@attributes']['href']));
 				if($link['@attributes']['rel'] === 'http://microformats.org/profile/hcard')
 					$hcard = escape_tags(unamp($link['@attributes']['href']));
 				if($link['@attributes']['rel'] === 'http://webfinger.net/rel/profile-page')
@@ -658,7 +750,7 @@ function diaspora_discover(&$b) {
 					$diaspora_base = escape_tags(unamp($link['@attributes']['href']));
 					$diaspora = true;
 				}
-			
+
 				if($link['@attributes']['rel'] === 'http://joindiaspora.com/guid') {
 					$diaspora_guid = escape_tags(unamp($link['@attributes']['href']));
 					$diaspora = true;
@@ -666,7 +758,7 @@ function diaspora_discover(&$b) {
 				if($link['@attributes']['rel'] === 'diaspora-public-key') {
 					$diaspora_key = escape_tags(base64_decode(unamp($link['@attributes']['href'])));
 					if(strstr($diaspora_key,'RSA '))
-						$pubkey = rsatopem($diaspora_key);
+						$pubkey = Keyutils::rsaToPem($diaspora_key);
 					else
 						$pubkey = $diaspora_key;
 					$diaspora = true;
@@ -696,10 +788,10 @@ function diaspora_discover(&$b) {
 
 		$network = 'diaspora';
 		// until we get a dfrn layer, we'll use diaspora protocols for Friendica,
-		// but give it a different network so we can go back and fix these when we get proper support. 
+		// but give it a different network so we can go back and fix these when we get proper support.
 		// It really should be just 'friendica' but we also want to distinguish
 		// between Friendica sites that we can use D* protocols with and those we can't.
-		// Some Friendica sites will have Diaspora disabled. 
+		// Some Friendica sites will have Diaspora disabled.
 		if($dfrn)
 			$network = 'friendica-over-diaspora';
 		if($hcard) {
@@ -713,12 +805,12 @@ function diaspora_discover(&$b) {
 			if($vcard['public_key']) {
 				$diaspora_key = $vcard['public_key'];
 				if(strstr($diaspora_key,'RSA '))
-					$pubkey = rsatopem($diaspora_key);
+					$pubkey = Keyutils::rsaToPem($diaspora_key);
 				else
 					$pubkey = $diaspora_key;
 			}
 
-		} 
+		}
 
 		$r = q("select * from xchan where xchan_hash = '%s' limit 1",
 			dbesc($addr)
@@ -726,12 +818,12 @@ function diaspora_discover(&$b) {
 
 		/**
 		 *
-		 * Diaspora communications are notoriously unreliable and receiving profile update messages (indeed any messages) 
+		 * Diaspora communications are notoriously unreliable and receiving profile update messages (indeed any messages)
 		 * are pretty much random luck. We'll check the timestamp of the xchan_name_date at a higher level and refresh
-		 * this record once a month; because if you miss a profile update message and they update their profile photo or name 
-		 * you're otherwise stuck with stale info until they change their profile again - which could be years from now. 
+		 * this record once a month; because if you miss a profile update message and they update their profile photo or name
+		 * you're otherwise stuck with stale info until they change their profile again - which could be years from now.
 		 *
-		 */  			
+		 */
 
 		if($r) {
 			$r = q("update xchan set xchan_name = '%s', xchan_network = '%s', xchan_name_date = '%s', xchan_pubkey = '%s' where xchan_hash = '%s'",
@@ -758,7 +850,7 @@ function diaspora_discover(&$b) {
 		}
 
 		$r = q("select * from hubloc where hubloc_hash = '%s' limit 1",
-			dbesc($webbie)
+			dbesc($addr)
 		);
 
 		if(! $r) {
@@ -823,7 +915,7 @@ function diaspora_post_local(&$item) {
 			return;
 		}
 		$thr_parent = $t[0];
-	}	
+	}
 
 
 
@@ -925,7 +1017,7 @@ function diaspora_import_foreign_channel_data(&$data) {
 		return;
 	}
 }
-		
+
 function diaspora_profile_sidebar(&$x) {
 
 	$profile = $x['profile'];
@@ -935,14 +1027,14 @@ function diaspora_profile_sidebar(&$x) {
 
 	$firstname = ((strpos($profile['channel_name'],' '))
 		? trim(substr($profile['channel_name'],0,strpos($profile['channel_name'],' '))) : $profile['channel_name']);
-	$lastname = (($firstname === $profile['channel_name']) 
+	$lastname = (($firstname === $profile['channel_name'])
 			? '' : trim(substr($profile['channel_name'],strlen($firstname))));
 
-	$vcarddata = replace_macros(get_markup_template('diaspora_vcard.tpl','addon/diaspora'), 
+	$vcarddata = replace_macros(get_markup_template('diaspora_vcard.tpl','addon/diaspora'),
 		[
 			'$podloc'     => z_root(),
 			'$guid'       => $profile['channel_guid'] . str_replace('.','',App::get_hostname()),
-			'$pubkey'     => pemtorsa($profile['channel_pubkey']),
+			'$pubkey'     => Keyutils::pemToRsa($profile['channel_pubkey']),
 			'$searchable' => ((observer_prohibited()) ? 'false' : 'true'),
 			'$nickname'   => $profile['channel_address'],
 			'$fullname'   => $profile['channel_name'],
@@ -1110,7 +1202,7 @@ function diaspora_markdown_to_bb_init(&$x) {
 
 	// replace diaspora://$author_handle/$post_type/$guid with a local representation.
 	// Ideally we should eventually pass the author_handle and post_type to mod_display and from a hook
-	// fetch the post from the source if it isn't already available locally. 
+	// fetch the post from the source if it isn't already available locally.
 
 	$s = preg_replace('#diaspora://(.*?)/(.*?)/([^\s\]]*)#ism', z_root() . '/display/$3', $s);
 
@@ -1140,14 +1232,14 @@ function diaspora_markdown_media_cb($matches) {
 function diaspora_bb_to_markdown_bb(&$x) {
 
 	if(! in_array('diaspora',$x['options']))
-		return;	
+		return;
 
 	$Text = $x['bbcode'];
 
-	$Text = preg_replace_callback('/\@\!?\[([zu])rl\=(\w+.*?)\](\w+.*?)\[\/([zu])rl\]/i', 
+	$Text = preg_replace_callback('/\@\!?\[([zu])rl\=(\w+.*?)\](\w+.*?)\[\/([zu])rl\]/i',
 		'diaspora_bb_to_markdown_mention_callback', $Text);
 
-	$Text = preg_replace_callback('/\!\[([zu])rl\=(\w+.*?)\](\w+.*?)\[\/([zu])rl\]/i', 
+	$Text = preg_replace_callback('/\!\[([zu])rl\=(\w+.*?)\](\w+.*?)\[\/([zu])rl\]/i',
 		'diaspora_bb_to_markdown_fmention_callback', $Text);
 
 	// strip map and embed tags, as the rendering is performed in bbcode() and the resulting output
@@ -1166,7 +1258,7 @@ function diaspora_bb_to_markdown_bb(&$x) {
 
 function diaspora_bb_to_markdown_mention_callback($match) {
 
-    $r = q("select xchan_addr, xchan_url from xchan where xchan_url = '%s' and xchan_network not in('rss', 'anon', 'unknown')",
+    $r = q("select xchan_addr, xchan_url from xchan where xchan_url = '%s' and xchan_network not in('rss', 'anon', 'unknown') order by xchan_addr desc",
         dbesc($match[2])
     );
 
@@ -1214,11 +1306,9 @@ function diaspora_can_comment_on_post(&$b) {
 
 
 function diaspora_queue_deliver(&$b) {
-
 	$outq = $b['outq'];
 	$base = $b['base'];
 	$immediate = $b['immediate'];
-
 
 	if($outq['outq_driver'] === 'diaspora') {
 		$b['handled'] = true;
@@ -1251,9 +1341,9 @@ function diaspora_queue_deliver(&$b) {
 			);
 			remove_queue_item($outq['outq_hash']);
 
-			// server is responding - see if anything else is going to this destination and is piled up 
-			// and try to send some more. We're relying on the fact that do_delivery() results in an 
-			// immediate delivery otherwise we could get into a queue loop. 
+			// server is responding - see if anything else is going to this destination and is piled up
+			// and try to send some more. We're relying on the fact that do_delivery() results in an
+			// immediate delivery otherwise we could get into a queue loop.
 
 			if(! $immediate) {
 				$x = q("select outq_hash from outq where outq_posturl = '%s' and outq_delivered = 0",
