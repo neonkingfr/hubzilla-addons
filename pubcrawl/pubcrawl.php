@@ -1138,8 +1138,9 @@ function pubcrawl_follow_mod_init($x) {
 		killme();
 	}
 
-	// deal with mastodon remote reply
-	if(isset($_REQUEST['url'])) {
+	// Deal with mastodon remote reply
+	// Make sure it is not a real attempt to connect with a profile
+	if (local_channel() && isset($_REQUEST['url']) && !array_key_exists('submit', $_REQUEST) && !array_key_exists('interactive', $_REQUEST)) {
 		goaway(z_root() . '/search?search=' . $_REQUEST['url']);
 	}
 }
