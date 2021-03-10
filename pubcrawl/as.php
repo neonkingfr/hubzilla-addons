@@ -624,7 +624,7 @@ function asencode_activity($i) {
 
 	// poll answers should be addressed only to the poll owner
 	if($i['item_private'] && $i['obj_type'] === 'Answer') {
-		$ret['to'] = $i['owner']['xchan_url'];
+		$ret['to'][] = $i['owner']['xchan_url'];
 		$ret['cc'] = [];
 	}
 
