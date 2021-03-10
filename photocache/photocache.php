@@ -180,7 +180,7 @@ function photocache_hash($str, $alg = 'sha256') {
 				if(! $ph->save($r, true))
 					logger('can not create new link in database', LOGGER_DEBUG);
 			}
-			$s['body'] = str_replace($match[3], z_root() . '/photo/' . $resid . '-' . ($cache['item']['imgscale'] ? $cache['item']['imgscale'] : 0), $s['body']);
+			$s['body'] = str_replace($match[3], z_root() . '/photo/' . $resid, $s['body']);
 			logger('local resource id ' . $resid . '; xchan: ' . $hash . '; url: ' . $match[3]);
 		}
 	}
