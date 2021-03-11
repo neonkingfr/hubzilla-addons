@@ -74,7 +74,7 @@ class Diaspora extends Controller {
 		$sc = '<div class="section-content-info-wrapper">' . $desc . '</div>';
 
 		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), [
-			'$field' => ['dspr_pubcomment', t('Allow any Diaspora member to comment or like your public posts'), $pubcomments, '', $yes_no],
+			'$field' => ['dspr_pubcomment', t('Allow any Diaspora member to comment or like your public posts'), $pubcomments, t('If this setting is disabled only your contacts will be able to comment or like your public posts'), $yes_no],
 		]);
 
 		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), [
