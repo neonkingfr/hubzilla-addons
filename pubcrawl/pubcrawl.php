@@ -31,6 +31,7 @@ function pubcrawl_load() {
 		'thing_mod_init'             => 'pubcrawl_thing_mod_init',
 		'locs_mod_init'              => 'pubcrawl_locs_mod_init',
 		'follow_allow'               => 'pubcrawl_follow_allow',
+		'follow_failover'            => 'pubcrawl_follow_failover',
 		'discover_channel_webfinger' => 'pubcrawl_discover_channel_webfinger',
 		'permissions_create'         => 'pubcrawl_permissions_create',
 		'permissions_update'         => 'pubcrawl_permissions_update',
@@ -157,6 +158,33 @@ function pubcrawl_follow_allow(&$b) {
 	$b['allowed']   = $allowed;
 	$b['singleton'] = 1;  // this network does not support channel clones
 
+}
+
+function pubcrawl_follow_failover(&$arr) {
+
+	$channel = $arr['channel'];
+	$url = $arr['data'];
+
+	if(!Apps::addon_app_installed($channel['channel_id'], 'pubcrawl'))
+		return;
+
+	if (strpos($url, 'https://') === 0) {
+		$j = Activity::fetch($url, $channel);
+		if ($j) {
+			$AS = new ActivityStreams($j);
+			if ($AS->is_valid()) {
+				// check if is_an_actor, otherwise import activity
+				if (is_array($AS->obj) && !ActivityStreams::is_an_actor($AS->obj)) {
+					$item = Activity::decode_note($AS);
+					if ($item) {
+						logger('parsed_item: ' . print_r($item, true), LOGGER_DATA);
+						Activity::store($channel, get_observer_hash(), $AS, $item, true, true);
+						goaway(z_root() . '/display/' . gen_link_id($item['mid']));
+					}
+				}
+			}
+		}
+	}
 }
 
 function pubcrawl_channel_links(&$b) {
@@ -1138,11 +1166,6 @@ function pubcrawl_follow_mod_init($x) {
 		killme();
 	}
 
-	// Deal with mastodon remote reply
-	// Make sure it is not a real attempt to connect with a profile
-	if (local_channel() && isset($_REQUEST['url']) && !array_key_exists('submit', $_REQUEST) && !array_key_exists('interactive', $_REQUEST)) {
-		goaway(z_root() . '/search?search=' . $_REQUEST['url']);
-	}
 }
 
 
