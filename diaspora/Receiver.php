@@ -758,6 +758,7 @@ class Diaspora_Receiver {
 
 		// does the parent originate from this site?
 		$local_parent_item = (strpos($parent_item['plink'], z_root()) === 0);
+
 		$parent_owner_uid  = null;
 		if ($local_parent_item) {
 			// find the owner channel_id
@@ -1023,11 +1024,13 @@ class Diaspora_Receiver {
 
 			// let the plugin setting (Allow any Diaspora member to comment on your public posts)
 			// over-ride possibly more loose channel permission limits (anyone on the internet).
-			if ($allowed && !$pub_comment && !$abook_contact)
+			if (!$pub_comment && !$abook_contact)
 				$allowed = false;
 		}
 		else {
 			$allowed = true;
+			if (!$pub_comment && !$abook_contact)
+				$allowed = false;
 		}
 
 		if (!$allowed && !$tgroup) {
@@ -1542,11 +1545,13 @@ class Diaspora_Receiver {
 
 			// let the plugin setting (Allow any Diaspora member to comment/like your public posts)
 			// over-ride possibly more loose channel permission limits (anyone on the internet).
-			if ($allowed && !$pub_comment && !$abook_contact)
+			if (!$pub_comment && !$abook_contact)
 				$allowed = false;
 		}
 		else {
 			$allowed = true;
+			if (!$pub_comment && !$abook_contact)
+				$allowed = false;
 		}
 
 		if (!$allowed) {
