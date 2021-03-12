@@ -31,7 +31,6 @@ function pubcrawl_load() {
 		'thing_mod_init'             => 'pubcrawl_thing_mod_init',
 		'locs_mod_init'              => 'pubcrawl_locs_mod_init',
 		'follow_allow'               => 'pubcrawl_follow_allow',
-		'follow_failover'            => 'pubcrawl_follow_failover',
 		'discover_channel_webfinger' => 'pubcrawl_discover_channel_webfinger',
 		'permissions_create'         => 'pubcrawl_permissions_create',
 		'permissions_update'         => 'pubcrawl_permissions_update',
@@ -146,7 +145,6 @@ function pubcrawl_federated_transports(&$x) {
 	$x[] = 'ActivityPub';
 }
 
-
 function pubcrawl_follow_allow(&$b) {
 
 	if ($b['xchan']['xchan_network'] !== 'activitypub')
@@ -158,33 +156,6 @@ function pubcrawl_follow_allow(&$b) {
 	$b['allowed']   = $allowed;
 	$b['singleton'] = 1;  // this network does not support channel clones
 
-}
-
-function pubcrawl_follow_failover(&$arr) {
-
-	$channel = $arr['channel'];
-	$url = $arr['data'];
-
-	if(!Apps::addon_app_installed($channel['channel_id'], 'pubcrawl'))
-		return;
-
-	if (strpos($url, 'https://') === 0) {
-		$j = Activity::fetch($url, $channel);
-		if ($j) {
-			$AS = new ActivityStreams($j);
-			if ($AS->is_valid()) {
-				// check if is_an_actor, otherwise import activity
-				if (is_array($AS->obj) && !ActivityStreams::is_an_actor($AS->obj)) {
-					$item = Activity::decode_note($AS);
-					if ($item) {
-						logger('parsed_item: ' . print_r($item, true), LOGGER_DATA);
-						Activity::store($channel, get_observer_hash(), $AS, $item, true, true);
-						goaway(z_root() . '/display/' . gen_link_id($item['mid']));
-					}
-				}
-			}
-		}
-	}
 }
 
 function pubcrawl_channel_links(&$b) {
@@ -277,7 +248,6 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 	if (is_array($x)) {
 
-
 		$address = EMPTY_STR;
 
 		if (array_key_exists('subject', $x) && strpos($x['subject'], 'acct:') === 0)
@@ -318,13 +288,20 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 		return;
 	}
 	// Now find the actor and see if there is something we can follow
-
 	$person_obj = null;
 	if (in_array($AS->type, ['Application', 'Group', 'Organization', 'Person', 'Service'])) {
 		$person_obj = $AS->data;
 	}
 	elseif ($AS->obj && (in_array($AS->obj['type'], ['Application', 'Group', 'Organization', 'Person', 'Service']))) {
 		$person_obj = $AS->obj;
+	}
+	elseif (local_channel() && $AS->obj && (in_array($AS->obj['type'], ['Note', 'Article']))) {
+		// this implements mastodon remote reply functionality
+		$item = Activity::decode_note($AS);
+		if ($item) {
+			Activity::store(App::get_channel(), get_observer_hash(), $AS, $item, true, true);
+			goaway(z_root() . '/display/' . gen_link_id($item['mid']));
+		}
 	}
 	else {
 		return;
