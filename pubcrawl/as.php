@@ -803,6 +803,7 @@ function activity_mapper($verb) {
 		'http://activitystrea.ms/schema/1.0/tag'       => 'Add',
 		'http://activitystrea.ms/schema/1.0/follow'    => 'Follow',
 		'http://activitystrea.ms/schema/1.0/unfollow'  => 'Unfollow',
+		'http://activitystrea.ms/schema/1.0/stop-following' => 'Unfollow',
 		'http://purl.org/zot/activity/attendyes'       => 'Accept',
 		'http://purl.org/zot/activity/attendno'        => 'Reject',
 		'http://purl.org/zot/activity/attendmaybe'     => 'TentativeAccept'
