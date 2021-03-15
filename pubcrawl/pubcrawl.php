@@ -145,7 +145,6 @@ function pubcrawl_federated_transports(&$x) {
 	$x[] = 'ActivityPub';
 }
 
-
 function pubcrawl_follow_allow(&$b) {
 
 	if ($b['xchan']['xchan_network'] !== 'activitypub')
@@ -249,7 +248,6 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 	if (is_array($x)) {
 
-
 		$address = EMPTY_STR;
 
 		if (array_key_exists('subject', $x) && strpos($x['subject'], 'acct:') === 0)
@@ -290,13 +288,20 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 		return;
 	}
 	// Now find the actor and see if there is something we can follow
-
 	$person_obj = null;
 	if (in_array($AS->type, ['Application', 'Group', 'Organization', 'Person', 'Service'])) {
 		$person_obj = $AS->data;
 	}
 	elseif ($AS->obj && (in_array($AS->obj['type'], ['Application', 'Group', 'Organization', 'Person', 'Service']))) {
 		$person_obj = $AS->obj;
+	}
+	elseif (local_channel() && $AS->obj && (in_array($AS->obj['type'], ['Note', 'Article']))) {
+		// this implements mastodon remote reply functionality
+		$item = Activity::decode_note($AS);
+		if ($item) {
+			Activity::store(App::get_channel(), get_observer_hash(), $AS, $item, true, true);
+			goaway(z_root() . '/display/' . gen_link_id($item['mid']));
+		}
 	}
 	else {
 		return;
@@ -1138,11 +1143,6 @@ function pubcrawl_follow_mod_init($x) {
 		killme();
 	}
 
-	// Deal with mastodon remote reply
-	// Make sure it is not a real attempt to connect with a profile
-	if (local_channel() && isset($_REQUEST['url']) && !array_key_exists('submit', $_REQUEST) && !array_key_exists('interactive', $_REQUEST)) {
-		goaway(z_root() . '/search?search=' . $_REQUEST['url']);
-	}
 }
 
 
