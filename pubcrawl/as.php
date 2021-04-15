@@ -2306,21 +2306,21 @@ function as_get_content($act,$binary = false) {
 	}
 
 	if ($event && ! $binary) {
-		$event['summary'] = html2plain(purify_html($content['summary']),256);
+		$event['summary'] = ((is_string($content['summary'])) ? html2plain(purify_html($content['summary']),256) : '');
 		if (! $event['summary']) {
 			if ($content['name']) {
-				$event['summary'] = html2plain(purify_html($content['name']),256);
+				$event['summary'] = ((is_string($content['name'])) ? html2plain(purify_html($content['name']),256) : '');
 			}
 		}
 		if (! $event['summary']) {
 			if ($content['content']) {
-				$event['summary'] = html2plain(purify_html($content['content']),256);
+				$event['summary'] = ((is_string($content['content'])) ? html2plain(purify_html($content['content']),256) : '');
 			}
 		}
 		if ($event['summary']) {
 			$event['summary'] = substr($event['summary'],0,256);
 		}
-		$event['description'] = html2bbcode($content['content']);
+		$event['description'] = ((is_string($content['summary'])) ? html2bbcode(purify_html($content['content'])) : '');
 		if ($event['summary'] && $event['dtstart']) {
 			$content['event'] = $event;
 		}
