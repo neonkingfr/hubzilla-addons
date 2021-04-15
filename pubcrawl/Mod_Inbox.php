@@ -28,7 +28,10 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		if (! ($hsig['header_signed'] && $hsig['header_valid'] && $hsig['content_signed'] && $hsig['content_valid'])) {
 			logger('HTTPSig::verify() failed: ' . print_r($hsig,true), LOGGER_DEBUG);
-			http_status_exit(403,'Permission denied');
+			$d = json_decode($data,true);
+			$data = Activity::fetch($d['id']);
+			$data_fetched = true;
+			//http_status_exit(403,'Permission denied');
 		}
 
 		$AS = new ActivityStreams($data);
@@ -84,7 +87,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 		// Only permit relayed activities if the activity is signed with LDSigs
 		// AND the signature is valid AND the signer is the actor.
 
-		if ($hsig['header_valid'] && $hsig['content_valid'] && $hsig['portable_id']) {
+		if (!$data_fetched && ($hsig['header_valid'] && $hsig['content_valid'] && $hsig['portable_id'])) {
 
 			// fetch the portable_id for the actor, which may or may not be the sender
 			$v = q("select hubloc_hash from hubloc where hubloc_id_url = '%s' or hubloc_hash = '%s'",
@@ -123,7 +126,10 @@ class Inbox extends \Zotlabs\Web\Controller {
 		}
 
 		if (! $observer_hash) {
-			return;
+			if($data_fetched)
+				$observer_hash = $AS->actor['id'];
+			else
+				return;
 		}
 
 		// verify that this site has permitted communication with the sender.

@@ -647,10 +647,10 @@ function pubcrawl_notifier_hub(&$arr) {
 		// re-explode the recipients, but only for this hub/pod
 
 		foreach ($prv_recips as $recip)
-			$hashes[] = "'" . $recip['hash'] . "'";
+			$hashes[] = "'" . dbesc($recip['hash']) . "'";
 
 		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
-			and xchan_hash in (" . implode(',', $hashes) . ") and xchan_network = 'activitypub'",
+			and xchan_hash in (" . protect_sprintf(implode(',', $hashes)) . ") and xchan_network = 'activitypub'",
 			dbesc($arr['hub']['hubloc_url'])
 		);
 
