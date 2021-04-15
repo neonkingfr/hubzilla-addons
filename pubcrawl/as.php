@@ -1493,12 +1493,12 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	$s['comment_policy'] = 'authenticated';
 
-	//if($act->obj['type'] === 'Event') {
-		//$ev = as_bb_content($content,'event');
-		//if($ev) {
-			//$s['obj_type'] = ACTIVITY_OBJ_EVENT;
-		//}
-	//}
+	if($act->obj['type'] === 'Event') {
+		$ev = as_bb_content($content,'event');
+		if($ev) {
+			$s['obj_type'] = ACTIVITY_OBJ_EVENT;
+		}
+	}
 
 	if($act->obj['type'] === 'Question') {
 		$s['obj_type'] = 'Question';
@@ -1822,13 +1822,11 @@ function as_create_note($channel,$observer_hash,$act) {
 		}
 
 		if ($eventptr) {
-			$s['obj_type'] = ACTIVITY_OBJ_EVENT;
-
 			$s['obj']          = [];
 			$s['obj']['asld']  = $eventptr;
 			$s['obj']['type']  = ACTIVITY_OBJ_EVENT;
 			$s['obj']['id']    = $eventptr['id'];
-			$s['obj']['title'] = $eventptr['name'];
+			$s['obj']['title'] = html2plain($eventptr['name']);
 
 			if (strpos($act->obj['startTime'], 'Z'))
 				$s['obj']['adjust'] = true;
@@ -1844,10 +1842,7 @@ function as_create_note($channel,$observer_hash,$act) {
 
 			if (array_path_exists('location/content', $eventptr))
 				$s['obj']['location'] = $eventptr['location']['content'];
-
 		}
-
-
 	}
 
 	if ($act->recips && (! in_array(ACTIVITY_PUBLIC_INBOX,$act->recips)))
@@ -2283,24 +2278,23 @@ function as_get_content($act,$binary = false) {
 		return $content;
 	}
 
-
 	if ($act['type'] === 'Event') {
 		$adjust = false;
 		$event = [];
-		$event['event_hash'] = $act['id'];
-		if (array_key_exists('startTime',$act) && strpos($act['startTime'],-1,1) === 'Z') {
+		$event['event_hash'] = (($act['uuid']) ? $act['uuid'] : $act['id']);
+		if (isset($act['startTime']) && substr($act['startTime'],-1,1) === 'Z') {
 			$adjust = true;
 			$event['adjust'] = 1;
 			$event['dtstart'] = datetime_convert('UTC','UTC',$event['startTime'] . (($adjust) ? '' : 'Z'));
 		}
-		if (array_key_exists('endTime',$act)) {
+		if (isset($act['endTime'])) {
 			$event['dtend'] = datetime_convert('UTC','UTC',$event['endTime'] . (($adjust) ? '' : 'Z'));
 		}
 		else {
 			$event['nofinish'] = true;
 		}
 
-		if (array_key_exists('eventRepeat',$act)) {
+		if (isset($act['eventRepeat'])) {
 			$event['event_repeat'] = $act['eventRepeat'];
 		}
 	}
@@ -2334,7 +2328,7 @@ function as_get_content($act,$binary = false) {
 
 	if (array_path_exists('source/mediaType',$act) && array_path_exists('source/content',$act)) {
 		if ($act['source']['mediaType'] === 'text/bbcode') {
-			$content['bbcode'] = purify_html($act['source']['content'], [ 'escape'] );
+			$content['bbcode'] = purify_html($act['source']['content'], ['escape']);
 		}
 	}
 
