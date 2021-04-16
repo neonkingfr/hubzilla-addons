@@ -191,10 +191,16 @@ class Inbox extends \Zotlabs\Web\Controller {
 				}
 			}
 			else {
-				// Pleroma sends follow activities to the publicInbox and therefore requires special handling.
+				// Pleroma follow activities to shared inbox requires special handling
 				if ($AS->type === 'Follow' && $AS->obj && $AS->obj['type'] === 'Person') {
 					$channels = q("SELECT * from channel where channel_address = '%s' and channel_removed = 0 ",
 						dbesc(basename($AS->obj['id']))
+					);
+				}
+				// Mobilizon group invite to shared inbox
+				elseif ($AS->type === 'Invite' && $AS->obj && $AS->obj['type'] === 'Group' && $AS->tgt && $AS->tgt['type'] === 'Person') {
+					$channels = q("SELECT * from channel where channel_address = '%s' and channel_removed = 0 ",
+						dbesc(basename($AS->tgt['id']))
 					);
 				}
 				elseif ($AS->type === 'Update') {
@@ -264,24 +270,31 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 			switch($AS->type) {
 				case 'Follow':
-					if($AS->obj && $AS->obj['type'] === 'Person') {
+					if (is_array($AS->obj) && array_key_exists('type', $AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
 						// do follow activity
-						as_follow($channel,$AS);
-						break;
+						Activity::follow($channel,$AS);
+					}
+					break;
+				case 'Invite':
+					if (is_array($AS->obj) && array_key_exists('type', $AS->obj) && $AS->obj['type'] === 'Group') {
+						// do follow activity
+						Activity::follow($channel,$AS);
+					}
+					break;
+				case 'Join':
+					if (is_array($AS->obj) && array_key_exists('type', $AS->obj) && $AS->obj['type'] === 'Group') {
+						// do follow activity
+						Activity::follow($channel,$AS);
 					}
 					break;
 				case 'Accept':
-					if($AS->obj && $AS->obj['type'] === 'Follow') {
+					if (is_array($AS->obj) && array_key_exists('type', $AS->obj) && $AS->obj['type'] === 'Follow') {
 						// do follow activity
-						as_follow($channel,$AS);
-						break;
+						Activity::follow($channel,$AS);
 					}
 					break;
 
 				case 'Reject':
-
-				default:
-					break;
 
 			}
 
