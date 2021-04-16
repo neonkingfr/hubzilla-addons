@@ -293,9 +293,10 @@ class Inbox extends \Zotlabs\Web\Controller {
 						Activity::follow($channel,$AS);
 					}
 					break;
-
 				case 'Reject':
 
+				default:
+					break;
 			}
 
 
