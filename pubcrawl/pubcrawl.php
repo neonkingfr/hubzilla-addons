@@ -568,7 +568,7 @@ function pubcrawl_notifier_hub(&$arr) {
 			// Our relayed Likes etc. do not seem to be accepted/displayed by any platform so far.
 			// Some return code 200 but do not display it (masto) others return 400 (pleroma).
 			// If the return code is 400 or 500 they tend to stuff up the  queue basically for nothing.
-			if(in_array($arr['target_item']['verb'], [ACTIVITY_LIKE, ACTIVITY_DISLIKE])
+			if(in_array($arr['target_item']['verb'], [ACTIVITY_LIKE, ACTIVITY_DISLIKE]))
 				return;
 
 			$signed_msg = get_iconfig($arr['target_item'], 'activitypub', 'rawmsg');
