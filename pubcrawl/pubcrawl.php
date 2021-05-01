@@ -572,14 +572,15 @@ function pubcrawl_notifier_hub(&$arr) {
 				return;
 
 			$signed_msg = get_iconfig($arr['target_item'], 'activitypub', 'rawmsg');
+
+			// If we don't have a signed message and we are not the author,
+			// the message will be misattributed in mastodon
+			if(! $signed_msg) {
+				logger('relayed post with no signed message');
+				return;
+			}
 		}
 
-		// If we don't have a signed message and we are not the author,
-		// the message will be misattributed in mastodon
-		if (($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) && (!$signed_msg)) {
-			logger('relayed post with no signed message');
-			return;
-		}
 	}
 
 	$prv_recips = $arr['env_recips'];
@@ -592,22 +593,8 @@ function pubcrawl_notifier_hub(&$arr) {
 		$signed_msg = '';
 	}
 
-	if ($signed_msg) {
-
+	if (is_string($signed_msg)) {
 		$jmsg = $signed_msg;
-
-		// If the signed activitypub message comes from zot, it is nested in the attachment.
-		// TODO: this will not work for likes since the object is not the like but the liked item.
-		$signed_msg_arr = json_decode($signed_msg, true);
-		if ($signed_msg_arr['type'] === 'Create' && array_path_exists('object/attachment', $signed_msg_arr)) {
-			foreach($signed_msg_arr['object']['attachment'] as $a) {
-				if (isset($a['type']) && $a['type'] === 'PropertyValue' && isset($a['name']) && $a['name'] === 'zot.activitypub.rawmsg') {
-					if (isset($a['value'])) {
-						$jmsg = $a['value'];
-					}
-				}
-			}
-		}
 	}
 
 	if ($target_item && !$signed_msg) {
