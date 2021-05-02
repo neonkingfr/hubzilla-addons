@@ -639,8 +639,9 @@ function pubcrawl_notifier_hub(&$arr) {
 
 		// re-explode the recipients, but only for this hub/pod
 
-		foreach ($prv_recips as $recip)
+		foreach ($prv_recips as $recip) {
 			$hashes[] = "'" . dbesc($recip['hash']) . "'";
+		}
 
 		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
 			and xchan_hash in (" . protect_sprintf(implode(',', $hashes)) . ") and xchan_network = 'activitypub'",
@@ -652,7 +653,14 @@ function pubcrawl_notifier_hub(&$arr) {
 			return;
 		}
 
+		$processed = [];
+
 		foreach ($r as $contact) {
+
+			if(in_array($contact['hubloc_id_url'], $processed))
+				continue;
+
+			$processed[] = $contact['hubloc_id_url'];
 
 			// is $contact connected with this channel - and if the channel is cloned, also on this hub?
 			$single = deliverable_singleton($arr['channel']['channel_id'], $contact);
@@ -665,7 +673,7 @@ function pubcrawl_notifier_hub(&$arr) {
 				if ($qi)
 					$arr['queued'][] = $qi;
 			}
-			continue;
+
 		}
 
 	}
@@ -695,8 +703,14 @@ function pubcrawl_notifier_hub(&$arr) {
 				return;
 			}
 
+			$processed = [];
 
 			foreach ($r as $contact) {
+
+				if(in_array($contact['hubloc_id_url'], $processed))
+					continue;
+
+				$processed[] = $contact['hubloc_id_url'];
 
 				$single = deliverable_singleton($arr['channel']['channel_id'], $contact);
 

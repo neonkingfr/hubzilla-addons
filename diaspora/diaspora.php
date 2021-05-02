@@ -451,13 +451,19 @@ function diaspora_process_outbound(&$arr) {
 			dbesc($arr['hub']['hubloc_url'])
 		);
 
-
 		if(! $r) {
 			logger('diaspora_process_outbound: no recipients');
 			return;
 		}
 
+		$processed = [];
+
 		foreach($r as $contact) {
+
+			if(in_array($contact['hubloc_id_url'], $processed))
+				continue;
+
+			$processed[] = $contact['hubloc_id_url'];
 
 			// is $contact connected with this channel - and if the channel is cloned, also on this hub?
 			$single = deliverable_singleton($arr['channel']['channel_id'],$contact);
