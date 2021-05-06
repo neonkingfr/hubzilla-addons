@@ -36,7 +36,7 @@ function diaspora_dispatch_public($msg) {
 		);
 	}
 
-	if($r && $sys) {
+	if($sys) {
 		$r = array_merge($r,[$sys]);
 	}
 
