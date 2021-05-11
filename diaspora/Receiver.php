@@ -14,9 +14,9 @@ class Diaspora_Receiver {
 	protected $msg;
 	protected $force;
 
-	function __construct($importer,$xmlbase,$msg,$force) {
+	function __construct($importer, $msg, $force) {
 		$this->importer = $importer;
-		$this->xmlbase = $xmlbase;
+		$this->xmlbase = $msg['msg'];
 		$this->msg = $msg;
 
 		// WARNING: $force should REALLY only be true if manually importing content!!!

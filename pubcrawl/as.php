@@ -1336,7 +1336,7 @@ function as_actor_store($url,$person_obj) {
 
 function as_create_action($channel,$observer_hash,$act) {
 
-	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video', 'Image', 'Event', 'Question' ])) {
+	if(in_array($act->obj['type'], [ 'Note', 'Article', 'Video', 'Image', 'Event', 'Question', 'Page' ])) {
 		as_create_note($channel,$observer_hash,$act);
 	}
 
@@ -1443,7 +1443,7 @@ function as_create_note($channel,$observer_hash,$act) {
 					$ptr = [ $act->obj['url'] ];
 				}
 				foreach($ptr as $vurl) {
-					if(array_key_exists('mediaType',$vurl) && $vurl['mediaType'] === 'text/html') {
+					if(is_array($vurl) && array_key_exists('mediaType',$vurl) && $vurl['mediaType'] === 'text/html') {
 						$s['plink'] = $vurl['href'];
 						break;
 					}
@@ -1782,11 +1782,11 @@ function as_create_note($channel,$observer_hash,$act) {
 						$ptr = [ $act->obj['url'] ];
 					}
 					foreach ($ptr as $vurl) {
-						if (array_key_exists('mediaType',$vurl) && $vurl['mediaType'] === 'text/html') {
+						if (is_array($vurl) && array_key_exists('mediaType',$vurl) && $vurl['mediaType'] === 'text/html') {
 							$purl = $vurl['href'];
 							break;
 						}
-						elseif (array_key_exists('mimeType',$vurl) && $vurl['mimeType'] === 'text/html') {
+						elseif (is_array($vurl) && array_key_exists('mimeType',$vurl) && $vurl['mimeType'] === 'text/html') {
 							$purl = $vurl['href'];
 							break;
 						}
@@ -1805,6 +1805,43 @@ function as_create_note($channel,$observer_hash,$act) {
 					}
 				}
 			}
+		}
+
+		$eventptr = null;
+
+		if ($act->obj['type'] === 'Invite' && array_path_exists('object/type', $act->obj) && $act->obj['object']['type'] === 'Event') {
+			$eventptr = $act->obj['object'];
+			$s['mid'] = $s['parent_mid'] = $act->obj['id'];
+		}
+
+		if ($act->obj['type'] === 'Event') {
+			if ($act->type === 'Invite') {
+				$s['mid'] = $s['parent_mid'] = $act->id;
+			}
+			$eventptr = $act->obj;
+		}
+
+		if ($eventptr) {
+			$s['obj']          = [];
+			$s['obj']['asld']  = $eventptr;
+			$s['obj']['type']  = ACTIVITY_OBJ_EVENT;
+			$s['obj']['id']    = $eventptr['id'];
+			$s['obj']['title'] = html2plain($eventptr['name']);
+
+			if (strpos($act->obj['startTime'], 'Z'))
+				$s['obj']['adjust'] = true;
+			else
+				$s['obj']['adjust'] = false;
+
+			$s['obj']['dtstart'] = datetime_convert('UTC', 'UTC', $eventptr['startTime']);
+			if ($act->obj['endTime'])
+				$s['obj']['dtend'] = datetime_convert('UTC', 'UTC', $eventptr['endTime']);
+			else
+				$s['obj']['nofinish'] = true;
+			$s['obj']['description'] = html2bbcode($eventptr['content']);
+
+			if (array_path_exists('location/content', $eventptr))
+				$s['obj']['location'] = $eventptr['location']['content'];
 		}
 	}
 
@@ -2199,17 +2236,30 @@ function as_bb_attach($attach) {
 
 function as_bb_content($content,$field) {
 
-	require_once('include/html2bbcode.php');
-
 	$ret = false;
 
-	if(is_array($content[$field])) {
-		foreach($content[$field] as $k => $v) {
-			$ret .= '[language=' . $k . ']' . html2bbcode($v, ['cache' => true ]) . '[/language]';
+	if (! is_array($content)) {
+		btlogger('content not initialised');
+		return $ret;
+	}
+
+	if (is_array($content[$field])) {
+		foreach ($content[$field] as $k => $v) {
+			$ret .= html2bbcode($v);
+			// save this for auto-translate or dynamic filtering
+			// $ret .= '[language=' . $k . ']' . html2bbcode($v) . '[/language]';
 		}
 	}
 	else {
-		$ret = html2bbcode($content[$field]);
+		if ($field === 'bbcode' && array_key_exists('bbcode',$content)) {
+			$ret = $content[$field];
+		}
+		else {
+			$ret = html2bbcode($content[$field]);
+		}
+	}
+	if ($field === 'content' && $content['event'] && (! strpos($ret,'[event'))) {
+		$ret .= format_event_bbcode($content['event']);
 	}
 
 	return $ret;
@@ -2218,44 +2268,67 @@ function as_bb_content($content,$field) {
 
 
 
-function as_get_content($act) {
+
+function as_get_content($act,$binary = false) {
 
 	$content = [];
 	$event = null;
 
-	if(array_key_exists('type', $act) && ($act['type'] === 'Event')) {
+	if ((! $act) || (! is_array($act))) {
+		return $content;
+	}
+
+	if ($act['type'] === 'Event') {
 		$adjust = false;
 		$event = [];
-		$event['event_hash'] = $act['id'];
-		if(array_key_exists('startTime',$act)) {
-			if(substr($act['startTime'],-1,1) === 'Z') {
-				$adjust = true;
-				$event['adjust'] = 1;
-			}
-			$event['dtstart'] = datetime_convert('UTC','UTC',$act['startTime'] . (($adjust) ? '' : 'Z'));
+		$event['event_hash'] = (($act['uuid']) ? $act['uuid'] : $act['id']);
+		if (isset($act['startTime']) && substr($act['startTime'],-1,1) === 'Z') {
+			$adjust = true;
+			$event['adjust'] = 1;
+			$event['dtstart'] = datetime_convert('UTC','UTC',$event['startTime'] . (($adjust) ? '' : 'Z'));
 		}
-		if(array_key_exists('endTime',$act)) {
-			$event['dtend'] = datetime_convert('UTC','UTC',$act['endTime'] . (($adjust) ? '' : 'Z'));
- 		}
+		if (isset($act['endTime'])) {
+			$event['dtend'] = datetime_convert('UTC','UTC',$event['endTime'] . (($adjust) ? '' : 'Z'));
+		}
 		else {
 			$event['nofinish'] = true;
 		}
+
+		if (isset($act['eventRepeat'])) {
+			$event['event_repeat'] = $act['eventRepeat'];
+		}
 	}
 
-	foreach([ 'name', 'summary', 'content' ] as $a) {
-		if(($x = as_get_textfield($act,$a)) !== false) {
+	foreach ([ 'name', 'summary', 'content' ] as $a) {
+		if (($x = as_get_textfield($act,$a,$binary)) !== false) {
 			$content[$a] = $x;
 		}
 	}
 
-	if($event) {
-		$event['summary'] = (($content['name']) ? $content['name'] : $content['summary']);
-		$event['description'] = $content['content'];
-		if($event['summary'] && $event['dtstart']) {
+	if ($event && ! $binary) {
+		$event['summary'] = ((is_string($content['summary'])) ? html2plain(purify_html($content['summary']),256) : '');
+		if (! $event['summary']) {
+			if ($content['name']) {
+				$event['summary'] = ((is_string($content['name'])) ? html2plain(purify_html($content['name']),256) : '');
+			}
+		}
+		if (! $event['summary']) {
+			if ($content['content']) {
+				$event['summary'] = ((is_string($content['content'])) ? html2plain(purify_html($content['content']),256) : '');
+			}
+		}
+		if ($event['summary']) {
+			$event['summary'] = substr($event['summary'],0,256);
+		}
+		$event['description'] = ((is_string($content['summary'])) ? html2bbcode(purify_html($content['content'])) : '');
+		if ($event['summary'] && $event['dtstart']) {
 			$content['event'] = $event;
 		}
-		if(strpos($content['content'],"[event-") === false) {
-			$content['content'] .= "\n" . format_event_bbcode($content['event']);
+	}
+
+	if (array_path_exists('source/mediaType',$act) && array_path_exists('source/content',$act)) {
+		if ($act['source']['mediaType'] === 'text/bbcode') {
+			$content['bbcode'] = purify_html($act['source']['content'], ['escape']);
 		}
 	}
 
@@ -2263,19 +2336,15 @@ function as_get_content($act) {
 }
 
 
-function as_get_textfield($act,$field) {
+function as_get_textfield($act,$field,$binary = false) {
 
 	$content = false;
 
-	if(! $act) {
-		return $content;
-	}
-
-	if(array_key_exists($field,$act) && $act[$field])
-		$content = purify_html($act[$field]);
-	elseif(array_key_exists($field . 'Map',$act) && $act[$field . 'Map']) {
-		foreach($act[$field . 'Map'] as $k => $v) {
-			$content[escape_tags($k)] = purify_html($v);
+	if (array_key_exists($field,$act) && $act[$field])
+		$content = (($binary) ? $act[$field] : purify_html($act[$field]));
+	elseif (array_key_exists($field . 'Map',$act) && $act[$field . 'Map']) {
+		foreach ($act[$field . 'Map'] as $k => $v) {
+			$content[escape_tags($k)] = (($binary) ? $v : purify_html($v));
 		}
 	}
 	return $content;
@@ -2285,16 +2354,20 @@ function as_get_attributed_to_person($act) {
 
 	$attributed_to = '';
 
-	if(is_array($act->obj['attributedTo'])) {
+	if (is_array($act->obj['attributedTo'])) {
 		foreach($act->obj['attributedTo'] as $a) {
-			if($a['type'] == 'Person')
+			if (is_array($a) && isset($a['type']) && $a['type'] == 'Person') {
 				$attributed_to = $a['id'];
+			}
+			elseif (is_string($a)) {
+				$attributed_to = $a;
+				break;
+			}
 		}
 	}
 	else {
 		$attributed_to = $act->obj['attributedTo'];
 	}
-
 	return $attributed_to;
 
 }

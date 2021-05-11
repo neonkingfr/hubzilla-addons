@@ -565,15 +565,22 @@ function pubcrawl_notifier_hub(&$arr) {
 		// which we are sending downstream, use that signed activity as is.
 		// The channel will then sign the HTTP transaction.
 		if ($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) {
+			// Our relayed Likes etc. do not seem to be accepted/displayed by any platform so far.
+			// Some return code 200 but do not display it (masto) others return 400 (pleroma).
+			// If the return code is 400 or 500 they tend to stuff up the  queue basically for nothing.
+			if(in_array($arr['target_item']['verb'], [ACTIVITY_LIKE, ACTIVITY_DISLIKE]))
+				return;
+
 			$signed_msg = get_iconfig($arr['target_item'], 'activitypub', 'rawmsg');
+
+			// If we don't have a signed message and we are not the author,
+			// the message will be misattributed in mastodon
+			if(! $signed_msg) {
+				logger('relayed post with no signed message');
+				return;
+			}
 		}
 
-		// If we don't have a signed message and we are not the author,
-		// the message will be misattributed in mastodon
-		if (($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) && (!$signed_msg)) {
-			logger('relayed post with no signed message');
-			return;
-		}
 	}
 
 	$prv_recips = $arr['env_recips'];
@@ -586,22 +593,8 @@ function pubcrawl_notifier_hub(&$arr) {
 		$signed_msg = '';
 	}
 
-	if ($signed_msg) {
-
+	if (is_string($signed_msg)) {
 		$jmsg = $signed_msg;
-
-		// If the signed activitypub message comes from zot, it is nested in the attachment.
-		// TODO: this will not work for likes since the object is not the like but the liked item.
-		$signed_msg_arr = json_decode($signed_msg, true);
-		if ($signed_msg_arr['type'] === 'Create' && array_path_exists('object/attachment', $signed_msg_arr)) {
-			foreach($signed_msg_arr['object']['attachment'] as $a) {
-				if (isset($a['type']) && $a['type'] === 'PropertyValue' && isset($a['name']) && $a['name'] === 'zot.activitypub.rawmsg') {
-					if (isset($a['value'])) {
-						$jmsg = $a['value'];
-					}
-				}
-			}
-		}
 	}
 
 	if ($target_item && !$signed_msg) {
@@ -646,11 +639,12 @@ function pubcrawl_notifier_hub(&$arr) {
 
 		// re-explode the recipients, but only for this hub/pod
 
-		foreach ($prv_recips as $recip)
-			$hashes[] = "'" . $recip['hash'] . "'";
+		foreach ($prv_recips as $recip) {
+			$hashes[] = "'" . dbesc($recip['hash']) . "'";
+		}
 
 		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
-			and xchan_hash in (" . implode(',', $hashes) . ") and xchan_network = 'activitypub'",
+			and xchan_hash in (" . protect_sprintf(implode(',', $hashes)) . ") and xchan_network = 'activitypub'",
 			dbesc($arr['hub']['hubloc_url'])
 		);
 
@@ -659,7 +653,14 @@ function pubcrawl_notifier_hub(&$arr) {
 			return;
 		}
 
+		$processed = [];
+
 		foreach ($r as $contact) {
+
+			if(in_array($contact['hubloc_id_url'], $processed))
+				continue;
+
+			$processed[] = $contact['hubloc_id_url'];
 
 			// is $contact connected with this channel - and if the channel is cloned, also on this hub?
 			$single = deliverable_singleton($arr['channel']['channel_id'], $contact);
@@ -672,7 +673,7 @@ function pubcrawl_notifier_hub(&$arr) {
 				if ($qi)
 					$arr['queued'][] = $qi;
 			}
-			continue;
+
 		}
 
 	}
@@ -702,8 +703,14 @@ function pubcrawl_notifier_hub(&$arr) {
 				return;
 			}
 
+			$processed = [];
 
 			foreach ($r as $contact) {
+
+				if(in_array($contact['hubloc_id_url'], $processed))
+					continue;
+
+				$processed[] = $contact['hubloc_id_url'];
 
 				$single = deliverable_singleton($arr['channel']['channel_id'], $contact);
 
