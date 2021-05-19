@@ -658,121 +658,56 @@ function diaspora_send_retraction($item,$owner,$contact,$public_batch = false) {
 	return(diaspora_queue($owner,$contact,$slap,$public_batch,$item['mid']));
 }
 
-function diaspora_send_mail($item,$owner,$contact) {
+function diaspora_send_mail($item, $contact) {
 
-	$myaddr = channel_reddress($owner);
+	$owner = channelx_by_hash($item['target_item']['author']['xchan_hash']);
+	$myaddr = $item['target_item']['author']['xchan_addr'];
+	$body = bb_to_markdown($item['target_item']['body'], [ 'diaspora' ]);
+	$conv_guid = (($item['parent_item']['item_origin']) ? 'conversation:' . $item['parent_item']['uuid'] : $item['parent_item']['uuid']);
+	$created = datetime_convert('UTC', 'UTC', $item['target_item']['created'], ATOM_TIME);
 
-	$r = q("select * from conv where guid = '%s' and uid = %d limit 1",
-		dbesc($item['conv_guid']),
-		intval($item['channel_id'])
-	);
-
-	if(! count($r)) {
-		logger('diaspora_send_mail: conversation not found.');
-		return;
-	}
-
-	$z = q("select from_xchan from mail where conv_guid = '%s' and channel_id = %d and mid = parent_mid limit 1",
-		dbesc($item['conv_guid']),
-		intval($item['channel_id'])
-	);
-
-	$conv_owner = (($z && $z[0]['from_xchan'] === $owner['channel_hash']) ? true : false);
-
-	$cnv = $r[0];
-	$cnv['subject'] = base64url_decode(str_rot47($cnv['subject']));
-
-	$conv = array(
-		'guid' => xmlify($cnv['guid']),
-		'subject' => xmlify($cnv['subject']),
-		'created_at' => xmlify(datetime_convert('UTC','UTC',$cnv['created'],'Y-m-d H:i:s \U\T\C')),
-		'diaspora_handle' => xmlify($cnv['creator']),
-		'participant_handles' => xmlify($cnv['recips'])
-	);
-
-
-	if(array_key_exists('mail_obscured',$item) && intval($item['mail_obscured'])) {
-		if($item['title'])
-			$item['title'] = base64url_decode(str_rot47($item['title']));
-		if($item['body'])
-			$item['body'] = base64url_decode(str_rot47($item['body']));
-	}
-
-
-	// the parent_guid needs to be the conversation guid
-
-	$parent_ptr = $cnv['guid'];
-
-	$body = bb_to_markdown($item['body'], [ 'diaspora' ]);
-
-	if(defined('DIASPORA_V2')) {
-
-		$conv = null;
-		$created = datetime_convert('UTC','UTC',$item['created'],ATOM_TIME);
-		$message = [
-			'author' => $myaddr,
-			'guid' => $item['mid'],
-			'conversation_guid' => $cnv['guid'],
-			'text' => $body,
-			'created_at' => $created
-		];
-
-		if(! $item['mail_isreply']) {
-			$conv = [
-				'author' => $cnv['creator'],
-				'guid' => $cnv['guid'],
-				'subject' => $cnv['subject'],
-				'created_at' => xmlify(datetime_convert('UTC','UTC',$cnv['created'],ATOM_TIME)),
-				'participants' => $cnv['recips'],
-				'message' => $message
-			];
-		}
-
-		if($conv) {
-			$outmsg = arrtoxml('conversation',$conv);
-		}
-		else {
-			$outmsg = arrtoxml('message',$message);
-		}
-
-		$slap = diaspora_prepare_outbound($outmsg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],false);
-		return(diaspora_queue($owner,$contact,$slap,false,$item['mid']));
-	}
-
-	$created = datetime_convert('UTC','UTC',$item['created'],'Y-m-d H:i:s \U\T\C');
-
-	$signed_text =  $item['mid'] . ';' . $parent_ptr . ';' . $body .  ';'
-		. $created . ';' . $myaddr . ';' . $cnv['guid'];
-
-	$sig = base64_encode(Crypto::sign($signed_text,$owner['channel_prvkey'],'sha256'));
-
-	$msg = array(
-		'guid' => xmlify($item['mid']),
-		'parent_guid' => xmlify($parent_ptr),
-		'parent_author_signature' => (($conv_owner) ? xmlify($sig) : null),
-		'author_signature' => xmlify($sig),
+	$message = [
+		'author' => xmlify($myaddr),
+		'guid' => xmlify($item['target_item']['uuid']),
+		'conversation_guid' => xmlify($conv_guid),
 		'text' => xmlify($body),
-		'created_at' => xmlify($created),
-		'diaspora_handle' => xmlify($myaddr),
-		'conversation_guid' => xmlify($cnv['guid'])
-	);
+		'created_at' => xmlify($created)
+	];
 
-	if($item['mail_isreply']) {
-		$tpl = get_markup_template('diaspora_message.tpl','addon/diaspora');
-		$xmsg = replace_macros($tpl, array('$msg' => $msg));
+	if ($item['target_item']['parent'] == $item['target_item']['id']) {
+		$p = dbq("SELECT xchan_addr, xchan_hash, xchan_network FROM xchan WHERE xchan_hash IN (" . implode(',', $item['recipients']) . ") AND xchan_network IN ('zot6', 'diaspora', 'friendica-over-diaspora')");
+		$participants[] = $myaddr;
+		foreach($p as $pp) {
+			if (in_array($pp['xchan_addr'], $participants)) {
+				continue;
+			}
+			if ($pp['xchan_network'] === 'zot6') {
+				$protocols = get_xconfig($pp['xchan_hash'], 'system', 'protocols');
+				if (strpos($protocols, 'diaspora') === false) {
+					continue;
+				}
+			}
+			$participants[] = $pp['xchan_addr'];
+		}
+		$conv = [
+			'author' => xmlify($myaddr),
+			'guid' => xmlify($conv_guid),
+			'subject' => (($item['parent_item']['title']) ? xmlify($item['parent_item']['title']) : xmlify(t('No subject'))),
+			'created_at' => xmlify(datetime_convert('UTC','UTC',$item['target_item']['created'],ATOM_TIME)),
+			'participants' => xmlify(implode(';', $participants)),
+			'message' => $message
+		];
+	}
+
+	if ($conv) {
+		$outmsg = arrtoxml('conversation', $conv);
 	}
 	else {
-		$conv['messages'] = array($msg);
-		$tpl = get_markup_template('diaspora_conversation.tpl','addon/diaspora');
-		$xmsg = replace_macros($tpl, array('$conv' => $conv));
+		$outmsg = arrtoxml('message', $message);
 	}
 
-	logger('diaspora_conversation: ' . print_r($xmsg,true), LOGGER_DATA);
-
-	$slap = 'xml=' . urlencode(urlencode(diaspora_msg_build($xmsg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],false)));
-
-	return(diaspora_queue($owner,$contact,$slap,false,$item['mid']));
-
+	$slap = diaspora_prepare_outbound($outmsg, $owner, $contact, $owner['channel_prvkey'], $contact['xchan_pubkey'], false);
+	return(diaspora_queue($owner, $contact, $slap, false, $item['target_item']['mid']));
 
 }
 

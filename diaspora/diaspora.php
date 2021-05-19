@@ -13,6 +13,8 @@ use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Keyutils;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
 
 // use the new federation protocol
 define('DIASPORA_V2',1);
@@ -29,7 +31,7 @@ require_once('addon/diaspora/util.php');
 
 function diaspora_load() {
 
-	Zotlabs\Extend\Hook::register_array('addon/diaspora/diaspora.php', [
+	Hook::register_array('addon/diaspora/diaspora.php', [
 		'notifier_hub'                => 'diaspora_process_outbound',
 		'notifier_process'            => 'diaspora_notifier_process',
 		'federated_transports'        => 'diaspora_federated_transports',
@@ -56,13 +58,13 @@ function diaspora_load() {
 		'fetch_provider'              => 'diaspora_fetch_provider'
 	]);
 
-	Zotlabs\Extend\Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
+	Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
 
 }
 
 function diaspora_unload() {
-	Zotlabs\Extend\Hook::unregister_by_file('addon/diaspora/diaspora.php');
-	Zotlabs\Extend\Route::unregister('addon/diaspora/Mod_Diaspora.php','diaspora');
+	Hook::unregister_by_file('addon/diaspora/diaspora.php');
+	Route::unregister('addon/diaspora/Mod_Diaspora.php','diaspora');
 }
 
 function diaspora_plugin_admin(&$o) {
@@ -438,20 +440,59 @@ function diaspora_process_outbound(&$arr) {
 	}
 
 
-	if($prv_recips) {
-		$hashes = array();
+	if ($prv_recips) {
+		$hashes = [];
 
-		// re-explode the recipients, but only for this hub/pod
+		if (in_array($arr['parent_item']['owner']['xchan_network'], ['diaspora', 'friendica-over-diaspora']) && intval($arr['parent_item']['item_private']) === 2) {
+			// Special handling for comments on diaspora conversations (direct messages)
+			// originating from diaspora.
+			// Those must be sent to all participants by the comment author.
 
-		foreach($prv_recips as $recip)
-			$hashes[] = "'" . $recip['hash'] . "'";
+			$fields = get_iconfig($arr['parent_item'], 'diaspora', 'fields');
+			$participants = explode(';', $fields['participants']);
 
-		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
-			and xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
-			dbesc($arr['hub']['hubloc_url'])
-		);
+			foreach($participants as $participant) {
+				if ($participant === $target_item['author']['xchan_addr']) {
+					continue;
+				}
+				$hashes[] = "'" . dbesc($participant) . "'";
+			}
 
-		if(! $r) {
+			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where
+				xchan_hash in (" . implode(',', $hashes) . ") and
+				xchan_network in ('diaspora', 'friendica-over-diaspora')"
+			);
+
+			if ($target_item['mid'] !== $target_item['parent_mid']) {
+				// To allow sending of comments on diaspora direct messages to other zot6 channels
+				// we need to send them via diaspora.
+				// It is required to rewrite the hubloc_callback for that.
+
+				$rz = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where
+					xchan_addr in (" . implode(',', $hashes) . ") and
+					xchan_network = 'zot6'"
+				);
+				$r1 = [];
+				foreach($rz as $rzz) {
+					$rzz['hubloc_callback'] = str_replace('/zot', '/receive', $rzz['hubloc_callback']);
+					$r1[] = $rzz;
+				}
+
+				$r = array_merge($r1, $r);
+			}
+		}
+		else {
+			// re-explode the recipients, but only for this hub/pod
+			foreach($prv_recips as $recip)
+				$hashes[] = "'" . dbesc($recip['hash']) . "'";
+
+			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
+				and xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
+				dbesc($arr['hub']['hubloc_url'])
+			);
+		}
+
+		if (!$r) {
 			logger('diaspora_process_outbound: no recipients');
 			return;
 		}
@@ -475,8 +516,9 @@ function diaspora_process_outbound(&$arr) {
 					$arr['queued'][] = $qi;
 				return;
 			}
-			if($arr['mail'] && $single) {
-				$qi = diaspora_send_mail($arr['item'],$arr['channel'],$contact);
+			if($target_item['item_private'] == 2 && $single) {
+//			if($arr['mail'] && $single) {
+				$qi = diaspora_send_mail($arr, $contact);
 				if($qi)
 					$arr['queued'][] = $qi;
 				continue;
@@ -924,7 +966,6 @@ function diaspora_post_local(&$item) {
 	}
 
 
-
 	$author = channelx_by_hash($item['author_xchan']);
 	if($author) {
 
@@ -971,6 +1012,16 @@ function diaspora_post_local(&$item) {
 				}
 			}
 		}
+		elseif($item['item_private'] === 2) {
+			$body = bb_to_markdown($item['body'], [ 'diaspora' ]);
+			$meta = [
+					'guid'              => $item['uuid'],
+					'text'              => $body,
+					'created_at'        => datetime_convert('UTC','UTC', $item['created'], ATOM_TIME ),
+					'author'            => $handle,
+					'conversation_guid' => $parent['uuid']
+			];
+		}
 		else {
 			$body = bb_to_markdown($item['body'], [ 'diaspora' ]);
 
@@ -987,10 +1038,6 @@ function diaspora_post_local(&$item) {
 					$meta['edited_at'] = datetime_convert('UTC','UTC', $item['edited'], ATOM_TIME );
 				}
 			}
-			else {
-				$meta['diaspora_handle'] = $handle;
-			}
-
 		}
 
 		if(! $meta)
