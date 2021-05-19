@@ -1196,6 +1196,7 @@ class Diaspora_Receiver {
 		$datarray['author_xchan']    = $contact['xchan_hash'];
 		$datarray['owner_xchan']     = $contact['xchan_hash'];
 		$datarray['body']            = $body;
+		$datarray['title']           = $subject;
 		$datarray['app']             = $app;
 		$datarray['item_unseen']     = 1;
 		$datarray['item_thread_top'] = 1;

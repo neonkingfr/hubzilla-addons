@@ -457,7 +457,6 @@ function diaspora_process_outbound(&$arr) {
 				}
 				$hashes[] = "'" . dbesc($participant) . "'";
 			}
-
 			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where
 				xchan_hash in (" . implode(',', $hashes) . ") and
 				xchan_network in ('diaspora', 'friendica-over-diaspora')"
@@ -474,7 +473,7 @@ function diaspora_process_outbound(&$arr) {
 				);
 				$r1 = [];
 				foreach($rz as $rzz) {
-					$rzz['hubloc_callback'] = str_replace('/zot', '/receive', $rzz['hubloc_callback']);
+					$rzz['hubloc_callback'] = $rzz['hubloc_url'] . '/receive';
 					$r1[] = $rzz;
 				}
 
