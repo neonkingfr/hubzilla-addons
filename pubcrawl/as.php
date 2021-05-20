@@ -488,6 +488,8 @@ function asencode_activity($i) {
 
 	$ret['type'] = activity_mapper($i['verb']);
 
+	$ret['directMessage'] = (intval($i['item_private']) === 2);
+
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/activity/' . urlencode($i['mid']));
 
 	if (strpos($ret['id'],z_root() . '/item/') !== false) {
@@ -592,6 +594,11 @@ function asencode_activity($i) {
 			$ret['cc'] = [];
 		}
 		else {
+			if(intval($i['item_private']) === 2) {
+				//privacy tags to make sure dm's will be detected on mastodon as such
+				$privacy_tags = as_map_acl($i, true);
+				$ret['object']['tag'] = (($ret['object']['tag']) ? array_merge($ret['object']['tag'], $privacy_tags) : $privacy_tags);
+			}
 			$ret['to'] = []; //this is important for pleroma
 			$ret['cc'] = as_map_acl($i);
 		}
