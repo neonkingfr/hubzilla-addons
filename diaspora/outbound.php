@@ -677,6 +677,7 @@ function diaspora_send_mail($item, $contact) {
 	if ($item['target_item']['parent'] == $item['target_item']['id']) {
 		$p = dbq("SELECT xchan_addr, xchan_hash, xchan_network FROM xchan WHERE xchan_hash IN (" . implode(',', $item['recipients']) . ") AND xchan_network IN ('zot6', 'diaspora', 'friendica-over-diaspora')");
 		$participants[] = $myaddr;
+
 		foreach($p as $pp) {
 			if (in_array($pp['xchan_addr'], $participants)) {
 				continue;
@@ -689,6 +690,7 @@ function diaspora_send_mail($item, $contact) {
 			}
 			$participants[] = $pp['xchan_addr'];
 		}
+
 		$conv = [
 			'author' => xmlify($myaddr),
 			'guid' => xmlify($conv_guid),

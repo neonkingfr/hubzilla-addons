@@ -48,7 +48,8 @@ function pubcrawl_load() {
 		'create_identity'            => 'pubcrawl_create_identity',
 		'is_as_request'              => 'pubcrawl_is_as_request',
 		'get_accept_header_string'   => 'pubcrawl_get_accept_header_string',
-		'encode_person'              => 'pubcrawl_encode_person'
+		'encode_person'              => 'pubcrawl_encode_person',
+		'encode_item_xchan'          => 'pubcrawl_encode_item_xchan'
 	]);
 	Route::register('addon/pubcrawl/Mod_Pubcrawl.php', 'pubcrawl');
 }
@@ -323,6 +324,13 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	$b['xchan']   = $url;
 	$b['success'] = true;
 
+}
+
+function pubcrawl_encode_item_xchan(&$arr) {
+	if($arr['encoded_xchan']['network'] !== 'activitypub')
+		return;
+
+	unset($arr['encoded_xchan']['address']);
 }
 
 function pubcrawl_import_author(&$b) {

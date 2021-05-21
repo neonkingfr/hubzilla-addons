@@ -55,7 +55,8 @@ function diaspora_load() {
 		'queue_deliver'               => 'diaspora_queue_deliver',
 		'webfinger'                   => 'diaspora_webfinger',
 		'channel_protocols'           => 'diaspora_channel_protocols',
-		'fetch_provider'              => 'diaspora_fetch_provider'
+		'fetch_provider'              => 'diaspora_fetch_provider',
+		'encode_item_xchan'           => 'diaspora_encode_item_xchan'
 	]);
 
 	Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
@@ -506,7 +507,7 @@ function diaspora_process_outbound(&$arr) {
 			$processed[] = $contact['hubloc_id_url'];
 
 			// is $contact connected with this channel - and if the channel is cloned, also on this hub?
-			$single = deliverable_singleton($arr['channel']['channel_id'],$contact);
+			$single = deliverable_singleton($arr['channel']['channel_id'], $contact);
 
 			if($arr['packet_type'] == 'refresh' && $single) {
 				// This packet is sent privately to contacts, so we can always send the full profile (the last argument)
@@ -1102,6 +1103,12 @@ function diaspora_profile_sidebar(&$x) {
 
 }
 
+function diaspora_encode_item_xchan(&$arr) {
+	if($arr['encoded_xchan']['network'] !== 'diaspora')
+		return;
+
+	unset($arr['encoded_xchan']['url']);
+}
 
 function diaspora_import_author(&$b) {
 

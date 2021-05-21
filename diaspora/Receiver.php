@@ -1276,7 +1276,6 @@ class Diaspora_Receiver {
 		$datarray = [];
 		$body = markdown_to_bb($msg_text, false, [ 'diaspora' => true, 'preserve_lf' => true ]);
 
-
 		// Look for tags and linkify them
 		$results = linkify_tags($body, $this->importer['channel_id'], false);
 
@@ -1359,13 +1358,8 @@ class Diaspora_Receiver {
 		$result = item_store($datarray);
 
 		if ($result['success']) {
-			$r = q("select * from item where id = %d limit 1",
-				intval($result['item_id'])
-			);
-			if ($r) {
-				send_status_notifications($result['item_id'], $r[0]);
-				sync_an_item($this->importer['channel_id'], $result['item_id']);
-			}
+			send_status_notifications($result['item_id'], $result['item']);
+			sync_an_item($this->importer['channel_id'], $result['item_id']);
 		}
 
 		return;
