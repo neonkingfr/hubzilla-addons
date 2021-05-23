@@ -334,7 +334,7 @@ function diaspora_notifier_process(&$arr) {
 		$participants = explode(';', $fields['participants']);
 
 		foreach($participants as $participant) {
-			if ($participant === $target_item['author']['xchan_addr']) {
+			if ($participant === $arr['target_item']['author']['xchan_addr']) {
 				continue;
 			}
 			$hashes[] = "'" . dbesc($participant) . "'";
@@ -353,6 +353,7 @@ function diaspora_notifier_process(&$arr) {
 				xchan_addr in (" . implode(',', $hashes) . ") and
 				xchan_network = 'zot6'"
 			);
+
 			$r1 = [];
 			foreach($rz as $rzz) {
 				$rzz['hubloc_callback'] = $rzz['hubloc_url'] . '/receive';
