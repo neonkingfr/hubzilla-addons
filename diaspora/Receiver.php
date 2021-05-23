@@ -1245,25 +1245,21 @@ class Diaspora_Receiver {
 		);
 
 		if($r) {
-			logger('diaspora_message: duplicate message', LOGGER_DEBUG);
+			logger('DM duplicate message', LOGGER_DEBUG);
 			return 202;
 		}
 
-		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$msg_diaspora_handle);
-		if(! $contact) {
-			logger('diaspora_message: cannot find contact: ' . $msg_diaspora_handle);
-			return;
-		}
-
-		if(! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'post_mail')) {
-			logger('Ignoring this author.', LOGGER_DEBUG);
-			return 202;
-		}
+		$xchan = find_diaspora_person_by_handle($msg_diaspora_handle);
 
 		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s'",
 			intval($this->importer['channel_id']),
 			dbesc($msg_conversation_guid)
 		);
+
+		if(!$r) {
+			logger('DM parent not found', LOGGER_DEBUG);
+			return 403;
+		}
 
 		$parent_item = $r[0];
 
@@ -1335,23 +1331,17 @@ class Diaspora_Receiver {
 		$datarray['edited']       = $msg_created_at;
 		$datarray['item_private'] = $parent_item['item_private'];
 		$datarray['owner_xchan']  = $parent_item['owner_xchan'];
-		$datarray['author_xchan'] = $contact['xchan_hash'];
+		$datarray['author_xchan'] = $xchan['xchan_hash'];
 		$datarray['body']         = $body;
 
-		if (strstr($person['xchan_network'], 'friendica'))
+		if (strstr($xchan['xchan_network'], 'friendica'))
 			$app = 'Friendica';
-		elseif ($person['xchan_network'] === 'diaspora')
+		elseif ($xchan['xchan_network'] === 'diaspora')
 			$app = 'Diaspora';
 		else
 			$app = '';
 
 		$datarray['app'] = $app;
-
-		$allowed = true;
-
-		if ($parent_item['owner_xchan'] === $this->importer['channel_hash']) {
-			$allowed = perm_is_allowed($this->importer['channel_id'], $xchan['xchan_hash'], 'post_comments');
-		}
 
 		set_iconfig($datarray, 'diaspora', 'fields', $this->xmlbase, true);
 
