@@ -983,11 +983,18 @@ function diaspora_post_local(&$item) {
 				$hashes[] = "'" . dbesc($receiver) . "'";
 			}
 
-			$p = dbq("select xchan_addr from xchan where xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('zot6', 'diaspora', 'friendica-over-diaspora')");
+			$p = dbq("select xchan_addr, xchan_hash, xchan_network from xchan where xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('zot6', 'diaspora', 'friendica-over-diaspora')");
 			$participants[] = $author['xchan_addr'];
 
-			foreach($p as $pp)
+			foreach($p as $pp) {
+				if ($pp['xchan_network'] === 'zot6') {
+					$protocols = get_xconfig($pp['xchan_hash'], 'system', 'protocols');
+					if (strpos($protocols, 'diaspora') === false) {
+						continue;
+					}
+				}
 				$participants[] = $pp['xchan_addr'];
+			}
 
 			$conv = [
 				'author' => xmlify($author['xchan_addr']),
