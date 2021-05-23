@@ -661,52 +661,12 @@ function diaspora_send_retraction($item,$owner,$contact,$public_batch = false) {
 function diaspora_send_mail($item, $contact) {
 
 	$owner = channelx_by_hash($item['target_item']['author']['xchan_hash']);
-	$myaddr = $item['target_item']['author']['xchan_addr'];
-	$body = bb_to_markdown($item['target_item']['body'], [ 'diaspora' ]);
-	$conv_guid = (($item['parent_item']['item_origin']) ? 'conversation:' . $item['parent_item']['uuid'] : $item['parent_item']['uuid']);
-	$created = datetime_convert('UTC', 'UTC', $item['target_item']['created'], ATOM_TIME);
+	$fields = get_iconfig($item['target_item'], 'diaspora', 'fields');
 
-	$message = [
-		'author' => xmlify($myaddr),
-		'guid' => xmlify($item['target_item']['uuid']),
-		'conversation_guid' => xmlify($conv_guid),
-		'text' => xmlify($body),
-		'created_at' => xmlify($created)
-	];
-
-	if ($item['target_item']['parent'] == $item['target_item']['id']) {
-		$p = dbq("SELECT xchan_addr, xchan_hash, xchan_network FROM xchan WHERE xchan_hash IN (" . implode(',', $item['recipients']) . ") AND xchan_network IN ('zot6', 'diaspora', 'friendica-over-diaspora')");
-		$participants[] = $myaddr;
-
-		foreach($p as $pp) {
-			if (in_array($pp['xchan_addr'], $participants)) {
-				continue;
-			}
-			if ($pp['xchan_network'] === 'zot6') {
-				$protocols = get_xconfig($pp['xchan_hash'], 'system', 'protocols');
-				if (strpos($protocols, 'diaspora') === false) {
-					continue;
-				}
-			}
-			$participants[] = $pp['xchan_addr'];
-		}
-
-		$conv = [
-			'author' => xmlify($myaddr),
-			'guid' => xmlify($conv_guid),
-			'subject' => (($item['parent_item']['title']) ? xmlify($item['parent_item']['title']) : xmlify(t('No subject'))),
-			'created_at' => xmlify(datetime_convert('UTC','UTC',$item['target_item']['created'],ATOM_TIME)),
-			'participants' => xmlify(implode(';', $participants)),
-			'message' => $message
-		];
-	}
-
-	if ($conv) {
-		$outmsg = arrtoxml('conversation', $conv);
-	}
-	else {
-		$outmsg = arrtoxml('message', $message);
-	}
+	if($item['top_level_post'])
+		$outmsg = arrtoxml('conversation', $fields);
+	else
+		$outmsg = arrtoxml('message', $fields);
 
 	$slap = diaspora_prepare_outbound($outmsg, $owner, $contact, $owner['channel_prvkey'], $contact['xchan_pubkey'], false);
 	return(diaspora_queue($owner, $contact, $slap, false, $item['target_item']['mid']));

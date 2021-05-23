@@ -321,28 +321,28 @@ function diaspora_permissions_update(&$b) {
 
 function diaspora_notifier_process(&$arr) {
 
-	// if it is a public post (reply, etc.), add the chosen relay channel to the recipients
-
 	// If target_item isn't set it's likely to be refresh packet.
-
 	if(! ((array_key_exists('target_item',$arr)) && (is_array($arr['target_item'])))) {
 		return;
 	}
 
 	// If item_wall doesn't exist, it's not a post - perhaps an email or other DB object
-
 	if(! array_key_exists('item_wall',$arr['target_item']))
 		return;
+
+	// if it is a public post (reply, etc.), add the chosen relay channel to the recipients
 	if(($arr['normal_mode']) && (! $arr['env_recips']) && (! $arr['private']) && (! $arr['upstream'])) {
 		$relay = get_config('diaspora','relay_handle');
 		if($relay) {
 			$arr['recipients'][] = "'" . $relay . "'";
 		}
 	}
+
 }
 
 
 function diaspora_process_outbound(&$arr) {
+
 /*
 
 	We are passed the following array from the notifier, providing everything we need to make delivery decisions.
@@ -374,7 +374,7 @@ function diaspora_process_outbound(&$arr) {
 		return;
 
 	logger('upstream: ' . intval($arr['upstream']));
-//	logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
+	//logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
 
 	// allow this to be set per message
 
@@ -401,16 +401,8 @@ function diaspora_process_outbound(&$arr) {
 		return;
 	}
 
-
 	if($arr['location'])
 		return;
-
-	// send to public relay server - not ready for prime time
-
-	if(($arr['top_level_post']) && (! $arr['env_recips'])) {
-		// Add the relay server to the list of hubs.
-		// = array('hubloc_callback' => 'https://relay.iliketoast.net/receive', 'xchan_pubkey' => 'bogus');
-	}
 
 	$target_item = $arr['target_item'];
 
@@ -517,7 +509,6 @@ function diaspora_process_outbound(&$arr) {
 				return;
 			}
 			if($target_item['item_private'] == 2 && $single) {
-//			if($arr['mail'] && $single) {
 				$qi = diaspora_send_mail($arr, $contact);
 				if($qi)
 					$arr['queued'][] = $qi;
@@ -937,6 +928,72 @@ function diaspora_post_local(&$item) {
 
 	require_once('include/markdown.php');
 
+	$meta = null;
+
+	// deal with conversation iconfig
+	if($item['item_private'] === 2) {
+
+		$author = channelx_by_hash($item['author_xchan']);
+		$body = bb_to_markdown($item['body'], [ 'diaspora' ]);
+		$conv = [];
+		$guid = $item['uuid'];
+		$conv_guid = 'conversation:' . $item['uuid'];
+
+		if($item['mid'] !== $item['parent_mid']) {
+			$parent = q("select * from item where mid = '%s' and uid = %d limit 1",
+				dbesc($item['parent_mid']),
+				intval($item['uid'])
+			);
+
+			$fields = get_iconfig($parent[0], 'diaspora', 'fields');
+			if (!isset($fields['participants'])) {
+				logger('no DM participants');
+				return;
+			}
+
+			$conv_guid = $fields['guid'];
+		}
+
+		$message = [
+				'guid'              => xmlify($item['uuid']),
+				'text'              => xmlify($body),
+				'created_at'        => datetime_convert('UTC','UTC', $item['created'], ATOM_TIME ),
+				'author'            => xmlify($author['xchan_addr']),
+				'conversation_guid' => xmlify($conv_guid)
+		];
+
+		if($item['mid'] === $item['parent_mid']) {
+			$private = true;
+			$receivers = expand_acl($item['allow_cid']);
+
+			foreach($receivers as $receiver) {
+				$hashes[] = "'" . dbesc($receiver) . "'";
+			}
+
+			$p = dbq("select xchan_addr from xchan where xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('zot6', 'diaspora', 'friendica-over-diaspora')");
+			$participants[] = $author['xchan_addr'];
+
+			foreach($p as $pp)
+				$participants[] = $pp['xchan_addr'];
+
+			$conv = [
+				'author' => xmlify($author['xchan_addr']),
+				'guid' => xmlify('conversation:' . $item['uuid']),
+				'subject' => (($item['title']) ? xmlify($item['title']) : xmlify(t('No subject'))),
+				'created_at' => xmlify(datetime_convert('UTC','UTC',$item['target_item']['created'],ATOM_TIME)),
+				'participants' => xmlify(implode(';', $participants)),
+				'message' => $message
+			];
+		}
+
+		$meta = (($conv) ? $conv : $message);
+
+		set_iconfig($item, 'diaspora', 'fields', $meta, true);
+
+		return;
+
+	}
+
 	if($item['mid'] === $item['parent_mid'])
 		return;
 
@@ -1012,19 +1069,8 @@ function diaspora_post_local(&$item) {
 				}
 			}
 		}
-		elseif($item['item_private'] === 2) {
-			$body = bb_to_markdown($item['body'], [ 'diaspora' ]);
-			$meta = [
-					'guid'              => $item['uuid'],
-					'text'              => $body,
-					'created_at'        => datetime_convert('UTC','UTC', $item['created'], ATOM_TIME ),
-					'author'            => $handle,
-					'conversation_guid' => $parent['uuid']
-			];
-		}
 		else {
 			$body = bb_to_markdown($item['body'], [ 'diaspora' ]);
-
 			$meta = [
 				'guid'            => $item['uuid'],
 				'parent_guid'     => $parent['uuid'],
@@ -1051,7 +1097,6 @@ function diaspora_post_local(&$item) {
 
 	if($meta)
 		set_iconfig($item,'diaspora','fields', $meta, true);
-
 
 }
 
