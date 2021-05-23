@@ -321,6 +321,60 @@ function diaspora_permissions_update(&$b) {
 
 function diaspora_notifier_process(&$arr) {
 
+	if (intval($arr['parent_item']['item_private']) === 2) {
+		// Special handling for comments on diaspora conversations (direct messages)
+		// originating from diaspora.
+		// Those must be sent to all participants by the comment author.
+
+		$fields = get_iconfig($arr['parent_item'], 'diaspora', 'fields');
+
+		if(!$fields)
+			return;
+
+		$participants = explode(';', $fields['participants']);
+
+		foreach($participants as $participant) {
+			if ($participant === $target_item['author']['xchan_addr']) {
+				continue;
+			}
+			$hashes[] = "'" . dbesc($participant) . "'";
+		}
+		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where
+			xchan_hash in (" . implode(',', $hashes) . ") and
+			xchan_network in ('diaspora', 'friendica-over-diaspora')"
+		);
+
+		if ($target_item['mid'] !== $target_item['parent_mid']) {
+			// To allow sending of comments on diaspora direct messages to other zot6 channels
+			// we need to send them via diaspora.
+			// It is required to rewrite the hubloc_callback for that.
+
+			$rz = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where
+				xchan_addr in (" . implode(',', $hashes) . ") and
+				xchan_network = 'zot6'"
+			);
+			$r1 = [];
+			foreach($rz as $rzz) {
+				$rzz['hubloc_callback'] = $rzz['hubloc_url'] . '/receive';
+				$r1[] = $rzz;
+			}
+
+			$r = array_merge($r1, $r);
+		}
+
+		foreach($r as $contact) {
+			// is $contact connected with this channel - and if the channel is cloned, also on this hub?
+			$single = deliverable_singleton($arr['channel']['channel_id'], $contact);
+
+			$qi = diaspora_send_mail($arr, $contact);
+			if($qi)
+				$arr['queued'][] = $qi;
+		}
+
+	}
+
+
+
 	// If target_item isn't set it's likely to be refresh packet.
 	if(! ((array_key_exists('target_item',$arr)) && (is_array($arr['target_item'])))) {
 		return;
@@ -369,6 +423,10 @@ function diaspora_process_outbound(&$arr) {
 				'queued' => pass these queued items (outq_hash) back to notifier.php for delivery
 			);
 */
+
+	// we have already processed those earlier
+	if (intval($arr['parent_item']['item_private']) === 2)
+		return;
 
 	if(! strstr($arr['hub']['hubloc_network'],'diaspora'))
 		return;
@@ -436,53 +494,14 @@ function diaspora_process_outbound(&$arr) {
 	if ($prv_recips) {
 		$hashes = [];
 
-		if (in_array($arr['parent_item']['owner']['xchan_network'], ['diaspora', 'friendica-over-diaspora']) && intval($arr['parent_item']['item_private']) === 2) {
-			// Special handling for comments on diaspora conversations (direct messages)
-			// originating from diaspora.
-			// Those must be sent to all participants by the comment author.
+		// re-explode the recipients, but only for this hub/pod
+		foreach($prv_recips as $recip)
+			$hashes[] = "'" . dbesc($recip['hash']) . "'";
 
-			$fields = get_iconfig($arr['parent_item'], 'diaspora', 'fields');
-			$participants = explode(';', $fields['participants']);
-
-			foreach($participants as $participant) {
-				if ($participant === $target_item['author']['xchan_addr']) {
-					continue;
-				}
-				$hashes[] = "'" . dbesc($participant) . "'";
-			}
-			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where
-				xchan_hash in (" . implode(',', $hashes) . ") and
-				xchan_network in ('diaspora', 'friendica-over-diaspora')"
-			);
-
-			if ($target_item['mid'] !== $target_item['parent_mid']) {
-				// To allow sending of comments on diaspora direct messages to other zot6 channels
-				// we need to send them via diaspora.
-				// It is required to rewrite the hubloc_callback for that.
-
-				$rz = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where
-					xchan_addr in (" . implode(',', $hashes) . ") and
-					xchan_network = 'zot6'"
-				);
-				$r1 = [];
-				foreach($rz as $rzz) {
-					$rzz['hubloc_callback'] = $rzz['hubloc_url'] . '/receive';
-					$r1[] = $rzz;
-				}
-
-				$r = array_merge($r1, $r);
-			}
-		}
-		else {
-			// re-explode the recipients, but only for this hub/pod
-			foreach($prv_recips as $recip)
-				$hashes[] = "'" . dbesc($recip['hash']) . "'";
-
-			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
-				and xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
-				dbesc($arr['hub']['hubloc_url'])
-			);
-		}
+		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
+			and xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
+			dbesc($arr['hub']['hubloc_url'])
+		);
 
 		if (!$r) {
 			logger('diaspora_process_outbound: no recipients');
@@ -507,12 +526,6 @@ function diaspora_process_outbound(&$arr) {
 				if($qi)
 					$arr['queued'][] = $qi;
 				return;
-			}
-			if($target_item['item_private'] == 2 && $single) {
-				$qi = diaspora_send_mail($arr, $contact);
-				if($qi)
-					$arr['queued'][] = $qi;
-				continue;
 			}
 
 			if(! $arr['normal_mode'])
