@@ -1110,7 +1110,7 @@ class Diaspora_Receiver {
 			return;
 		}
 
-		if(! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'post_mail')) {
+		if(! perm_is_allowed($this->importer['channel_id'], $contact['xchan_hash'], 'send_stream')) {
 			logger('diaspora_conversation: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
@@ -1201,17 +1201,12 @@ class Diaspora_Receiver {
 		$datarray['item_unseen']     = 1;
 		$datarray['item_thread_top'] = 1;
 
-		set_iconfig($datarray, 'diaspora', 'fields', $this->xmlbase, true);
-
-		if (!perm_is_allowed($this->importer['channel_id'], $contact['xchan_hash'], 'send_stream')) {
-			logger('diaspora_post: Ignoring this author.', LOGGER_DEBUG);
-			return 202;
-		}
-
 		if ($contact && !post_is_importable($datarray, $contact)) {
 			logger('diaspora_post: filtering this author.');
 			return 202;
 		}
+
+		set_iconfig($datarray, 'diaspora', 'fields', $this->xmlbase, true);
 
 		$result = item_store($datarray);
 
@@ -1258,7 +1253,7 @@ class Diaspora_Receiver {
 
 		if(!$r) {
 			logger('DM parent not found', LOGGER_DEBUG);
-			return 403;
+			return 202;
 		}
 
 		$parent_item = $r[0];
