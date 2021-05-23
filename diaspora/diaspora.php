@@ -344,7 +344,7 @@ function diaspora_notifier_process(&$arr) {
 			xchan_network in ('diaspora', 'friendica-over-diaspora')"
 		);
 
-		if ($target_item['mid'] !== $target_item['parent_mid']) {
+		if (!$arr['top_level_post'] && in_array($arr['parent_item']['author']['xchan_network'], ['diaspora', 'friendica-over-diaspora'])) {
 			// To allow sending of comments on diaspora direct messages to other zot6 channels
 			// we need to send them via diaspora.
 			// It is required to rewrite the hubloc_callback for that.
@@ -370,10 +370,7 @@ function diaspora_notifier_process(&$arr) {
 			if($qi)
 				$arr['queued'][] = $qi;
 		}
-
 	}
-
-
 
 	// If target_item isn't set it's likely to be refresh packet.
 	if(! ((array_key_exists('target_item',$arr)) && (is_array($arr['target_item'])))) {
