@@ -492,10 +492,10 @@ class Diaspora_Receiver {
 			if ($this->force)
 				diaspora_send_participation($this->importer, $xchan, $result['item']);
 
-			return $result;
+			return 200;
 		}
 
-		return;
+		return 202;
 
 	}
 
@@ -597,7 +597,6 @@ class Diaspora_Receiver {
 			$orig_author_link  = $person['xchan_url'];
 			$orig_author_photo = $person['xchan_photo_m'];
 		}
-
 
 		$created = $this->get_property('created_at');
 		$private = (($this->get_property('public') === 'false') ? 1 : 0);
@@ -706,9 +705,11 @@ class Diaspora_Receiver {
 			sync_an_item($this->importer['channel_id'],$result['item_id']);
 			if($this->force)
 				diaspora_send_participation($this->importer, $contact, $result['item']);
+
+			return 200;
 		}
 
-		return;
+		return 202;
 	}
 
 
@@ -1069,10 +1070,11 @@ class Diaspora_Receiver {
 			if ($r) {
 				send_status_notifications($result['item_id'], $r[0]);
 				sync_an_item($this->importer['channel_id'], $result['item_id']);
+				return 200;
 			}
 		}
 
-		return;
+		return 202;
 	}
 
 
@@ -1201,6 +1203,15 @@ class Diaspora_Receiver {
 		$datarray['item_unseen']     = 1;
 		$datarray['item_thread_top'] = 1;
 
+		if (strstr($contact['xchan_network'], 'friendica'))
+			$app = 'Friendica';
+		elseif ($contact['xchan_network'] === 'diaspora')
+			$app = 'Diaspora';
+		else
+			$app = '';
+
+		$datarray['app'] = $app;
+
 		if ($contact && !post_is_importable($datarray, $contact)) {
 			logger('diaspora_post: filtering this author.');
 			return 202;
@@ -1212,10 +1223,10 @@ class Diaspora_Receiver {
 
 		if ($result['success']) {
 			sync_an_item($this->importer['channel_id'], $result['item_id']);
-			return $result;
+			return 200;
 		}
 
-		return;
+		return 202;
 
 	}
 
@@ -1345,9 +1356,10 @@ class Diaspora_Receiver {
 		if ($result['success']) {
 			send_status_notifications($result['item_id'], $result['item']);
 			sync_an_item($this->importer['channel_id'], $result['item_id']);
+			return 200;
 		}
 
-		return;
+		return 202;
 
 	}
 
@@ -1689,9 +1701,11 @@ class Diaspora_Receiver {
 			if (intval($parent_item['item_origin']) && (!$parent_author_signature))
 				Master::Summon(['Notifier', 'comment-import', $result['item_id']]);
 			sync_an_item($this->importer['channel_id'], $result['item_id']);
+
+			return 200;
 		}
 
-		return;
+		return 202;
 	}
 
 	function retraction() {
