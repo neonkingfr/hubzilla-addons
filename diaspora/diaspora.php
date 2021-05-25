@@ -471,9 +471,9 @@ function diaspora_process_outbound(&$arr) {
 	}
 
 	$prv_recips = $arr['env_recips'];
+	stringify_array_elms($prv_recips);
 
 	// The Diaspora profile message is unusual and must be handled independently
-
 	$is_profile = false;
 
 	if($arr['cmd'] === 'refresh_all' && $arr['recipients']) {
@@ -481,23 +481,17 @@ function diaspora_process_outbound(&$arr) {
 		$profile_visible = perm_is_allowed($arr['channel']['channel_id'],'','view_profile');
 
 		if(! $profile_visible) {
-			$prv_recips = array();
-			foreach($arr['recipients'] as $r) {
-				$prv_recips[] = array('hash' => trim($r,"'"));
-			}
+			$prv_recips = $arr['recipients'];
 		}
 	}
 
 
 	if ($prv_recips) {
-		$hashes = [];
 
 		// re-explode the recipients, but only for this hub/pod
-		foreach($prv_recips as $recip)
-			$hashes[] = "'" . dbesc($recip['hash']) . "'";
 
 		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
-			and xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
+			and xchan_hash in (" . implode(',', $prv_recips) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
 			dbesc($arr['hub']['hubloc_url'])
 		);
 

@@ -481,11 +481,7 @@ function pubcrawl_notifier_process(&$arr) {
 
 	// If the parent is an announce activity, add the author to the recipients
 	if ($arr['parent_item']['verb'] === ACTIVITY_SHARE) {
-		$arr['env_recips'][] = [
-			'guid'     => $arr['parent_item']['author']['xchan_guid'],
-			'guid_sig' => $arr['parent_item']['author']['xchan_guid_sig'],
-			'hash'     => $arr['parent_item']['author']['xchan_hash']
-		];
+		$arr['env_recips'][] = $arr['parent_item']['author']['xchan_hash'];
 		$arr['recipients'][] = '\'' . $arr['parent_item']['author']['xchan_hash'] . '\'';
 	}
 
@@ -493,24 +489,16 @@ function pubcrawl_notifier_process(&$arr) {
 	// deliver to local subscribers directly
 	$sys = get_sys_channel();
 
-	$arr['env_recips'][] = [
-		'guid'     => $sys['channel_guid'],
-		'guid_sig' => $sys['channel_guid_sig'],
-		'hash'     => $sys['channel_hash']
-	];
+	$arr['env_recips'][] = $sys['channel_hash'];
 	$arr['recipients'][] = '\'' . $sys['channel_hash'] . '\'';
 
-	$r = q("SELECT channel_guid, channel_guid_sig, channel_hash FROM channel WHERE channel_id IN ( SELECT abook_channel FROM abook WHERE abook_xchan = '%s' AND abook_channel != %d )",
+	$r = q("SELECT channel_hash FROM channel WHERE channel_id IN ( SELECT abook_channel FROM abook WHERE abook_xchan = '%s' AND abook_channel != %d )",
 		dbesc($arr['target_item']['owner_xchan']),
 		intval($arr['channel']['channel_id'])
 	);
 	if ($r) {
 		foreach ($r as $rr) {
-			$arr['env_recips'][] = [
-				'guid'     => $rr['channel_guid'],
-				'guid_sig' => $rr['channel_guid_sig'],
-				'hash'     => $rr['channel_hash']
-			];
+			$arr['env_recips'][] = $rr['channel_hash'];
 			$arr['recipients'][] = '\'' . $rr['channel_hash'] . '\'';
 		}
 	}
@@ -592,6 +580,7 @@ function pubcrawl_notifier_hub(&$arr) {
 	}
 
 	$prv_recips = $arr['env_recips'];
+	stringify_array_elms($prv_recips);
 
 	if(is_array($signed_msg)) {
 		// If it's an array it is probably an encrypted zot6 package
@@ -643,16 +632,10 @@ function pubcrawl_notifier_hub(&$arr) {
 	}
 
 	if ($prv_recips) {
-		$hashes = [];
-
 		// re-explode the recipients, but only for this hub/pod
 
-		foreach ($prv_recips as $recip) {
-			$hashes[] = "'" . dbesc($recip['hash']) . "'";
-		}
-
 		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
-			and xchan_hash in (" . protect_sprintf(implode(',', $hashes)) . ") and xchan_network = 'activitypub'",
+			and xchan_hash in (" . protect_sprintf(implode(',', $prv_recips)) . ") and xchan_network = 'activitypub'",
 			dbesc($arr['hub']['hubloc_url'])
 		);
 
