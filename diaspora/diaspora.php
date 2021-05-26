@@ -339,9 +339,9 @@ function diaspora_notifier_process(&$arr) {
 			}
 			$hashes[] = "'" . dbesc($participant) . "'";
 		}
-		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where
+		$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where
 			xchan_hash in (" . implode(',', $hashes) . ") and
-			xchan_network in ('diaspora', 'friendica-over-diaspora')"
+			xchan_network in ('diaspora', 'friendica-over-diaspora') and hubloc_deleted = 0 and hubloc_error = 0"
 		);
 
 		if (!$arr['top_level_post'] && in_array($arr['parent_item']['author']['xchan_network'], ['diaspora', 'friendica-over-diaspora'])) {
@@ -349,9 +349,9 @@ function diaspora_notifier_process(&$arr) {
 			// we need to send them via diaspora.
 			// It is required to rewrite the hubloc_callback for that.
 
-			$rz = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where
+			$rz = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where
 				xchan_addr in (" . implode(',', $hashes) . ") and
-				xchan_network = 'zot6'"
+				xchan_network = 'zot6' and hubloc_deleted = 0 and hubloc_error = 0"
 			);
 
 			$r1 = [];
