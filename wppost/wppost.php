@@ -12,6 +12,7 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 
+require_once('include/items.php');
 require_once('include/permissions.php');
 require_once('library/IXR_Library.php');
 
@@ -116,7 +117,7 @@ function wppost_send(&$b) {
 	$DR = new Zotlabs\Lib\DReport(z_root(),$b['owner_xchan'],'wordpress wordpress',$b['mid']);
 
 	if($edited) {
-		$r = q("select * from iconfig left join item on item.id = iconfig.iid 
+		$r = q("select * from iconfig left join item on item.id = iconfig.iid
 			where cat = 'system' and k = 'wordpress' and v = %d and item.uid = %d limit 1",
 			intval($b['id']),
 			intval($b['uid'])
