@@ -5,6 +5,7 @@ use Zotlabs\Access\Permissions;
 use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Enotify;
 use Zotlabs\Lib\MessageFilter;
+use Zotlabs\Lib\Libsync;
 use Zotlabs\Daemon\Master;
 
 class Diaspora_Receiver {
@@ -173,7 +174,7 @@ class Diaspora_Receiver {
 				if($abconfig)
 					$clone['abconfig'] = $abconfig;
 
-				build_sync_packet($this->importer['channel_id'], [ 'abook' => array($clone) ] );
+				Libsync::build_sync_packet($this->importer['channel_id'], [ 'abook' => array($clone) ] );
 
 			}
 		}

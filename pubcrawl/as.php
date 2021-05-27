@@ -6,6 +6,7 @@ use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Keyutils;
 use Zotlabs\Lib\Libzot;
+use Zotlabs\Lib\Libsync;
 
 require_once('include/event.php');
 
@@ -1091,7 +1092,7 @@ function as_follow($channel,$act) {
 			if($abconfig)
 				$clone['abconfig'] = $abconfig;
 
-			build_sync_packet($channel['channel_id'], [ 'abook' => array($clone) ] );
+			Libsync::build_sync_packet($channel['channel_id'], [ 'abook' => array($clone) ] );
 		}
 	}
 
