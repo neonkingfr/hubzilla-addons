@@ -20,6 +20,7 @@ use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Libzot;
 use Zotlabs\Web\HTTPSig;
 use Zotlabs\Lib\Activity;
+use Zotlabs\Lib\Queue;
 
 require_once('addon/pubcrawl/as.php');
 
@@ -742,7 +743,7 @@ function pubcrawl_queue_message($msg, $sender, $recip, $message_id = '') {
 	logger('queue: ' . $hash . ' ' . $dest_url, LOGGER_DEBUG);
 	logger('queueMsg: ' . jindent($msg));
 
-	queue_insert([
+	Queue::insert([
 		'hash'       => $hash,
 		'account_id' => $sender['channel_account_id'],
 		'channel_id' => $sender['channel_id'],
@@ -1184,7 +1185,7 @@ function pubcrawl_queue_deliver(&$b) {
 				dbesc(datetime_convert()),
 				dbesc($outq['outq_hash'])
 			);
-			remove_queue_item($outq['outq_hash']);
+			Queue::remove($outq['outq_hash']);
 
 			// server is responding - see if anything else is going to this destination and is piled up
 			// and try to send some more. We're relying on the fact that do_delivery() results in an
@@ -1208,7 +1209,7 @@ function pubcrawl_queue_deliver(&$b) {
 		}
 		else {
 			logger('pubcrawl_queue_deliver: queue post returned ' . $result['return_code'] . ' from ' . $outq['outq_posturl'], LOGGER_DEBUG);
-			update_queue_item($outq['outq_hash'], 10);
+			Queue::update($outq['outq_hash'], 10);
 		}
 	}
 }

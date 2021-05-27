@@ -13,6 +13,7 @@ use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Keyutils;
+use Zotlabs\Lib\Queue;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 
@@ -22,7 +23,6 @@ define('DIASPORA_V2',1);
 require_once('include/crypto.php');
 require_once('include/items.php');
 require_once('include/markdown.php');
-require_once('include/queue_fn.php');
 
 require_once('addon/diaspora/inbound.php');
 require_once('addon/diaspora/outbound.php');
@@ -670,7 +670,7 @@ function diaspora_queue($owner,$contact,$slap,$public_batch,$message_id = '') {
 
 	logger('diaspora_queue: ' . $hash . ' ' . $dest_url, LOGGER_DEBUG);
 
-	queue_insert(array(
+	Queue::insert(array(
 		'hash'       => $hash,
 		'account_id' => $owner['channel_account_id'],
 		'channel_id' => $owner['channel_id'],
@@ -1455,7 +1455,7 @@ function diaspora_queue_deliver(&$b) {
 				dbescdate(datetime_convert()),
 				dbesc($outq['outq_hash'])
 			);
-			remove_queue_item($outq['outq_hash']);
+			Queue::remove($outq['outq_hash']);
 
 			// server is responding - see if anything else is going to this destination and is piled up
 			// and try to send some more. We're relying on the fact that do_delivery() results in an
@@ -1487,7 +1487,7 @@ function diaspora_queue_deliver(&$b) {
 		}
 		else {
 			logger('diaspora_queue_deliver: queue post returned ' . $result['return_code'] . ' from ' . $outq['outq_posturl'], LOGGER_DEBUG);
-			update_queue_item($outq['outq_hash'],10);
+			Queue::update($outq['outq_hash'], 10);
 		}
 	}
 }
