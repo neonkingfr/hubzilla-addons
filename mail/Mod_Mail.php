@@ -3,12 +3,8 @@
 namespace Zotlabs\Module;
 
 use Zotlabs\Lib\Apps;
-use Zotlabs\Lib\Crypto;
 use Zotlabs\Web\Controller;
 
-require_once('include/acl_selectors.php');
-require_once('include/message.php');
-require_once('include/zot.php');
 require_once('include/bbcode.php');
 
 class Mail extends Controller {
@@ -42,17 +38,19 @@ class Mail extends Controller {
 
 		if(argc() == 3 && intval(argv(1)) && argv(2) === 'download') {
 
-			$r = q("select * from mail where id = %d and channel_id = %d",
+			$r = q("select * from mail left join xchan on xchan_hash = from_xchan where id = %d and channel_id = %d",
 				intval(argv(1)),
 				intval(local_channel())
 			);
 
 			if($r) {
-
 				header('Content-type: ' . $r[0]['mail_mimetype']);
 				header('Content-disposition: attachment; filename="' . t('message') . '-' . $r[0]['id'] . '"' );
+				$author = $r[0]['xchan_name'] . ' <' . $r[0]['xchan_addr'] . '>' . "\r\n";
+				$subject = (($r[0]['mail_obscured']) ? base64url_decode(str_rot47($r[0]['title'])) : $r[0]['title']) . "\r\n\r\n";
 				$body = (($r[0]['mail_obscured']) ? base64url_decode(str_rot47($r[0]['body'])) : $r[0]['body']);
-				echo $body;
+
+				echo $author . $subject . $body;
 				killme();
 			}
 
@@ -63,37 +61,8 @@ class Mail extends Controller {
 				return;
 			$cmd = argv(2);
 			$mailbox = argv(1);
-			$r = private_messages_drop(local_channel(), argv(3));
-			if($r) {
-				//info( t('Message deleted.') . EOL );
-			}
+			$r = self::private_messages_drop(local_channel(), argv(3));
 			goaway(z_root() . '/mail/' . $mailbox);
-		}
-
-		if((argc() == 4) && (argv(2) === 'recall')) {
-			if(! intval(argv(3)))
-				return;
-			$cmd = argv(2);
-			$mailbox = argv(1);
-			$r = q("update mail set mail_recalled = 1 where id = %d and channel_id = %d",
-				intval(argv(3)),
-				intval(local_channel())
-			);
-			$x = q("select * from mail where id = %d and channel_id = %d",
-				intval(argv(3)),
-				intval(local_channel())
-			);
-			if($x) {
-				build_sync_packet(local_channel(),array('mail' => encode_mail($x[0],true)));
-			}
-
-			\Zotlabs\Daemon\Master::Summon(array('Notifier','mail',intval(argv(3))));
-
-			if($r) {
-					info( t('Message recalled.') . EOL );
-			}
-			goaway(z_root() . '/mail/' . $mailbox . '/' . argv(3));
-
 		}
 
 		if((argc() == 4) && (argv(2) === 'dropconv')) {
@@ -101,80 +70,10 @@ class Mail extends Controller {
 				return;
 			$cmd = argv(2);
 			$mailbox = argv(1);
-			$r = private_messages_drop(local_channel(), argv(3), true);
+			$r = self::private_messages_drop(local_channel(), argv(3), true);
 			if($r)
 				info( t('Conversation removed.') . EOL );
 			goaway(z_root() . '/mail/' . $mailbox);
-		}
-
-		if((argc() > 1) && (argv(1) === 'new')) {
-
-			$plaintext = true;
-
-			$tpl = get_markup_template('msg-header.tpl');
-
-			$header = replace_macros($tpl, array(
-				'$baseurl' => z_root(),
-				'$editselect' => (($plaintext) ? 'none' : '/(profile-jot-text|prvmail-text)/'),
-				'$nickname' => $channel['channel_address'],
-				'$linkurl' => t('Please enter a link URL:'),
-				'$expireswhen' => t('Expires YYYY-MM-DD HH:MM')
-			));
-
-			\App::$page['htmlhead'] .= $header;
-
-			$prename = '';
-			$preid = '';
-
-			if(x($_REQUEST,'hash')) {
-
-				$r = q("select abook.*, xchan.* from abook left join xchan on abook_xchan = xchan_hash
-					where abook_channel = %d and abook_xchan = '%s' limit 1",
-					intval(local_channel()),
-					dbesc($_REQUEST['hash'])
-				);
-
-				if(!$r) {
-					$r = q("select * from xchan where xchan_hash = '%s' and xchan_network = 'zot' limit 1",
-						dbesc($_REQUEST['hash'])
-					);
-				}
-
-				if($r) {
-					$prename = (($r[0]['abook_id']) ? $r[0]['xchan_name'] : $r[0]['xchan_addr']);
-					$preurl = $r[0]['xchan_url'];
-					$preid = (($r[0]['abook_id']) ? ($r[0]['xchan_hash']) : '');
-				}
-				else {
-					notice( t('Requested channel is not in this network') . EOL );
-				}
-
-			}
-
-			$tpl = get_markup_template('prv_message.tpl');
-			$o .= replace_macros($tpl,array(
-				'$new' => true,
-				'$header' => t('Send Private Message'),
-				'$to' => t('To:'),
-				'$prefill' => $prename,
-				'$preid' => $preid,
-				'$subject' => t('Subject:'),
-				'$subjtxt' => ((x($_REQUEST,'subject')) ? strip_tags($_REQUEST['subject']) : ''),
-				'$text' => ((x($_REQUEST,'body')) ? htmlspecialchars($_REQUEST['body'], ENT_COMPAT, 'UTF-8') : ''),
-				'$yourmessage' => t('Your message:'),
-				'$parent' => '',
-				'$attach' => t('Attach file'),
-				'$insert' => t('Insert web link'),
-				'$submit' => t('Send'),
-				'$defexpire' => '',
-				'$feature_expire' => ((feature_enabled(local_channel(),'content_expire')) ? true : false),
-				'$expires' => t('Set expiration date'),
-				'$feature_encrypt' => ((feature_enabled(local_channel(),'content_encrypt') && plugin_is_installed('cryptojs')) ? true : false),
-				'$encrypt' => t('Encrypt text'),
-				'$cipher' => $cipher,
-			));
-
-			return $o;
 		}
 
 		$direct_mid = 0;
@@ -210,16 +109,11 @@ class Mail extends Controller {
 
 		$plaintext = true;
 
-	//	if( local_channel() && feature_enabled(local_channel(),'richtext') )
-	//		$plaintext = false;
-
-
-
 		if($mailbox == 'combined') {
-			$messages = private_messages_fetch_conversation(local_channel(), $mid, true);
+			$messages = self::private_messages_fetch_conversation(local_channel(), $mid, true);
 		}
 		else {
-			$messages = private_messages_fetch_message(local_channel(), $mid, true);
+			$messages = self::private_messages_fetch_message(local_channel(), $mid, true);
 		}
 
 		if(! $messages) {
@@ -269,6 +163,7 @@ class Mail extends Controller {
 				'subject' => $message['title'],
 				'body' => $message['body'],
 				'attachments' => $s,
+				'download' => t('Download'),
 				'delete' => t('Delete message'),
 				'dreport' => t('Delivery report'),
 				'recall' => t('Recall message'),
@@ -320,132 +215,184 @@ class Mail extends Controller {
 		return $o;
 	}
 
-	function post() {
-		if(! local_channel())
-			return;
+	function private_messages_drop($channel_id, $messageitem_id, $drop_conversation = false) {
 
-		$replyto   = ((x($_REQUEST,'replyto'))      ? notags(trim($_REQUEST['replyto']))      : '');
-		$subject   = ((x($_REQUEST,'subject'))      ? notags(trim($_REQUEST['subject']))      : '');
-		$body      = ((x($_REQUEST,'body'))         ? escape_tags(trim($_REQUEST['body']))    : '');
-		$recipient = ((x($_REQUEST,'messageto'))    ? notags(trim(urldecode($_REQUEST['messageto'])))    : '');
-		$rstr      = ((x($_REQUEST,'messagerecip')) ? notags(trim($_REQUEST['messagerecip'])) : '');
-		$preview   = ((x($_REQUEST,'preview'))      ? intval($_REQUEST['preview'])            : 0);
-		$expires   = ((x($_REQUEST,'expires'))      ? datetime_convert(date_default_timezone_get(),'UTC', $_REQUEST['expires']) : NULL_DATE);
-		$raw       = ((x($_REQUEST,'raw'))          ? intval($_REQUEST['raw'])                : 0);
-		$mimetype  = ((x($_REQUEST,'mimetype'))     ? notags(trim($_REQUEST['mimetype']))     : 'text/bbcode');
+		$x = q("select * from mail where id = %d and channel_id = %d limit 1",
+			intval($messageitem_id),
+			intval($channel_id)
+		);
+		if(! $x)
+			return false;
 
-		$sig       = ((x($_REQUEST,'signature'))    ? trim($_REQUEST['signature'])            : '');
-		if(strpos($sig,'b64.') === 0)
-		    $sig = base64_decode(str_replace('b64.', '', $sig));
+		$conversation = null;
 
-		if($preview) {
-
-			if($raw) {
-				$body = mail_prepare_binary(['id' => 'M0']);
-				echo json_encode(['preview' => $body]);
+		if($x[0]['conv_guid']) {
+			$y = q("select * from conv where guid = '%s' and uid = %d limit 1",
+				dbesc($x[0]['conv_guid']),
+				intval($channel_id)
+			);
+			if($y) {
+				$conversation = $y[0];
+				$conversation['subject'] = base64url_decode(str_rot47($conversation['subject']));
 			}
-			else {
-				$body = cleanup_bbcode($body);
-				$results = linkify_tags($body, local_channel());
+		}
 
-				if(preg_match_all('/(\[attachment\](.*?)\[\/attachment\])/',$body,$match)) {
-					$attachments = array();
-					foreach($match[2] as $mtch) {
-						$hash = substr($mtch,0,strpos($mtch,','));
-						$rev = intval(substr($mtch,strpos($mtch,',')));
-						$r = attach_by_hash_nodata($hash,get_observer_hash(),$rev);
-						if($r['success']) {
-							$attachments[] = array(
-								'href'     => z_root() . '/attach/' . $r['data']['hash'],
-								'length'   =>  $r['data']['filesize'],
-								'type'     => $r['data']['filetype'],
-								'title'    => urlencode($r['data']['filename']),
-								'revision' => $r['data']['revision']
-							);
-						}
-						$body = trim(str_replace($match[1],'',$body));
-					}
+		if($drop_conversation) {
+			$m = array();
+			$m['conv'] = array($conversation);
+			$m['conv'][0]['deleted'] = 1;
+
+			$z = q("select * from mail where parent_mid = '%s' and channel_id = %d",
+				dbesc($x[0]['parent_mid']),
+				intval($channel_id)
+			);
+			if($z) {
+				if($x[0]['conv_guid']) {
+					q("delete from conv where guid = '%s' and uid = %d",
+						dbesc($x[0]['conv_guid']),
+						intval($channel_id)
+					);
 				}
-				echo json_encode(['preview' => zidify_links(smilies(bbcode($body)))]);
+				q("DELETE FROM mail WHERE parent_mid = '%s' AND channel_id = %d ",
+					dbesc($x[0]['parent_mid']),
+					intval($channel_id)
+				);
 			}
-			killme();
-		}
-
-		// If we have a raw string for a recipient which hasn't been auto-filled,
-		// it means they probably aren't in our address book, hence we don't know
-		// if we have permission to send them private messages.
-		// finger them and find out before we try and send it.
-
-		if(! $recipient) {
-			$channel = \App::get_channel();
-
-			$j = \Zotlabs\Zot\Finger::run(punify($rstr),$channel);
-
-			if(! $j['success']) {
-				notice( t('Unable to lookup recipient.') . EOL);
-				return;
-			}
-
-			logger('message_post: lookup: ' . $rstr . ' ' . print_r($j,true));
-
-			if(! $j['guid']) {
-				notice( t('Unable to communicate with requested channel.'));
-				return;
-			}
-
-			$x = import_xchan($j);
-
-			if(! $x['success']) {
-				notice( t('Cannot verify requested channel.'));
-				return;
-			}
-
-			$recipient = $x['hash'];
-
-			$their_perms = 0;
-
-			if($j['permissions']['data']) {
-				$permissions = Crypto::unencapsulate($j['permissions'],$channel['channel_prvkey']);
-				if($permissions)
-					$permissions = json_decode($permissions, true);
-				logger('decrypted permissions: ' . print_r($permissions,true), LOGGER_DATA);
-			}
-			else
-				$permissions = $j['permissions'];
-
-			if(! ($permissions['post_mail'])) {
-	 			notice( t('Selected channel has private message restrictions. Send failed.'));
-				// reported issue: let's still save the message and continue. We'll just tell them
-				// that nothing useful is likely to happen. They might have spent hours on it.
-				//			return;
-
-			}
-		}
-
-		require_once('include/text.php');
-		linkify_tags($body, local_channel());
-
-
-		if(! $recipient) {
-			notice('No recipient found.');
-			\App::$argc = 2;
-			\App::$argv[1] = 'new';
-			return;
-		}
-
-		// We have a local_channel, let send_message use the session channel and save a lookup
-
-		$ret = send_message(0, $recipient, $body, $subject, $replyto, $expires, $mimetype, $raw, $sig);
-
-		if($ret['success']) {
-			xchan_mail_query($ret['mail']);
-			build_sync_packet(0,array('conv' => array($ret['conv']),'mail' => array(encode_mail($ret['mail'],true))));
+			return true;
 		}
 		else {
-			notice($ret['message']);
+			$x[0]['mail_deleted'] = true;
+			self::msg_drop($messageitem_id, $channel_id, $x[0]['conv_guid']);
+			return true;
+		}
+		return false;
+
+	}
+
+	function msg_drop($message_id, $channel_id, $conv_guid) {
+
+		// Delete message
+		$r = q("DELETE FROM mail WHERE id = %d AND channel_id = %d",
+			intval($message_id),
+			intval($channel_id)
+		);
+
+		// Get new first message...
+		$r = q("SELECT mid, parent_mid FROM mail WHERE conv_guid = '%s' AND channel_id = %d ORDER BY id ASC LIMIT 1",
+			dbesc($conv_guid),
+			intval($channel_id)
+		);
+		// ...and if wasn't first before...
+		if ($r[0]['mid'] != $r[0]['parent_mid']) {
+			// ...refer whole thread to it
+			q("UPDATE mail SET parent_mid = '%s', mail_isreply = abs(mail_isreply - 1) WHERE conv_guid = '%s' AND channel_id = %d",
+				dbesc($r[0]['mid']),
+				dbesc($conv_guid),
+				intval($channel_id)
+			);
 		}
 
-		goaway(z_root() . '/mail/combined');
+	}
+
+	function private_messages_fetch_message($channel_id, $messageitem_id, $updateseen = false) {
+
+		$messages = q("select * from mail where id = %d and channel_id = %d order by created asc",
+			dbesc($messageitem_id),
+			intval($channel_id)
+		);
+
+		if(! $messages)
+			return array();
+
+		$chans = array();
+		foreach($messages as $rr) {
+			$s = "'" . dbesc(trim($rr['from_xchan'])) . "'";
+			if(! in_array($s,$chans))
+				$chans[] = $s;
+			$s = "'" . dbesc(trim($rr['to_xchan'])) . "'";
+			if(! in_array($s,$chans))
+				$chans[] = $s;
+		}
+
+		$c = q("select * from xchan where xchan_hash in (" . protect_sprintf(implode(',',$chans)) . ")");
+
+		foreach($messages as $k => $message) {
+			$messages[$k]['from'] = find_xchan_in_array($message['from_xchan'],$c);
+			$messages[$k]['to']   = find_xchan_in_array($message['to_xchan'],$c);
+			if(intval($messages[$k]['mail_obscured'])) {
+				if($messages[$k]['title'])
+					$messages[$k]['title'] = base64url_decode(str_rot47($messages[$k]['title']));
+				if($messages[$k]['body'])
+					$messages[$k]['body'] = base64url_decode(str_rot47($messages[$k]['body']));
+			}
+		}
+
+		if($updateseen) {
+			$r = q("UPDATE mail SET mail_seen = 1 where mail_seen = 0 and id = %d AND channel_id = %d",
+				dbesc($messageitem_id),
+				intval($channel_id)
+			);
+		}
+
+		return $messages;
+
+	}
+
+	function private_messages_fetch_conversation($channel_id, $messageitem_id, $updateseen = false) {
+
+		// find the parent_mid of the message being requested
+
+		$r = q("SELECT parent_mid from mail WHERE channel_id = %d and id = %d limit 1",
+			intval($channel_id),
+			intval($messageitem_id)
+		);
+
+		if(! $r)
+			return array();
+
+		$messages = q("select * from mail where parent_mid = '%s' and channel_id = %d order by created asc",
+			dbesc($r[0]['parent_mid']),
+			intval($channel_id)
+		);
+
+		if(! $messages)
+			return array();
+
+		$chans = array();
+		foreach($messages as $rr) {
+			$s = "'" . dbesc(trim($rr['from_xchan'])) . "'";
+			if(! in_array($s,$chans))
+				$chans[] = $s;
+			$s = "'" . dbesc(trim($rr['to_xchan'])) . "'";
+			if(! in_array($s,$chans))
+				$chans[] = $s;
+		}
+
+		$c = q("select * from xchan where xchan_hash in (" . protect_sprintf(implode(',',$chans)) . ")");
+
+		foreach($messages as $k => $message) {
+			$messages[$k]['from'] = find_xchan_in_array($message['from_xchan'],$c);
+			$messages[$k]['to']   = find_xchan_in_array($message['to_xchan'],$c);
+			if(intval($messages[$k]['mail_obscured'])) {
+				if($messages[$k]['title'])
+					$messages[$k]['title'] = base64url_decode(str_rot47($messages[$k]['title']));
+				if($messages[$k]['body'])
+					$messages[$k]['body'] = base64url_decode(str_rot47($messages[$k]['body']));
+			}
+			if($messages[$k]['mail_raw'])
+				$messages[$k]['body'] = mail_prepare_binary([ 'id' => $messages[$k]['id'] ]);
+
+		}
+
+		if($updateseen) {
+			$r = q("UPDATE mail SET mail_seen = 1 where mail_seen = 0 and parent_mid = '%s' AND channel_id = %d",
+				dbesc($r[0]['parent_mid']),
+				intval($channel_id)
+			);
+		}
+
+		return $messages;
+
 	}
 
 }
