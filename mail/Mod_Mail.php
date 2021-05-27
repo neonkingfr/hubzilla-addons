@@ -98,8 +98,8 @@ class Mail extends Controller {
 				break;
 		}
 
-
-		$last_message = private_messages_list(local_channel(), $mailbox, 0, 1);
+		$c = new \Zotlabs\Widget\Conversations;
+		$last_message = $c->private_messages_list(local_channel(), $mailbox, 0, 1);
 
 		$mid = ((argc() > 2) && (intval(argv(2)))) ? argv(2) : $last_message[0]['id'];
 
@@ -146,7 +146,7 @@ class Mail extends Controller {
 			$s = theme_attachments($message);
 
 			if($message['mail_raw'])
-				$message['body'] = mail_prepare_binary([ 'id' => $message['id'] ]);
+				$message['body'] = self::mail_prepare_binary([ 'id' => $message['id'] ]);
 			else
 				$message['body'] = zidify_links(smilies(bbcode($message['body'])));
 
@@ -380,7 +380,7 @@ class Mail extends Controller {
 					$messages[$k]['body'] = base64url_decode(str_rot47($messages[$k]['body']));
 			}
 			if($messages[$k]['mail_raw'])
-				$messages[$k]['body'] = mail_prepare_binary([ 'id' => $messages[$k]['id'] ]);
+				$messages[$k]['body'] = self::mail_prepare_binary([ 'id' => $messages[$k]['id'] ]);
 
 		}
 
@@ -394,5 +394,13 @@ class Mail extends Controller {
 		return $messages;
 
 	}
+
+function mail_prepare_binary($item) {
+
+	return replace_macros(get_markup_template('item_binary.tpl'), [
+		'$download'  => t('Download binary/encrypted content'),
+		'$url'       => z_root() . '/mail/' . $item['id'] . '/download'
+	]);
+}
 
 }

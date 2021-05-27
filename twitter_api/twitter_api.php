@@ -50,7 +50,7 @@ function twitter_api_unload() {
 function twitter_api_load_module(&$b) {
     if($b['module'] === 'rsd_xml') {
         require_once('addon/twitter_api/Mod_rsd_xml.php');
-		$b['controller'] = new \Zotlabs\Module\Rsd_xml(); 
+		$b['controller'] = new \Zotlabs\Module\Rsd_xml();
         $b['installed'] = true;
     }
 }
@@ -122,6 +122,7 @@ function twitter_api_register($x) {
         api_register_func('api/followers/ids','api_followers_ids',true);
         api_register_func('api/1.1/friends/ids','api_friends_ids',true);
         api_register_func('api/1.1/followers/ids','api_followers_ids',true);
+/*
         api_register_func('api/direct_messages/new','api_direct_messages_new',true);
         api_register_func('api/1.1/direct_messages/new','api_direct_messages_new',true);
         api_register_func('api/direct_messages/conversation','api_direct_messages_conversation',true);
@@ -132,7 +133,7 @@ function twitter_api_register($x) {
         api_register_func('api/1.1/direct_messages/all','api_direct_messages_all',true);
         api_register_func('api/1.1/direct_messages/sent','api_direct_messages_sentbox',true);
         api_register_func('api/1.1/direct_messages','api_direct_messages_inbox',true);
-
+*/
         api_register_func('api/1.1/oauth/request_token', 'api_oauth_request_token', false);
         api_register_func('api/1.1/oauth/access_token', 'api_oauth_access_token', false);
 
@@ -157,35 +158,35 @@ function api_get_user($contact_id = null, $contact_xchan = null){
 			$user = $contact_id;
 			$extra_query = " AND abook_id = %d ";
 		}
-		
+
 		if(is_null($user) && x($_GET, 'user_id')) {
-			$user = intval($_GET['user_id']);	
+			$user = intval($_GET['user_id']);
 			$extra_query = " AND abook_id = %d ";
 		}
 		if(is_null($user) && x($_GET, 'screen_name')) {
-			$user = dbesc($_GET['screen_name']);	
+			$user = dbesc($_GET['screen_name']);
 			$extra_query = " AND xchan_addr like '%s@%%' ";
 			if(api_user() !== false)
 				$extra_query .= " AND abook_channel = " . intval(api_user());
 		}
 	}
-		
+
 	if (! $user) {
 		if (api_user() === false) {
-			api_login($a); 
+			api_login($a);
 			return false;
 		} else {
 			$user = local_channel();
 			$extra_query = " AND abook_channel = %d AND abook_self = 1 ";
 		}
-			
+
 	}
-		
+
 	logger('api_user: ' . $extra_query . ', user: ' . $user, LOGGER_DATA, LOG_INFO);
 
-	// user info		
+	// user info
 
-	$uinfo = q("SELECT * from abook left join xchan on abook_xchan = xchan_hash 
+	$uinfo = q("SELECT * from abook left join xchan on abook_xchan = xchan_hash
 		WHERE true
 		$extra_query",
 		$user
@@ -196,7 +197,7 @@ function api_get_user($contact_id = null, $contact_xchan = null){
 	}
 
 	$following = false;
-		
+
 	if(intval($uinfo[0]['abook_self'])) {
 		$usr = q("select * from channel where channel_id = %d limit 1",
 			intval(api_user())
@@ -210,7 +211,7 @@ function api_get_user($contact_id = null, $contact_xchan = null){
 		// count public wall messages
 		$r = q("SELECT COUNT(id) as total FROM item
 			WHERE uid = %d
-			AND item_wall = 1 $item_normal 
+			AND item_wall = 1 $item_normal
 			AND allow_cid = '' AND allow_gid = '' AND deny_cid = '' AND deny_gid = ''
 			AND item_private = 0 ",
 			intval($usr[0]['channel_id'])
@@ -229,7 +230,7 @@ function api_get_user($contact_id = null, $contact_xchan = null){
 		);
 		if($r) {
 			$countitms = $r[0]['total'];
-		}		
+		}
 		$following = ((get_abconfig($uinfo[0]['abook_channel'],$uinfo[0]['abook_xchan'],'my_perms','view_stream')) ? true : false );
 	}
 
@@ -250,7 +251,7 @@ function api_get_user($contact_id = null, $contact_xchan = null){
 	);
 	if($r)
 		$starred = $r[0]['total'];
-	
+
 	if(! intval($uinfo[0]['abook_self'])) {
 		$countfriends = 0;
 		$countfollowers = 0;
@@ -269,13 +270,13 @@ function api_get_user($contact_id = null, $contact_xchan = null){
 		'profile_image_url_https' => $uinfo[0]['xchan_photo_l'],
 		'url' => $uinfo[0]['xchan_url'],
 		'contact_url' => z_root() . '/connections/'.$uinfo[0]['abook_id'],
-		'protected' => false,	
+		'protected' => false,
 		'friends_count' => intval($countfriends),
 		'created_at' => api_date($uinfo[0]['abook_created']),
 		'utc_offset' => '+00:00',
 		'time_zone' => 'UTC', //$uinfo[0]['timezone'],
 		'geo_enabled' => false,
-		'statuses_count' => intval($countitms), //#XXX: fix me 
+		'statuses_count' => intval($countitms), //#XXX: fix me
 		'lang' => App::$language,
 		'description' => (($profile) ? $profile[0]['pdesc'] : ''),
 		'followers_count' => intval($countfollowers),
@@ -302,7 +303,7 @@ function api_get_user($contact_id = null, $contact_xchan = null){
 //		logger('api_get_user: ' . print_r($ret,true));
 
 	return $ret;
-		
+
 }
 
 
@@ -313,10 +314,10 @@ function api_item_get_user( $item) {
 
 	if($item['author']['abook_id']) {
 		return api_get_user($item['author']['abook_id']);
-	}	
-		
+	}
+
 	// We don't know this person directly.
-		
+
 	$nick = substr($item['author']['xchan_addr'],0,strpos($item['author']['xchan_addr'],'@'));
 	$name = $item['author']['xchan_name'];
 
@@ -361,18 +362,18 @@ function api_item_get_user( $item) {
 		'followers' => '' // #XXX: fix me
 	);
 
-	return $ret; 
+	return $ret;
 }
 
 
-	
+
 /**
- * Returns an HTTP 200 OK response code and a representation of the requesting user if authentication was successful; 
- * returns a 401 status code and an error message if not. 
+ * Returns an HTTP 200 OK response code and a representation of the requesting user if authentication was successful;
+ * returns a 401 status code and an error message if not.
  * http://developer.twitter.com/doc/get/account/verify_credentials
  */
 function api_account_verify_credentials($type){
-	if(api_user()===false) 
+	if(api_user()===false)
 		return false;
 	$user_info = api_get_user();
 	return api_apply_template('user', $type, array('user' => $user_info));
@@ -384,7 +385,7 @@ function api_account_logout( $type){
 	App::$session->nuke();
 	return api_apply_template('user', $type, array('user' => null));
 }
-	 	
+
 
 /**
  * get data from $_REQUEST ( e.g. $_POST or $_GET )
@@ -410,7 +411,7 @@ function api_statuses_mediap( $type) {
 	$_REQUEST['type'] = 'wall';
 	$_REQUEST['profile_uid'] = api_user();
 	$_REQUEST['api_source'] = true;
-				
+
 	$txt = requestdata('status');
 
 	require_once('library/HTMLPurifier.auto.php');
@@ -424,9 +425,9 @@ function api_statuses_mediap( $type) {
 		$txt = $purifier->purify($txt);
 	}
 	$txt = html2bbcode($txt);
-		
+
 	App::$argv[1] = $user_info['screen_name'];
-		
+
 	$_REQUEST['silent'] = '1'; //tell wall_upload function to return img info instead of echo
 	$_FILES['userfile'] = $_FILES['media'];
 
@@ -515,7 +516,7 @@ function api_statuses_update( $type) {
 		$_REQUEST['type'] = 'net-comment';
 	else {
 		$_REQUEST['type'] = 'wall';
-		
+
 		if(x($_FILES,'media')) {
 			if(is_array($_FILES['media']['name'])) {
 				$num_uploads = count($_FILES['media']['name']);
@@ -555,7 +556,7 @@ function api_statuses_update( $type) {
 	// call out normal post function
 
 	$mod = new Zotlabs\Module\Item();
-	$mod->post();	
+	$mod->post();
 
 	// this should output the last post (the one we just posted).
 	return api_status_show($type);
@@ -579,7 +580,7 @@ function api_get_status($xchan_hash) {
 
 	if($lastwall) {
 		$lastwall = $lastwall[0];
-			
+
 		$in_reply_to_status_id = '';
 		$in_reply_to_user_id = '';
 		$in_reply_to_screen_name = '';
@@ -594,7 +595,7 @@ function api_get_status($xchan_hash) {
 				$in_reply_to_screen_name = substr($w[0]['xchan_addr'],0,strpos($w[0]['xchan_addr'],'@'));
 			}
 		}
-			
+
 		if ($lastwall['parent']!=$lastwall['id']) {
 			$in_reply_to_status_id=$lastwall['thr_parent'];
 			if(! $in_reply_to_user_id) {
@@ -602,7 +603,7 @@ function api_get_status($xchan_hash) {
 				$in_reply_to_screen_name = $user_info['screen_name'];
 			}
 		}
-		unobscure($lastwall);  
+		unobscure($lastwall);
 		$status_info = array(
 			'text' => html2plain(prepare_text($lastwall['body'],$lastwall['mimetype']), 0),
 			'truncated' => false,
@@ -616,11 +617,11 @@ function api_get_status($xchan_hash) {
 			'favorited' => false,
 			'coordinates' => $lastwall['coord'],
 			'place' => $lastwall['location'],
-			'contributors' => ''					
+			'contributors' => ''
 		);
 
 	}
-	
+
 	return $status_info;
 }
 
@@ -646,10 +647,10 @@ function api_status_show($type){
 		$result = api_format_items($lastwall,$user_info);
 	}
 
-	return api_apply_template('status', $type, array('$status' => (($result) ? $result[0] : [])));		
+	return api_apply_template('status', $type, array('$status' => (($result) ? $result[0] : [])));
 }
 
-		
+
 /**
  * Returns extended information of a given user, specified by ID or screen name as per the required id parameter.
  * The author's most recent status will be returned inline.
@@ -657,7 +658,7 @@ function api_status_show($type){
  */
 
 // FIXME - this is essentially the same as api_status_show except for the template formatting at the end. Consolidate.
- 
+
 
 function api_users_show( $type){
 	$user_info = api_get_user();
@@ -677,7 +678,7 @@ function api_users_show( $type){
 
 	if($lastwall){
 		$lastwall = $lastwall[0];
-			
+
 		$in_reply_to_status_id = '';
 		$in_reply_to_user_id = '';
 		$in_reply_to_screen_name = '';
@@ -692,14 +693,14 @@ function api_users_show( $type){
 				$in_reply_to_screen_name = substr($w[0]['xchan_addr'],0,strpos($w[0]['xchan_addr'],'@'));
 			}
 		}
-			
+
 		if ($lastwall['parent']!=$lastwall['id']) {
 			$in_reply_to_status_id=$lastwall['thr_parent'];
 			if(! $in_reply_to_user_id) {
 				$in_reply_to_user_id = $user_info['id'];
 				$in_reply_to_screen_name = $user_info['screen_name'];
 			}
-		}  
+		}
 		unobscure($lastwall);
 		$user_info['status'] = array(
 			'text' => html2plain(prepare_text($lastwall['body'],$lastwall['mimetype']), 0),
@@ -714,7 +715,7 @@ function api_users_show( $type){
 			'favorited' => false,
 			'coordinates' => $lastwall['coord'],
 			'place' => $lastwall['location'],
-			'contributors' => ''					
+			'contributors' => ''
 		);
 
 	}
@@ -732,7 +733,7 @@ function api_users_show( $type){
  */
 
 function api_statuses_home_timeline( $type){
-	if (api_user() === false) 
+	if (api_user() === false)
 		return false;
 
 	$user_info = api_get_user();
@@ -742,7 +743,7 @@ function api_statuses_home_timeline( $type){
 	// params
 	$count           = (x($_REQUEST,'count') ? $_REQUEST['count'] : 20);
 	$page            = (x($_REQUEST,'page') ? $_REQUEST['page']-1 : 0);
-	if($page < 0) 
+	if($page < 0)
 		$page = 0;
 	$since_id        = (x($_REQUEST,'since_id') ? $_REQUEST['since_id'] : 0);
 	$max_id          = (x($_REQUEST,'max_id') ? $_REQUEST['max_id'] : 0);
@@ -773,7 +774,7 @@ function api_statuses_home_timeline( $type){
 		ORDER BY received DESC LIMIT %d ,%d ",
 		intval($user_info['uid']),
 		intval($since_id),
-		intval($start),	
+		intval($start),
 		intval($count)
 	);
 
@@ -783,8 +784,8 @@ function api_statuses_home_timeline( $type){
 
 	// We aren't going to try to figure out at the item, group, and page
 	// level which items you've seen and which you haven't. If you're looking
-	// at the network timeline just mark everything seen. 
-	
+	// at the network timeline just mark everything seen.
+
 	if (api_user() == $user_info['uid']) {
 		$r = q("UPDATE item SET item_unseen = 0 WHERE item_unseen = 1 and uid = %d",
 			intval($user_info['uid'])
@@ -895,7 +896,7 @@ function api_statuses_networkpublic_timeline( $type){
 
 
 function api_statuses_show($type){
-	if(api_user() === false) 
+	if(api_user() === false)
 		return false;
 
 	$user_info = api_get_user();
@@ -939,11 +940,11 @@ function api_statuses_show($type){
 
 
 /**
- * 
+ *
  */
 
 function api_statuses_repeat( $type){
-	if(api_user() === false) 
+	if(api_user() === false)
 		return false;
 
 	$user_info = api_get_user();
@@ -986,7 +987,7 @@ function api_statuses_repeat( $type){
 
 
 /**
- * 
+ *
  */
 
 function api_statuses_destroy( $type){
@@ -1009,7 +1010,7 @@ function api_statuses_destroy( $type){
 	}
 	else {
 		if($_REQUEST['namespace'] && $_REQUEST['remote_id']) {
-			$r = q("select * from iconfig left join item on iconfig.iid = item.id 
+			$r = q("select * from iconfig left join item on iconfig.iid = item.id
 				where cat = 'system' and k = '%s' and v = '%s' and item.uid = %d limit 1",
 				dbesc($_REQUEST['namespace']),
 				dbesc($_REQUEST['remote_id']),
@@ -1048,16 +1049,16 @@ function api_statuses_destroy( $type){
 
 
 /**
- * 
+ *
  * http://developer.twitter.com/doc/get/statuses/mentions
- * 
+ *
  */
 
 
 function api_statuses_mentions( $type){
 	if(api_user() === false)
 		return false;
-				
+
 	$user_info = api_get_user();
 	// get last network messages
 
@@ -1065,7 +1066,7 @@ function api_statuses_mentions( $type){
 	// params
 	$count = (x($_REQUEST,'count') ? $_REQUEST['count']  : 20);
 	$page  = (x($_REQUEST,'page')  ? $_REQUEST['page']-1 :  0);
-	if($page < 0) 
+	if($page < 0)
 		$page=0;
 	$since_id = (x($_REQUEST,'since_id') ? $_REQUEST['since_id'] : 0);
 	$max_id = (x($_REQUEST,'max_id') ? $_REQUEST['max_id'] : 0);
@@ -1101,9 +1102,9 @@ function api_statuses_mentions( $type){
 
 
 function api_statuses_user_timeline( $type){
-	if(api_user() === false) 
+	if(api_user() === false)
 		return false;
-		
+
 	$user_info = api_get_user();
 
 	// get last network messages
@@ -1116,11 +1117,11 @@ function api_statuses_user_timeline( $type){
 	// params
 	$count = (x($_REQUEST,'count') ? $_REQUEST['count'] : 20);
 	$page = (x($_REQUEST,'page') ? $_REQUEST['page']-1 : 0);
-	if($page < 0) 
+	if($page < 0)
 		$page = 0;
 	$since_id = (x($_REQUEST,'since_id') ? $_REQUEST['since_id'] : 0);
 	$exclude_replies = (x($_REQUEST,'exclude_replies') ? 1 :0);
-		
+
 	$start = $page * $count;
 
 	$sql_extra = '';
@@ -1134,7 +1135,7 @@ function api_statuses_user_timeline( $type){
 		'start'    => $start,
 		'records'  => $count
 	];
-	
+
 	if ($user_info['self'] === 1)
 		$arr['wall'] = 1;
 	else
@@ -1142,7 +1143,7 @@ function api_statuses_user_timeline( $type){
 
 
 	$r = items_fetch($arr,App::get_channel(),get_observer_hash());
-		
+
 	$ret = api_format_items($r,$user_info);
 
 	$data = array('statuses' => $ret);
@@ -1159,7 +1160,7 @@ function api_statuses_user_timeline( $type){
 
 function api_favorites_create_destroy($type){
 
-	if(api_user() === false) 
+	if(api_user() === false)
 		return false;
 
 	$action = str_replace('.' . $type,'',argv(2));
@@ -1171,7 +1172,7 @@ function api_favorites_create_destroy($type){
 	}
 
 	$item = q("SELECT * FROM item WHERE id = %d AND uid = %d",
-		intval($itemid), 
+		intval($itemid),
 		intval(api_user())
 	);
 
@@ -1198,7 +1199,7 @@ function api_favorites_create_destroy($type){
 		return false;
 
 	$item = q("SELECT * FROM item WHERE id = %d AND uid = %d",
-		intval($itemid), 
+		intval($itemid),
 		intval(api_user())
 	);
 
@@ -1215,7 +1216,7 @@ function api_favorites_create_destroy($type){
 
 
 function api_favorites( $type){
-	if(api_user() === false) 
+	if(api_user() === false)
 		return false;
 
 	$user_info = api_get_user();
@@ -1223,7 +1224,7 @@ function api_favorites( $type){
 	// params
 	$count	         = (x($_REQUEST,'count') ? $_REQUEST['count'] : 20);
 	$page            = (x($_REQUEST,'page')  ? $_REQUEST['page']-1 : 0);
-	if($page < 0) 
+	if($page < 0)
 		$page = 0;
 	$since_id        = (x($_REQUEST,'since_id') ? $_REQUEST['since_id'] : 0);
 	$max_id          = (x($_REQUEST,'max_id') ? $_REQUEST['max_id'] : 0);
@@ -1255,7 +1256,7 @@ function api_favorites( $type){
 		ORDER BY received DESC LIMIT %d ,%d ",
 		intval($user_info['uid']),
 		intval($since_id),
-		intval($start),	
+		intval($start),
 		intval($count)
 	);
 
@@ -1329,7 +1330,7 @@ function api_format_items($r,$user_info,$type = 'json') {
 		if($item['parent'] != $item['id']) {
 
 			$r = q("select * from item where parent = %d and id = %d order by id  limit 1",
-				intval($item['parent']), 
+				intval($item['parent']),
 				intval($item['id'])
 			);
 			if($r)
@@ -1432,44 +1433,44 @@ function api_help_test($type) {
 
 
 /**
- *  https://dev.twitter.com/docs/api/1/get/statuses/friends 
+ *  https://dev.twitter.com/docs/api/1/get/statuses/friends
  *  This function is deprecated by Twitter
- *  returns: json, xml 
+ *  returns: json, xml
  *
  */
 
 function api_statuses_f( $type, $qtype) {
-	if(api_user() === false) 
+	if(api_user() === false)
 		return false;
 	$user_info = api_get_user();
-		
-		
+
+
 	// friends and followers only for self
 	if ($user_info['self'] == 0){
 		return false;
 	}
-		
+
 	if(x($_GET,'cursor') && $_GET['cursor']=='undefined'){
 		/* this is to stop Hotot to load friends multiple times
 		*  I'm not sure if I'm missing return something or
 		*  is a bug in hotot. Workaround, meantime
 		*/
-			
+
 		/*$ret=Array();
 		return array('users' => $ret);*/
 		return false;
 	}
-		
+
 
 	if($qtype == 'friends') {
-		$r = q("select abook_id from abook left join abconfig on abook_xchan = xchan and abook_channel = chan 
+		$r = q("select abook_id from abook left join abconfig on abook_xchan = xchan and abook_channel = chan
 			where chan = %d and abook_self = 0 and abook_pending = 0 and cat = 'my_perms' and k = 'view_stream' and v = '1' ",
 			intval(api_user())
 		);
 	}
 
 	if($qtype == 'followers') {
-		$r = q("select abook_id from abook left join abconfig on abook_xchan = xchan and abook_channel = chan 
+		$r = q("select abook_id from abook left join abconfig on abook_xchan = xchan and abook_channel = chan
 			where chan = %d and abook_self = 0 and abook_pending = 0 and cat = 'their_perms' and k = 'view_stream' and v = '1' ",
 			intval(api_user())
 		);
@@ -1520,26 +1521,26 @@ function api_statusnet_config($type) {
 	$sslserver = (($ssl) ? str_replace('http:','https:',z_root()) : '');
 
 	$config = [
-		'site' => [ 
+		'site' => [
 			'name'           => $name,
-			'server'         => $server, 
-			'theme'          => 'default', 
+			'server'         => $server,
+			'theme'          => 'default',
 			'path'           => '',
-			'logo'           => $logo, 
-			'fancy'          => true, 
-			'language'       => 'en', 
-			'email'          => $email, 
+			'logo'           => $logo,
+			'fancy'          => true,
+			'language'       => 'en',
+			'email'          => $email,
 			'broughtby'      => '',
-			'broughtbyurl'   => '', 
-			'timezone'       => 'UTC', 
-			'closed'         => $closed, 
+			'broughtbyurl'   => '',
+			'timezone'       => 'UTC',
+			'closed'         => $closed,
 			'inviteonly'     => false,
-			'private'        => $private, 
-			'textlimit'      => $textlimit, 
-			'sslserver'      => $sslserver, 
+			'private'        => $private,
+			'textlimit'      => $textlimit,
+			'sslserver'      => $sslserver,
 			'ssl'            => $ssl,
 			'shorturllength' => 30,
-    
+
     		'platform' => [
 				'PLATFORM_NAME' => Zotlabs\Lib\System::get_platform_name(),
 				'STD_VERSION' => Zotlabs\Lib\System::get_project_version(),
@@ -1547,7 +1548,7 @@ function api_statusnet_config($type) {
 				'DB_UPDATE_VERSION' => Zotlabs\Lib\System::get_update_version()
 			]
 		]
-	];  
+	];
 
 	return api_apply_template('config', $type, array('config' => $config));
 
@@ -1590,14 +1591,14 @@ function api_ff_ids($type,$qtype) {
 		return false;
 
 	if($qtype == 'friends') {
-		$r = q("select abook_id from abook left join abconfig on abook_xchan = xchan and abook_channel = chan 
+		$r = q("select abook_id from abook left join abconfig on abook_xchan = xchan and abook_channel = chan
 			where chan = %d and abook_self = 0 and abook_pending = 0 and cat = 'my_perms' and k = 'view_stream' and v = '1' ",
 			intval(api_user())
 		);
 	}
 
 	if($qtype == 'followers') {
-		$r = q("select abook_id from abook left join abconfig on abook_xchan = xchan and abook_channel = chan 
+		$r = q("select abook_id from abook left join abconfig on abook_xchan = xchan and abook_channel = chan
 			where chan = %d and abook_self = 0 and abook_pending = 0 and cat = 'their_perms' and k = 'view_stream' and v = '1' ",
 			intval(api_user())
 		);
@@ -1632,29 +1633,30 @@ function api_followers_ids($type) {
 	api_ff_ids($type,'followers');
 }
 
+/*
 function api_direct_messages_new( $type) {
 	if(api_user() === false)
 		return false;
-		
+
 	if(!x($_POST, 'text') || !x($_POST,'screen_name'))
 		return;
 
 	$sender = api_get_user();
-		
+
 	require_once('include/message.php');
 
 	// in a decentralised world the screen name is ambiguous
 
-	$r = q("SELECT abook_id FROM abook left join xchan on abook_xchan = xchan_hash 
+	$r = q("SELECT abook_id FROM abook left join xchan on abook_xchan = xchan_hash
 		WHERE abook_channel = %d and xchan_addr like '%s'",
 		intval(api_user()),
 		dbesc($_POST['screen_name'] . '@%')
 	);
 
-	$recipient = api_get_user($r[0]['abook_id']);			
+	$recipient = api_get_user($r[0]['abook_id']);
 	$replyto   = '';
 	$sub       = '';
-		
+
 	if(array_key_exists('replyto',$_REQUEST) && $_REQUEST['replyto']) {
 		$r = q('SELECT parent_mid, title FROM mail WHERE uid=%d AND id=%d',
 			intval(api_user()),
@@ -1677,37 +1679,39 @@ function api_direct_messages_new( $type) {
 	$id = send_message(api_user(),$recipient['guid'], $_POST['text'], $sub, $replyto);
 
 	if($id > (-1)) {
-		$r = q("SELECT * FROM mail WHERE id = %d", 
+		$r = q("SELECT * FROM mail WHERE id = %d",
 			intval($id)
 		);
 		if(! $r)
 			return false;
 
-		$ret = api_format_message($r[0], $recipient, $sender);		
-	} 
-	else {
-		$ret = [ 'error' => $id ];	
+		$ret = api_format_message($r[0], $recipient, $sender);
 	}
-		
+	else {
+		$ret = [ 'error' => $id ];
+	}
+
 	$data = [ 'messages' => $ret ];
 	return(api_apply_template('direct_messages', $type, $data));
-				
-}
 
+}
+*/
+
+/*
 function api_direct_messages_box( $type, $box) {
-	if(api_user() === false) 
+	if(api_user() === false)
 		return false;
-		
+
 	$user_info = api_get_user();
-		
+
 	// params
 	$count = (x($_GET,'count') ? $_GET['count'] : 20);
 	$page  = (x($_REQUEST,'page') ? $_REQUEST['page'] - 1 : 0);
-	if($page < 0) 
+	if($page < 0)
 		$page = 0;
-		
+
 	$start   = $page * $count;
-	$channel = App::get_channel();		
+	$channel = App::get_channel();
 
 	$profile_url = z_root() . '/channel/' . $channel['channel_address'];
 	if($box === 'sentbox') {
@@ -1722,13 +1726,13 @@ function api_direct_messages_box( $type, $box) {
 	elseif($box === 'inbox') {
 		$sql_extra = "from_xchan != '" . dbesc($channel['channel_hash']) . "'";
 	}
-		
+
 	$r = q("SELECT * FROM mail WHERE channel_id = %d AND $sql_extra ORDER BY created DESC LIMIT %d OFFSET %d",
 		intval(api_user()),
-		intval($count), 
+		intval($count),
 		intval($start)
 	);
-		
+
 	$ret = array();
 	if($r) {
 		foreach($r as $item) {
@@ -1740,31 +1744,40 @@ function api_direct_messages_box( $type, $box) {
 				$sender = api_get_user( null, $item['from_xchan']);
 				$recipient = $user_info;
 			}
-	
+
 			$ret[] = api_format_message($item, $recipient, $sender);
 		}
 	}
-		
+
 	$data = array('messages' => $ret);
 	return(api_apply_template('direct_messages', $type, $data));
-		
-}
 
+}
+*/
+
+/*
 function api_direct_messages_sentbox($type){
 	return api_direct_messages_box($type, 'sentbox');
 }
+*/
 
+/*
 function api_direct_messages_inbox($type){
 	return api_direct_messages_box($type, 'inbox');
 }
+*/
 
+/*
 function api_direct_messages_all($type){
 	return api_direct_messages_box($type, 'all');
 }
+*/
 
+/*
 function api_direct_messages_conversation($type){
 	return api_direct_messages_box($type, 'conversation');
 }
+*/
 
 
 
