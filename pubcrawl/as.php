@@ -770,12 +770,12 @@ function asencode_person($p) {
 			'publicKeyPem' => $p['xchan_pubkey']
 		];
 
-		$locs = zot_encode_locations($c);
+		$locs = Libzot::encode_locations($c);
 		if($locs) {
 			$ret['nomadicLocations'] = [];
 			foreach($locs as $loc) {
 				$ret['nomadicLocations'][] = [
-					'id'      => $loc['url'] . '/locs/' . substr($loc['address'],0,strpos($loc['address'],'@')),
+					'id'              => $loc['url'] . '/locs/' . substr($loc['address'],0,strpos($loc['address'],'@')),
 					'type'            => 'nomadicLocation',
 					'locationAddress' => 'acct:' . $loc['address'],
 					'locationPrimary' => (boolean) $loc['primary'],
