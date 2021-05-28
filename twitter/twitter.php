@@ -122,7 +122,7 @@ function twitter_post_local(&$a,&$b) {
 	$twitter_enable = (($twitter_post && x($_REQUEST,'twitter_enable')) ? intval($_REQUEST['twitter_enable']) : 0);
 
 	// if API is used, default to the chosen settings
-	if($_REQUEST['api_source'] && intval(get_pconfig(local_channel(),'twitter','post_by_default')))
+	if($_REQUEST['api_source'] && intval(get_pconfig($b['uid'],'twitter','post_by_default')))
 		$twitter_enable = 1;
 
 	if(! $twitter_enable)
