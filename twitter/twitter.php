@@ -118,7 +118,7 @@ function twitter_post_local(&$a,&$b) {
 	if($b['item_private'] || ($b['mid'] != $b['parent_mid']))
 		return;
 
-	$twitter_post = Apps::addon_app_installed(local_channel(), 'twitter');
+	$twitter_post = Apps::addon_app_installed($b['uid'], 'twitter');
 	$twitter_enable = (($twitter_post && x($_REQUEST,'twitter_enable')) ? intval($_REQUEST['twitter_enable']) : 0);
 
 	// if API is used, default to the chosen settings
