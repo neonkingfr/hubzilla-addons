@@ -603,7 +603,7 @@ function api_get_status($xchan_hash) {
 				$in_reply_to_screen_name = $user_info['screen_name'];
 			}
 		}
-		unobscure($lastwall);
+
 		$status_info = array(
 			'text' => html2plain(prepare_text($lastwall['body'],$lastwall['mimetype']), 0),
 			'truncated' => false,
@@ -701,7 +701,7 @@ function api_users_show( $type){
 				$in_reply_to_screen_name = $user_info['screen_name'];
 			}
 		}
-		unobscure($lastwall);
+
 		$user_info['status'] = array(
 			'text' => html2plain(prepare_text($lastwall['body'],$lastwall['mimetype']), 0),
 			'truncated' => false,
@@ -1269,7 +1269,7 @@ function api_favorites( $type){
 
 }
 
-
+/*
 function api_format_message($item, $recipient, $sender) {
 	// standard meta information
 	$ret = array(
@@ -1303,6 +1303,7 @@ function api_format_message($item, $recipient, $sender) {
 
 	return $ret;
 }
+*/
 
 function api_format_items($r,$user_info,$type = 'json') {
 
@@ -1349,7 +1350,7 @@ function api_format_items($r,$user_info,$type = 'json') {
 			$in_reply_to_user_id = 0;
 			$in_reply_to_status_id = 0;
 		}
-		unobscure($item);
+
 		// Workaround for ostatus messages where the title is identically to the body
 		$statusbody = trim(html2plain(prepare_text($item['body'],$item['mimetype']), 0));
 		$statustitle = trim($item['title']);
