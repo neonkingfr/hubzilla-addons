@@ -666,7 +666,7 @@ function diaspora_queue($owner,$contact,$slap,$public_batch,$message_id = '') {
 		return false;
 	}
 
-	$hash = random_string();
+	$hash = new_uuid();
 
 	logger('diaspora_queue: ' . $hash . ' ' . $dest_url, LOGGER_DEBUG);
 

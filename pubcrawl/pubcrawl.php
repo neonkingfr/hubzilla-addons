@@ -738,7 +738,7 @@ function pubcrawl_queue_message($msg, $sender, $recip, $message_id = '') {
 		return false;
 	}
 
-	$hash = random_string();
+	$hash = new_uuid();
 
 	logger('queue: ' . $hash . ' ' . $dest_url, LOGGER_DEBUG);
 	logger('queueMsg: ' . jindent($msg));
