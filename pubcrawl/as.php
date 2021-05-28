@@ -1399,18 +1399,11 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s = [];
 
 	$announce = (($act->type === 'Announce') ? true  : false);
-
-	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
-	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
-	// This is not part of the activitypub protocol - we might change this to show all public posts in pubstream at some point.
-
-	$pubstream = ((is_array($act->obj) && array_key_exists('to', $act->obj) && in_array(ACTIVITY_PUBLIC_INBOX, $act->obj['to'])) ? true : false);
 	$is_sys_channel = is_sys_channel($channel['channel_id']);
-
 	$parent = ((array_key_exists('inReplyTo',$act->obj) && !$announce) ? urldecode($act->obj['inReplyTo']) : false);
 
 	if(!$parent) {
-		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
+		if(!perm_is_allowed($channel['channel_id'], $observer_hash, 'send_stream') && !$is_sys_channel) {
 			// Fall through on update activities since we already accepted the item.
 			// We might have got it via announce or imported it manually.
 			if($act->type !== 'Update') {
@@ -1917,12 +1910,7 @@ function as_announce_note($channel,$observer_hash,$act) {
 
 	$is_sys_channel = is_sys_channel($channel['channel_id']);
 
-	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
-	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
-	// This is not part of the activitypub protocol - we might change this to show all public posts in pubstream at some point.
-	$pubstream = ((is_array($act->obj) && array_key_exists('to', $act->obj) && in_array(ACTIVITY_PUBLIC_INBOX, $act->obj['to'])) ? true : false);
-
-	if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
+	if(!perm_is_allowed($channel['channel_id'], $observer_hash, 'send_stream') && !$is_sys_channel) {
 		logger('no permission');
 		return;
 	}
