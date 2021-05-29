@@ -327,49 +327,51 @@ function diaspora_notifier_process(&$arr) {
 		// Those must be sent to all participants by the comment author.
 
 		$fields = get_iconfig($arr['parent_item'], 'diaspora', 'fields');
+		$hashes = [];
 
-		if(!$fields)
-			return;
-
-		$participants = explode(';', $fields['participants']);
-
-		foreach($participants as $participant) {
-			if ($participant === $arr['target_item']['author']['xchan_addr']) {
-				continue;
+		if(is_array($fields) && isset($fields['participants'])) {
+			$participants = explode(';', $fields['participants']);
+			foreach($participants as $participant) {
+				if ($participant === $arr['target_item']['author']['xchan_addr']) {
+					continue;
+				}
+				$hashes[] = "'" . dbesc($participant) . "'";
 			}
-			$hashes[] = "'" . dbesc($participant) . "'";
 		}
-		$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where
-			xchan_hash in (" . implode(',', $hashes) . ") and
-			xchan_network in ('diaspora', 'friendica-over-diaspora') and hubloc_deleted = 0 and hubloc_error = 0"
-		);
 
-		if (!$arr['top_level_post'] && in_array($arr['parent_item']['author']['xchan_network'], ['diaspora', 'friendica-over-diaspora'])) {
-			// To allow sending of comments on diaspora direct messages to other zot6 channels
-			// we need to send them via diaspora.
-			// It is required to rewrite the hubloc_callback for that.
-
-			$rz = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where
-				xchan_addr in (" . implode(',', $hashes) . ") and
-				xchan_network = 'zot6' and hubloc_deleted = 0 and hubloc_error = 0"
+		if($hashes) {
+			$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where
+				xchan_hash in (" . implode(',', $hashes) . ") and
+				xchan_network in ('diaspora', 'friendica-over-diaspora') and hubloc_deleted = 0 and hubloc_error = 0"
 			);
 
-			$r1 = [];
-			foreach($rz as $rzz) {
-				$rzz['hubloc_callback'] = $rzz['hubloc_url'] . '/receive';
-				$r1[] = $rzz;
+			if (!$arr['top_level_post'] && in_array($arr['parent_item']['author']['xchan_network'], ['diaspora', 'friendica-over-diaspora'])) {
+				// To allow sending of comments on diaspora direct messages to other zot6 channels
+				// we need to send them via diaspora.
+				// It is required to rewrite the hubloc_callback for that.
+
+				$rz = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where
+					xchan_addr in (" . implode(',', $hashes) . ") and
+					xchan_network = 'zot6' and hubloc_deleted = 0 and hubloc_error = 0"
+				);
+
+				$r1 = [];
+				foreach($rz as $rzz) {
+					$rzz['hubloc_callback'] = $rzz['hubloc_url'] . '/receive';
+					$r1[] = $rzz;
+				}
+
+				$r = array_merge($r1, $r);
 			}
 
-			$r = array_merge($r1, $r);
-		}
+			foreach($r as $contact) {
+				// is $contact connected with this channel - and if the channel is cloned, also on this hub?
+				$single = deliverable_singleton($arr['channel']['channel_id'], $contact);
 
-		foreach($r as $contact) {
-			// is $contact connected with this channel - and if the channel is cloned, also on this hub?
-			$single = deliverable_singleton($arr['channel']['channel_id'], $contact);
-
-			$qi = diaspora_send_mail($arr, $contact);
-			if($qi)
-				$arr['queued'][] = $qi;
+				$qi = diaspora_send_mail($arr, $contact);
+				if($qi)
+					$arr['queued'][] = $qi;
+			}
 		}
 	}
 
