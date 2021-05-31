@@ -972,6 +972,7 @@ function diaspora_post_local(&$item) {
 		if($item['mid'] === $item['parent_mid']) {
 			$private = true;
 			$receivers = expand_acl($item['allow_cid']);
+			$hashes = [];
 
 			foreach($receivers as $receiver) {
 				$hashes[] = "'" . dbesc($receiver) . "'";
