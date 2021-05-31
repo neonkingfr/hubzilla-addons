@@ -8,7 +8,7 @@ use Zotlabs\Extend\Hook;
 /**
  * Name: queueworker
  * Description: Next generation queue worker for backgrounded tasks (BETA)
- * Version: 0.8.0
+ * Version: 0.8.1
  * Author: Matthew Dent <dentm42@dm42.net>
  * MinVersion: 4.2.1
  */
@@ -21,6 +21,11 @@ class QueueWorkerUtils {
 	public static $maxworkers = 0;
 	public static $workermaxage = 0;
 	public static $workersleep = 100;
+	public static $default_priorities = [
+		'Notifier'    => 10,
+		'Deliver'     => 10,
+		'Cache_query' => 10
+	];
 
 	public static function check_min_version($platform, $minver) {
 		switch ($platform) {
@@ -249,7 +254,12 @@ class QueueWorkerUtils {
 		$argv = $arr['argv'];
 		$argc = count($argv);
 		if ($argv[0] != 'Queueworker') {
-			$priority      = 0; //Default priority @TODO allow reprioritization
+
+			$priority = 0; // @TODO allow reprioritization
+			if(isset(self::$default_priorities[$argv[0]])) {
+				$priority = self::$default_priorities[$argv[0]];
+			}
+
 			$workinfo      = ['argc' => $argc, 'argv' => $argv];
 			$workinfo_json = self::maybejson($workinfo);
 			$uuid          = self::get_uuid($workinfo_json);
@@ -291,7 +301,12 @@ class QueueWorkerUtils {
 		$argv = $arr['argv'];
 		$argc = count($argv);
 		if ($argv[0] != 'Queueworker') {
-			$priority      = 0; //Default priority @TODO allow reprioritization
+
+			$priority = 0; // @TODO allow reprioritization
+			if(isset(self::$default_priorities[$argv[0]])) {
+				$priority = self::$default_priorities[$argv[0]];
+			}
+
 			$workinfo      = ['argc' => $argc, 'argv' => $argv];
 			$workinfo_json = self::maybejson($workinfo);
 			$uuid          = self::get_uuid($workinfo_json);
@@ -365,10 +380,10 @@ class QueueWorkerUtils {
 		self::qbegin('workerq');
 
 		if (ACTIVE_DBTYPE == DBTYPE_POSTGRES) {
-			$work = dbq("SELECT workerq_id FROM workerq WHERE workerq_reservationid IS NULL ORDER BY workerq_priority, workerq_id LIMIT 1 FOR UPDATE SKIP LOCKED;");
+			$work = dbq("SELECT workerq_id FROM workerq WHERE workerq_reservationid IS NULL ORDER BY workerq_priority DESC, workerq_id ASC LIMIT 1 FOR UPDATE SKIP LOCKED;");
 		}
 		else {
-			$work = dbq("SELECT workerq_id FROM workerq WHERE workerq_reservationid IS NULL ORDER BY workerq_priority, workerq_id LIMIT 1;");
+			$work = dbq("SELECT workerq_id FROM workerq WHERE workerq_reservationid IS NULL ORDER BY workerq_priority DESC, workerq_id ASC LIMIT 1;");
 		}
 
 		if (!$work) {
