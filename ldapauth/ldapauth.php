@@ -6,9 +6,9 @@
  * Author: Mike Macgirvin
  * Maintainer: Mike Macgirvin
  */
- 
+
 /**
- * 
+ *
  * Module: LDAP Authenticate
  *
  * Authenticate a user against an LDAP directory
@@ -18,8 +18,8 @@
  * Optionally authenticates only if a member of a given group in the directory.
  *
  * Note when using with Windows Active Directory: you may need to set TLS_CACERT in your site
- * ldap.conf file to the signing cert for your LDAP server. 
- * 
+ * ldap.conf file to the signing cert for your LDAP server.
+ *
  * The required configuration options for this module may be set in the .htconfig.php file
  * e.g.:
  *
@@ -64,8 +64,39 @@ function ldapauth_hook_authenticate($a,&$b) {
 		);
 		if((! $results) && ($mail) && intval(get_config('ldapauth','create_account')) == 1) {
 			require_once('include/account.php');
-			$acct = create_account(array('email' => $mail, 'password' => random_string()));			
+			$now = datetime_convert();
+			$salt = random_string(32);
+			$pass = random_string(64);
+			$password = $salt . ',' . hash('whirlpool', $salt . $pass);
+
+			q("INSERT INTO register ("
+				. "reg_didx, reg_did2, reg_hash, reg_created, reg_startup, reg_expires,"
+				. "reg_email, reg_pass, reg_lang, reg_atip, reg_stuff)"
+				. " VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s') ",
+				dbesc('e'),
+				dbesc($mail),
+				dbesc('ldapauth'),
+				dbesc($now),
+				dbesc($now),
+				dbesc(datetime_convert('UTC', 'UTC', $now . ' + 1 hour')),
+				dbesc($mail),
+				dbesc($password),
+				dbesc(App::$language),
+				dbesc($_SERVER['REMOTE_ADDR']),
+				dbesc(json_encode([]))
+			);
+
+			$reg = q("SELECT reg_id FROM register WHERE reg_did2 = '%s' AND rep_pass = '%s'",
+				dbesc($mail),
+				dbesc($password)
+			);
+
+			$acct = create_account_from_register(['reg_id' => $reg[0]['reg_id']]);
 			if($acct['success']) {
+				q("UPDATE register SET reg_vital = 0 WHERE reg_id = %d",
+					intval($reg[0]['reg_id'])
+				)
+
 				logger('ldapauth: Created account for ' . $b['username'] . ' using ' . $mail);
 				info(t('An account has been created for you.'));
 				$b['user_record'] = $acct['account'];
@@ -79,9 +110,9 @@ function ldapauth_hook_authenticate($a,&$b) {
 		}
 		if((! $results) && $b['user_record'] && $nickname && $displayname && intval(get_config('ldapauth','create_channel'))) {
 			$c = create_identity( [
-				'name' => $displayname, 
-				'nickname' => $nickname, 
-				'account_id' => $b['user_record']['account_id'], 
+				'name' => $displayname,
+				'nickname' => $nickname,
+				'account_id' => $b['user_record']['account_id'],
 				'permissions_role' => $perms_role
 			] );
 
