@@ -86,7 +86,7 @@ function ldapauth_hook_authenticate($a,&$b) {
 				dbesc(json_encode([]))
 			);
 
-			$reg = q("SELECT reg_id FROM register WHERE reg_did2 = '%s' AND rep_pass = '%s'",
+			$reg = q("SELECT reg_id FROM register WHERE reg_did2 = '%s' AND reg_pass = '%s'",
 				dbesc($mail),
 				dbesc($password)
 			);
@@ -95,7 +95,7 @@ function ldapauth_hook_authenticate($a,&$b) {
 			if($acct['success']) {
 				q("UPDATE register SET reg_vital = 0 WHERE reg_id = %d",
 					intval($reg[0]['reg_id'])
-				)
+				);
 
 				logger('ldapauth: Created account for ' . $b['username'] . ' using ' . $mail);
 				info(t('An account has been created for you.'));
