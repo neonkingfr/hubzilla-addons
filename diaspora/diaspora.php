@@ -1226,7 +1226,7 @@ function diaspora_md_mention_callback($matches) {
     if(! $link)
         $link = 'https://' . $matches[3] . '/u/' . $matches[2];
 
-    if($r && $r[0]['hubloc_network'] === 'zot')
+    if($r && $r[0]['hubloc_network'] === 'zot6')
         return '@[zrl=' . $link . ']' . trim($matches[1]) . ((substr($matches[0],-1,1) === '+') ? '+' : '') . '[/zrl]' ;
     else
         return '@[url=' . $link . ']' . trim($matches[1]) . ((substr($matches[0],-1,1) === '+') ? '+' : '') . '[/url]' ;
@@ -1258,7 +1258,7 @@ function diaspora_md_mention_callback2($matches) {
     if(! $link)
         $link = 'https://' . $matches[2] . '/u/' . $matches[1];
 
-    if($r && $r[0]['hubloc_network'] === 'zot')
+    if($r && $r[0]['hubloc_network'] === 'zot6')
         return '@[zrl=' . $link . ']' . trim($name) . ((substr($matches[0],-1,1) === '+') ? '+' : '') . '[/zrl]' ;
     else
         return '@[url=' . $link . ']' . trim($name) . ((substr($matches[0],-1,1) === '+') ? '+' : '') . '[/url]' ;
@@ -1290,7 +1290,7 @@ function diaspora_forum_mention_callback($matches) {
     if(! $link)
         $link = 'https://' . $matches[2] . '/u/' . $matches[1];
 
-    if($r && $r[0]['hubloc_network'] === 'zot')
+    if($r && $r[0]['hubloc_network'] === 'zot6')
         return '![zrl=' . $link . ']' . trim($name) . '[/zrl]' ;
     else
         return '![url=' . $link . ']' . trim($name) . '[/url]' ;

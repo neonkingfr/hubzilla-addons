@@ -14,7 +14,7 @@ class Fetch extends \Zotlabs\Web\Controller {
 
 		$guid = argv(2);
 
-	
+
 		// Fetch the item
 		$item = q("SELECT * from item where uuid = '%s' and item_private = 0 and mid = parent_mid limit 1",
 			dbesc($guid)
@@ -25,7 +25,7 @@ class Fetch extends \Zotlabs\Web\Controller {
 
 		xchan_query($item);
 		$item = fetch_post_tags($item,true);
-	
+
 		$channel = channelx_by_hash($item[0]['author_xchan']);
 		if(! $channel) {
 
@@ -47,13 +47,13 @@ class Fetch extends \Zotlabs\Web\Controller {
 
 			// We cannot serve this request - redirect if there is some small chance the author's site might provide Diaspora protocol support.
 			// We're taking a chance on the zot connections but at worst case they will return not found when they get the request if the channel does not
-			// support the Diaspora protocol. 
+			// support the Diaspora protocol.
 
-			if($r && in_array($r[0]['xchan_network'],[ 'diaspora','friendica-over-diaspora','zot' ])) {
+			if($r && in_array($r[0]['xchan_network'],[ 'diaspora','friendica-over-diaspora','zot6' ])) {
 				$url = $r[0]['xchan_url'];
 				if(strpos($url,z_root()) === false) {
 					$m = parse_url($url);
-					goaway($m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '') 
+					goaway($m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '')
 						. '/fetch/' . argv(1) . '/' . argv(2));
 				}
 			}

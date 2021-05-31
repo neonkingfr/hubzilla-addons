@@ -537,7 +537,7 @@ class Diaspora_Receiver {
 
 		$orig_author_xchan = find_diaspora_person_by_handle($orig_author);
 
-		if(in_array($orig_author_xchan['xchan_network'], ['zot6', 'zot']))
+		if($orig_author_xchan['xchan_network'] === 'zot6')
 			$orig_url_arg = 'display';
 		else
 			$orig_url_arg = 'posts';
