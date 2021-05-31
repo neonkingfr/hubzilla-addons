@@ -2223,7 +2223,7 @@ function as_delete_note($channel,$observer_hash,$act) {
 		$stage = DROPITEM_NORMAL;
 
 		// If we are the conversation owner, propagate the delete
-		if(in_array($i['owner_xchan'], [$channel['channel_hash'], $channel['channel_portable_id']]))
+		if($i['owner_xchan'] === $channel['channel_hash'])
 			$stage = DROPITEM_PHASE1;
 
 		drop_item($i['id'],false, $stage);
