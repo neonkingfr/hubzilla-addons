@@ -115,18 +115,14 @@ function twitter_post_local(&$a,&$b) {
 	if($b['edit'])
 		return;
 
-	if((! local_channel()) || (local_channel() != $b['uid']))
-		return;
-
 	if($b['item_private'] || ($b['mid'] != $b['parent_mid']))
 		return;
 
-
-	$twitter_post = Apps::addon_app_installed(local_channel(), 'twitter');
+	$twitter_post = Apps::addon_app_installed($b['uid'], 'twitter');
 	$twitter_enable = (($twitter_post && x($_REQUEST,'twitter_enable')) ? intval($_REQUEST['twitter_enable']) : 0);
 
 	// if API is used, default to the chosen settings
-	if($_REQUEST['api_source'] && intval(get_pconfig(local_channel(),'twitter','post_by_default')))
+	if($_REQUEST['api_source'] && intval(get_pconfig($b['uid'],'twitter','post_by_default')))
 		$twitter_enable = 1;
 
 	if(! $twitter_enable)
@@ -312,9 +308,6 @@ function twitter_post_hook(&$a,&$b) {
 
     if(! strstr($b['postopts'],'twitter'))
         return;
-        
-	if(! intval(get_pconfig($b['uid'],'twitter','post_by_default')))
-		return;
 
     if($b['parent'] != $b['id'])
         return;
