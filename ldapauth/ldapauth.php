@@ -81,7 +81,7 @@ function ldapauth_hook_authenticate($a,&$b) {
 				dbesc(datetime_convert('UTC', 'UTC', $now . ' + 1 hour')),
 				dbesc($mail),
 				dbesc($password),
-				dbesc(App::$language),
+				dbesc(\App::$language),
 				dbesc($_SERVER['REMOTE_ADDR']),
 				dbesc(json_encode([]))
 			);
