@@ -83,7 +83,7 @@ function ldapauth_hook_authenticate($a,&$b) {
 				dbesc($password),
 				dbesc(\App::$language),
 				dbesc($_SERVER['REMOTE_ADDR']),
-				dbesc(json_encode([]))
+				dbesc(json_encode([], JSON_FORCE_OBJECT))
 			);
 
 			$reg = q("SELECT reg_id FROM register WHERE reg_did2 = '%s' AND reg_pass = '%s'",
