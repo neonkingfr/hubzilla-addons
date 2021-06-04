@@ -488,6 +488,8 @@ function asencode_activity($i) {
 
 	$ret['type'] = activity_mapper($i['verb']);
 
+	$ret['directMessage'] = (intval($i['item_private']) === 2);
+
 	$ret['id']   = ((strpos($i['mid'],'http') === 0) ? $i['mid'] : z_root() . '/activity/' . urlencode($i['mid']));
 
 	if (strpos($ret['id'],z_root() . '/item/') !== false) {
@@ -592,6 +594,11 @@ function asencode_activity($i) {
 			$ret['cc'] = [];
 		}
 		else {
+			if(intval($i['item_private']) === 2) {
+				//privacy tags to make sure dm's will be detected on mastodon as such
+				$privacy_tags = as_map_acl($i, true);
+				$ret['object']['tag'] = (($ret['object']['tag']) ? array_merge($ret['object']['tag'], $privacy_tags) : $privacy_tags);
+			}
 			$ret['to'] = []; //this is important for pleroma
 			$ret['cc'] = as_map_acl($i);
 		}
@@ -1252,11 +1259,45 @@ function as_actor_store($url,$person_obj) {
 		}
 	}
 
-	$r = q("select * from xchan where xchan_hash = '%s' limit 1",
+	$m = parse_url($url);
+	if($m) {
+		$hostname = $m['host'];
+		$baseurl = $m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '');
+	}
+
+	$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where xchan_hash = '%s'",
 		dbesc($url)
 	);
-	if(! $r) {
 
+	if($r) {
+		// Record exists. Cache existing records for one week at most
+		// then refetch to catch updated profile photos, names, etc.
+		$d = datetime_convert('UTC','UTC','now - 1 week');
+		if($r[0]['hubloc_updated'] > $d && $r[0]['xchan_name_date'] > $d && $fix_pubkey === false)
+			return;
+
+		// update existing xchan record
+		q("update xchan set xchan_name = '%s', xchan_guid = '%s', xchan_pubkey = '%s', xchan_network = 'activitypub', xchan_name_date = '%s' where xchan_hash = '%s'",
+			dbesc(escape_tags($name)),
+			dbesc(escape_tags($url)),
+			dbesc(escape_tags($pubkey)),
+			dbescdate(datetime_convert()),
+			dbesc($url)
+		);
+
+		// update existing hubloc record
+		q("update hubloc set hubloc_guid = '%s', hubloc_network = 'activitypub', hubloc_url = '%s', hubloc_host = '%s', hubloc_callback = '%s', hubloc_updated = '%s', hubloc_id_url = '%s' where hubloc_hash = '%s'",
+			dbesc(escape_tags($url)),
+			dbesc(escape_tags($baseurl)),
+			dbesc(escape_tags($hostname)),
+			dbesc(escape_tags($inbox)),
+			dbescdate(datetime_convert()),
+			dbesc(escape_tags($profile)),
+			dbesc($url)
+		);
+	}
+
+	if(! $r) {
 		// create a new record
 		$r = xchan_store_lowlevel(
 			[
@@ -1270,41 +1311,6 @@ function as_actor_store($url,$person_obj) {
 				'xchan_network'      => 'activitypub'
 			]
 		);
-	}
-	else {
-
-		// Record exists. Cache existing records for one week at most
-		// then refetch to catch updated profile photos, names, etc.
-		$d = datetime_convert('UTC','UTC','now - 1 week');
-		if($r[0]['xchan_name_date'] > $d && $fix_pubkey === false)
-			return;
-
-		// update existing record
-		q("update xchan set xchan_name = '%s', xchan_pubkey = '%s', xchan_network = '%s', xchan_name_date = '%s' where xchan_hash = '%s'",
-			dbesc(escape_tags($name)),
-			dbesc(escape_tags($pubkey)),
-			dbesc('activitypub'),
-			dbescdate(datetime_convert()),
-			dbesc($url)
-		);
-
-	}
-
-	if($collections) {
-		set_xconfig($url,'activitypub','collections',$collections);
-	}
-
-	$r = q("select * from hubloc where hubloc_hash = '%s' limit 1",
-		dbesc($url)
-	);
-
-	if(! $r) {
-
-		$m = parse_url($url);
-		if($m) {
-			$hostname = $m['host'];
-			$baseurl = $m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '');
-		}
 
 		$r = hubloc_store_lowlevel(
 			[
@@ -1312,9 +1318,9 @@ function as_actor_store($url,$person_obj) {
 				'hubloc_hash'     => escape_tags($url),
 				'hubloc_addr'     => '',
 				'hubloc_network'  => 'activitypub',
-				'hubloc_url'      => $baseurl,
+				'hubloc_url'      => escape_tags($baseurl),
 				'hubloc_host'     => escape_tags($hostname),
-				'hubloc_callback' => $inbox,
+				'hubloc_callback' => escape_tags($inbox),
 				'hubloc_updated'  => datetime_convert(),
 				'hubloc_primary'  => 1,
 				'hubloc_id_url'   => escape_tags($profile)
@@ -1322,7 +1328,11 @@ function as_actor_store($url,$person_obj) {
 		);
 	}
 
-	$photos = import_xchan_photo($icon,$url);
+	if($collections) {
+		set_xconfig($url,'activitypub','collections',$collections);
+	}
+
+	$photos = import_xchan_photo($icon, $url);
 	$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
 		dbescdate($photos[5]),
 		dbesc($photos[0]),

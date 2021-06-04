@@ -58,8 +58,9 @@ function find_diaspora_person_by_handle($handle) {
 	if(diaspora_is_blacklisted($handle))
 		return false;
 
-	$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where xchan_addr = '%s' and xchan_network != 'activitypub'",
-		dbesc($handle)
+	// Use join instead of left join in this query to make sure we only get entries where both tables are populated
+	$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where xchan_addr = '%s' and xchan_network != 'activitypub'",
+		dbesc(str_replace('acct:','',$handle))
 	);
 
 	if($r) {
@@ -79,7 +80,7 @@ function find_diaspora_person_by_handle($handle) {
 		$result = discover_by_webbie($handle);
 		if($result) {
 
-			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' and xchan_network != 'activitypub'",
+			$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where xchan_addr = '%s' and xchan_network != 'activitypub'",
 				dbesc(str_replace('acct:','',$handle))
 			);
 

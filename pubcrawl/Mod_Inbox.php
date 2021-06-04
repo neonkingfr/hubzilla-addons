@@ -90,7 +90,7 @@ class Inbox extends \Zotlabs\Web\Controller {
 		if (!$data_fetched && ($hsig['header_valid'] && $hsig['content_valid'] && $hsig['portable_id'])) {
 
 			// fetch the portable_id for the actor, which may or may not be the sender
-			$v = q("select hubloc_hash from hubloc where hubloc_id_url = '%s' or hubloc_hash = '%s'",
+			$v = q("select hubloc_hash from hubloc where hubloc_network in ('zot6', 'activitypub') and hubloc_id_url = '%s' or hubloc_hash = '%s'",
 				dbesc($AS->actor['id']),
 				dbesc($AS->actor['id'])
 			);
