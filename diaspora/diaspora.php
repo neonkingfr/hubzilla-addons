@@ -14,6 +14,7 @@ use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Keyutils;
 use Zotlabs\Lib\Queue;
+use Zotlabs\Lib\IConfig;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 
@@ -56,7 +57,8 @@ function diaspora_load() {
 		'webfinger'                   => 'diaspora_webfinger',
 		'channel_protocols'           => 'diaspora_channel_protocols',
 		'fetch_provider'              => 'diaspora_fetch_provider',
-		'encode_item_xchan'           => 'diaspora_encode_item_xchan'
+		'encode_item_xchan'           => 'diaspora_encode_item_xchan',
+		'direct_message_recipients'   => 'diaspora_direct_message_recipients'
 	]);
 
 	Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
@@ -1522,4 +1524,17 @@ function diaspora_create_event($ev, $author) {
 	return $ret;
 
 
+}
+
+function diaspora_direct_message_recipients(&$arr) {
+	$recips = null;
+	$fields = IConfig::Get($arr['item'], 'diaspora', 'fields');
+	if(isset($fields['participants'])) {
+		$recips = explode(';', $fields['participants']);
+	}
+
+	if (is_array($recips)) {
+		$arr['recips'] = $recips;
+		$arr['column'] = 'xchan_addr';
+	}
 }
