@@ -324,7 +324,7 @@ class Workflow_Utils {
                 $arr = $extras;
 
                 $item_link = $extras['item']['plink'];
-                $arr['dropdown_extras'] .= '<a class="dropdown-item" href="#" onclick="workflowShowNewItemForm(\''.$item_link.'\',\''.$posturl.'\'); return false;" title="Workflow"><i class="generic-icons-nav fa fa-fw fa-tasks"></i> Create New Workflow Item</a>';
+                $arr['dropdown_extras'] .= '<a class="dropdown-item" href="#" onclick="workflowShowNewItemForm(\''.$item_link.'\',\''.$posturl.'\'); return false;" title="Workflow"><i class="generic-icons-nav fa fa-fw fa-tasks"></i>' . t('Create New Workflow Item') .'</a>';
                 $extras = $arr;
         }
 
