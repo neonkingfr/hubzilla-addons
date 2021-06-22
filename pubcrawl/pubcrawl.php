@@ -342,7 +342,7 @@ function pubcrawl_import_author(&$b) {
 	if (!$url)
 		return;
 
-	$r = q("select xchan_hash from xchan where xchan_hash = '%s' and xchan_network = 'activitypub'",
+	$r = q("select xchan_hash from xchan join hubloc on xchan_hash = hubloc_hash where xchan_hash = '%s' and xchan_network = 'activitypub'",
 		dbesc($url)
 	);
 	if ($r) {
