@@ -690,12 +690,12 @@ function as_map_acl($i,$mentions = false) {
 	$g = intval(get_pconfig($i['uid'],'activitypub','include_groups'));
 
 	$x = collect_recipients($i,$private,$g);
-	if($x) {
+	if(is_array($x)) {
 		stringify_array_elms($x);
 		if(! $x)
 			return;
 
-		$details = q("select xchan_hash, xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") and xchan_network = 'activitypub'");
+		$details = dbq("select xchan_hash, xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") and xchan_network = 'activitypub'");
 		if($details) {
 			foreach($details as $d) {
 				if($mentions) {
