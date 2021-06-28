@@ -291,13 +291,13 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	}
 	// Now find the actor and see if there is something we can follow
 	$person_obj = null;
-	if (in_array($AS->type, ['Application', 'Group', 'Organization', 'Person', 'Service'])) {
+	if ($AS->type && ActivityStreams::is_an_actor($AS->type)) {
 		$person_obj = $AS->data;
 	}
-	elseif ($AS->obj && (in_array($AS->obj['type'], ['Application', 'Group', 'Organization', 'Person', 'Service']))) {
+	elseif (is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
 		$person_obj = $AS->obj;
 	}
-	elseif (local_channel() && $AS->obj && (in_array($AS->obj['type'], ['Note', 'Article']))) {
+	elseif (local_channel() && is_array($AS->obj) && !ActivityStreams::is_response_activity($AS->obj['type'])) {
 		// this implements mastodon remote reply functionality
 		$item = Activity::decode_note($AS);
 		if ($item) {
