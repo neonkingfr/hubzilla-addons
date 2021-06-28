@@ -181,12 +181,12 @@ class Workflow_Utils {
 
 		if (!$uid) { return; }
 
-		if (!Apps::addon_app_installed($uid,'workflow')) { 
+		if (!Apps::addon_app_installed($uid,'workflow')) {
 			if ($arr['obj_type'] == WORKFLOW_ACTIVITY_OBJ_TYPE) {
 				$arrinfo['obj_type'] = ACTIVITY_OBJ_NOTE;
 				$arrinfo['item_type'] = ITEM_TYPE_POST;
 			}
-			return; 
+			return;
 		}
 
 		$arrinfo = $arr;
@@ -292,7 +292,7 @@ class Workflow_Utils {
 			$wfchannels = q("select xchan from abconfig where chan = %d and xchan = '%s' and cat = 'my_perms' and k = 'workflow_user' and v = '1'",
 				App::$profile_uid,
 				dbesc(get_observer_hash()));
-			
+
 			if ($wfchannels) {
 				$channel=channelx_by_hash(get_observer_hash());
 				$local=channelx_by_n(App::$profile_uid);
@@ -492,7 +492,7 @@ class Workflow_Utils {
 				$relatedlink = $related['relatedlink'];
 				$reliteminfo = q("select plink,llink from item where uid=%d and
 							(plink like '%s' or llink like '%s') and item_deleted = 0
-							and item_hidden = 0 and item_unpublished = 0 
+							and item_hidden = 0 and item_unpublished = 0
 							and item_delayed = 0 and item_pending_remove = 0",
 							$uid,
 							dbesc($relatedlink).'%',
@@ -551,7 +551,7 @@ class Workflow_Utils {
 		$toolbar = self::get_toolbar($items);
 		$tpl = get_markup_template('workflow_display.tpl','addon/workflow');
 
-		
+
 		$vars = [
 			'$posturl' => z_root().'/workflow/'.$channel['channel_address'],
 			//'$posturl' => $posturl,
@@ -661,7 +661,7 @@ class Workflow_Utils {
 				return;
 			}
 		}
-		
+
 		if (!$uid || (!Apps::addon_app_installed($uid,'workflow'))) {
 			return;
 		}
@@ -681,7 +681,7 @@ class Workflow_Utils {
 			$tpl = get_markup_template('workflow_prepare_body_related.tpl','addon/workflow');
         		$relatedhtml = replace_macros($tpl,$templatevars);
 			$arr['html'] .= $relatedhtml;
-		} 
+		}
 
 		if ($arr['item']['obj_type'] == WORKFLOW_ACTIVITY_OBJ_TYPE) {
 			$items = [$arr['item']];
@@ -822,7 +822,7 @@ class Workflow_Utils {
 				$owners = $searchvars['owner_xchan'];
 			}
 
-			
+
 			$ownersearch = " and item.owner_xchan in ('".$owners."')";
 		}
 
@@ -875,7 +875,7 @@ class Workflow_Utils {
 
 						$comparitor = $valid_comparitors[$comparitor];
 						$value = $params['value'];
-					
+
 
 						if ((isset($params['type']) && $params['type']=='int') && ($comparitor != 'is not null'))  {
 							$val = ' and CAST('.$astable.'.v as INTEGER) '.$comparitor.' CAST("'.dbesc($value).'" as INTEGER)';
@@ -1142,7 +1142,7 @@ class Workflow_Utils {
 		call_hooks('dm42workflow_display_list',$hookinfo);
 
 		$items = $hookinfo['items'];
-	
+
 		foreach ($items as $item) {
 			$newitem = [];
 			$newitem['url']= $item['mid'];
@@ -1196,7 +1196,7 @@ class Workflow_Utils {
 		});
 		$vars['items']=$itemlist;
 
-		$headerrows=[ 
+		$headerrows=[
 			'items' => $items,
 			'rows' => []
 		];
@@ -1268,7 +1268,7 @@ class Workflow_Utils {
 		$workflowlist = (isset($_REQUEST['workflows']) && is_array($_REQUEST['workflows'])) ? $_REQUEST['workflows'] : [];
 
 		$basicfilters .= "Minimum Priority: <input type='input' name='minpriority' size='2' value='".$minprio."'>";
-		
+
 		$basicfilters .= "<input type='submit' value='Search'>";
 
 		$wfusers = self::basicfilter_gatherassigned($items);
@@ -1322,12 +1322,12 @@ class Workflow_Utils {
 
 		if ( $observer = get_observer_hash() ) {
 			$channel = channelx_by_hash ($observer);
-			$hublocs = q("select * from hubloc where hubloc_hash = '%s' and hubloc_deleted = 0 and hubloc_network in ('zot','zot6') order by hubloc_url ",
+			$hublocs = q("select * from hubloc where hubloc_hash = '%s' and hubloc_deleted = 0 and hubloc_network = 'zot6' order by hubloc_url ",
                 		dbesc($observer)
         		);
 
 			foreach ($hublocs as $hub) {
-				if ($hub['hubloc_primary']) 
+				if ($hub['hubloc_primary'])
 					break;
 			}
 
@@ -1604,7 +1604,7 @@ class Workflow_Utils {
 				$contentvars['content'] = replace_macros(get_markup_template('workflowiframepermissiondenied.tpl','addon/workflow'), []);
 			}
 		        return ['success'=>0, 'html' => replace_macros(get_markup_template('workflowmodal_skel.tpl','addon/workflow'), $contentvars)];
-			
+
 		}
 
 		$itemurl = '';
@@ -1782,7 +1782,7 @@ class Workflow_Utils {
 			}
 			sync_an_item($uid,$post['item_id']);
 			Master::Summon([ 'Notifier','activity',$post['item_id'] ]);
-			
+
 		}
 
 		return $post;
