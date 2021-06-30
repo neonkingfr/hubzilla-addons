@@ -6,6 +6,7 @@ use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Keyutils;
 use Zotlabs\Lib\Libzot;
+use Zotlabs\Lib\Libsync;
 
 require_once('include/event.php');
 
@@ -689,12 +690,12 @@ function as_map_acl($i,$mentions = false) {
 	$g = intval(get_pconfig($i['uid'],'activitypub','include_groups'));
 
 	$x = collect_recipients($i,$private,$g);
-	if($x) {
+	if(is_array($x)) {
 		stringify_array_elms($x);
 		if(! $x)
 			return;
 
-		$details = q("select xchan_hash, xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") and xchan_network = 'activitypub'");
+		$details = dbq("select xchan_hash, xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") and xchan_network = 'activitypub'");
 		if($details) {
 			foreach($details as $d) {
 				if($mentions) {
@@ -769,12 +770,12 @@ function asencode_person($p) {
 			'publicKeyPem' => $p['xchan_pubkey']
 		];
 
-		$locs = zot_encode_locations($c);
+		$locs = Libzot::encode_locations($c);
 		if($locs) {
 			$ret['nomadicLocations'] = [];
 			foreach($locs as $loc) {
 				$ret['nomadicLocations'][] = [
-					'id'      => $loc['url'] . '/locs/' . substr($loc['address'],0,strpos($loc['address'],'@')),
+					'id'              => $loc['url'] . '/locs/' . substr($loc['address'],0,strpos($loc['address'],'@')),
 					'type'            => 'nomadicLocation',
 					'locationAddress' => 'acct:' . $loc['address'],
 					'locationPrimary' => (boolean) $loc['primary'],
@@ -1091,7 +1092,7 @@ function as_follow($channel,$act) {
 			if($abconfig)
 				$clone['abconfig'] = $abconfig;
 
-			build_sync_packet($channel['channel_id'], [ 'abook' => array($clone) ] );
+			Libsync::build_sync_packet($channel['channel_id'], [ 'abook' => array($clone) ] );
 		}
 	}
 
@@ -1169,10 +1170,10 @@ function as_actor_store($url,$person_obj) {
 		}
 
 		$person_obj = null;
-		if(in_array($AS->type, [ 'Application', 'Group', 'Organization', 'Person', 'Service' ])) {
+		if (ActivityStreams::is_an_actor($AS->type)) {
 			$person_obj = $AS->data;
 		}
-		elseif($AS->obj && ( in_array($AS->obj['type'], [ 'Application', 'Group', 'Organization', 'Person', 'Service' ] ))) {
+		elseif (is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
 			$person_obj = $AS->obj;
 		}
 		else {
@@ -1398,18 +1399,11 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s = [];
 
 	$announce = (($act->type === 'Announce') ? true  : false);
-
-	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
-	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
-	// This is not part of the activitypub protocol - we might change this to show all public posts in pubstream at some point.
-
-	$pubstream = ((is_array($act->obj) && array_key_exists('to', $act->obj) && in_array(ACTIVITY_PUBLIC_INBOX, $act->obj['to'])) ? true : false);
 	$is_sys_channel = is_sys_channel($channel['channel_id']);
-
 	$parent = ((array_key_exists('inReplyTo',$act->obj) && !$announce) ? urldecode($act->obj['inReplyTo']) : false);
 
 	if(!$parent) {
-		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
+		if(!perm_is_allowed($channel['channel_id'], $observer_hash, 'send_stream') && !$is_sys_channel) {
 			// Fall through on update activities since we already accepted the item.
 			// We might have got it via announce or imported it manually.
 			if($act->type !== 'Update') {
@@ -1855,14 +1849,42 @@ function as_create_note($channel,$observer_hash,$act) {
 		}
 	}
 
-	if ($act->recips && (! in_array(ACTIVITY_PUBLIC_INBOX,$act->recips)))
+	if ($act->recips && (!in_array(ACTIVITY_PUBLIC_INBOX, $act->recips))) {
 		$s['item_private'] = 1;
 
-	if (is_array($act->data)) {
-		if (array_key_exists('directMessage',$act->data) && intval($act->data['directMessage'])) {
-			$s['item_private'] = 2;
+		// an ugly way to recognise a mastodon direct message
+
+		if ($act->obj['type'] === 'Note' &&
+			!isset($act->raw_recips['cc']) &&
+			is_array($act->raw_recips['to']) &&
+			in_array(channel_url($channel), $act->raw_recips['to']) &&
+			is_array($act->obj['tag']) &&
+			count($act->raw_recips['to']) === count($act->obj['tag'])
+		) {
+			$mentions = [];
+			foreach($act->obj['tag'] as $t) {
+				if ($t['type'] === 'Mention' && isset($t['href'])) {
+					$mentions[] = $t['href'];
+				}
+			}
+
+			$diff = array_diff($act->raw_recips['to'], $mentions);
+
+			hz_syslog(print_r(count($diff),true));
+
+			if(!count($diff)) {
+				$s['item_private'] = 2;
+			}
 		}
-	}
+
+		// the litebub way to determine a direct message (pleroma, friendica)
+		if (is_array($act->data)) {
+			if (array_key_exists('directMessage',$act->data) && intval($act->data['directMessage'])) {
+				$s['item_private'] = 2;
+			}
+		}
+
+	 }
 
 	set_iconfig($s,'activitypub','recips',$act->raw_recips);
 	if($parent) {
@@ -1916,12 +1938,7 @@ function as_announce_note($channel,$observer_hash,$act) {
 
 	$is_sys_channel = is_sys_channel($channel['channel_id']);
 
-	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
-	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
-	// This is not part of the activitypub protocol - we might change this to show all public posts in pubstream at some point.
-	$pubstream = ((is_array($act->obj) && array_key_exists('to', $act->obj) && in_array(ACTIVITY_PUBLIC_INBOX, $act->obj['to'])) ? true : false);
-
-	if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
+	if(!perm_is_allowed($channel['channel_id'], $observer_hash, 'send_stream') && !$is_sys_channel) {
 		logger('no permission');
 		return;
 	}
@@ -2206,7 +2223,7 @@ function as_delete_note($channel,$observer_hash,$act) {
 		$stage = DROPITEM_NORMAL;
 
 		// If we are the conversation owner, propagate the delete
-		if(in_array($i['owner_xchan'], [$channel['channel_hash'], $channel['channel_portable_id']]))
+		if($i['owner_xchan'] === $channel['channel_hash'])
 			$stage = DROPITEM_PHASE1;
 
 		drop_item($i['id'],false, $stage);

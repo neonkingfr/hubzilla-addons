@@ -13,6 +13,10 @@ use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Keyutils;
+use Zotlabs\Lib\Queue;
+use Zotlabs\Lib\IConfig;
+use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Route;
 
 // use the new federation protocol
 define('DIASPORA_V2',1);
@@ -20,7 +24,6 @@ define('DIASPORA_V2',1);
 require_once('include/crypto.php');
 require_once('include/items.php');
 require_once('include/markdown.php');
-require_once('include/queue_fn.php');
 
 require_once('addon/diaspora/inbound.php');
 require_once('addon/diaspora/outbound.php');
@@ -29,7 +32,7 @@ require_once('addon/diaspora/util.php');
 
 function diaspora_load() {
 
-	Zotlabs\Extend\Hook::register_array('addon/diaspora/diaspora.php', [
+	Hook::register_array('addon/diaspora/diaspora.php', [
 		'notifier_hub'                => 'diaspora_process_outbound',
 		'notifier_process'            => 'diaspora_notifier_process',
 		'federated_transports'        => 'diaspora_federated_transports',
@@ -53,16 +56,18 @@ function diaspora_load() {
 		'queue_deliver'               => 'diaspora_queue_deliver',
 		'webfinger'                   => 'diaspora_webfinger',
 		'channel_protocols'           => 'diaspora_channel_protocols',
-		'fetch_provider'              => 'diaspora_fetch_provider'
+		'fetch_provider'              => 'diaspora_fetch_provider',
+		'encode_item_xchan'           => 'diaspora_encode_item_xchan',
+		'direct_message_recipients'   => 'diaspora_direct_message_recipients'
 	]);
 
-	Zotlabs\Extend\Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
+	Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
 
 }
 
 function diaspora_unload() {
-	Zotlabs\Extend\Hook::unregister_by_file('addon/diaspora/diaspora.php');
-	Zotlabs\Extend\Route::unregister('addon/diaspora/Mod_Diaspora.php','diaspora');
+	Hook::unregister_by_file('addon/diaspora/diaspora.php');
+	Route::unregister('addon/diaspora/Mod_Diaspora.php','diaspora');
 }
 
 function diaspora_plugin_admin(&$o) {
@@ -318,28 +323,82 @@ function diaspora_permissions_update(&$b) {
 
 function diaspora_notifier_process(&$arr) {
 
-	// if it is a public post (reply, etc.), add the chosen relay channel to the recipients
+	if (intval($arr['parent_item']['item_private']) === 2) {
+		// Special handling for comments on diaspora conversations (direct messages)
+		// originating from diaspora.
+		// Those must be sent to all participants by the comment author.
+
+		$fields = get_iconfig($arr['parent_item'], 'diaspora', 'fields');
+		$hashes = [];
+
+		if(is_array($fields) && isset($fields['participants'])) {
+			$participants = explode(';', $fields['participants']);
+			foreach($participants as $participant) {
+				if ($participant === $arr['target_item']['author']['xchan_addr']) {
+					continue;
+				}
+				$hashes[] = "'" . dbesc($participant) . "'";
+			}
+		}
+
+		if($hashes) {
+			$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where
+				xchan_hash in (" . implode(',', $hashes) . ") and
+				xchan_network in ('diaspora', 'friendica-over-diaspora') and hubloc_deleted = 0 and hubloc_error = 0"
+			);
+
+			if (!$arr['top_level_post'] && in_array($arr['parent_item']['author']['xchan_network'], ['diaspora', 'friendica-over-diaspora'])) {
+				// To allow sending of comments on diaspora direct messages to other zot6 channels
+				// we need to send them via diaspora.
+				// It is required to rewrite the hubloc_callback for that.
+
+				$rz = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where
+					xchan_addr in (" . implode(',', $hashes) . ") and
+					xchan_network = 'zot6' and hubloc_deleted = 0 and hubloc_error = 0"
+				);
+
+				$r1 = [];
+				foreach($rz as $rzz) {
+					$rzz['hubloc_callback'] = $rzz['hubloc_url'] . '/receive';
+					$r1[] = $rzz;
+				}
+
+				$r = array_merge($r1, $r);
+			}
+
+			foreach($r as $contact) {
+				// is $contact connected with this channel - and if the channel is cloned, also on this hub?
+				$single = deliverable_singleton($arr['channel']['channel_id'], $contact);
+
+				$qi = diaspora_send_mail($arr, $contact);
+				if($qi)
+					$arr['queued'][] = $qi;
+			}
+		}
+	}
 
 	// If target_item isn't set it's likely to be refresh packet.
-
 	if(! ((array_key_exists('target_item',$arr)) && (is_array($arr['target_item'])))) {
 		return;
 	}
 
 	// If item_wall doesn't exist, it's not a post - perhaps an email or other DB object
-
 	if(! array_key_exists('item_wall',$arr['target_item']))
 		return;
+
+	// if it is a public post (reply, etc.), add the chosen relay channel to the recipients
 	if(($arr['normal_mode']) && (! $arr['env_recips']) && (! $arr['private']) && (! $arr['upstream'])) {
 		$relay = get_config('diaspora','relay_handle');
 		if($relay) {
 			$arr['recipients'][] = "'" . $relay . "'";
 		}
 	}
+
 }
 
 
 function diaspora_process_outbound(&$arr) {
+
 /*
 
 	We are passed the following array from the notifier, providing everything we need to make delivery decisions.
@@ -367,11 +426,15 @@ function diaspora_process_outbound(&$arr) {
 			);
 */
 
+	// we have already processed those earlier
+	if (intval($arr['parent_item']['item_private']) === 2)
+		return;
+
 	if(! strstr($arr['hub']['hubloc_network'],'diaspora'))
 		return;
 
 	logger('upstream: ' . intval($arr['upstream']));
-//	logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
+	//logger('notifier_array: ' . print_r($arr,true), LOGGER_ALL, LOG_INFO);
 
 	// allow this to be set per message
 
@@ -398,16 +461,8 @@ function diaspora_process_outbound(&$arr) {
 		return;
 	}
 
-
 	if($arr['location'])
 		return;
-
-	// send to public relay server - not ready for prime time
-
-	if(($arr['top_level_post']) && (! $arr['env_recips'])) {
-		// Add the relay server to the list of hubs.
-		// = array('hubloc_callback' => 'https://relay.iliketoast.net/receive', 'xchan_pubkey' => 'bogus');
-	}
 
 	$target_item = $arr['target_item'];
 
@@ -420,9 +475,9 @@ function diaspora_process_outbound(&$arr) {
 	}
 
 	$prv_recips = $arr['env_recips'];
+	stringify_array_elms($prv_recips);
 
 	// The Diaspora profile message is unusual and must be handled independently
-
 	$is_profile = false;
 
 	if($arr['cmd'] === 'refresh_all' && $arr['recipients']) {
@@ -430,28 +485,21 @@ function diaspora_process_outbound(&$arr) {
 		$profile_visible = perm_is_allowed($arr['channel']['channel_id'],'','view_profile');
 
 		if(! $profile_visible) {
-			$prv_recips = array();
-			foreach($arr['recipients'] as $r) {
-				$prv_recips[] = array('hash' => trim($r,"'"));
-			}
+			$prv_recips = $arr['recipients'];
 		}
 	}
 
 
-	if($prv_recips) {
-		$hashes = array();
+	if ($prv_recips) {
 
 		// re-explode the recipients, but only for this hub/pod
 
-		foreach($prv_recips as $recip)
-			$hashes[] = "'" . $recip['hash'] . "'";
-
 		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
-			and xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
+			and xchan_hash in (" . implode(',', $prv_recips) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
 			dbesc($arr['hub']['hubloc_url'])
 		);
 
-		if(! $r) {
+		if (!$r) {
 			logger('diaspora_process_outbound: no recipients');
 			return;
 		}
@@ -466,7 +514,7 @@ function diaspora_process_outbound(&$arr) {
 			$processed[] = $contact['hubloc_id_url'];
 
 			// is $contact connected with this channel - and if the channel is cloned, also on this hub?
-			$single = deliverable_singleton($arr['channel']['channel_id'],$contact);
+			$single = deliverable_singleton($arr['channel']['channel_id'], $contact);
 
 			if($arr['packet_type'] == 'refresh' && $single) {
 				// This packet is sent privately to contacts, so we can always send the full profile (the last argument)
@@ -474,12 +522,6 @@ function diaspora_process_outbound(&$arr) {
 				if($qi)
 					$arr['queued'][] = $qi;
 				return;
-			}
-			if($arr['mail'] && $single) {
-				$qi = diaspora_send_mail($arr['item'],$arr['channel'],$contact);
-				if($qi)
-					$arr['queued'][] = $qi;
-				continue;
 			}
 
 			if(! $arr['normal_mode'])
@@ -628,11 +670,11 @@ function diaspora_queue($owner,$contact,$slap,$public_batch,$message_id = '') {
 		return false;
 	}
 
-	$hash = random_string();
+	$hash = new_uuid();
 
 	logger('diaspora_queue: ' . $hash . ' ' . $dest_url, LOGGER_DEBUG);
 
-	queue_insert(array(
+	Queue::insert(array(
 		'hash'       => $hash,
 		'account_id' => $owner['channel_account_id'],
 		'channel_id' => $owner['channel_id'],
@@ -895,6 +937,80 @@ function diaspora_post_local(&$item) {
 
 	require_once('include/markdown.php');
 
+	$meta = null;
+
+	// deal with conversation iconfig
+	if($item['item_private'] === 2) {
+
+		$author = channelx_by_hash($item['author_xchan']);
+		$body = bb_to_markdown($item['body'], [ 'diaspora' ]);
+		$conv = [];
+		$guid = $item['uuid'];
+		$conv_guid = 'conversation:' . $item['uuid'];
+
+		if($item['mid'] !== $item['parent_mid']) {
+			$parent = q("select * from item where mid = '%s' and uid = %d limit 1",
+				dbesc($item['parent_mid']),
+				intval($item['uid'])
+			);
+
+			$fields = get_iconfig($parent[0], 'diaspora', 'fields');
+			if (!isset($fields['participants'])) {
+				logger('no DM participants');
+				return;
+			}
+
+			$conv_guid = $fields['guid'];
+		}
+
+		$message = [
+				'guid'              => xmlify($item['uuid']),
+				'text'              => xmlify($body),
+				'created_at'        => datetime_convert('UTC','UTC', $item['created'], ATOM_TIME ),
+				'author'            => xmlify($author['xchan_addr']),
+				'conversation_guid' => xmlify($conv_guid)
+		];
+
+		if($item['mid'] === $item['parent_mid']) {
+			$private = true;
+			$receivers = expand_acl($item['allow_cid']);
+			$hashes = [];
+
+			foreach($receivers as $receiver) {
+				$hashes[] = "'" . dbesc($receiver) . "'";
+			}
+
+			$p = dbq("select xchan_addr, xchan_hash, xchan_network from xchan where xchan_hash in (" . implode(',', $hashes) . ") and xchan_network in ('zot6', 'diaspora', 'friendica-over-diaspora')");
+			$participants[] = $author['xchan_addr'];
+
+			foreach($p as $pp) {
+				if ($pp['xchan_network'] === 'zot6') {
+					$protocols = get_xconfig($pp['xchan_hash'], 'system', 'protocols');
+					if (strpos($protocols, 'diaspora') === false) {
+						continue;
+					}
+				}
+				$participants[] = $pp['xchan_addr'];
+			}
+
+			$conv = [
+				'author' => xmlify($author['xchan_addr']),
+				'guid' => xmlify('conversation:' . $item['uuid']),
+				'subject' => (($item['title']) ? xmlify($item['title']) : xmlify(t('No subject'))),
+				'created_at' => xmlify(datetime_convert('UTC','UTC',$item['target_item']['created'],ATOM_TIME)),
+				'participants' => xmlify(implode(';', $participants)),
+				'message' => $message
+			];
+		}
+
+		$meta = (($conv) ? $conv : $message);
+
+		set_iconfig($item, 'diaspora', 'fields', $meta, true);
+
+		return;
+
+	}
+
 	if($item['mid'] === $item['parent_mid'])
 		return;
 
@@ -922,7 +1038,6 @@ function diaspora_post_local(&$item) {
 		}
 		$thr_parent = $t[0];
 	}
-
 
 
 	$author = channelx_by_hash($item['author_xchan']);
@@ -973,7 +1088,6 @@ function diaspora_post_local(&$item) {
 		}
 		else {
 			$body = bb_to_markdown($item['body'], [ 'diaspora' ]);
-
 			$meta = [
 				'guid'            => $item['uuid'],
 				'parent_guid'     => $parent['uuid'],
@@ -987,10 +1101,6 @@ function diaspora_post_local(&$item) {
 					$meta['edited_at'] = datetime_convert('UTC','UTC', $item['edited'], ATOM_TIME );
 				}
 			}
-			else {
-				$meta['diaspora_handle'] = $handle;
-			}
-
 		}
 
 		if(! $meta)
@@ -1004,7 +1114,6 @@ function diaspora_post_local(&$item) {
 
 	if($meta)
 		set_iconfig($item,'diaspora','fields', $meta, true);
-
 
 }
 
@@ -1056,6 +1165,12 @@ function diaspora_profile_sidebar(&$x) {
 
 }
 
+function diaspora_encode_item_xchan(&$arr) {
+	if($arr['encoded_xchan']['network'] !== 'diaspora')
+		return;
+
+	unset($arr['encoded_xchan']['url']);
+}
 
 function diaspora_import_author(&$b) {
 
@@ -1113,7 +1228,7 @@ function diaspora_md_mention_callback($matches) {
     if(! $link)
         $link = 'https://' . $matches[3] . '/u/' . $matches[2];
 
-    if($r && $r[0]['hubloc_network'] === 'zot')
+    if($r && $r[0]['hubloc_network'] === 'zot6')
         return '@[zrl=' . $link . ']' . trim($matches[1]) . ((substr($matches[0],-1,1) === '+') ? '+' : '') . '[/zrl]' ;
     else
         return '@[url=' . $link . ']' . trim($matches[1]) . ((substr($matches[0],-1,1) === '+') ? '+' : '') . '[/url]' ;
@@ -1145,7 +1260,7 @@ function diaspora_md_mention_callback2($matches) {
     if(! $link)
         $link = 'https://' . $matches[2] . '/u/' . $matches[1];
 
-    if($r && $r[0]['hubloc_network'] === 'zot')
+    if($r && $r[0]['hubloc_network'] === 'zot6')
         return '@[zrl=' . $link . ']' . trim($name) . ((substr($matches[0],-1,1) === '+') ? '+' : '') . '[/zrl]' ;
     else
         return '@[url=' . $link . ']' . trim($name) . ((substr($matches[0],-1,1) === '+') ? '+' : '') . '[/url]' ;
@@ -1177,7 +1292,7 @@ function diaspora_forum_mention_callback($matches) {
     if(! $link)
         $link = 'https://' . $matches[2] . '/u/' . $matches[1];
 
-    if($r && $r[0]['hubloc_network'] === 'zot')
+    if($r && $r[0]['hubloc_network'] === 'zot6')
         return '![zrl=' . $link . ']' . trim($name) . '[/zrl]' ;
     else
         return '![url=' . $link . ']' . trim($name) . '[/url]' ;
@@ -1345,7 +1460,7 @@ function diaspora_queue_deliver(&$b) {
 				dbescdate(datetime_convert()),
 				dbesc($outq['outq_hash'])
 			);
-			remove_queue_item($outq['outq_hash']);
+			Queue::remove($outq['outq_hash']);
 
 			// server is responding - see if anything else is going to this destination and is piled up
 			// and try to send some more. We're relying on the fact that do_delivery() results in an
@@ -1377,7 +1492,7 @@ function diaspora_queue_deliver(&$b) {
 		}
 		else {
 			logger('diaspora_queue_deliver: queue post returned ' . $result['return_code'] . ' from ' . $outq['outq_posturl'], LOGGER_DEBUG);
-			update_queue_item($outq['outq_hash'],10);
+			Queue::update($outq['outq_hash'], 10);
 		}
 	}
 }
@@ -1409,4 +1524,17 @@ function diaspora_create_event($ev, $author) {
 	return $ret;
 
 
+}
+
+function diaspora_direct_message_recipients(&$arr) {
+	$recips = null;
+	$fields = IConfig::Get($arr['item'], 'diaspora', 'fields');
+	if(isset($fields['participants'])) {
+		$recips = explode(';', $fields['participants']);
+	}
+
+	if (is_array($recips)) {
+		$arr['recips'] = $recips;
+		$arr['column'] = 'xchan_addr';
+	}
 }

@@ -5,6 +5,7 @@ use Zotlabs\Access\Permissions;
 use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Enotify;
 use Zotlabs\Lib\MessageFilter;
+use Zotlabs\Lib\Libsync;
 use Zotlabs\Daemon\Master;
 
 class Diaspora_Receiver {
@@ -173,7 +174,7 @@ class Diaspora_Receiver {
 				if($abconfig)
 					$clone['abconfig'] = $abconfig;
 
-				build_sync_packet($this->importer['channel_id'], [ 'abook' => array($clone) ] );
+				Libsync::build_sync_packet($this->importer['channel_id'], [ 'abook' => array($clone) ] );
 
 			}
 		}
@@ -492,10 +493,10 @@ class Diaspora_Receiver {
 			if ($this->force)
 				diaspora_send_participation($this->importer, $xchan, $result['item']);
 
-			return $result;
+			return 200;
 		}
 
-		return;
+		return 202;
 
 	}
 
@@ -536,7 +537,7 @@ class Diaspora_Receiver {
 
 		$orig_author_xchan = find_diaspora_person_by_handle($orig_author);
 
-		if(in_array($orig_author_xchan['xchan_network'], ['zot6', 'zot']))
+		if($orig_author_xchan['xchan_network'] === 'zot6')
 			$orig_url_arg = 'display';
 		else
 			$orig_url_arg = 'posts';
@@ -597,7 +598,6 @@ class Diaspora_Receiver {
 			$orig_author_link  = $person['xchan_url'];
 			$orig_author_photo = $person['xchan_photo_m'];
 		}
-
 
 		$created = $this->get_property('created_at');
 		$private = (($this->get_property('public') === 'false') ? 1 : 0);
@@ -706,9 +706,11 @@ class Diaspora_Receiver {
 			sync_an_item($this->importer['channel_id'],$result['item_id']);
 			if($this->force)
 				diaspora_send_participation($this->importer, $contact, $result['item']);
+
+			return 200;
 		}
 
-		return;
+		return 202;
 	}
 
 
@@ -1069,10 +1071,11 @@ class Diaspora_Receiver {
 			if ($r) {
 				send_status_notifications($result['item_id'], $r[0]);
 				sync_an_item($this->importer['channel_id'], $result['item_id']);
+				return 200;
 			}
 		}
 
-		return;
+		return 202;
 	}
 
 
@@ -1093,174 +1096,139 @@ class Diaspora_Receiver {
 			return;
 		}
 
+		// check if we already have the conversation item
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s'",
+			intval($this->importer['channel_id']),
+			dbesc($guid)
+		);
+
+		if($r) {
+			logger('diaspora_conversation: duplicate conversation', LOGGER_DEBUG);
+			return 202;
+		}
+
 		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$this->msg['author']);
 		if(! $contact) {
 			logger('diaspora_conversation: cannot find contact: ' . $this->msg['author']);
 			return;
 		}
 
-
-		if(! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'post_mail')) {
+		if(! perm_is_allowed($this->importer['channel_id'], $contact['xchan_hash'], 'send_stream')) {
 			logger('diaspora_conversation: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
 
-		$conversation = null;
+		// In order to fit the diaspora conversation into the item structure
+		// we need to make the first message of the conversation the toplevel item.
+		// The guid of this first message will be exchanged with the conversation guid.
+		// According to the spec the first message must have the same author as the conversation.
+		// The real guid will be stuffed away in iconfig.
 
-		$c = q("select * from conv where uid = %d and guid = '%s' limit 1",
-			intval($this->importer['channel_id']),
-			dbesc($guid)
-		);
-		if(count($c))
-			$conversation = $c[0];
-		else {
-			if($subject)
-				$nsubject = str_rot47(base64url_encode($subject));
+		// TODO: deal with multiple messages in the conversation.
 
-			$r = q("insert into conv (uid, guid, creator, created, updated, subject, recips)
-				values( %d, '%s', '%s', '%s', '%s', '%s', '%s') ",
-				intval($this->importer['channel_id']),
-				dbesc($guid),
-				dbesc($diaspora_handle),
-				dbesc(datetime_convert('UTC','UTC',$created_at)),
-				dbesc(datetime_convert()),
-				dbesc($nsubject),
-				dbesc($participant_handles)
-			);
-			if($r)
-				$c = q("select * from conv where uid = %d and guid = '%s' limit 1",
-				intval($this->importer['channel_id']),
-				dbesc($guid)
-			);
-			if($c)
-				$conversation = $c[0];
-		}
-		if(! $conversation) {
-			logger('diaspora_conversation: unable to create conversation.');
-			return;
+		$conv_item = $messages[0];
+
+		$body = markdown_to_bb($conv_item['text'], false, ['diaspora' => true, 'preserve_lf' => true]);
+
+		$maxlen = get_max_import_size();
+
+		if ($maxlen && mb_strlen($body) > $maxlen) {
+			$body = mb_substr($body, 0, $maxlen, 'UTF-8');
+			logger('message length exceeds max_import_size: truncated');
 		}
 
-		$conversation['subject'] = base64url_decode(str_rot47($conversation['subject']));
+		$datarray = [];
 
-		/* @fixme use signed field order for signature verification */
+		// Look for tags and linkify them
+		$results = linkify_tags($body, $this->importer['channel_id'], false);
 
-		foreach($messages as $mesg) {
+		$datarray['term'] = [];
 
-			$reply = 0;
-
-			$msg_guid = notags(unxmlify($mesg['guid']));
-			$msg_parent_guid = notags(unxmlify($mesg['parent_guid']));
-			$msg_parent_author_signature = notags(unxmlify($mesg['parent_author_signature']));
-			$msg_author_signature = notags(unxmlify($mesg['author_signature']));
-			$msg_text = unxmlify($mesg['text']);
-			$msg_created_at = datetime_convert('UTC','UTC',notags(unxmlify($mesg['created_at'])));
-			$msg_diaspora_handle = notags($this->get_author($mesg));
-			$msg_conversation_guid = notags(unxmlify($mesg['conversation_guid']));
-			if($msg_conversation_guid != $guid) {
-				logger('diaspora_conversation: message conversation guid does not belong to the current conversation. ' . $this->xmlbase);
-				continue;
-			}
-
-			$body = markdown_to_bb($msg_text, false, [ 'diaspora' => true, 'preserve_lf' => true ]);
-
-			$maxlen = get_max_import_size();
-
-			if($maxlen && mb_strlen($body) > $maxlen) {
-				$body = mb_substr($body,0,$maxlen,'UTF-8');
-				logger('message length exceeds max_import_size: truncated');
-			}
-
-
-			if($msg_author_signature || $this->msg['type'] === 'legacy') {
-				$author_signed_data = $msg_guid . ';' . $msg_parent_guid . ';' . $msg_text . ';' . unxmlify($mesg['created_at']) . ';' . $msg_diaspora_handle . ';' . $msg_conversation_guid;
-
-				$author_signature = base64_decode($msg_author_signature);
-
-				if(strcasecmp($msg_diaspora_handle,$this->msg['author']) == 0) {
-					$person = $contact;
-					$key = $this->msg['key'];
-				}
-				else {
-					$person = find_diaspora_person_by_handle($msg_diaspora_handle);
-
-					if(is_array($person) && x($person,'xchan_pubkey'))
-						$key = $person['xchan_pubkey'];
-					else {
-						logger('diaspora_conversation: unable to find author details');
-						continue;
-					}
-				}
-
-				if(! Crypto::verify($author_signed_data,$author_signature,$key,'sha256')) {
-					logger('diaspora_conversation: verification failed.');
-					continue;
+		if ($results) {
+			foreach ($results as $result) {
+				$success = $result['success'];
+				if ($success['replaced']) {
+					$datarray['term'][] = [
+						'uid'   => $this->importer['channel_id'],
+						'ttype' => $success['termtype'],
+						'otype' => TERM_OBJ_POST,
+						'term'  => $success['term'],
+						'url'   => $success['url']
+					];
 				}
 			}
-			else {
-				if(strcasecmp($msg_diaspora_handle,$this->msg['author']) == 0) {
-					$person = $contact;
-				}
-			}
-
-			if($msg_parent_author_signature && $this->msg['type'] === 'legacy') {
-				$owner_signed_data = $msg_guid . ';' . $msg_parent_guid . ';' . $msg_text . ';' . unxmlify($mesg['created_at']) . ';' . $msg_diaspora_handle . ';' . $msg_conversation_guid;
-
-				$parent_author_signature = base64_decode($msg_parent_author_signature);
-
-				$key = $this->msg['key'];
-
-				if(! Crypto::verify($owner_signed_data,$parent_author_signature,$key,'sha256')) {
-					logger('diaspora_conversation: owner verification failed.');
-					continue;
-				}
-			}
-
-			$stored_parent_mid = (($msg_parent_guid == $msg_conversation_guid) ? $msg_guid : $msg_parent_guid);
-
-			$r = q("select id from mail where mid = '%s' limit 1",
-				dbesc($message_id)
-			);
-			if(count($r)) {
-				logger('diaspora_conversation: duplicate message already delivered.', LOGGER_DEBUG);
-				continue;
-			}
-
-			if($subject)
-				$subject = str_rot47(base64url_encode($subject));
-			if($body)
-				$body  = str_rot47(base64url_encode($body));
-
-			$sig = ''; // placeholder
-
-			$x = mail_store( [
-				'account_id' => intval($this->importer['channel_account_id']),
-				'channel_id' => intval($this->importer['channel_id']),
-				'convid' => intval($conversation['id']),
-				'conv_guid' => $conversation['guid'],
-				'from_xchan' => $person['xchan_hash'],
-				'to_xchan' => $this->importer['channel_hash'],
-				'title' => $subject,
-				'body' => $body,
-				'sig' => $sig,
-				'mail_obscured' => 1,
-				'mid' => $msg_guid,
-				'parent_mid' => $stored_parent_mid,
-				'created' => $msg_created_at
-			]);
-
-			q("update conv set updated = '%s' where id = %d",
-				dbesc(datetime_convert()),
-				intval($conversation['id'])
-			);
-
-			$z = q("select * from mail where mid = '%s' and channel_id = %d limit 1",
-				dbesc($msg_guid),
-				intval($this->importer['channel_id'])
-			);
-
 		}
 
-		return;
+		$cnt = preg_match_all('/@\[url=(.*?)\](.*?)\[\/url\]/ism', $body, $matches, PREG_SET_ORDER);
+		if ($cnt) {
+			foreach ($matches as $mtch) {
+				$datarray['term'][] = [
+					'uid'   => $this->importer['channel_id'],
+					'ttype' => TERM_MENTION,
+					'otype' => TERM_OBJ_POST,
+					'term'  => $mtch[2],
+					'url'   => $mtch[1]
+				];
+			}
+		}
+
+		$cnt = preg_match_all('/@\[zrl=(.*?)\](.*?)\[\/zrl\]/ism', $body, $matches, PREG_SET_ORDER);
+		if ($cnt) {
+			foreach ($matches as $mtch) {
+				$datarray['term'][] = [
+					'uid'   => $this->importer['channel_id'],
+					'ttype' => TERM_MENTION,
+					'otype' => TERM_OBJ_POST,
+					'term'  => $mtch[2],
+					'url'   => $mtch[1]
+				];
+			}
+		}
+
+		$datarray['aid']             = $this->importer['channel_account_id'];
+		$datarray['uid']             = $this->importer['channel_id'];
+		$datarray['verb']            = ACTIVITY_POST;
+		$datarray['mid']             = z_root() . '/item/' . $guid;
+		$datarray['parent_mid']      = z_root() . '/item/' . $guid;
+		$datarray['uuid']            = $guid;
+		$datarray['changed']         = $created_at;
+		$datarray['created']         = $created_at;
+		$datarray['edited']          = $created_at;
+		$datarray['item_private']    = 2;
+		$datarray['plink']           = service_plink($contact, $guid);
+		$datarray['author_xchan']    = $contact['xchan_hash'];
+		$datarray['owner_xchan']     = $contact['xchan_hash'];
+		$datarray['body']            = $body;
+		$datarray['title']           = $subject;
+		$datarray['app']             = $app;
+		$datarray['item_unseen']     = 1;
+		$datarray['item_thread_top'] = 1;
+
+		if (strstr($contact['xchan_network'], 'friendica'))
+			$app = 'Friendica';
+		elseif ($contact['xchan_network'] === 'diaspora')
+			$app = 'Diaspora';
+		else
+			$app = '';
+
+		$datarray['app'] = $app;
+
+		if ($contact && !post_is_importable($datarray, $contact)) {
+			logger('diaspora_post: filtering this author.');
+			return 202;
+		}
+
+		set_iconfig($datarray, 'diaspora', 'fields', $this->xmlbase, true);
+
+		$result = item_store($datarray);
+
+		if ($result['success']) {
+			sync_an_item($this->importer['channel_id'], $result['item_id']);
+			return 200;
+		}
+
+		return 202;
+
 	}
 
 
@@ -1275,121 +1243,125 @@ class Diaspora_Receiver {
 		$msg_diaspora_handle = notags($this->get_author());
 		$msg_conversation_guid = notags(unxmlify($this->xmlbase['conversation_guid']));
 
-		$parent_uri = $msg_parent_guid;
+		if (strpos($msg_conversation_guid, 'conversation:') === 0)
+			$msg_conversation_guid = substr($msg_conversation_guid, 13);
 
-		$contact = diaspora_get_contact_by_handle($this->importer['channel_id'],$msg_diaspora_handle);
-		if(! $contact) {
-			logger('diaspora_message: cannot find contact: ' . $msg_diaspora_handle);
-			return;
-		}
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s'",
+			intval($this->importer['channel_id']),
+			dbesc($msg_guid)
+		);
 
-		if(! perm_is_allowed($this->importer['channel_id'],$contact['xchan_hash'],'post_mail')) {
-			logger('Ignoring this author.', LOGGER_DEBUG);
+		if($r) {
+			logger('DM duplicate message', LOGGER_DEBUG);
 			return 202;
 		}
 
-		$conversation = null;
+		$xchan = find_diaspora_person_by_handle($msg_diaspora_handle);
 
-		$c = q("select * from conv where uid = %d and guid = '%s' limit 1",
+		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s'",
 			intval($this->importer['channel_id']),
 			dbesc($msg_conversation_guid)
 		);
-		if($c)
-			$conversation = $c[0];
-		else {
-			logger('diaspora_message: conversation not available.');
+
+		if(!$r) {
+			logger('DM parent not found', LOGGER_DEBUG);
+			return 202;
+		}
+
+		$parent_item = $r[0];
+
+		if (intval($parent_item['item_nocomment']) || $parent_item['comment_policy'] === 'none'
+			|| ($parent_item['comments_closed'] > NULL_DATE && $parent_item['comments_closed'] < datetime_convert())) {
+			logger('diaspora_comment: comments disabled for post ' . $parent_item['mid']);
 			return;
 		}
 
-		$reply = 0;
-
-		$subject = $conversation['subject']; //this is already encoded
+		$datarray = [];
 		$body = markdown_to_bb($msg_text, false, [ 'diaspora' => true, 'preserve_lf' => true ]);
 
+		// Look for tags and linkify them
+		$results = linkify_tags($body, $this->importer['channel_id'], false);
 
-		$maxlen = get_max_import_size();
+		$datarray['term'] = [];
 
-		if($maxlen && mb_strlen($body) > $maxlen) {
-			$body = mb_substr($body,0,$maxlen,'UTF-8');
-			logger('message length exceeds max_import_size: truncated');
-		}
-
-
-		$x = q("select mid from mail where conv_guid = '%s' and channel_id = %d order by id asc limit 1",
-			dbesc($conversation['guid']),
-			intval($this->importer['channel_id'])
-		);
-		if($x)
-			$parent_ptr = $x[0]['mid'];
-
-		if($msg_author_signature || $this->msg['type'] === 'legacy') {
-			$author_signed_data = $msg_guid . ';' . $msg_parent_guid . ';' . $msg_text . ';' . unxmlify($this->xmlbase['created_at']) . ';' . $msg_diaspora_handle . ';' . $msg_conversation_guid;
-
-			$author_signature = base64_decode($msg_author_signature);
-
-			$person = find_diaspora_person_by_handle($msg_diaspora_handle);
-			if(is_array($person) && x($person,'xchan_pubkey'))
-				$key = $person['xchan_pubkey'];
-			else {
-				logger('diaspora_message: unable to find author details');
-				return;
-			}
-
-			if(! Crypto::verify($author_signed_data,$author_signature,$key,'sha256')) {
-				logger('diaspora_message: verification failed.');
-				return;
+		if ($results) {
+			foreach ($results as $result) {
+				$success = $result['success'];
+				if ($success['replaced']) {
+					$datarray['term'][] = [
+						'uid'   => $this->importer['channel_id'],
+						'ttype' => $success['termtype'],
+						'otype' => TERM_OBJ_POST,
+						'term'  => $success['term'],
+						'url'   => $success['url']
+					];
+				}
 			}
 		}
-		else {
-			$person = find_diaspora_person_by_handle($msg_diaspora_handle);
+
+		$cnt = preg_match_all('/@\[url=(.*?)\](.*?)\[\/url\]/ism', $body, $matches, PREG_SET_ORDER);
+		if ($cnt) {
+			foreach ($matches as $mtch) {
+				$datarray['term'][] = [
+					'uid'   => $this->importer['channel_id'],
+					'ttype' => TERM_MENTION,
+					'otype' => TERM_OBJ_POST,
+					'term'  => $mtch[2],
+					'url'   => $mtch[1]
+				];
+			}
 		}
 
-		$r = q("select id from mail where mid = '%s' and channel_id = %d limit 1",
-			dbesc($msg_guid),
-			intval($this->importer['channel_id'])
-		);
-		if($r) {
-			logger('diaspora_message: duplicate message already delivered.', LOGGER_DEBUG);
-			return;
+		$cnt = preg_match_all('/@\[zrl=(.*?)\](.*?)\[\/zrl\]/ism', $body, $matches, PREG_SET_ORDER);
+		if ($cnt) {
+			foreach ($matches as $mtch) {
+				$datarray['term'][] = [
+					'uid'   => $this->importer['channel_id'],
+					'ttype' => TERM_MENTION,
+					'otype' => TERM_OBJ_POST,
+					'term'  => $mtch[2],
+					'url'   => $mtch[1]
+				];
+			}
 		}
 
-		$key = get_config('system','pubkey');
-		// $subject is a copy of the already obscured subject from the conversation structure
-		if($body)
-			$body  = str_rot47(base64url_encode($body));
+		$datarray['aid']          = $this->importer['channel_account_id'];
+		$datarray['uid']          = $this->importer['channel_id'];
+		$datarray['verb']         = ACTIVITY_POST;
+		$datarray['mid']          = z_root() . '/item/' . $msg_guid;
+		$datarray['uuid']         = $msg_guid;
+		$datarray['parent_mid']   = $parent_item['mid'];
+		$datarray['thr_parent']   = $parent_item['mid'];
+		$datarray['route']        = $parent_item['route'];
+		$datarray['changed']      = $msg_created_at;
+		$datarray['created']      = $msg_created_at;
+		$datarray['edited']       = $msg_created_at;
+		$datarray['item_private'] = $parent_item['item_private'];
+		$datarray['owner_xchan']  = $parent_item['owner_xchan'];
+		$datarray['author_xchan'] = $xchan['xchan_hash'];
+		$datarray['body']         = $body;
 
-		$sig = '';
+		if (strstr($xchan['xchan_network'], 'friendica'))
+			$app = 'Friendica';
+		elseif ($xchan['xchan_network'] === 'diaspora')
+			$app = 'Diaspora';
+		else
+			$app = '';
 
-		$x = mail_store(
-			[
-				'account_id'    => intval($this->importer['channel_account_id']),
-				'channel_id'    => intval($this->importer['channel_id']),
-				'convid'        => intval($conversation['id']),
-				'conv_guid'     => $conversation['guid'],
-				'from_xchan'    => $person['xchan_hash'],
-				'to_xchan'      => $this->importer['xchan_hash'],
-				'title'         => $subject,
-				'body'          => $body,
-				'sig'           => $sig,
-				'mail_obscured' => 1,
-				'mid'           => $msg_guid,
-				'parent_mid'    => $parent_ptr,
-				'created'       => $msg_created_at,
-				'mail_isreply'  => 1
-			]
-		);
+		$datarray['app'] = $app;
 
-		q("update conv set updated = '%s' where id = %d",
-			dbesc(datetime_convert()),
-			intval($conversation['id'])
-		);
+		set_iconfig($datarray, 'diaspora', 'fields', $this->xmlbase, true);
 
-		$z = q("select * from mail where mid = '%s' and channel_id = %d limit 1",
-			dbesc($msg_guid),
-			intval($this->importer['channel_id'])
-		);
+		$result = item_store($datarray);
 
-		return;
+		if ($result['success']) {
+			send_status_notifications($result['item_id'], $result['item']);
+			sync_an_item($this->importer['channel_id'], $result['item_id']);
+			return 200;
+		}
+
+		return 202;
+
 	}
 
 
@@ -1730,9 +1702,11 @@ class Diaspora_Receiver {
 			if (intval($parent_item['item_origin']) && (!$parent_author_signature))
 				Master::Summon(['Notifier', 'comment-import', $result['item_id']]);
 			sync_an_item($this->importer['channel_id'], $result['item_id']);
+
+			return 200;
 		}
 
-		return;
+		return 202;
 	}
 
 	function retraction() {

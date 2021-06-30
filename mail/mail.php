@@ -4,7 +4,7 @@ use Zotlabs\Extend\Route;
 
 /**
  * Name: Mail
- * Description: Former core mail app. Still required for Diaspora conversations. 
+ * Description: Deprecated former core mail app. It is not possible to send mail anymore with this interface. It is read/delete only!
  * Version: 1.0
  * Author: Mario Vavti
  * Maintainer: None
