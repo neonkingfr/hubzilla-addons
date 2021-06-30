@@ -930,7 +930,7 @@ function as_follow($channel,$act) {
 
 		// store their xchan and hubloc
 
-		as_actor_store($person_obj['id'],$person_obj);
+		Activity::actor_store($person_obj['id'], $person_obj);
 
 		// Find any existing abook record
 
@@ -1009,7 +1009,7 @@ function as_follow($channel,$act) {
 
 	set_abconfig($channel['channel_id'],$person_obj['id'],'pubcrawl','their_follow_id', $their_follow_id);
 
-	// The xchan should have been created by as_actor_store() above
+	// The xchan should have been created by Activity::actor_store() above
 
 	$r = q("select * from xchan where xchan_hash = '%s' and xchan_network = 'activitypub' limit 1",
 		dbesc($person_obj['id'])
@@ -1141,208 +1141,6 @@ function as_unfollow($channel,$act) {
 	}
 
 	return;
-}
-
-
-
-
-function as_actor_store($url,$person_obj) {
-
-	if(! is_array($person_obj))
-		return;
-
-	// it seems we were loosing public keys due to an issue Lib/Activity::encode_person()
-	// if so, refetch the person object and fix it.
-
-	$fix_pubkey = false;
-
-	if(! $person_obj['publicKey']['publicKeyPem']) {
-		$fix_pubkey = true;
-
-		$x = Activity::fetch($url);
-		if(! $x)
-			return;
-
-		$AS = new ActivityStreams($x);
-
-		if(! $AS->is_valid()) {
-			return;
-		}
-
-		$person_obj = null;
-		if (ActivityStreams::is_an_actor($AS->type)) {
-			$person_obj = $AS->data;
-		}
-		elseif (is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
-			$person_obj = $AS->obj;
-		}
-		else {
-			return;
-		}
-	}
-
-	$inbox = $person_obj['inbox'];
-
-	// invalid identity
-
-	if (! $inbox || strpos($inbox,z_root()) !== false) {
-		return;
-	}
-
-	$icon = '';
-	$name = $person_obj['name'];
-	if(! $name)
-		$name = $person_obj['preferredUsername'];
-	if(! $name)
-		$name = t('Unknown');
-
-	if($person_obj['icon']) {
-		if(is_array($person_obj['icon'])) {
-			if(array_key_exists('url',$person_obj['icon']))
-				$icon = $person_obj['icon']['url'];
-			else
-				$icon = $person_obj['icon'][0]['url'];
-		}
-		else
-			$icon = $person_obj['icon'];
-	}
-
-	$links = false;
-	$profile = false;
-
-	if (is_array($person_obj['url'])) {
-		if (! array_key_exists(0,$person_obj['url'])) {
-			$links = [ $person_obj['url'] ];
-		}
-		else {
-			$links = $person_obj['url'];
-		}
-	}
-
-	if ($links) {
-		foreach ($links as $link) {
-			if (array_key_exists('mediaType',$link) && $link['mediaType'] === 'text/html') {
-				$profile = $link['href'];
-			}
-		}
-		if (! $profile) {
-			$profile = $links[0]['href'];
-		}
-	}
-	elseif (isset($person_obj['url']) && is_string($person_obj['url'])) {
-		$profile = $person_obj['url'];
-	}
-
-	if (! $profile) {
-		$profile = $url;
-	}
-
-	$collections = [];
-
-	if($inbox) {
-		$collections['inbox'] = $inbox;
-		if($person_obj['outbox'])
-			$collections['outbox'] = $person_obj['outbox'];
-		if($person_obj['followers'])
-			$collections['followers'] = $person_obj['followers'];
-		if($person_obj['following'])
-			$collections['following'] = $person_obj['following'];
-		if($person_obj['endpoints'] && $person_obj['endpoints']['sharedInbox'])
-			$collections['sharedInbox'] = $person_obj['endpoints']['sharedInbox'];
-	}
-
-	if(array_key_exists('publicKey',$person_obj) && array_key_exists('publicKeyPem',$person_obj['publicKey'])) {
-		if($person_obj['id'] === $person_obj['publicKey']['owner']) {
-			$pubkey = $person_obj['publicKey']['publicKeyPem'];
-			if(strstr($pubkey,'RSA ')) {
-				$pubkey = Keyutils::rsaToPem($pubkey);
-			}
-		}
-	}
-
-	$m = parse_url($url);
-	if($m) {
-		$hostname = $m['host'];
-		$baseurl = $m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '');
-	}
-
-	$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where xchan_hash = '%s'",
-		dbesc($url)
-	);
-
-	if($r) {
-		// Record exists. Cache existing records for one week at most
-		// then refetch to catch updated profile photos, names, etc.
-		$d = datetime_convert('UTC','UTC','now - 1 week');
-		if($r[0]['hubloc_updated'] > $d && $r[0]['xchan_name_date'] > $d && $fix_pubkey === false)
-			return;
-
-		// update existing xchan record
-		q("update xchan set xchan_name = '%s', xchan_guid = '%s', xchan_pubkey = '%s', xchan_network = 'activitypub', xchan_name_date = '%s' where xchan_hash = '%s'",
-			dbesc(escape_tags($name)),
-			dbesc(escape_tags($url)),
-			dbesc(escape_tags($pubkey)),
-			dbescdate(datetime_convert()),
-			dbesc($url)
-		);
-
-		// update existing hubloc record
-		q("update hubloc set hubloc_guid = '%s', hubloc_network = 'activitypub', hubloc_url = '%s', hubloc_host = '%s', hubloc_callback = '%s', hubloc_updated = '%s', hubloc_id_url = '%s' where hubloc_hash = '%s'",
-			dbesc(escape_tags($url)),
-			dbesc(escape_tags($baseurl)),
-			dbesc(escape_tags($hostname)),
-			dbesc(escape_tags($inbox)),
-			dbescdate(datetime_convert()),
-			dbesc(escape_tags($profile)),
-			dbesc($url)
-		);
-	}
-
-	if(! $r) {
-		// create a new record
-		$r = xchan_store_lowlevel(
-			[
-				'xchan_hash'         => escape_tags($url),
-				'xchan_guid'         => escape_tags($url),
-				'xchan_pubkey'       => escape_tags($pubkey),
-				'xchan_addr'         => '',
-				'xchan_url'          => escape_tags($profile),
-				'xchan_name'         => escape_tags($name),
-				'xchan_name_date'    => datetime_convert(),
-				'xchan_network'      => 'activitypub'
-			]
-		);
-
-		$r = hubloc_store_lowlevel(
-			[
-				'hubloc_guid'     => escape_tags($url),
-				'hubloc_hash'     => escape_tags($url),
-				'hubloc_addr'     => '',
-				'hubloc_network'  => 'activitypub',
-				'hubloc_url'      => escape_tags($baseurl),
-				'hubloc_host'     => escape_tags($hostname),
-				'hubloc_callback' => escape_tags($inbox),
-				'hubloc_updated'  => datetime_convert(),
-				'hubloc_primary'  => 1,
-				'hubloc_id_url'   => escape_tags($profile)
-			]
-		);
-	}
-
-	if($collections) {
-		set_xconfig($url,'activitypub','collections',$collections);
-	}
-
-	$photos = import_xchan_photo($icon, $url);
-	$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
-		dbescdate($photos[5]),
-		dbesc($photos[0]),
-		dbesc($photos[1]),
-		dbesc($photos[2]),
-		dbesc($photos[3]),
-		dbesc($url)
-	);
-
 }
 
 function as_create_action($channel,$observer_hash,$act) {
