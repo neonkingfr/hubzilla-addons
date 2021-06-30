@@ -372,10 +372,10 @@ function pubcrawl_import_author(&$b) {
 	// Now find the actor
 
 	$person_obj = null;
-	if (in_array($AS->type, ['Application', 'Group', 'Organization', 'Person', 'Service'])) {
+	if (ActivityStreams::is_an_actor($AS->type)) {
 		$person_obj = $AS->data;
 	}
-	elseif ($AS->obj && (in_array($AS->obj['type'], ['Application', 'Group', 'Organization', 'Person', 'Service']))) {
+	elseif (is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
 		$person_obj = $AS->obj;
 	}
 	else {
