@@ -628,7 +628,7 @@ function pubcrawl_notifier_hub(&$arr) {
 				'to'     => [z_root() . '/followers/' . $arr['channel']['channel_address']]
 			]);
 
-		$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $arr);
+		$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $arr['channel']);
 		$jmsg             = json_encode($msg, JSON_UNESCAPED_SLASHES);
 	}
 
