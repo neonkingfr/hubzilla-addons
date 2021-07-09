@@ -61,15 +61,15 @@ class Inbox extends \Zotlabs\Web\Controller {
 		}
 
 		if (is_array($AS->actor) && array_key_exists('id',$AS->actor)) {
-			as_actor_store($AS->actor['id'],$AS->actor);
+			Activity::actor_store($AS->actor['id'], $AS->actor);
 		}
 
 		if (is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
-			as_actor_store($AS->obj['id'],$AS->obj);
+			Activity::actor_store($AS->obj['id'], $AS->obj);
 		}
 
 		if (is_array($AS->obj) && is_array($AS->obj['actor']) && array_key_exists('id',$AS->obj['actor']) && $AS->obj['actor']['id'] !== $AS->actor['id']) {
-			as_actor_store($AS->obj['actor']['id'],$AS->obj['actor']);
+			Activity::actor_store($AS->obj['actor']['id'], $AS->obj['actor']);
 		}
 
 		if($AS->type == 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo',$AS->obj)) {

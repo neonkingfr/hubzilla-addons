@@ -20,6 +20,7 @@ use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Libzot;
 use Zotlabs\Web\HTTPSig;
 use Zotlabs\Lib\Activity;
+use Zotlabs\Lib\Queue;
 
 require_once('addon/pubcrawl/as.php');
 
@@ -48,7 +49,8 @@ function pubcrawl_load() {
 		'create_identity'            => 'pubcrawl_create_identity',
 		'is_as_request'              => 'pubcrawl_is_as_request',
 		'get_accept_header_string'   => 'pubcrawl_get_accept_header_string',
-		'encode_person'              => 'pubcrawl_encode_person'
+		'encode_person'              => 'pubcrawl_encode_person',
+		'encode_item_xchan'          => 'pubcrawl_encode_item_xchan'
 	]);
 	Route::register('addon/pubcrawl/Mod_Pubcrawl.php', 'pubcrawl');
 }
@@ -289,13 +291,13 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	}
 	// Now find the actor and see if there is something we can follow
 	$person_obj = null;
-	if (in_array($AS->type, ['Application', 'Group', 'Organization', 'Person', 'Service'])) {
+	if ($AS->type && ActivityStreams::is_an_actor($AS->type)) {
 		$person_obj = $AS->data;
 	}
-	elseif ($AS->obj && (in_array($AS->obj['type'], ['Application', 'Group', 'Organization', 'Person', 'Service']))) {
+	elseif (is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
 		$person_obj = $AS->obj;
 	}
-	elseif (local_channel() && $AS->obj && (in_array($AS->obj['type'], ['Note', 'Article']))) {
+	elseif (local_channel() && is_array($AS->obj) && !ActivityStreams::is_response_activity($AS->obj['type'])) {
 		// this implements mastodon remote reply functionality
 		$item = Activity::decode_note($AS);
 		if ($item) {
@@ -307,7 +309,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 		return;
 	}
 
-	as_actor_store($url, $person_obj);
+	Activity::actor_store($url, $person_obj);
 
 	if ($address) {
 		q("update xchan set xchan_addr = '%s' where xchan_hash = '%s' and xchan_network = 'activitypub'",
@@ -325,6 +327,13 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 }
 
+function pubcrawl_encode_item_xchan(&$arr) {
+	if($arr['encoded_xchan']['network'] !== 'activitypub')
+		return;
+
+	unset($arr['encoded_xchan']['address']);
+}
+
 function pubcrawl_import_author(&$b) {
 
 	$url     = $b['author']['url'];
@@ -333,7 +342,7 @@ function pubcrawl_import_author(&$b) {
 	if (!$url)
 		return;
 
-	$r = q("select xchan_hash from xchan where xchan_hash = '%s' and xchan_network = 'activitypub'",
+	$r = q("select xchan_hash from xchan join hubloc on xchan_hash = hubloc_hash where xchan_hash = '%s' and xchan_network = 'activitypub'",
 		dbesc($url)
 	);
 	if ($r) {
@@ -363,17 +372,17 @@ function pubcrawl_import_author(&$b) {
 	// Now find the actor
 
 	$person_obj = null;
-	if (in_array($AS->type, ['Application', 'Group', 'Organization', 'Person', 'Service'])) {
+	if (ActivityStreams::is_an_actor($AS->type)) {
 		$person_obj = $AS->data;
 	}
-	elseif ($AS->obj && (in_array($AS->obj['type'], ['Application', 'Group', 'Organization', 'Person', 'Service']))) {
+	elseif (is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
 		$person_obj = $AS->obj;
 	}
 	else {
 		return;
 	}
 
-	as_actor_store($url, $person_obj);
+	Activity::actor_store($url, $person_obj);
 
 	$b['result'] = $url;
 
@@ -473,11 +482,7 @@ function pubcrawl_notifier_process(&$arr) {
 
 	// If the parent is an announce activity, add the author to the recipients
 	if ($arr['parent_item']['verb'] === ACTIVITY_SHARE) {
-		$arr['env_recips'][] = [
-			'guid'     => $arr['parent_item']['author']['xchan_guid'],
-			'guid_sig' => $arr['parent_item']['author']['xchan_guid_sig'],
-			'hash'     => $arr['parent_item']['author']['xchan_hash']
-		];
+		$arr['env_recips'][] = $arr['parent_item']['author']['xchan_hash'];
 		$arr['recipients'][] = '\'' . $arr['parent_item']['author']['xchan_hash'] . '\'';
 	}
 
@@ -485,24 +490,16 @@ function pubcrawl_notifier_process(&$arr) {
 	// deliver to local subscribers directly
 	$sys = get_sys_channel();
 
-	$arr['env_recips'][] = [
-		'guid'     => $sys['channel_guid'],
-		'guid_sig' => $sys['channel_guid_sig'],
-		'hash'     => $sys['channel_hash']
-	];
+	$arr['env_recips'][] = $sys['channel_hash'];
 	$arr['recipients'][] = '\'' . $sys['channel_hash'] . '\'';
 
-	$r = q("SELECT channel_guid, channel_guid_sig, channel_hash FROM channel WHERE channel_id IN ( SELECT abook_channel FROM abook WHERE abook_xchan = '%s' AND abook_channel != %d )",
+	$r = q("SELECT channel_hash FROM channel WHERE channel_id IN ( SELECT abook_channel FROM abook WHERE abook_xchan = '%s' AND abook_channel != %d )",
 		dbesc($arr['target_item']['owner_xchan']),
 		intval($arr['channel']['channel_id'])
 	);
 	if ($r) {
 		foreach ($r as $rr) {
-			$arr['env_recips'][] = [
-				'guid'     => $rr['channel_guid'],
-				'guid_sig' => $rr['channel_guid_sig'],
-				'hash'     => $rr['channel_hash']
-			];
+			$arr['env_recips'][] = $rr['channel_hash'];
 			$arr['recipients'][] = '\'' . $rr['channel_hash'] . '\'';
 		}
 	}
@@ -584,6 +581,7 @@ function pubcrawl_notifier_hub(&$arr) {
 	}
 
 	$prv_recips = $arr['env_recips'];
+	stringify_array_elms($prv_recips);
 
 	if(is_array($signed_msg)) {
 		// If it's an array it is probably an encrypted zot6 package
@@ -630,21 +628,15 @@ function pubcrawl_notifier_hub(&$arr) {
 				'to'     => [z_root() . '/followers/' . $arr['channel']['channel_address']]
 			]);
 
-		$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $arr);
+		$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $arr['channel']);
 		$jmsg             = json_encode($msg, JSON_UNESCAPED_SLASHES);
 	}
 
 	if ($prv_recips) {
-		$hashes = [];
-
 		// re-explode the recipients, but only for this hub/pod
 
-		foreach ($prv_recips as $recip) {
-			$hashes[] = "'" . dbesc($recip['hash']) . "'";
-		}
-
 		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
-			and xchan_hash in (" . protect_sprintf(implode(',', $hashes)) . ") and xchan_network = 'activitypub'",
+			and xchan_hash in (" . protect_sprintf(implode(',', $prv_recips)) . ") and xchan_network = 'activitypub'",
 			dbesc($arr['hub']['hubloc_url'])
 		);
 
@@ -746,12 +738,12 @@ function pubcrawl_queue_message($msg, $sender, $recip, $message_id = '') {
 		return false;
 	}
 
-	$hash = random_string();
+	$hash = new_uuid();
 
 	logger('queue: ' . $hash . ' ' . $dest_url, LOGGER_DEBUG);
 	logger('queueMsg: ' . jindent($msg));
 
-	queue_insert([
+	Queue::insert([
 		'hash'       => $hash,
 		'account_id' => $sender['channel_account_id'],
 		'channel_id' => $sender['channel_id'],
@@ -1193,7 +1185,7 @@ function pubcrawl_queue_deliver(&$b) {
 				dbesc(datetime_convert()),
 				dbesc($outq['outq_hash'])
 			);
-			remove_queue_item($outq['outq_hash']);
+			Queue::remove($outq['outq_hash']);
 
 			// server is responding - see if anything else is going to this destination and is piled up
 			// and try to send some more. We're relying on the fact that do_delivery() results in an
@@ -1217,7 +1209,7 @@ function pubcrawl_queue_deliver(&$b) {
 		}
 		else {
 			logger('pubcrawl_queue_deliver: queue post returned ' . $result['return_code'] . ' from ' . $outq['outq_posturl'], LOGGER_DEBUG);
-			update_queue_item($outq['outq_hash'], 10);
+			Queue::update($outq['outq_hash'], 10);
 		}
 	}
 }

@@ -6,6 +6,7 @@ use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Keyutils;
 use Zotlabs\Lib\Libzot;
+use Zotlabs\Lib\Libsync;
 
 require_once('include/event.php');
 
@@ -689,12 +690,12 @@ function as_map_acl($i,$mentions = false) {
 	$g = intval(get_pconfig($i['uid'],'activitypub','include_groups'));
 
 	$x = collect_recipients($i,$private,$g);
-	if($x) {
+	if(is_array($x)) {
 		stringify_array_elms($x);
 		if(! $x)
 			return;
 
-		$details = q("select xchan_hash, xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") and xchan_network = 'activitypub'");
+		$details = dbq("select xchan_hash, xchan_url, xchan_addr, xchan_name from xchan where xchan_hash in (" . implode(',',$x) . ") and xchan_network = 'activitypub'");
 		if($details) {
 			foreach($details as $d) {
 				if($mentions) {
@@ -769,12 +770,12 @@ function asencode_person($p) {
 			'publicKeyPem' => $p['xchan_pubkey']
 		];
 
-		$locs = zot_encode_locations($c);
+		$locs = Libzot::encode_locations($c);
 		if($locs) {
 			$ret['nomadicLocations'] = [];
 			foreach($locs as $loc) {
 				$ret['nomadicLocations'][] = [
-					'id'      => $loc['url'] . '/locs/' . substr($loc['address'],0,strpos($loc['address'],'@')),
+					'id'              => $loc['url'] . '/locs/' . substr($loc['address'],0,strpos($loc['address'],'@')),
 					'type'            => 'nomadicLocation',
 					'locationAddress' => 'acct:' . $loc['address'],
 					'locationPrimary' => (boolean) $loc['primary'],
@@ -929,7 +930,7 @@ function as_follow($channel,$act) {
 
 		// store their xchan and hubloc
 
-		as_actor_store($person_obj['id'],$person_obj);
+		Activity::actor_store($person_obj['id'], $person_obj);
 
 		// Find any existing abook record
 
@@ -1008,7 +1009,7 @@ function as_follow($channel,$act) {
 
 	set_abconfig($channel['channel_id'],$person_obj['id'],'pubcrawl','their_follow_id', $their_follow_id);
 
-	// The xchan should have been created by as_actor_store() above
+	// The xchan should have been created by Activity::actor_store() above
 
 	$r = q("select * from xchan where xchan_hash = '%s' and xchan_network = 'activitypub' limit 1",
 		dbesc($person_obj['id'])
@@ -1091,7 +1092,7 @@ function as_follow($channel,$act) {
 			if($abconfig)
 				$clone['abconfig'] = $abconfig;
 
-			build_sync_packet($channel['channel_id'], [ 'abook' => array($clone) ] );
+			Libsync::build_sync_packet($channel['channel_id'], [ 'abook' => array($clone) ] );
 		}
 	}
 
@@ -1140,208 +1141,6 @@ function as_unfollow($channel,$act) {
 	}
 
 	return;
-}
-
-
-
-
-function as_actor_store($url,$person_obj) {
-
-	if(! is_array($person_obj))
-		return;
-
-	// it seems we were loosing public keys due to an issue Lib/Activity::encode_person()
-	// if so, refetch the person object and fix it.
-
-	$fix_pubkey = false;
-
-	if(! $person_obj['publicKey']['publicKeyPem']) {
-		$fix_pubkey = true;
-
-		$x = Activity::fetch($url);
-		if(! $x)
-			return;
-
-		$AS = new ActivityStreams($x);
-
-		if(! $AS->is_valid()) {
-			return;
-		}
-
-		$person_obj = null;
-		if(in_array($AS->type, [ 'Application', 'Group', 'Organization', 'Person', 'Service' ])) {
-			$person_obj = $AS->data;
-		}
-		elseif($AS->obj && ( in_array($AS->obj['type'], [ 'Application', 'Group', 'Organization', 'Person', 'Service' ] ))) {
-			$person_obj = $AS->obj;
-		}
-		else {
-			return;
-		}
-	}
-
-	$inbox = $person_obj['inbox'];
-
-	// invalid identity
-
-	if (! $inbox || strpos($inbox,z_root()) !== false) {
-		return;
-	}
-
-	$icon = '';
-	$name = $person_obj['name'];
-	if(! $name)
-		$name = $person_obj['preferredUsername'];
-	if(! $name)
-		$name = t('Unknown');
-
-	if($person_obj['icon']) {
-		if(is_array($person_obj['icon'])) {
-			if(array_key_exists('url',$person_obj['icon']))
-				$icon = $person_obj['icon']['url'];
-			else
-				$icon = $person_obj['icon'][0]['url'];
-		}
-		else
-			$icon = $person_obj['icon'];
-	}
-
-	$links = false;
-	$profile = false;
-
-	if (is_array($person_obj['url'])) {
-		if (! array_key_exists(0,$person_obj['url'])) {
-			$links = [ $person_obj['url'] ];
-		}
-		else {
-			$links = $person_obj['url'];
-		}
-	}
-
-	if ($links) {
-		foreach ($links as $link) {
-			if (array_key_exists('mediaType',$link) && $link['mediaType'] === 'text/html') {
-				$profile = $link['href'];
-			}
-		}
-		if (! $profile) {
-			$profile = $links[0]['href'];
-		}
-	}
-	elseif (isset($person_obj['url']) && is_string($person_obj['url'])) {
-		$profile = $person_obj['url'];
-	}
-
-	if (! $profile) {
-		$profile = $url;
-	}
-
-	$collections = [];
-
-	if($inbox) {
-		$collections['inbox'] = $inbox;
-		if($person_obj['outbox'])
-			$collections['outbox'] = $person_obj['outbox'];
-		if($person_obj['followers'])
-			$collections['followers'] = $person_obj['followers'];
-		if($person_obj['following'])
-			$collections['following'] = $person_obj['following'];
-		if($person_obj['endpoints'] && $person_obj['endpoints']['sharedInbox'])
-			$collections['sharedInbox'] = $person_obj['endpoints']['sharedInbox'];
-	}
-
-	if(array_key_exists('publicKey',$person_obj) && array_key_exists('publicKeyPem',$person_obj['publicKey'])) {
-		if($person_obj['id'] === $person_obj['publicKey']['owner']) {
-			$pubkey = $person_obj['publicKey']['publicKeyPem'];
-			if(strstr($pubkey,'RSA ')) {
-				$pubkey = Keyutils::rsaToPem($pubkey);
-			}
-		}
-	}
-
-	$m = parse_url($url);
-	if($m) {
-		$hostname = $m['host'];
-		$baseurl = $m['scheme'] . '://' . $m['host'] . (($m['port']) ? ':' . $m['port'] : '');
-	}
-
-	$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where xchan_hash = '%s'",
-		dbesc($url)
-	);
-
-	if($r) {
-		// Record exists. Cache existing records for one week at most
-		// then refetch to catch updated profile photos, names, etc.
-		$d = datetime_convert('UTC','UTC','now - 1 week');
-		if($r[0]['hubloc_updated'] > $d && $r[0]['xchan_name_date'] > $d && $fix_pubkey === false)
-			return;
-
-		// update existing xchan record
-		q("update xchan set xchan_name = '%s', xchan_guid = '%s', xchan_pubkey = '%s', xchan_network = 'activitypub', xchan_name_date = '%s' where xchan_hash = '%s'",
-			dbesc(escape_tags($name)),
-			dbesc(escape_tags($url)),
-			dbesc(escape_tags($pubkey)),
-			dbescdate(datetime_convert()),
-			dbesc($url)
-		);
-
-		// update existing hubloc record
-		q("update hubloc set hubloc_guid = '%s', hubloc_network = 'activitypub', hubloc_url = '%s', hubloc_host = '%s', hubloc_callback = '%s', hubloc_updated = '%s', hubloc_id_url = '%s' where hubloc_hash = '%s'",
-			dbesc(escape_tags($url)),
-			dbesc(escape_tags($baseurl)),
-			dbesc(escape_tags($hostname)),
-			dbesc(escape_tags($inbox)),
-			dbescdate(datetime_convert()),
-			dbesc(escape_tags($profile)),
-			dbesc($url)
-		);
-	}
-
-	if(! $r) {
-		// create a new record
-		$r = xchan_store_lowlevel(
-			[
-				'xchan_hash'         => escape_tags($url),
-				'xchan_guid'         => escape_tags($url),
-				'xchan_pubkey'       => escape_tags($pubkey),
-				'xchan_addr'         => '',
-				'xchan_url'          => escape_tags($profile),
-				'xchan_name'         => escape_tags($name),
-				'xchan_name_date'    => datetime_convert(),
-				'xchan_network'      => 'activitypub'
-			]
-		);
-
-		$r = hubloc_store_lowlevel(
-			[
-				'hubloc_guid'     => escape_tags($url),
-				'hubloc_hash'     => escape_tags($url),
-				'hubloc_addr'     => '',
-				'hubloc_network'  => 'activitypub',
-				'hubloc_url'      => escape_tags($baseurl),
-				'hubloc_host'     => escape_tags($hostname),
-				'hubloc_callback' => escape_tags($inbox),
-				'hubloc_updated'  => datetime_convert(),
-				'hubloc_primary'  => 1,
-				'hubloc_id_url'   => escape_tags($profile)
-			]
-		);
-	}
-
-	if($collections) {
-		set_xconfig($url,'activitypub','collections',$collections);
-	}
-
-	$photos = import_xchan_photo($icon, $url);
-	$r = q("update xchan set xchan_photo_date = '%s', xchan_photo_l = '%s', xchan_photo_m = '%s', xchan_photo_s = '%s', xchan_photo_mimetype = '%s' where xchan_hash = '%s'",
-		dbescdate($photos[5]),
-		dbesc($photos[0]),
-		dbesc($photos[1]),
-		dbesc($photos[2]),
-		dbesc($photos[3]),
-		dbesc($url)
-	);
-
 }
 
 function as_create_action($channel,$observer_hash,$act) {
@@ -1398,18 +1197,11 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s = [];
 
 	$announce = (($act->type === 'Announce') ? true  : false);
-
-	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
-	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
-	// This is not part of the activitypub protocol - we might change this to show all public posts in pubstream at some point.
-
-	$pubstream = ((is_array($act->obj) && array_key_exists('to', $act->obj) && in_array(ACTIVITY_PUBLIC_INBOX, $act->obj['to'])) ? true : false);
 	$is_sys_channel = is_sys_channel($channel['channel_id']);
-
 	$parent = ((array_key_exists('inReplyTo',$act->obj) && !$announce) ? urldecode($act->obj['inReplyTo']) : false);
 
 	if(!$parent) {
-		if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
+		if(!perm_is_allowed($channel['channel_id'], $observer_hash, 'send_stream') && !$is_sys_channel) {
 			// Fall through on update activities since we already accepted the item.
 			// We might have got it via announce or imported it manually.
 			if($act->type !== 'Update') {
@@ -1855,14 +1647,42 @@ function as_create_note($channel,$observer_hash,$act) {
 		}
 	}
 
-	if ($act->recips && (! in_array(ACTIVITY_PUBLIC_INBOX,$act->recips)))
+	if ($act->recips && (!in_array(ACTIVITY_PUBLIC_INBOX, $act->recips))) {
 		$s['item_private'] = 1;
 
-	if (is_array($act->data)) {
-		if (array_key_exists('directMessage',$act->data) && intval($act->data['directMessage'])) {
-			$s['item_private'] = 2;
+		// an ugly way to recognise a mastodon direct message
+
+		if ($act->obj['type'] === 'Note' &&
+			!isset($act->raw_recips['cc']) &&
+			is_array($act->raw_recips['to']) &&
+			in_array(channel_url($channel), $act->raw_recips['to']) &&
+			is_array($act->obj['tag']) &&
+			count($act->raw_recips['to']) === count($act->obj['tag'])
+		) {
+			$mentions = [];
+			foreach($act->obj['tag'] as $t) {
+				if ($t['type'] === 'Mention' && isset($t['href'])) {
+					$mentions[] = $t['href'];
+				}
+			}
+
+			$diff = array_diff($act->raw_recips['to'], $mentions);
+
+			hz_syslog(print_r(count($diff),true));
+
+			if(!count($diff)) {
+				$s['item_private'] = 2;
+			}
 		}
-	}
+
+		// the litebub way to determine a direct message (pleroma, friendica)
+		if (is_array($act->data)) {
+			if (array_key_exists('directMessage',$act->data) && intval($act->data['directMessage'])) {
+				$s['item_private'] = 2;
+			}
+		}
+
+	 }
 
 	set_iconfig($s,'activitypub','recips',$act->raw_recips);
 	if($parent) {
@@ -1916,12 +1736,7 @@ function as_announce_note($channel,$observer_hash,$act) {
 
 	$is_sys_channel = is_sys_channel($channel['channel_id']);
 
-	// Mastodon only allows visibility in public timelines if the public inbox is listed in the 'to' field.
-	// They are hidden in the public timeline if the public inbox is listed in the 'cc' field.
-	// This is not part of the activitypub protocol - we might change this to show all public posts in pubstream at some point.
-	$pubstream = ((is_array($act->obj) && array_key_exists('to', $act->obj) && in_array(ACTIVITY_PUBLIC_INBOX, $act->obj['to'])) ? true : false);
-
-	if(! perm_is_allowed($channel['channel_id'],$observer_hash,'send_stream') && ! ($is_sys_channel && $pubstream)) {
+	if(!perm_is_allowed($channel['channel_id'], $observer_hash, 'send_stream') && !$is_sys_channel) {
 		logger('no permission');
 		return;
 	}
@@ -2206,7 +2021,7 @@ function as_delete_note($channel,$observer_hash,$act) {
 		$stage = DROPITEM_NORMAL;
 
 		// If we are the conversation owner, propagate the delete
-		if(in_array($i['owner_xchan'], [$channel['channel_hash'], $channel['channel_portable_id']]))
+		if($i['owner_xchan'] === $channel['channel_hash'])
 			$stage = DROPITEM_PHASE1;
 
 		drop_item($i['id'],false, $stage);

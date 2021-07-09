@@ -9,11 +9,11 @@
  */
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Queue;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 
 require_once('include/permissions.php');
-require_once('include/queue_fn.php');
 
 /*   GNU social Plugin for Hubzilla
  *
@@ -48,7 +48,7 @@ class StatusNetOAuth extends TwitterOAuth {
 		return $config->site->textlimit;
 	}
 	function accessTokenURL()  { return $this->host.'oauth/access_token'; }
-	function authenticateURL() { return $this->host.'oauth/authenticate'; } 
+	function authenticateURL() { return $this->host.'oauth/authenticate'; }
 	function authorizeURL() { return $this->host.'oauth/authorize'; }
 	function requestTokenURL() { return $this->host.'oauth/request_token'; }
 	function __construct($apipath, $consumer_key, $consumer_secret, $oauth_token = NULL, $oauth_token_secret = NULL) {
@@ -136,12 +136,12 @@ function statusnet_jot_nets(&$a,&$b) {
 	if(! Apps::addon_app_installed(local_channel(), 'statusnet'))
 		return;
 
-	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false))) 
+	if((! local_channel()) || (! perm_is_allowed(local_channel(),'','view_stream',false)))
 		return;
 
 	$statusnet_defpost = get_pconfig(local_channel(),'statusnet','post_by_default');
 	$selected = ((intval($statusnet_defpost) == 1) ? ' checked="checked" ' : '');
-	$b .= '<div class="profile-jot-net"><input type="checkbox" name="statusnet_enable"' . $selected . ' value="1" /> ' 
+	$b .= '<div class="profile-jot-net"><input type="checkbox" name="statusnet_enable"' . $selected . ' value="1" /> '
 		. '<i class="fa fa-fw fa-gnu-social"></i> ' . t('Post to GNU social') . '</div>';
 }
 
@@ -405,7 +405,7 @@ function statusnet_post_hook(&$a,&$b) {
 					$tmp = preg_replace( '/\[\\/?audio(\\s+.*?\]|\])/i', '', $tmp);
 					$linksenabled = get_pconfig($b['uid'],'statusnet','post_taglinks');
 					// if a #tag is linked, don't send the [url] over to SN
-					// that is, don't send if the option is not set in the 
+					// that is, don't send if the option is not set in the
 					// connector settings
 					if ($linksenabled=='0') {
 				// #-tags
@@ -427,8 +427,8 @@ function statusnet_post_hook(&$a,&$b) {
 					// preserve links to webpages
 					$tmp = preg_replace( '/\[url\=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\](\w+.*?)\[\/url\]/i', '$2 $1', $tmp);
 					$tmp = preg_replace( '/\[zrl\=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\](\w+.*?)\[\/zrl\]/i', '$2 $1', $tmp);
-					// find all http or https links in the body of the entry and 
-					// apply the shortener if the link is longer then 20 characters 
+					// find all http or https links in the body of the entry and
+					// apply the shortener if the link is longer then 20 characters
 					if (( strlen($tmp)>$max_char ) && ( $max_char > 0 )) {
 						preg_match_all ( '/(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)/i', $tmp, $allurls  );
 						foreach ($allurls as $url) {
@@ -440,7 +440,7 @@ function statusnet_post_hook(&$a,&$b) {
 							}
 						}
 					}
-					// ok, all the links we want to send out are save, now strip 
+					// ok, all the links we want to send out are save, now strip
 					// away the remaining bbcode
 
 			$msg = bbcode($tmp, [ 'tryoembed' => false, 'cache' => true ]);
@@ -458,7 +458,7 @@ function statusnet_post_hook(&$a,&$b) {
 				$msg = nl2br(substr($msg, 0, $max_char-strlen($shortlink)-4));
 							$msg = str_replace(array('<br>','<br />'),' ',$msg);
 							$e = explode(' ', $msg);
-							//  remove the last word from the cut down message to 
+							//  remove the last word from the cut down message to
 							//  avoid sending cut words to the MicroBlog
 							array_pop($e);
 							$msg = implode(' ', $e);
@@ -493,7 +493,7 @@ function statusnet_post_hook(&$a,&$b) {
 				logger('Send to GNU social failed: queued."' . $result->error . '"');
 				// @fixme - unable to queue media uploads
 				if(! $image) {
-					queue_insert(array(
+					Queue::insert(array(
 						'hash' => random_string(),
 						'account_id' => $b['aid'],
 						'channel_id' => $b['uid'],
@@ -528,12 +528,12 @@ function statusnet_queue_deliver(&$a,&$b) {
 			$result = $dent->post('statuses/update', array('status' => $outq['outq_msg']));
 			if ($result->error) {
 				logger('Send to GNU social failed: "' . $result->error . '"');
-				update_queue_item($outq['outq_hash'],10);
+				Queue::update($outq['outq_hash'], 10);
 			}
 			else {
-				logger('statusnet_post send, result: ' . print_r($result, true) 
+				logger('statusnet_post send, result: ' . print_r($result, true)
 					. "\nmessage: " . $outq['outq_msg'], LOGGER_DEBUG);
-				remove_queue_item($outq['outq_hash']);
+				Queue::remove($outq['outq_hash']);
 			}
 		}
 	}
@@ -542,9 +542,9 @@ function statusnet_queue_deliver(&$a,&$b) {
 }
 
 function statusnet_plugin_admin_post(){
-	
+
 	$sites = array();
-	
+
 	foreach($_POST['sitename'] as $id=>$sitename){
 		$sitename=trim($sitename);
 		$apiurl=trim($_POST['apiurl'][$id]);
@@ -556,7 +556,7 @@ function statusnet_plugin_admin_post(){
 			$secret!="" &&
 			$key!="" &&
 			!x($_POST['delete'][$id])){
-				
+
 				$sites[] = Array(
 					'sitename' => $sitename,
 					'apiurl' => $apiurl,
@@ -566,9 +566,9 @@ function statusnet_plugin_admin_post(){
 				);
 		}
 	}
-	
+
 	$sites = set_config('statusnet','sites', $sites);
-	
+
 }
 
 function statusnet_plugin_admin(&$o){
@@ -644,8 +644,8 @@ function statusnet_fetchtimeline($a, $uid) {
 	$lastid  = get_pconfig($uid, 'statusnet', 'lastid');
 
 		//  get the application name for the SN app
-		//  1st try personal config, then system config and fallback to the 
-		//  hostname of the node if neither one is set. 
+		//  1st try personal config, then system config and fallback to the
+		//  hostname of the node if neither one is set.
 		$application_name  = get_pconfig( $uid, 'statusnet', 'application_name');
 		if ($application_name == "")
 			$application_name  = get_config('statusnet', 'application_name');
