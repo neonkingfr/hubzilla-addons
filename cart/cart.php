@@ -44,7 +44,7 @@ class Cart {
 
 		if(version_compare($curver, $minver) >= 0)
 			return true;
-		
+
 		return false;
 	}
 
@@ -86,7 +86,7 @@ class Cart {
 		}
 
 		return $channels['zot6'];
-	} 
+	}
 
 
   }
@@ -142,7 +142,7 @@ class Cart {
 				$channels['zot']
 			  );
 		}
-	} 
+	}
 
   }
 
@@ -153,7 +153,7 @@ class Cart {
     //if (!$channel) {
       $channel_hash = Cart::z6trans_seller($channel_hash);
       $channel = channelx_by_hash($channel_hash);
-    //} 
+    //}
     if ($channel) {
       foreach($params as $key) {
         Cart::$seller[$key]=$channel[$key];
@@ -172,7 +172,7 @@ class Cart {
     //if (!$channel) {
       $channel_hash = Cart::z6trans_buyer($channel_hash);
       $channel = channelx_by_hash($channel_hash);
-    //} 
+    //}
     if ($channel) {
         $params=Array("channel_id","channel_account_id","channel_primary","channel_name","channel_address","channel_hash","channel_timezone");
         foreach($params as $key) {
@@ -1503,8 +1503,10 @@ function cart_post(&$a) {
 function cart_mod_content(&$arr) {
 
 	if(! Apps::addon_app_installed(App::$profile['uid'], 'cart')) {
-		$arr['content'] = '<b>Cart App (Not Installed):</b><br>';
-		$arr['content'] .= t('Cart utilities for orders and payments');
+		//Do not display any associated widgets at this point
+		App::$pdl = '';
+		$papp = Apps::get_papp('Cart');
+		$arr['content'] = Apps::app_render($papp, 'module');
 		return;
 	}
 
@@ -1580,8 +1582,8 @@ function cart_pagecontent($a=null) {
 		} else {
 	                $observerhash = get_observer_hash();
 			$r = null;
-	                if ($observerhash === '') { 
-				$observerhash = null; 
+	                if ($observerhash === '') {
+				$observerhash = null;
 			} else {
 				$buyerhashes=Cart::get_xchan_hashes($observerhash);
 				$buyerhashes_sql = Cart::channel_hashes_sql ($buyerhashes,'buyer_xchan');
@@ -1863,7 +1865,7 @@ function cart_do_fulfillitem ($iteminfo) {
   $order=cart_loadorder($orderhash);
   $iteminfo = isset($iteminfo["item_type"]) ? $iteminfo : $order["items"][$iteminfo["id"]];
   //$iteminfo = $order["items"][$iteminfo["id"]];
-  
+
   $valid_itemtypes = cart_getitemtypes();
 	$itemtype = isset($iteminfo["item_type"]) ? $iteminfo["item_type"] : null;
   if ($itemtype && !in_array($iteminfo['item_type'],$valid_itemtypes)) {
@@ -1972,7 +1974,7 @@ function cart_fulfillitem_markfulfilled(&$hookdata) {
   $orderhash=$hookdata["item"]["order_hash"];
   $itemid=$hookdata["item"]["id"];
 
-  
+
   $r=q("update cart_orderitems set item_fulfilled = 1 where order_hash = '%s' and id=%d",
 			dbesc($orderhash),intval($itemid));
   $item_meta=cart_getitem_meta ($itemid,$orderhash);
