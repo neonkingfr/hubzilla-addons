@@ -66,6 +66,10 @@ function sse_item_stored($item) {
 
 	foreach($hashes as $hash) {
 
+		if (!$hash) {
+			continue;
+		}
+
 		if($sys) {
 			$current_channel = channelx_by_hash($hash);
 			$item_uid = $current_channel ? $current_channel['channel_id'] : $item_uid;
