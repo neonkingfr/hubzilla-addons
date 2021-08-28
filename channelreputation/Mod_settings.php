@@ -30,7 +30,10 @@ class Channelreputation extends Controller {
 		}
 
 		if (!Apps::addon_app_installed(local_channel(), 'channelreputation')) {
-				return '<h2>The Channel Reputation Addon is not installed on this channel.</h2>';
+			//Do not display any associated widgets at this point
+			App::$pdl = '';
+			$papp = Apps::get_papp('Channel Reputation');
+			return Apps::app_render($papp, 'module');
 		}
 
 		return \ChannelReputation_Utils::feature_settings();

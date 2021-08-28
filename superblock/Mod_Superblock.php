@@ -17,10 +17,8 @@ class Superblock extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'superblock')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Superblock App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Block channels');
-			return $o;
+			$papp = Apps::get_papp('Superblock');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$words = get_pconfig(local_channel(),'system','blocked');

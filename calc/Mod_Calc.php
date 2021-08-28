@@ -2,6 +2,8 @@
 
 namespace Zotlabs\Module;
 
+use App;
+use \Zotlabs\Lib\Apps;
 
 class Calc extends \Zotlabs\Web\Controller {
 
@@ -264,10 +266,17 @@ id.value = ""
 </script>
 
 EOT;
-\App::$page['htmlhead'] .= $x;
+App::$page['htmlhead'] .= $x;
 }
 
 function get() {
+
+	if(local_channel() && !Apps::addon_app_installed(local_channel(), 'calc')) {
+		//Do not display any associated widgets at this point
+		App::$pdl = '';
+		$papp = Apps::get_papp('Calculator');
+		return Apps::app_render($papp, 'module');
+	}
 
 $o = '';
 
@@ -281,7 +290,7 @@ td, th {
 <h3>Calculator</h3>
 <br /><br />
 <table>
-<tbody><tr><td> 
+<tbody><tr><td>
 <table style="background-color: #af9999;" border="1">
 <tbody><tr><td>
 <table border="1" style="padding: 2px;" cellpadding="2" cellspacing="2">
@@ -308,7 +317,7 @@ td, th {
 	<td><input name="multiplication" value="&nbsp;&nbsp;*&nbsp;&nbsp;&nbsp;&nbsp;" onclick="multiplyNumbers()" type="button"></td>
 </tr><tr align="left" valign="middle">
 	<td><input name="zero" value="&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;" onclick="addDisplay(0)" type="button"></td>
-	<td><input name="pi" value="&nbsp;Pi&nbsp;&nbsp;" onclick="addDisplay(Math.PI)" type="button"> </td> 
+	<td><input name="pi" value="&nbsp;Pi&nbsp;&nbsp;" onclick="addDisplay(Math.PI)" type="button"> </td>
 	<td><input name="dot" value="&nbsp;&nbsp;&nbsp;.&nbsp;&nbsp;&nbsp;" onclick='addDisplay(".")' type="button"></td>
 	<td><input name="division" value="&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;" onclick="divideNumbers()" type="button"></td>
 </tr><tr align="left" valign="middle">
@@ -330,13 +339,13 @@ td, th {
 </form>
 
 	<!--
-	<TD VALIGN=top> 
+	<TD VALIGN=top>
 		<B>NOTE:</B> All sine and cosine calculations are
 		<br>done in radians. Remember to convert first
 		<br>if using degrees.
 	</TD>
 	-->
-	
+
 </td></tr></tbody></table>
 
 
