@@ -5,6 +5,8 @@ namespace Zotlabs\Module;
 use App;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\AConfig;
+use Zotlabs\Lib\System;
+
 
 class TOTPController extends \Zotlabs\Web\Controller {
 	function totp_installed() {
