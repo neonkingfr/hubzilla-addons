@@ -16,7 +16,7 @@ class Nsabait extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'nsabait')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-			$papp = Apps::get_papp('NSFW');
+			$papp = Apps::get_papp('NSA Bait');
 			return Apps::app_render($papp, 'module');
 		}
 		else
