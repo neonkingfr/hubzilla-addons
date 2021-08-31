@@ -1,4 +1,4 @@
-version: 1.2
+version: 2
 url: $baseurl/content_import
 requires: local_channel
 name: Content Import

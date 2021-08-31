@@ -11,17 +11,14 @@ class Sendzid extends Controller {
 		if(! local_channel())
 			return;
 
-		$desc = t('Send your identity to all websites');
-
 		if(! Apps::addon_app_installed(local_channel(), 'sendzid')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Sendzid App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= $desc;
-			return $o;
+			$papp = Apps::get_papp('Send ZID');
+			return Apps::app_render($papp, 'module');
 		}
 
+		$desc = t('Send your identity to all websites');
 		$content = '<div class="section-content-info-wrapper">' . $desc . '</div>';
 
 		$tpl = get_markup_template("settings_addon.tpl");

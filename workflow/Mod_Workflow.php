@@ -79,8 +79,10 @@ class Workflow extends Controller {
 		}
 
 		if (! Apps::addon_app_installed(App::$profile_uid,'workflow')) {
-			App::$error = 404;
-			return $content;
+			//Do not display any associated widgets at this point
+			App::$pdl = '';
+			$papp = Apps::get_papp('Workflow / Issue Tracking');
+			return Apps::app_render($papp, 'module');
 		}
 
 		return Workflow_Utils::get();

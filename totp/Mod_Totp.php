@@ -15,7 +15,13 @@ class TOTPController extends \Zotlabs\Web\Controller {
 		return AConfig::get($acct_id, 'totp', 'secret', null);
 		}
 	function get() {
-		if (!$this->totp_installed()) return;
+		if (!$this->totp_installed()) {
+			//Do not display any associated widgets at this point
+			App::$pdl = '';
+			$papp = Apps::get_papp('TOTP');
+			return Apps::app_render($papp, 'module');
+		}
+
 		$account = \App::get_account();
 		if (!$account) goaway(z_root());
 		$o .= replace_macros(get_markup_template('totp.tpl','addon/totp'),
