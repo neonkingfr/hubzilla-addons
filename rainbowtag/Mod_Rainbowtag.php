@@ -15,11 +15,11 @@ class Rainbowtag extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'rainbowtag')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-			$papp = Apps::get_papp('NSFW');
+			$papp = Apps::get_papp('Rainbow Tag');
 			return Apps::app_render($papp, 'module');
 		}
 
-		$content = '<h3>' . t('Rainbow Tag App') '</h3>';
+		$content = '<h3>' . t('Rainbow Tag App') . '</h3>';
 		$content .= t('Add some colour to tag clouds');
 
 		$tpl = get_markup_template("settings_addon.tpl");
