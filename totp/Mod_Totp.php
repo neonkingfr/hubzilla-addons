@@ -2,6 +2,7 @@
 
 namespace Zotlabs\Module;
 
+use App;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\AConfig;
 
@@ -22,7 +23,7 @@ class TOTPController extends \Zotlabs\Web\Controller {
 			return Apps::app_render($papp, 'module');
 		}
 
-		$account = \App::get_account();
+		$account = App::get_account();
 		if (!$account) goaway(z_root());
 		$o .= replace_macros(get_markup_template('totp.tpl','addon/totp'),
 			[
@@ -39,7 +40,7 @@ class TOTPController extends \Zotlabs\Web\Controller {
 		# AJAX POST handler
 		if (!$this->totp_installed())
 			json_return_and_die(array("status" => false));
-		$account = \App::get_account();
+		$account = App::get_account();
 		if (!$account) json_return_and_die(array("status" => false));
 		if (isset($_POST['totp_code'])) {
 			require_once("addon/totp/class_totp.php");
