@@ -46,7 +46,7 @@ class TOTPController extends \Zotlabs\Web\Controller {
 			require_once("addon/totp/class_totp.php");
 			$ref = intval($_POST['totp_code']);
 			$secret = $this->get_secret($account['account_id']);
-			$totp = new \TOTP(get_config('system', 'banner'),
+			$totp = new \TOTP(ucfirst(System::get_platform_name()),
 						$account['account_email'], $secret, 30, 6);
 			$match = ($totp->authcode($totp->timestamp()) == $ref);
 			if ($match) $_SESSION['2FA_VERIFIED'] = true;
