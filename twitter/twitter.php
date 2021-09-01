@@ -2,14 +2,14 @@
 /**
  * Name: Twitter Connector
  * Description: Relay public postings to a connected Twitter account
- * Version: 1.3.2
+ * Version: 1.3.3
  * Author: Tobias Diekershoff <https://f.diekershoff.de/profile/tobias>
  * Author: Michael Vogel <https://pirati.ca/profile/heluecht>
  * Author: Mike Macgirvin <https://zothub.com/channel/mike>
  * Maintainer: Max Kostikov <https://tiksi.net/channel/kostikov>
  *
  * Copyright (c) 2011-2013 Tobias Diekershoff, Michael Vogel
- * Copyright (c) 2013-2019 Hubzilla Developers
+ * Copyright (c) 2013-2021 Hubzilla Developers
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -119,7 +119,7 @@ function twitter_post_local(&$a,&$b) {
 		return;
 
 	$twitter_post = Apps::addon_app_installed($b['uid'], 'twitter');
-	$twitter_enable = (($twitter_post && x($_REQUEST,'twitter_enable')) ? intval($_REQUEST['twitter_enable']) : 0);
+	$twitter_enable = ($twitter_post && x($_REQUEST,'twitter_enable') ? intval($_REQUEST['twitter_enable']) : 0);
 
 	// if API is used, default to the chosen settings
 	if($_REQUEST['api_source'] && intval(get_pconfig($b['uid'],'twitter','post_by_default')))
@@ -300,17 +300,20 @@ function twitter_post_hook(&$a,&$b) {
 	 * Post to Twitter
 	 */
 
-    if(! is_item_normal($b) || $b['item_private'] || ($b['created'] !== $b['edited']))
-        return;
-
-    if(! perm_is_allowed($b['uid'], '', 'view_stream', false))
-        return;
-
-    if(! strstr($b['postopts'], 'twitter'))
-        return;
-
-    if($b['parent'] != $b['id'])
-        return;
+	if (! Apps::addon_app_installed($b['uid'], 'twitter') || ! boolval(get_pconfig($b['uid'],'twitter','post_by_default')))
+		return;
+		
+	if(! is_item_normal($b) || $b['item_private'] || ($b['created'] !== $b['edited']))
+		return;
+		
+	if(! perm_is_allowed($b['uid'], '', 'view_stream', false))
+		return;
+		
+	if(! strstr($b['postopts'], 'twitter'))
+		return;
+		
+	if($b['parent'] != $b['id'])
+		return;
 		
 	logger('twitter post invoked');
 
@@ -455,7 +458,7 @@ function twitter_post_hook(&$a,&$b) {
 //			if ($iscomment)
 //				$post["in_reply_to_status_id"] = substr($orig_post["uri"], 9);
 
-			logger('Tweet send result: ' . print_r($result, true), LOGGER_DEBUG);
+			logger('Tweet send result: ' . print_r((array)$result, true), LOGGER_DEBUG);
 			
 			if ($result->httpstatus != 200) {
 				logger('Send to Twitter failed with HTTP status code ' . $result->httpstatus . '; error message: "' . print_r($result->errors, true) . '"');
@@ -494,7 +497,7 @@ logger('Twitter admin');
 
 	$o = replace_macros($t, array(
 		'$submit' => t('Submit Settings'),
-								// name, label, value, help, [extra values]
+		// name, label, value, help, [extra values]
 		'$consumerkey' => array('consumerkey', t('Consumer Key'),  get_config('twitter', 'consumerkey' ), ''),
                 '$consumersecret' => array('consumersecret', t('Consumer Secret'),  get_config('twitter', 'consumersecret' ), '')
 	));
