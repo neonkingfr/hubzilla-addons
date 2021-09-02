@@ -309,7 +309,7 @@ function twitter_post_hook(&$a,&$b) {
 	if (! perm_is_allowed($b['uid'], '', 'view_stream', false))
 		return;
 
-	if (strpos($b['mid'], z_root() . '/item/') === 0 && ! strstr($b['postopts'], 'twitter')
+	if (strpos($b['mid'], z_root() . '/item/') === 0 && ! strstr($b['postopts'], 'twitter'))
 		return;
 
 	if (strpos($b['mid'], z_root() . '/item/') === false && (strstr($b['postopts'], 'twitter') || ! boolval(get_pconfig($b['uid'], 'twitter', 'post_by_default'))))
