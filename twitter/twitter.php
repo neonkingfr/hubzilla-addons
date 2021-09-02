@@ -300,7 +300,7 @@ function twitter_post_hook(&$a,&$b) {
 	 * Post to Twitter
 	 */
 
-	if (! (Apps::addon_app_installed($b['uid'], 'twitter')))
+	if (! Apps::addon_app_installed($b['uid'], 'twitter'))
 		return;
 		
 	if(! is_item_normal($b) || $b['item_private'] || ($b['created'] !== $b['edited']))
