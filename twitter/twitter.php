@@ -303,16 +303,19 @@ function twitter_post_hook(&$a,&$b) {
 	if (! Apps::addon_app_installed($b['uid'], 'twitter'))
 		return;
 		
-	if(! is_item_normal($b) || $b['item_private'] || ($b['created'] !== $b['edited']))
+	if (! is_item_normal($b) || $b['item_private'] || ($b['created'] !== $b['edited']))
 		return;
 		
-	if(! perm_is_allowed($b['uid'], '', 'view_stream', false))
+	if (! perm_is_allowed($b['uid'], '', 'view_stream', false))
 		return;
 
-	if((strpos($b['mid'], z_root() . '/item/') === 0 && ! strstr($b['postopts'], 'twitter')) || strstr($b['postopts'], 'twitter'))
+	if (strpos($b['mid'], z_root() . '/item/') === 0 && ! strstr($b['postopts'], 'twitter')
 		return;
 
-	if($b['parent'] !== $b['id'])
+	if (strpos($b['mid'], z_root() . '/item/') === false && (strstr($b['postopts'], 'twitter') || ! boolval(get_pconfig($b['uid'], 'twitter', 'post_by_default'))))
+		return;
+
+	if ($b['parent'] !== $b['id'])
 		return;
 		
 	logger('twitter post invoked');
