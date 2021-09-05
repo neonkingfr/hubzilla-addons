@@ -138,7 +138,7 @@ function asfetch_profile($x) {
 	if(! $r)
 		return [];
 
-	return asencode_person($r[0]);
+	return Activity::encode_person($r[0]);
 
 }
 
@@ -1667,8 +1667,6 @@ function as_create_note($channel,$observer_hash,$act) {
 			}
 
 			$diff = array_diff($act->raw_recips['to'], $mentions);
-
-			hz_syslog(print_r(count($diff),true));
 
 			if(!count($diff)) {
 				$s['item_private'] = 2;

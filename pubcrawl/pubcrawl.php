@@ -129,7 +129,11 @@ function pubcrawl_encode_person(&$arr) {
 		}
 	}
 	else {
-		$collections = get_xconfig($arr['xchan']['xchan_hash'], 'activitypub', 'collections', []);
+		$collections = Activity::get_actor_collections($arr['xchan']['xchan_hash']);
+		if(empty($collections)) {
+			$collections = get_xconfig($arr['xchan']['xchan_hash'], 'activitypub', 'collections', []);
+		}
+
 		if ($collections) {
 			$arr['encoded'] = array_merge($arr['encoded'], $collections);
 		}
@@ -611,7 +615,7 @@ function pubcrawl_notifier_hub(&$arr) {
 	}
 
 	if ($is_profile) {
-		$p = asencode_person($arr['channel']);
+		$p = Activity::encode_person($arr['channel']);
 		if (!$p)
 			return;
 
@@ -675,7 +679,11 @@ function pubcrawl_notifier_hub(&$arr) {
 
 		// See if we can deliver all of them at once
 
-		$x = get_xconfig($arr['hub']['hubloc_hash'], 'activitypub', 'collections');
+		$x = Activity::get_actor_collections($arr['hub']['hubloc_hash']);
+		if(empty($x)) {
+			$x = get_xconfig($arr['hub']['hubloc_hash'], 'activitypub', 'collections');
+		}
+
 		if ($x && $x['sharedInbox']) {
 			logger('using publicInbox delivery for ' . $arr['hub']['hubloc_url'], LOGGER_DEBUG);
 			$contact['hubloc_callback'] = $x['sharedInbox'];
