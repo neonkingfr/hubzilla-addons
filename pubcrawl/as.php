@@ -1212,6 +1212,48 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['owner_xchan'] = $observer_hash;
 	}
 
+	if ($act->recips && (!in_array(ACTIVITY_PUBLIC_INBOX, $act->recips))) {
+		$s['item_private'] = 1;
+
+		// an ugly way to recognise a mastodon direct message
+
+		if ($act->obj['type'] === 'Note' &&
+			!isset($act->raw_recips['cc']) &&
+			is_array($act->raw_recips['to']) &&
+			in_array(channel_url($channel), $act->raw_recips['to']) &&
+			is_array($act->obj['tag']) &&
+			count($act->raw_recips['to']) === count($act->obj['tag'])
+		) {
+			$mentions = [];
+			foreach($act->obj['tag'] as $t) {
+				if ($t['type'] === 'Mention' && isset($t['href'])) {
+					$mentions[] = $t['href'];
+				}
+			}
+
+			$diff = array_diff($act->raw_recips['to'], $mentions);
+
+			if(!count($diff)) {
+				$s['item_private'] = 2;
+			}
+		}
+
+		// the litebub way to determine a direct message (pleroma, friendica)
+		if (is_array($act->data)) {
+			if (array_key_exists('directMessage',$act->data) && intval($act->data['directMessage'])) {
+				$s['item_private'] = 2;
+			}
+		}
+
+	}
+
+	if (intval($s['item_private']) === 2) {
+		if (!perm_is_allowed($channel['channel_id'], $observer_hash, 'post_mail')) {
+			logger('no post_mail permission');
+			return;
+		}
+	}
+
 	$announce_author = as_get_attributed_to_person($act);
 
 	$s['author_xchan'] = (($announce) ? $announce_author : $act->actor['id']);
@@ -1646,41 +1688,6 @@ function as_create_note($channel,$observer_hash,$act) {
 				$s['obj']['location'] = $eventptr['location']['content'];
 		}
 	}
-
-	if ($act->recips && (!in_array(ACTIVITY_PUBLIC_INBOX, $act->recips))) {
-		$s['item_private'] = 1;
-
-		// an ugly way to recognise a mastodon direct message
-
-		if ($act->obj['type'] === 'Note' &&
-			!isset($act->raw_recips['cc']) &&
-			is_array($act->raw_recips['to']) &&
-			in_array(channel_url($channel), $act->raw_recips['to']) &&
-			is_array($act->obj['tag']) &&
-			count($act->raw_recips['to']) === count($act->obj['tag'])
-		) {
-			$mentions = [];
-			foreach($act->obj['tag'] as $t) {
-				if ($t['type'] === 'Mention' && isset($t['href'])) {
-					$mentions[] = $t['href'];
-				}
-			}
-
-			$diff = array_diff($act->raw_recips['to'], $mentions);
-
-			if(!count($diff)) {
-				$s['item_private'] = 2;
-			}
-		}
-
-		// the litebub way to determine a direct message (pleroma, friendica)
-		if (is_array($act->data)) {
-			if (array_key_exists('directMessage',$act->data) && intval($act->data['directMessage'])) {
-				$s['item_private'] = 2;
-			}
-		}
-
-	 }
 
 	set_iconfig($s,'activitypub','recips',$act->raw_recips);
 	if($parent) {
