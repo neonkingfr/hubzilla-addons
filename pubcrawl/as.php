@@ -1199,6 +1199,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	$announce = (($act->type === 'Announce') ? true  : false);
 	$is_sys_channel = is_sys_channel($channel['channel_id']);
 	$parent = ((array_key_exists('inReplyTo',$act->obj) && !$announce) ? urldecode($act->obj['inReplyTo']) : false);
+	$allowed = true;
 
 	if(!$parent) {
 		if(!perm_is_allowed($channel['channel_id'], $observer_hash, 'send_stream') && !$is_sys_channel) {
@@ -1206,7 +1207,7 @@ function as_create_note($channel,$observer_hash,$act) {
 			// We might have got it via announce or imported it manually.
 			if($act->type !== 'Update') {
 				logger('no permission');
-				return;
+				$allowed = false;
 			}
 		}
 		$s['owner_xchan'] = $observer_hash;
@@ -1248,10 +1249,15 @@ function as_create_note($channel,$observer_hash,$act) {
 	}
 
 	if (intval($s['item_private']) === 2) {
+		$allowed = true;
 		if (!perm_is_allowed($channel['channel_id'], $observer_hash, 'post_mail')) {
 			logger('no post_mail permission');
-			return;
+			$allowed = false;
 		}
+	}
+
+	if (!$allowed) {
+		return;
 	}
 
 	$announce_author = as_get_attributed_to_person($act);
