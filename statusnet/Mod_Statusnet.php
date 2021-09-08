@@ -34,7 +34,7 @@ class Statusnet extends Controller {
 			del_pconfig(local_channel(), 'statusnet', 'lastid');
 			del_pconfig(local_channel(), 'statusnet', 'mirror_posts');
 			del_pconfig(local_channel(), 'statusnet', 'intelligent_shortening');
-		} 
+		}
 		else {
 
 
@@ -56,14 +56,14 @@ class Statusnet extends Controller {
 							set_pconfig(local_channel(), 'statusnet', 'consumersecret', $asn['consumersecret'] );
 							set_pconfig(local_channel(), 'statusnet', 'baseapi', $asn['apiurl'] );
 							set_pconfig(local_channel(), 'statusnet', 'application_name', $asn['applicationname'] );
-						} 
+						}
 						else {
 							notice( t('Please contact your site administrator.<br />The provided API URL is not valid.').EOL.$asn['apiurl'].EOL );
 						}
 					}
 				}
 				goaway(z_root().'/statusnet');
-			} 
+			}
 			else {
 
 				if (isset($_POST['statusnet-consumersecret'])) {
@@ -80,11 +80,11 @@ class Statusnet extends Controller {
 						set_pconfig(local_channel(), 'statusnet', 'consumersecret', $_POST['statusnet-consumersecret']);
 						set_pconfig(local_channel(), 'statusnet', 'baseapi', $apibase );
 						set_pconfig(local_channel(), 'statusnet', 'application_name', $_POST['statusnet-applicationname'] );
-					} 
+					}
 					else {
 						//  the API path is not correct, maybe missing trailing / ?
 						$apibase = $apibase . '/';
-						
+
 						$x = z_fetch_url( $apibase . 'statusnet/version.xml', false, 0, array('novalidate' => true) );
 						$c = $x['body'];
 						if (strlen($c) > 0) {
@@ -92,14 +92,14 @@ class Statusnet extends Controller {
 							set_pconfig(local_channel(), 'statusnet', 'consumerkey', $_POST['statusnet-consumerkey']);
 							set_pconfig(local_channel(), 'statusnet', 'consumersecret', $_POST['statusnet-consumersecret']);
 							set_pconfig(local_channel(), 'statusnet', 'baseapi', $apibase );
-						} 
+						}
 						else {
 							//  still not the correct API base, let's do noting
 							notice( t('We could not contact the GNU social API with the Path you entered.').EOL );
 						}
 					}
 					goaway(z_root().'/statusnet');
-				} 
+				}
 				else {
 
 					if (isset($_POST['statusnet-pin'])) {
@@ -119,7 +119,7 @@ class Statusnet extends Controller {
 											set_pconfig(local_channel(),'statusnet', 'post_taglinks', 1);
 						//  reload the Addon Settings page, if we don't do it see Bug #42
 						goaway(z_root().'/statusnet');
-					} 
+					}
 					else {
 						//  if no PIN is supplied in the POST variables, the user has changed the setting
 						//  to post a dent for every new __public__ posting to the wall
@@ -142,10 +142,8 @@ class Statusnet extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'statusnet')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Hubzilla Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Relay public postings to a connected GNU social account (formerly StatusNet)');
-			return $o;
+			$papp = Apps::get_papp('GNU-Social Crosspost Connector');
+			return Apps::app_render($papp, 'module');
 		}
 
 		/***

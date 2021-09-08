@@ -2,8 +2,11 @@
 
 namespace Zotlabs\Module;
 
+use App;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\AConfig;
+use Zotlabs\Lib\System;
+
 
 class TOTPController extends \Zotlabs\Web\Controller {
 	function totp_installed() {
@@ -15,8 +18,14 @@ class TOTPController extends \Zotlabs\Web\Controller {
 		return AConfig::get($acct_id, 'totp', 'secret', null);
 		}
 	function get() {
-		if (!$this->totp_installed()) return;
-		$account = \App::get_account();
+		if (!$this->totp_installed()) {
+			//Do not display any associated widgets at this point
+			App::$pdl = '';
+			$papp = Apps::get_papp('TOTP');
+			return Apps::app_render($papp, 'module');
+		}
+
+		$account = App::get_account();
 		if (!$account) goaway(z_root());
 		$o .= replace_macros(get_markup_template('totp.tpl','addon/totp'),
 			[
@@ -33,13 +42,13 @@ class TOTPController extends \Zotlabs\Web\Controller {
 		# AJAX POST handler
 		if (!$this->totp_installed())
 			json_return_and_die(array("status" => false));
-		$account = \App::get_account();
+		$account = App::get_account();
 		if (!$account) json_return_and_die(array("status" => false));
 		if (isset($_POST['totp_code'])) {
 			require_once("addon/totp/class_totp.php");
 			$ref = intval($_POST['totp_code']);
 			$secret = $this->get_secret($account['account_id']);
-			$totp = new \TOTP(get_config('system', 'banner'),
+			$totp = new \TOTP(ucfirst(System::get_platform_name()),
 						$account['account_email'], $secret, 30, 6);
 			$match = ($totp->authcode($totp->timestamp()) == $ref);
 			if ($match) $_SESSION['2FA_VERIFIED'] = true;

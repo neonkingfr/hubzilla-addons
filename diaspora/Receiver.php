@@ -1113,7 +1113,7 @@ class Diaspora_Receiver {
 			return;
 		}
 
-		if(! perm_is_allowed($this->importer['channel_id'], $contact['xchan_hash'], 'send_stream')) {
+		if(! perm_is_allowed($this->importer['channel_id'], $contact['xchan_hash'], 'post_mail')) {
 			logger('diaspora_conversation: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
@@ -1243,6 +1243,13 @@ class Diaspora_Receiver {
 		$msg_diaspora_handle = notags($this->get_author());
 		$msg_conversation_guid = notags(unxmlify($this->xmlbase['conversation_guid']));
 
+		$xchan = find_diaspora_person_by_handle($msg_diaspora_handle);
+
+		if(! perm_is_allowed($this->importer['channel_id'], $xchan['xchan_hash'], 'post_mail')) {
+			logger('Ignoring this author.', LOGGER_DEBUG);
+			return 202;
+		}
+
 		if (strpos($msg_conversation_guid, 'conversation:') === 0)
 			$msg_conversation_guid = substr($msg_conversation_guid, 13);
 
@@ -1255,8 +1262,6 @@ class Diaspora_Receiver {
 			logger('DM duplicate message', LOGGER_DEBUG);
 			return 202;
 		}
-
-		$xchan = find_diaspora_person_by_handle($msg_diaspora_handle);
 
 		$r = q("SELECT * FROM item WHERE uid = %d AND uuid = '%s'",
 			intval($this->importer['channel_id']),

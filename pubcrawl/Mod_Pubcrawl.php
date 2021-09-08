@@ -21,7 +21,7 @@ class Pubcrawl extends Controller {
 		check_form_security_token_redirectOnErr('/pubcrawl', 'pubcrawl');
 
 		set_pconfig(local_channel(),'activitypub','downgrade_media', 1 - intval($_POST['activitypub_send_media']));
-		set_pconfig(local_channel(),'activitypub','include_groups',intval($_POST['include_groups']));		
+		set_pconfig(local_channel(),'activitypub','include_groups',intval($_POST['include_groups']));
 		info( t('ActivityPub Protocol Settings updated.') . EOL);
 
 	}
@@ -31,17 +31,14 @@ class Pubcrawl extends Controller {
 		if(! local_channel())
 			return;
 
-		$desc = t('The activitypub protocol does not support location independence. Connections you make within that network may be unreachable from alternate channel locations.');
-
 		if(! Apps::addon_app_installed(local_channel(), 'pubcrawl')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Activitypub Protocol App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= $desc;
-			return $o;
+			$papp = Apps::get_papp('Activitypub Protocol');
+			return Apps::app_render($papp, 'module');
 		}
 
+		$desc = t('The activitypub protocol does not support location independence. Connections you make within that network may be unreachable from alternate channel locations.');
 		$yes_no = [t('No'),t('Yes')];
 
 		$sc = '<div class="section-content-info-wrapper">' . $desc . '</div><br>';

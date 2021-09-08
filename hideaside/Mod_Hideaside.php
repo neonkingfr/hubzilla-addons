@@ -20,13 +20,14 @@ class Hideaside extends Controller {
 		App::$pdl = '';
 
 		if(! Apps::addon_app_installed(local_channel(), 'hideaside')) {
-			$o = '<b>' . t('Hide Aside App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Fade out aside areas after a while when using endless scroll');
-			return $o;
+			//Do not display any associated widgets at this point
+			App::$pdl = '';
+			$papp = Apps::get_papp('Hide Aside');
+			return Apps::app_render($papp, 'module');
 		}
-		$o = '<b>' . t('Hide Aside App') . ' (' . t('Installed') . '):</b><br>';
+		$o = '<h3>' . t('Hide Aside App') . '</h3>';
 		$o .= t('Fade out aside areas after a while when using endless scroll');
 		return $o;
 	}
-	
+
 }

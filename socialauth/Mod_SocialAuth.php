@@ -14,9 +14,9 @@ class SocialAuthSignin extends Controller {
 		require_once __DIR__ . '/include/config.php';
 		$providers = \SocialAuthConfig::getConfiguredProviders();
 		logger('Configured providers: ' . print_r($providers, true), LOGGER_DEBUG);
-		
+
 		logger('Request provider = '. $provider, LOGGER_DEBUG);
-		
+
 		// Check if provider is supported
 		if (! in_array($provider, $providers) ) {
 			logger('Provider "'. $provider . '" not supported - ABORT', LOGGER_DEBUG);
@@ -85,15 +85,15 @@ class SocialAuthSignin extends Controller {
 			// first pass: provider is ... provided
 			if ($auth->isConnectedWith($provider)) {
 				logger('Socialauth - connected to ' . $provider. '!', LOGGER_DEBUG);
-				
+
 				socialauth_signin($provider, $auth);
 			} else {
 				logger('Socialauth - not connected to ' . $provider . ' yet', LOGGER_DEBUG);
 
 				// remember provider for callback
 				$storage = new \Hybridauth\Storage\Session();
-				$storage->set('provider', $provider); 
-				
+				$storage->set('provider', $provider);
+
 				// authentication should trigger callback from the provider to this page
 				$adapter = $auth->authenticate($provider);
 			}
@@ -110,7 +110,7 @@ class SocialAuthSignin extends Controller {
 		catch ( \Exception $e ) {
 			logger('Unknown issue: ' . print_r( $e->getMessage(), true), LOGGER_NORMAL, LOG_ERR);
 			info ( t('Unknown issue') . EOL );
-		}	
+		}
 	}
 }
 
@@ -125,7 +125,7 @@ function socialauth_signin($provider, $auth)
 		}
 
 		if (\SocialAuthConfig::isCustomProvider($provider)) {
-		
+
 			// get the user endpoint to provide to adapter to be able to send user profile api request
 			$config = $auth->getProviderConfig($provider);
 			$endpoints = $config['endpoints'];
@@ -159,7 +159,7 @@ function socialauth_signin($provider, $auth)
 
 			$channel_id = $record['account_default_channel'];
 			$_SESSION['uid'] = $channel_id;
-				
+
 			require_once('include/security.php');
 			authenticate_success($record, null, true, false, true, true);
 
@@ -182,7 +182,7 @@ function socialauth_signin($provider, $auth)
 	catch ( \Exception $e ) {
 		logger('Unknown issue: ' . print_r( $e->getMessage(), true), LOGGER_NORMAL, LOG_ERR);
 		info ( t('Unknown issue') . EOL );
-	}	
+	}
 
 
 }
@@ -197,10 +197,8 @@ class SocialAuth extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'socialauth')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>Social Authentication App (Not Installed):</b><br>';
-			$o .= t('Sign in to Hubzilla using a social account');
-			return $o;
+			$papp = Apps::get_papp('Social authentication');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$content .= '<div class="section-content-info-wrapper">';
@@ -210,7 +208,7 @@ class SocialAuth extends Controller {
 		$content .= '<div class="section-content-info-wrapper">';
 		$content .= t('This app enables one or more social provider sign-in buttons on the login page.');
                 $content .= '</div>';
-		
+
 		$yes_no = array( t('No') , t('Yes') );
 
 		require_once __DIR__ . '/include/config.php';
@@ -252,7 +250,7 @@ class SocialAuth extends Controller {
 
 			// radio button enabled/disabled
 			$content .= replace_macros(get_markup_template('field_checkbox.tpl'),
-				[	
+				[
 					'$field' => [\SocialAuthConfig::getKey($name, 'enabled'), t('Enable ' . $str) . $displayName, $enabled, '', $yes_no]
 				]
 			);
@@ -284,14 +282,14 @@ class SocialAuth extends Controller {
 								'$field' => [ \SocialAuthConfig::getKey($name, $prop), $prop, $value, t('Word')]
 							]
 						);
-					}	
+					}
 				} else {
 					logger("Missing custom endpoints", LOGGER_NORMAL, LOG_ERR);
 				}
 			}
 
 		}
-		
+
 		$content .= replace_macros( get_markup_template('field_input.tpl'),
 			[
 				'$field' => ["CustomProvider", t('Add a custom provider'), "", t('Word')]
@@ -320,7 +318,7 @@ class SocialAuth extends Controller {
 				$remove_provider_select_array
 			)
 		));
- 
+
 		$o = replace_macros(get_markup_template('settings_addon.tpl'), array(
 			'$action_url' => 'socialauth',
 			'$form_security_token' => get_form_security_token("socialauth"),
@@ -329,10 +327,10 @@ class SocialAuth extends Controller {
 			'$baseurl'   => z_root(),
 			'$submit'    => t('Submit'),
 		));
-		
+
 		return $o;
 	}
-	
+
 	function post() {
 
 		if(! local_channel())
@@ -399,4 +397,4 @@ class SocialAuth extends Controller {
 		info( t('Social authentication settings saved.') . EOL);
 	}
 }
- 
+

@@ -28,10 +28,8 @@ class Skeleton extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'skeleton')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Skeleton App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('A skeleton for addons, you can copy/paste');
-			return $o;
+			$papp = Apps::get_papp('Skeleton');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$some_setting = get_pconfig( $id, 'skeleton', 'some_setting');

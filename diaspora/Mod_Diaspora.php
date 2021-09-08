@@ -54,10 +54,8 @@ class Diaspora extends Controller {
 		if (!Apps::addon_app_installed(local_channel(), 'diaspora')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Diaspora Protocol App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= $desc;
-			return $o;
+			$papp = Apps::get_papp('Diaspora Protocol');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$pubcomments = get_pconfig(local_channel(), 'system', 'diaspora_public_comments', 1);

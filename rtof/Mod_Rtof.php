@@ -32,10 +32,8 @@ class Rtof extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'rtof')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Friendica Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Relay public postings to a connected Friendica account');
-			return $o;
+			$papp = Apps::get_papp('Friendica Crosspost Connector');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$api     = get_pconfig(local_channel(), 'rtof', 'baseapi');

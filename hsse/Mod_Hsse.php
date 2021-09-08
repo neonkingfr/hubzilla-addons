@@ -17,13 +17,11 @@ class Hsse extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'hsse')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('WYSIWYG Status App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= $desc;
-			return $o;
+			$papp = Apps::get_papp('Wysiwyg Status');
+			return Apps::app_render($papp, 'module');
 		}
 
-		$content = '<b>' . t('WYSIWYG Status App') . ' (' . t('Installed') . '):</b><br>';
+		$content = '<h3>' . t('WYSIWYG Status App') . '</h3>';
 		$content .= $desc;
 
 		$tpl = get_markup_template("settings_addon.tpl");
@@ -39,5 +37,5 @@ class Hsse extends Controller {
 
 		return $o;
 	}
-	
+
 }

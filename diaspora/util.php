@@ -470,8 +470,8 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 	else
 		return false;
 
-	if(($xml['root_diaspora_id'] || $xml['root_author']) && $xml['root_guid'] && $recurse < 15) {
-		$orig_author = notags(diaspora_get_root_author($xml));
+	if($xml['root_author'] && $xml['root_guid'] && $recurse < 15) {
+		$orig_author = notags(unxmlify($xml['root_author']));
 		$orig_guid = notags(unxmlify($xml['root_guid']));
 		$source_url = 'https://' . substr($orig_author,strpos($orig_author,'@') + 1) . '/fetch/post/' . $orig_guid ;
 		$y = get_diaspora_reshare_xml($source_url,$recurse + 1);

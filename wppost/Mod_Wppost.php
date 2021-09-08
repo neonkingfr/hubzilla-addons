@@ -39,10 +39,8 @@ class Wppost extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'wppost')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Wordpress Post App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Post to WordPress or anything else which uses the wordpress XMLRPC API');
-			return $o;
+			$papp = Apps::get_papp('Wordpress Post');
+			return Apps::app_render($papp, 'module');
 		}
 
 		/* Get the current state of our config variables */

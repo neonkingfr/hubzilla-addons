@@ -35,10 +35,8 @@ class Dwpost extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'dwpost')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Dreamwidth Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Relay public posts to Dreamwidth');
-			return $o;
+			$papp = Apps::get_papp('Dreamwidth Crosspost Connector');
+			return Apps::app_render($papp, 'module');
 		}
 
 		/* Get the current state of our config variables */

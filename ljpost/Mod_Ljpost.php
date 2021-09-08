@@ -34,10 +34,8 @@ class Ljpost extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'ljpost')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Livejournal Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Relay public posts to Livejournal');
-			return $o;
+			$papp = Apps::get_papp('Livejournal Crosspost Connector');
+			return Apps::app_render($papp, 'module');
 		}
 
 		/* Get the current state of our config variables */

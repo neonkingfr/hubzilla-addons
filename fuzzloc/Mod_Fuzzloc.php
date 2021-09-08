@@ -30,10 +30,8 @@ class Fuzzloc extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'fuzzloc')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Fuzzy Location App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Blur your precise location if your channel uses browser location mapping');
-			return $o;
+			$papp = Apps::get_papp('Fuzzy Location');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$sc .= replace_macros(get_markup_template('field_input.tpl'), array(
