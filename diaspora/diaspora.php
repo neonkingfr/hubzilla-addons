@@ -10,6 +10,7 @@
  */
 
 use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Keyutils;
@@ -58,7 +59,8 @@ function diaspora_load() {
 		'channel_protocols'           => 'diaspora_channel_protocols',
 		'fetch_provider'              => 'diaspora_fetch_provider',
 		'encode_item_xchan'           => 'diaspora_encode_item_xchan',
-		'direct_message_recipients'   => 'diaspora_direct_message_recipients'
+		'direct_message_recipients'   => 'diaspora_direct_message_recipients',
+		'get_cached_actor_provider'   => 'diaspora_get_cached_actor_provider'
 	]);
 
 	Route::register('addon/diaspora/Mod_Diaspora.php','diaspora');
@@ -108,6 +110,20 @@ function diaspora_plugin_admin_post() {
 	else
 		set_config('diaspora', 'relay_handle', '');
 
+}
+
+function diaspora_get_cached_actor_provider(&$arr) {
+	if(!$arr['id']) {
+		return;
+	}
+
+	$r = q("SELECT * FROM xchan JOIN hubloc ON xchan_hash = hubloc_hash WHERE xchan_network IN ('diaspora', 'friendica-over-diaspora') AND hubloc_id_url = '%s' LIMIT 1",
+		dbesc($arr['id'])
+	);
+
+	if ($r) {
+		$arr['actor'] = Activity::encode_person($r[0]);
+	}
 }
 
 function diaspora_fetch_provider(&$arr) {
