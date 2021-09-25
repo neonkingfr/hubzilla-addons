@@ -402,11 +402,11 @@ function pubcrawl_load_module(&$b) {
 		$b['controller'] = new \Zotlabs\Module\Inbox();
 		$b['installed']  = true;
 	}
-	if ($b['module'] === 'outbox') {
-		require_once('addon/pubcrawl/Mod_Outbox.php');
-		$b['controller'] = new \Zotlabs\Module\Outbox();
-		$b['installed']  = true;
-	}
+	//if ($b['module'] === 'outbox') {
+		//require_once('addon/pubcrawl/Mod_Outbox.php');
+		//$b['controller'] = new \Zotlabs\Module\Outbox();
+		//$b['installed']  = true;
+	//}
 	if ($b['module'] === 'nullbox') {
 		require_once('addon/pubcrawl/Mod_Nullbox.php');
 		$b['controller'] = new \Zotlabs\Module\Nullbox();
