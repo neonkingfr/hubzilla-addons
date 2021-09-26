@@ -88,7 +88,6 @@ function pubcrawl_get_accept_header_string(&$arr) {
 function pubcrawl_encode_person(&$arr) {
 	if (isset($arr['xchan']['channel_id']) && Apps::addon_app_installed($arr['xchan']['channel_id'], 'pubcrawl')) {
 		$arr['encoded']['inbox']        = z_root() . '/inbox/' . $arr['xchan']['channel_address'];
-		$arr['encoded']['outbox']       = z_root() . '/outbox/' . $arr['xchan']['channel_address'];
 		$arr['encoded']['followers']    = z_root() . '/followers/' . $arr['xchan']['channel_address'];
 		$arr['encoded']['following']    = z_root() . '/following/' . $arr['xchan']['channel_address'];
 		$arr['encoded']['endpoints']    = ['sharedInbox' => z_root() . '/inbox'];
