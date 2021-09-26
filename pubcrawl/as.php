@@ -1260,14 +1260,12 @@ function as_create_note($channel,$observer_hash,$act) {
 		return;
 	}
 
-	$announce_author = as_get_attributed_to_person($act);
 
-	$s['author_xchan'] = (($announce) ? $announce_author : $act->actor['id']);
+	$s['author_xchan'] = $act->actor['id'];
 
-	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
-		dbesc($s['author_xchan']),
-		intval($channel['channel_id'])
-	);
+	if ($announce) {
+		$s['author_xchan'] = as_get_attributed_to_person($act);
+	}
 
 	$content = as_get_content($act->obj);
 
@@ -1373,6 +1371,18 @@ function as_create_note($channel,$observer_hash,$act) {
 		}
 	}
 
+	$s['author_xchan'] = Activity::find_best_identity($s['author_xchan']);
+
+	if(!$s['author_xchan']) {
+		logger('No author: ' . print_r($act, true));
+		return;
+	}
+
+	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
+		dbesc($s['author_xchan']),
+		intval($channel['channel_id'])
+	);
+
 	if($abook) {
 		if(! post_is_importable($s,$abook[0])) {
 			logger('post is filtered');
@@ -1438,19 +1448,12 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	// Make sure we use the zot6 identity where applicable
 
-	$s['author_xchan'] = Activity::find_best_identity($s['author_xchan']);
 	$s['owner_xchan']  = Activity::find_best_identity($s['owner_xchan']);
-
-	if(!$s['author_xchan']) {
-		logger('No author: ' . print_r($act, true));
-	}
 
 	if(!$s['owner_xchan']) {
 		logger('No owner: ' . print_r($act, true));
-	}
-
-	if(!$s['author_xchan'] || !$s['owner_xchan'])
 		return;
+	}
 
 	$a = Activity::decode_taxonomy($act->obj);
 	if($a) {
