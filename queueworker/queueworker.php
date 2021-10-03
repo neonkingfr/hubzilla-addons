@@ -28,6 +28,7 @@ class QueueWorkerUtils {
 		'Content_importer'  => 1,
 		'File_importer'     => 1,
 		'Channel_purge'     => 1,
+		'Directory'         => 1
 	];
 
 	public static function check_min_version($platform, $minver) {
