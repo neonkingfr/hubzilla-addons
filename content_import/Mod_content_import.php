@@ -123,7 +123,7 @@ class Content_import extends Controller {
 			return login();
 		}
 
-		if(! Apps::addon_app_installed(local_channel(),'content_import'))) {
+		if(! Apps::addon_app_installed(local_channel(),'content_import')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
 			$papp = Apps::get_papp('Content Import');
