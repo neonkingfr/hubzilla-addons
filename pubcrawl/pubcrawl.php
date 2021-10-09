@@ -50,7 +50,8 @@ function pubcrawl_load() {
 		'is_as_request'              => 'pubcrawl_is_as_request',
 		'get_accept_header_string'   => 'pubcrawl_get_accept_header_string',
 		'encode_person'              => 'pubcrawl_encode_person',
-		'encode_item_xchan'          => 'pubcrawl_encode_item_xchan'
+		'encode_item_xchan'          => 'pubcrawl_encode_item_xchan',
+		'fetch_provider'             => 'pubcrawl_fetch_provider'
 	]);
 	Route::register('addon/pubcrawl/Mod_Pubcrawl.php', 'pubcrawl');
 }
@@ -73,6 +74,37 @@ function pubcrawl_is_as_request(&$arr) {
 		'application/activity+json',
 		'application/ld+json;profile="http://www.w3.org/ns/activitystreams"',
 	];
+}
+
+function pubcrawl_fetch_provider($arr) {
+
+	$url = $arr['url'];
+	$channel = App::get_channel();
+
+	if (!Apps::addon_app_installed($channel['channel_id'], 'pubcrawl')) {
+		return;
+	}
+
+	$j = Activity::fetch($url, $channel);
+	if (!$j) {
+		return;
+	}
+
+	$AS = new ActivityStreams($j);
+	if (!$AS->is_valid()) {
+		return;
+	}
+
+	// check if is_an_actor, otherwise import activity
+	if (is_array($AS->obj) && !ActivityStreams::is_an_actor($AS->obj)) {
+		$item = Activity::decode_note($AS);
+		if ($item) {
+			Activity::store($channel, get_observer_hash(), $AS, $item, true, true);
+			goaway(z_root() . '/hq/' . gen_link_id($item['mid']));
+		}
+	}
+
+	return;
 }
 
 function pubcrawl_get_accept_header_string(&$arr) {
