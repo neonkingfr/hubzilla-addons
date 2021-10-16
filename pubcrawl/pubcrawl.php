@@ -274,10 +274,10 @@ function pubcrawl_personal_xrd(&$b) {
 	if (!Apps::addon_app_installed($b['user']['channel_id'], 'pubcrawl'))
 		return;
 
-	$s = '<Link rel="self" type="application/ld+json" href="' . z_root() . '/channel/' . $b['user']['channel_address'] . '" />';
-	$s .= '<Link rel="self" type="application/activity+json" href="' . z_root() . '/channel/' . $b['user']['channel_address'] . '" />';
+	$s = '	<Link rel="self" type="application/ld+json" href="' . z_root() . '/channel/' . $b['user']['channel_address'] . '" />' . "\r\n";
+	$s .= '	<Link rel="self" type="application/activity+json" href="' . z_root() . '/channel/' . $b['user']['channel_address'] . '" />';
 
-	$b['xml'] = str_replace('</XRD>', $s . "\n" . '</XRD>', $b['xml']);
+	$b['xml'] = str_replace('</XRD>', $s . "\r\n" . '</XRD>', $b['xml']);
 
 }
 
