@@ -145,6 +145,12 @@ function pubcrawl_encode_person(&$arr) {
 			}
 		}
 
+		$arr['encoded']['tag'][] = [
+			'type' => 'PropertyValue',
+			'name' => 'Protocol',
+			'value' => 'activitypub'
+		];
+
 		if ($locations) {
 			if (count($locations) === 1) {
 				$locations = array_shift($locations);
