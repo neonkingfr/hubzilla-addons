@@ -35,9 +35,9 @@ Toggle the Yes/No box next to 'Enable provider XXX' to 'Yes'
 Select the (built-in or custom) provider from the drop-down list & submit\
 Note: the values you entered for this provider remain in the database, so if you add the provider again, the last known values are restored
 
-### Redirect URI
+### Authorization callback URL 
   - Create an OAuth2 application in the provider's interface 
-  - Configure the provider's OAuth2 application to execute a callback to the Hubzilla socialauth app on "<your hub's base URL>/socialauthsignin.php"
+  - Configure the provider's OAuth2 application to execute a callback to the Hubzilla socialauth app on "<your hub's base URL>/socialauthsignin"
 
 ## Usage
   * Prerequisites

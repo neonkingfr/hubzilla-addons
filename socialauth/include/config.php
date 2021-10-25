@@ -30,7 +30,7 @@ class SocialAuthConfig {
 	}
 
 	static public function getCallback() {
-		return z_root() . '/socialauthsignin.php';
+		return z_root() . '/socialauthsignin';
 	}
 
 	static public function getBuiltinProviders() {
