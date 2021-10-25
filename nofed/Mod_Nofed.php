@@ -15,7 +15,7 @@ class Nofed extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'nofed'))
 			return;
 
-		check_form_security_token_redirectOnErr('nofed', 'nofed');
+		check_form_security_token_redirectOnErr('/nofed', 'nofed');
 
 		set_pconfig(local_channel(), 'nofed', 'post_by_default', intval($_POST['nofed_default']));
 		info( t('nofed Settings saved.') . EOL);
@@ -29,10 +29,8 @@ class Nofed extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'nofed')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('No Federation App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Prevent posting from being federated to anybody. It will exist only on your channel page.');
-			return $o;
+			$papp = Apps::get_papp('No Federation');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$defenabled = get_pconfig(local_channel(),'nofed','post_by_default');

@@ -1,6 +1,9 @@
 <?php
 
 
+use Zotlabs\Lib\Crypto;
+use Zotlabs\Lib\Libzot;
+
 function diaspora_handle_from_contact($contact_hash) {
 
 	logger("diaspora_handle_from_contact: contact id is " . $contact_hash, LOGGER_DEBUG);
@@ -28,18 +31,18 @@ function diaspora_get_contact_by_handle($uid,$handle) {
 
 	$sys = get_sys_channel();
 	if(($sys) && ($sys['channel_id'] == $uid)) {
-		$r = q("SELECT * FROM xchan where xchan_addr = '%s' limit 1",
+		$r = q("SELECT * FROM xchan where xchan_addr = '%s' and xchan_network != 'activitypub'",
 			dbesc($handle)
 		);
 	}
 	else {
-		$r = q("SELECT * FROM abook left join xchan on xchan_hash = abook_xchan where xchan_addr = '%s' and abook_channel = %d limit 1",
+		$r = q("SELECT * FROM abook left join xchan on xchan_hash = abook_xchan where xchan_addr = '%s' and abook_channel = %d and xchan_network != 'activitypub'",
 			dbesc($handle),
 			intval($uid)
 		);
 	}
 
-	return (($r) ? $r[0] : false);
+	return (($r) ? Libzot::zot_record_preferred($r) : false);
 }
 
 function find_diaspora_person_by_handle($handle) {
@@ -55,19 +58,15 @@ function find_diaspora_person_by_handle($handle) {
 	if(diaspora_is_blacklisted($handle))
 		return false;
 
-	$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' and hubloc_network in ('diaspora', 'friendica-over-diaspora') limit 1",
-		dbesc($handle)
+	// Use join instead of left join in this query to make sure we only get entries where both tables are populated
+	$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where xchan_addr = '%s' and xchan_network != 'activitypub'",
+		dbesc(str_replace('acct:','',$handle))
 	);
-	if(! $r) {
-		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' limit 1",
-			dbesc($handle)
-		);
-	}
 
 	if($r) {
-		$person = $r[0];
+		$person = Libzot::zot_record_preferred($r);
 		logger('find_diaspora_person_by handle: in cache ' . print_r($r,true), LOGGER_DATA, LOG_DEBUG);
-		if(($person['xchan_name_date'] < datetime_convert('UTC','UTC', 'now - 1 month')) || $person['xchan_pubkey'] === '') {
+		if(in_array($person['hubloc_network'], ['diaspora', 'friendica-over-diaspora']) && $person['xchan_name_date'] < datetime_convert('UTC','UTC', 'now - 1 month') || $person['xchan_pubkey'] === '') {
 			logger('Updating Diaspora cached record for ' . $handle);
 			$refresh = true;
 		}
@@ -75,22 +74,18 @@ function find_diaspora_person_by_handle($handle) {
 
 	if((! $person) || ($refresh)) {
 
-		// try webfinger. Make sure to distinguish between diaspora, 
+		// try webfinger. Make sure to distinguish between diaspora,
 		// hubzilla w/diaspora protocol and friendica w/diaspora protocol.
 
 		$result = discover_by_webbie($handle);
 		if($result) {
 
-			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' and hubloc_network in ('diaspora', 'friendica-over-diaspora') limit 1",
+			$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where xchan_addr = '%s' and xchan_network != 'activitypub'",
 				dbesc(str_replace('acct:','',$handle))
 			);
-			if(! $r) {
-				$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_addr = '%s' limit 1",
-					dbesc(str_replace('acct:','',$handle))
-				);
-			}
+
 			if($r) {
-				$person = $r[0];
+				$person = Libzot::zot_record_preferred($r);
 				logger('find_diaspora_person_by handle: discovered ' . print_r($r,true), LOGGER_DATA, LOG_DEBUG);
 			}
 		}
@@ -111,7 +106,7 @@ function get_diaspora_key($handle) {
 /**
  * Some utility functions for processing the Diaspora comment virus.
  *
- */  
+ */
 
 
 
@@ -129,7 +124,7 @@ function diaspora_sign_fields($fields,$prvkey) {
 
 	$s = implode(';',$n);
 	logger('signing_string: ' . $s);
-	return base64_encode(rsa_sign($s,$prvkey));
+	return base64_encode(Crypto::sign($s,$prvkey));
 
 }
 
@@ -147,7 +142,7 @@ function diaspora_verify_fields($fields,$sig,$pubkey) {
 
 	$s = implode(';',$n);
 	logger('signing_string: ' . $s);
-	return rsa_verify($s,base64_decode($sig),$pubkey);
+	return Crypto::verify($s,base64_decode($sig),$pubkey);
 
 }
 
@@ -183,7 +178,7 @@ function diaspora_build_relay_tags() {
 	$ret = z_fetch_url($url);
 
 }
-	
+
 
 function diaspora_magic_env($channel,$msg) {
 
@@ -194,13 +189,13 @@ function diaspora_magic_env($channel,$msg) {
 	$encoding    = 'base64url';
 	$algorithm   = 'RSA-SHA256';
 	$precomputed = '.YXBwbGljYXRpb24vYXRvbSt4bWw=.YmFzZTY0dXJs.UlNBLVNIQTI1Ng==';
-	$signature   = base64url_encode(rsa_sign($data . $precomputed, $channel['channel_prvkey']));
+	$signature   = base64url_encode(Crypto::sign($data . $precomputed, $channel['channel_prvkey']));
 
 	return replace_macros(get_markup_template('magicsig.tpl','addon/diaspora'),
 		[
 			'$data'      => $data,
 			'$encoding'  => $encoding,
-			'$algorithm' => $algorithm, 
+			'$algorithm' => $algorithm,
 			'$keyhash'   => $keyhash,
 			'$signature' => $signature
 		]
@@ -254,17 +249,22 @@ function diaspora_build_status($item,$owner) {
 
 	$images = array();
 
-	$title = $item['title'];
+	$body = ((isset($item['title'])) ? '[h3]' . $item['title'] . '[/h3]' . "\n" : '');
+	$body .= ((isset($item['summary'])) ? '[h5]' . $item['summary'] . '[/h5]' . "\n" : '');
+	$body .= $item['body'];
 
+	if (strpos($body, '[/crypt]') !== false) {
+		$body = preg_replace_callback("/\[crypt (.*?)\](.*?)\[\/crypt\]/ism", 'bb_parse_b64_crypt', $body);
+	}
+
+	$body = bb_to_markdown($body, [ 'diaspora' ]);
 	$ev = bbtoevent($item['body']);
-
-	$body = bb_to_markdown((($title) ? '[h3]' . $title . '[/h3]' . "\n" : '') . $item['body'], [ 'diaspora' ]);
 
 	$ev_obj = null;
 
 	if($ev) {
 		$ev_obj = diaspora_create_event($ev, $myaddr);
-		$body = $ev_obj['summary'];		
+		$body = $ev_obj['summary'];
 	}
 
 	$poll = '';
@@ -300,12 +300,12 @@ function diaspora_build_status($item,$owner) {
 			$arr['root_author'] = $ret['root_handle'];
 			$arr['root_guid']   = $ret['root_guid'];
 			$msg = arrtoxml('reshare', $arr);
-		} 
+		}
 		elseif((! $item['item_private']) && ($ret = diaspora_is_repeat($item))) {
 			$arr['root_author'] = $ret['root_handle'];
 			$arr['root_guid']   = $ret['root_guid'];
 			$msg = arrtoxml('reshare', $arr);
-		} 
+		}
 		else {
 			$arr['public'] = $public;
 			$arr['text']   = $body;
@@ -317,6 +317,7 @@ function diaspora_build_status($item,$owner) {
 				//@TODO once we figure out if they will accept location and coordinates separately,
 				// at present it seems you need both and fictitious locations aren't acceptable
 			}
+
 			$msg = arrtoxml('status_message', $arr);
 		}
 	}
@@ -336,7 +337,7 @@ function diaspora_build_status($item,$owner) {
 					'$provider' => (($item['app']) ? $item['app'] : t('$projectname'))
 				]
 			);
-		} 
+		}
 		else {
 			$msg = replace_macros(get_markup_template('diaspora_post.tpl','addon/diaspora'),
 				[
@@ -397,7 +398,7 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 		$encoding = $base->encoding;
 		$alg      = $base->alg;
 
-		$signed_data = $data  . '.' . base64url_encode($type,false) . '.' 
+		$signed_data = $data  . '.' . base64url_encode($type,false) . '.'
 			. base64url_encode($encoding,false) . '.' . base64url_encode($alg,false);
 
 		// decode the data
@@ -420,12 +421,12 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 			return false;
 		}
 
-		$verify = rsa_verify($signed_data,$signature,$key);
+		$verify = Crypto::verify($signed_data,$signature,$key);
 
 		if(! $verify) {
 			logger('Message did not verify. Discarding.', LOGGER_NORMAL, LOG_ERR);
 			return false;
-		}	
+		}
 
 		logger('Message verified.');
 
@@ -454,7 +455,7 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 	}
 
 	if($source_xml) {
-		if(array_key_exists('xml',$source_xml) && array_key_exists('post',$source_xml['xml'])) 
+		if(array_key_exists('xml',$source_xml) && array_key_exists('post',$source_xml['xml']))
 			$source_xml = $source_xml['xml']['post'];
 	}
 
@@ -463,14 +464,14 @@ function get_diaspora_reshare_xml($url,$recurse = 0) {
 	}
 
 	// see if it's a reshare of a reshare
-	
+
 	if($source_xml['reshare'])
 		$xml = $source_xml['reshare'];
-	else 
+	else
 		return false;
 
-	if(($xml['root_diaspora_id'] || $xml['root_author']) && $xml['root_guid'] && $recurse < 15) {
-		$orig_author = notags(diaspora_get_root_author($xml));
+	if($xml['root_author'] && $xml['root_guid'] && $recurse < 15) {
+		$orig_author = notags(unxmlify($xml['root_author']));
 		$orig_guid = notags(unxmlify($xml['root_guid']));
 		$source_url = 'https://' . substr($orig_author,strpos($orig_author,'@') + 1) . '/fetch/post/' . $orig_guid ;
 		$y = get_diaspora_reshare_xml($source_url,$recurse + 1);

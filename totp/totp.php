@@ -56,7 +56,7 @@ function totp_app_installed(&$app, &$filter) {
 		}
 	}
 function totp_module_loaded(&$x) {
-	if (!totp_installed()) return;
+	//if (!totp_installed()) return;
 	if ($x['module'] == 'totp') {
 		require_once('addon/totp/Mod_Totp.php');
 		$x['controller'] = new \Zotlabs\Module\TOTPController();

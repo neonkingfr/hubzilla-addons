@@ -2,9 +2,13 @@
 
 namespace Zotlabs\Module;
 
+use App;
+use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\LDSignatures;
+use Zotlabs\Web\Controller;
 use Zotlabs\Web\HTTPSig;
 
-class Following extends \Zotlabs\Web\Controller {
+class Following extends Controller {
 
 	function init() {
 
@@ -31,18 +35,18 @@ class Following extends \Zotlabs\Web\Controller {
 			intval($channel['channel_id'])	
 		);
 			
-		if(pubcrawl_is_as_request()) {
+		if(ActivityStreams::is_as_request()) {
 
 			$x = array_merge(['@context' => [
 				ACTIVITYSTREAMS_JSONLD_REV,
 				'https://w3id.org/security/v1',
 				z_root() . ZOT_APSCHEMA_REV
-				]], asencode_follow_collection($r, \App::$query_string, 'OrderedCollection'));
+				]], asencode_follow_collection($r, App::$query_string, 'OrderedCollection'));
 
 
 			$headers = [];
 			$headers['Content-Type'] = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' ;
-			$x['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($x,$channel);
+			$x['signature'] = LDSignatures::dopplesign($x,$channel);
 			$ret = json_encode($x, JSON_UNESCAPED_SLASHES);
 			$headers['Date'] = datetime_convert('UTC','UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 			$headers['Digest'] = HTTPSig::generate_digest_header($ret);

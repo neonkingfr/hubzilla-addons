@@ -1,13 +1,13 @@
 <?php
 /**
 * Name: DirStats
-* Description: Show some statistics about the directory.  
+* Description: Show some statistics about the directory.
 * This will list the number of Hubzilla, Friendica and Diaspora
-* hubs that your own hub is aware of.  
+* hubs that your own hub is aware of.
 * As the name suggets, this is intended for directory servers, where
 * this will provide accurate counts of all known Red hubs and channels.
 *
-* If you are not a directory server - and for Friendica and Diaspora 
+* If you are not a directory server - and for Friendica and Diaspora
 * even if you are - these counts are merely those your own hub is aware of
 * and not all that exist in the network.
 *
@@ -53,7 +53,7 @@ function dirstats_content(&$a) {
 		if (intval($fountainofyouth))
 			$average = $fountainofyouth;
 
-if (argv(1) == 'json') { 
+if (argv(1) == 'json') {
 	$dirstats = array (
                 'hubcount' => $hubcount,
                 'zotcount' => $zotcount,
@@ -131,7 +131,7 @@ function dirstats_cron(&$a, $b) {
 		set_config('dirstats','hubcount',$hubcount);
 		}
 
-		$r = q("SELECT count(distinct hubloc_host) as total FROM hubloc where hubloc_network = 'zot' and hubloc_deleted = 0 and hubloc_connected > '%s' and hubloc_updated > '%s'",
+		$r = q("SELECT count(distinct hubloc_host) as total FROM hubloc where hubloc_network = 'zot6' and hubloc_deleted = 0 and hubloc_connected > '%s' and hubloc_updated > '%s'",
             dbesc(NULL_DATE),
             dbesc(NULL_DATE)
 
@@ -150,7 +150,7 @@ function dirstats_cron(&$a, $b) {
 			$diasporacount = $r[0]['total'];
 			set_config('dirstats','diasporacount',$diasporacount);
 		}
-		$r = q("SELECT count(distinct xchan_hash) as total FROM xchan where xchan_network = 'zot' and xchan_deleted = 0");
+		$r = q("SELECT count(distinct xchan_hash) as total FROM xchan where xchan_network = 'zot6' and xchan_deleted = 0");
 		if ($r) {
 			$channelcount = $r[0]['total'];
 			set_config('dirstats','channelcount',$channelcount);

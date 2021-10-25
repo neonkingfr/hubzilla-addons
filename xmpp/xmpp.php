@@ -36,7 +36,7 @@ function xmpp_login($a,$b) {
 	}
 }
 
-function xmpp_plugin_admin(&$a, &$o){
+function xmpp_plugin_admin(&$o){
 	$t = get_markup_template("admin.tpl", "addon/xmpp/");
 
 	$o = replace_macros($t, array(
@@ -46,7 +46,7 @@ function xmpp_plugin_admin(&$a, &$o){
 	));
 }
 
-function xmpp_plugin_admin_post(&$a){
+function xmpp_plugin_admin_post(){
 	$bosh_proxy       = ((x($_POST,'bosh_proxy')) ?       trim($_POST['bosh_proxy']) : '');
 	$central_userbase = ((x($_POST,'central_userbase')) ? intval($_POST['central_userbase']) : false);
 	set_config('xmpp','bosh_proxy',$bosh_proxy);

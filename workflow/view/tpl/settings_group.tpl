@@ -7,7 +7,7 @@
 				</a>
 			</h3>
 		</div>
-		<div id="wfsettings-{{$groupid}}" class="collapse" role="tabpanel" aria-labelledby="settings-group-{{$groupid}}" data-parent="#settings">
+		<div id="wfsettings-{{$groupid}}" class="collapse" role="tabpanel" aria-labelledby="settings-group-{{$groupid}}" data-bs-parent="#settings">
 			<form action='settings/workflow' method='post' id='settings-form-{{$groupid}}'>
 				<input type='hidden' name='form_security_token' value='{{$form_security_token}}' />
 				<input type='hidden' name='formname' value="{{$formname}}">

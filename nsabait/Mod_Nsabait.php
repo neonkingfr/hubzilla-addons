@@ -16,14 +16,13 @@ class Nsabait extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'nsabait')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('NSA Bait App') . ' (' . t('Not Installed') . '):</b><br>';
-			return $o;
+			$papp = Apps::get_papp('NSA Bait');
+			return Apps::app_render($papp, 'module');
 		}
 		else
-		    $o = '<b>' . t('NSA Bait App') . ' (' . t('Installed') . '):</b><br>';
-            
-        $o .= t('Make yourself a political target');
+		    $o = '<h3>' . t('NSA Bait App') . '</h3>';
+
+        $o .= t('Make yourself a political target.');
 		return $o;
 
 

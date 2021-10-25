@@ -1,10 +1,10 @@
 <?php
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Connect;
 
 require_once('include/markdown.php');
 require_once('include/group.php');
-require_once('include/follow.php');
 require_once('include/photo/photo_driver.php');
 
 function import_diaspora_account($data) {
@@ -43,7 +43,7 @@ function import_diaspora_account($data) {
 			notice( t('Unable to create a unique channel address. Import failed.') . EOL);
 			return;
 		}
-	}		
+	}
 
 	$pr = $data['user']['profile']['entity_data'];
 
@@ -53,7 +53,7 @@ function import_diaspora_account($data) {
 		'account_id' => $account['account_id'],
 		'permissions_role' => 'social'
 	));
-	
+
 	if(! $c['success'])
 		return;
 
@@ -75,7 +75,7 @@ function import_diaspora_account($data) {
 		intval($channel_id)
 	);
 
-	if($pr['nsfw']) { 
+	if($pr['nsfw']) {
 		q("update channel set channel_pageflags = (channel_pageflags | %d) where channel_id = %d",
 				intval(PAGE_ADULT),
 				intval($channel_id)
@@ -84,7 +84,7 @@ function import_diaspora_account($data) {
 
 	if($pr['image_url']) {
 		$type = import_channel_photo_from_url($pr['image_url']);
-	
+
 	}
 
 	$gender = escape_tags($pr['gender']);
@@ -95,7 +95,7 @@ function import_diaspora_account($data) {
 	else
 		$dob = '0000-00-00';
 
-	// we're relying on the fact that this channel was just created and will only 
+	// we're relying on the fact that this channel was just created and will only
 	// have the default profile currently
 
 	$r = q("update profile set gender = '%s', about = '%s', dob = '%s', publish = %d where uid = %d",
@@ -110,14 +110,14 @@ function import_diaspora_account($data) {
 		foreach($data['user']['contact_groups'] as $aspect) {
 			group_add($channel_id,escape_tags($aspect['name']),intval($aspect['contacts_visible']));
 		}
-	} 
-	
+	}
+
 	// now add connections and send friend requests
 
 
 	if($data['user']['contacts']) {
 		foreach($data['user']['contacts'] as $contact) {
-			$result = new_contact($channel_id, $contact['account_id'], $c['channel']);
+			$result = Connect::connect($c['channel'], $contact['account_id']);
 			if($result['success']) {
 				if($contact['contact_groups_membership']) {
 					foreach($contact['contact_groups_membership'] as $aspect) {
@@ -129,7 +129,7 @@ function import_diaspora_account($data) {
 	}
 
 
-	// Then add items - note this can't be done until Diaspora adds guids to exported 
+	// Then add items - note this can't be done until Diaspora adds guids to exported
 	// items and comments
 
 

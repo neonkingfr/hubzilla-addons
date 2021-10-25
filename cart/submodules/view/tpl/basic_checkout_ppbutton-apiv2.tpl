@@ -1,4 +1,4 @@
-<script src="https://www.paypal.com/sdk/js?client-id={{$paypal_clientid}}"></script>
+<script src="https://www.paypal.com/sdk/js?client-id={{$paypal_clientid}}&currency={{$currency}}"></script>
 {{include file="../../../view/tpl/basic_cart.tpl"}}
 	<div class="section-content-wrapper">
 		{{if !$order.checkedout}}

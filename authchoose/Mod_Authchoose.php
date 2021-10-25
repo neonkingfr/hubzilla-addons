@@ -19,18 +19,15 @@ class Authchoose extends Controller {
 		if(! local_channel())
 			return;
 
-		$desc = t('Allow magic authentication only to websites of your immediate connections');
 
 		if(! Apps::addon_app_installed(local_channel(), 'authchoose')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Authchoose App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= $desc;
-			return $o;
+			$papp = Apps::get_papp('Authchoose');
+			return Apps::app_render($papp, 'module');
 		}
 
-		$content = '<b>' . t('Authchoose App') . ' (' . t('Installed') . '):</b><br>';
+		$desc = t('Allow magic authentication only to websites of your immediate connections');
 		$content .= $desc;
 
 		$tpl = get_markup_template("settings_addon.tpl");
@@ -42,5 +39,5 @@ class Authchoose extends Controller {
 
 		return $o;
 	}
-	
+
 }

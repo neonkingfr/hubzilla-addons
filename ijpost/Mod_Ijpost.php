@@ -15,11 +15,11 @@ class Ijpost extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'ijpost'))
 			return;
 
-		check_form_security_token_redirectOnErr('ijpost', 'ijpost');
+		check_form_security_token_redirectOnErr('/ijpost', 'ijpost');
 
 		set_pconfig(local_channel(),'ijpost','post_by_default',intval($_POST['ij_bydefault']));
 		set_pconfig(local_channel(),'ijpost','ij_username',trim($_POST['ij_username']));
-		set_pconfig(local_channel(),'ijpost','ij_password',z_obscure(trim($_POST['ij_password'])));
+		set_pconfig(local_channel(),'ijpost','ij_password',obscurify(trim($_POST['ij_password'])));
 	        info( t('Insane Journal Crosspost Connector Settings saved.') . EOL);
 	}
 
@@ -44,7 +44,7 @@ class Ijpost extends Controller {
 		$def_checked = (($def_enabled) ? 1 : false);
 
 		$ij_username = get_pconfig(local_channel(), 'ijpost', 'ij_username');
-		$ij_password = z_unobscure(get_pconfig(local_channel(), 'ijpost', 'ij_password'));
+		$ij_password = unobscurify(get_pconfig(local_channel(), 'ijpost', 'ij_password'));
 
 
 		/* Add some HTML to the existing form */

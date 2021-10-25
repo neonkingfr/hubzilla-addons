@@ -10,28 +10,28 @@ require_once('include/attach.php');
 class Gallery extends \Zotlabs\Web\Controller {
 
 	function init() {
-	
+
 		if(observer_prohibited()) {
 			return;
 		}
-	
+
 		if(argc() > 1) {
 			$nick = argv(1);
-	
+
 			profile_load($nick);
 
 			$channelx = channelx_by_nick($nick);
-	
+
 			if(! $channelx)
 				return;
-	
+
 			App::$data['channel'] = $channelx;
-	
+
 			$observer = App::get_observer();
 			App::$data['observer'] = $observer;
 
 			App::$page['htmlhead'] .= "<script> var profile_uid = " . ((App::$data['channel']) ? App::$data['channel']['channel_id'] : 0) . "; </script>" ;
-	
+
 		}
 
 		return;
@@ -54,10 +54,8 @@ class Gallery extends \Zotlabs\Web\Controller {
 		if(! Apps::addon_app_installed(App::$profile_uid, 'gallery')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Gallery App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('A simple gallery for your photo albums');
-			return $o;
+			$papp = Apps::get_papp('Gallery');
+			return Apps::app_render($papp, 'module');
 		}
 
 		nav_set_selected('Gallery');
@@ -135,11 +133,11 @@ class Gallery extends \Zotlabs\Web\Controller {
 		$o = replace_macros($tpl, [
 			'$title' => t('Gallery'),
 			'$albums' => $items,
-			'$channel_nick' => App::$data['channel']['channel_address'],
-			'$channel_name' => App::$data['channel']['channel_name'],
-			'$channel_url' => App::$data['channel']['xchan_url'],
-			'$observer_name' => App::$data['observer']['xchan_name'],
-			'$observer_url' => App::$data['observer']['xchan_url'],
+			'$channel_nick' => json_encode(App::$data['channel']['channel_address']),
+			'$channel_name' => json_encode(App::$data['channel']['channel_name']),
+			'$channel_url' => json_encode(App::$data['channel']['xchan_url']),
+			'$observer_name' => json_encode(App::$data['observer']['xchan_name']),
+			'$observer_url' => json_encode(App::$data['observer']['xchan_url']),
 			'$unsafe' => $unsafe,
 			'$json' => (($photo) ? $json_photo : $json_album),
 			'$aj' => $photo
@@ -167,7 +165,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 		$unsafe = ((array_key_exists('unsafe', $arr) && $arr['unsafe']) ? 1 : 0);
 
 		$r = q("SELECT p.resource_id, p.width, p.height, p.display_path, p.mimetype, p.imgscale, p.description, p.created FROM photo p INNER JOIN
-			(SELECT photo.resource_id, photo.imgscale FROM photo left join attach on attach.folder = '%s' and photo.resource_id = attach.hash WHERE attach.uid = %d AND photo.imgscale = 1 AND photo.photo_usage = %d AND photo.is_nsfw = %d $sql_extra GROUP BY photo.resource_id, photo.imgscale) ph 
+			(SELECT photo.resource_id, photo.imgscale FROM photo left join attach on attach.folder = '%s' and photo.resource_id = attach.hash WHERE attach.uid = %d AND photo.imgscale = 1 AND photo.photo_usage = %d AND photo.is_nsfw = %d $sql_extra GROUP BY photo.resource_id, photo.imgscale) ph
 			ON (p.resource_id = ph.resource_id AND p.imgscale = ph.imgscale)
 			ORDER BY created DESC",
 			dbesc($arr['album_id']),

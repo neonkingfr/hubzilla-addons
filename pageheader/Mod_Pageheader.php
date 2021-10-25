@@ -16,7 +16,7 @@ class Pageheader extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'pageheader'))
 			return;
 
-		check_form_security_token_redirectOnErr('pageheader', 'pageheader');
+		check_form_security_token_redirectOnErr('/pageheader', 'pageheader');
 
 		set_config('pageheader','text',trim(strip_tags($_POST['pageheader-words'])));
 		info( t('pageheader Settings saved.') . EOL);
@@ -30,10 +30,8 @@ class Pageheader extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'pageheader')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Page Header App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Inserts a page header');
-			return $o;
+			$papp = Apps::get_papp('Page Header');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$words = get_config('pageheader','text');

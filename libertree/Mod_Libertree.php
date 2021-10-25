@@ -16,7 +16,7 @@ class Libertree extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'libertree'))
 			return;
 
-		check_form_security_token_redirectOnErr('libertree', 'libertree');
+		check_form_security_token_redirectOnErr('/libertree', 'libertree');
 
 		set_pconfig(local_channel(),'libertree','post_by_default',intval($_POST['libertree_bydefault']));
 		set_pconfig(local_channel(),'libertree','libertree_api_token',trim($_POST['libertree_api_token']));
@@ -31,10 +31,8 @@ class Libertree extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'libertree')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Libertree Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Relay public posts to Libertree');
-			return $o;
+			$papp = Apps::get_papp('Libertree Crosspost Connector');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$def_enabled = get_pconfig(local_channel(),'libertree','post_by_default');

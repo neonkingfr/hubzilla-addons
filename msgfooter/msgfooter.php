@@ -38,7 +38,7 @@ function msgfooter_unload() {
 }
 
 
-function msgfooter_plugin_admin(&$a,&$o) {
+function msgfooter_plugin_admin(&$o) {
 
 	$t = get_markup_template("admin.tpl", "addon/msgfooter/");
 
@@ -48,7 +48,7 @@ function msgfooter_plugin_admin(&$a,&$o) {
 	));
 }
 
-function msgfooter_plugin_admin_post(&$a){
+function msgfooter_plugin_admin_post(){
 	$msgfooter_text = ((x($_POST,'msgfooter_text')) ?       trim($_POST['msgfooter_text']) : '');
 	set_config('msgfooter','msgfooter_text',$msgfooter_text);
 	info( t('Settings updated.'). EOL );

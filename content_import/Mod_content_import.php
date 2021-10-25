@@ -41,7 +41,7 @@ class Content_import extends Controller {
 			$page = 0;
 
 			while(1) {
-				$headers = [ 
+				$headers = [
 					'X-API-Token'      => random_string(),
 					'X-API-Request'    => $hz_server . '/api/z/1.0/item/export_page?f=&since=' . urlencode($since) . '&until=' . urlencode($until) . '&page=' . $page ,
 					'Host'             => $m['host'],
@@ -76,7 +76,7 @@ class Content_import extends Controller {
 
 		if(intval($_REQUEST['files'])) {
 
-			$headers = [ 
+			$headers = [
 				'X-API-Token'      => random_string(),
 				'X-API-Request'    => $hz_server . '/api/z/1.0/files?f=&since=' . urlencode($since) . '&until=' . urlencode($until),
 				'Host'             => $m['host'],
@@ -95,14 +95,14 @@ class Content_import extends Controller {
 			$j = json_decode($x['body'],true);
 
 
-			if(! $j['success']) 
+			if(! $j['success'])
 				return;
 
 			$poll_interval = get_config('system','poll_interval',3);
 
 			if(count($j['results'])) {
 				$todo = count($j['results']);
-				logger('total to process: ' . $todo,LOGGER_DEBUG); 
+				logger('total to process: ' . $todo,LOGGER_DEBUG);
 
 				foreach($j['results'] as $jj) {
 					proc_run('php','addon/content_import/file_import_helper.php',$jj['hash'], $channel['channel_address'], urlencode($hz_server));
@@ -119,19 +119,18 @@ class Content_import extends Controller {
 	function get() {
 
 
-		$desc = t('This addon app copies existing content and file storage to a cloned/copied channel. Once the app is installed, visit the newly installed app. This will allow you to set the location of your original channel and an optional date range of files/conversations to copy.'); 
-
-		$text = '<div class="section-content-info-wrapper">' . $desc . '</div>';
-
-		if(! ( local_channel() && Apps::addon_app_installed(local_channel(),'content_import'))) { 
-			return $text;
-		}
-
 		if(! local_channel()) {
 			return login();
 		}
 
-		$o = replace_macros(get_markup_template('content_import.tpl','addon/content_import'),array( 
+		if(! Apps::addon_app_installed(local_channel(),'content_import')) {
+			//Do not display any associated widgets at this point
+			App::$pdl = '';
+			$papp = Apps::get_papp('Content Import');
+			return Apps::app_render($papp, 'module');
+		}
+
+		$o = replace_macros(get_markup_template('content_import.tpl','addon/content_import'),array(
 			'$header' => t('Content Import'),
 			'$desc' => t('This will import all your conversations and cloud files from a cloned channel on another server. This may take a while if you have lots of posts and or files.'),
 			'$items' => [ 'items', t('Include posts'), true, t('Conversations, Articles, Cards, and other posted content'), [ t('No'),t('Yes') ]],

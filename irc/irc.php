@@ -28,7 +28,7 @@ function irc_unload() {
 	Route::unregister('addon/irc/Mod_Irc.php','irc');
 }
 
-function irc_plugin_admin(&$a,&$s) {
+function irc_plugin_admin(&$s) {
 	/* setting popular channels, auto connect channels */
 	$sitechats = get_config('irc','sitechats'); /* popular channels */
 	$autochans = get_config('irc','autochans');  /* auto connect chans */
@@ -47,7 +47,7 @@ function irc_plugin_admin(&$a,&$s) {
 	));
 }
 
-function irc_plugin_admin_post(&$a) {
+function irc_plugin_admin_post() {
 	set_config('irc','autochans',trim($_POST['autochans']));
 	set_config('irc','sitechats',trim($_POST['sitechats']));
 	/* stupid pop-up thing */

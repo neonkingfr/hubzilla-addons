@@ -15,11 +15,11 @@ class Rtof extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'rtof'))
 			return;
 
-		check_form_security_token_redirectOnErr('rtof', 'rtof');
-		
+		check_form_security_token_redirectOnErr('/rtof', 'rtof');
+
 		set_pconfig(local_channel(), 'rtof', 'baseapi',         trim($_POST['rtof_baseapi']));
 		set_pconfig(local_channel(), 'rtof', 'username',        trim($_POST['rtof_username']));
-		set_pconfig(local_channel(), 'rtof', 'password',        z_obscure(trim($_POST['rtof_password'])));
+		set_pconfig(local_channel(), 'rtof', 'password',        obscurify(trim($_POST['rtof_password'])));
 		set_pconfig(local_channel(), 'rtof', 'post_by_default', intval($_POST['rtof_default']));
 		info( t('Friendica Crosspost Connector Settings saved.') . EOL);
 
@@ -32,15 +32,13 @@ class Rtof extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'rtof')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Friendica Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Relay public postings to a connected Friendica account');
-			return $o;
+			$papp = Apps::get_papp('Friendica Crosspost Connector');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$api     = get_pconfig(local_channel(), 'rtof', 'baseapi');
 		$username    = get_pconfig(local_channel(), 'rtof', 'username' );
-		$password = z_unobscure(get_pconfig(local_channel(), 'rtof', 'password' ));
+		$password = unobscurify(get_pconfig(local_channel(), 'rtof', 'password' ));
 		$defenabled = get_pconfig(local_channel(),'rtof','post_by_default');
 		$defchecked = (($defenabled) ? 1 : false);
 
