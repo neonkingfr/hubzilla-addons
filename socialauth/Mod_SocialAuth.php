@@ -60,6 +60,7 @@ class SocialAuthSignin extends Controller {
 				$storage = new \Hybridauth\Storage\Session();
 				$provider = $storage->get('provider');
 
+				logger('Provider = ' . print_r($provider, true), LOGGER_DEBUG);
 				if (!x($provider)) {
 					logger('Provider not detected', LOGGER_DEBUG);
 					goaway(z_root());
@@ -67,6 +68,7 @@ class SocialAuthSignin extends Controller {
 
 				$auth = self::getAuth($provider);
 				$adapter = $auth->authenticate($provider);
+				logger('authentication done', LOGGER_DEBUG);
 
 				if ($adapter->isConnected()) {
 					logger('Socialauth - Connected to '. $provider .' OK', LOGGER_DEBUG);
@@ -147,6 +149,7 @@ function socialauth_signin($provider, $auth)
 		$email = $userprofile->email;
 		if ( !x($email) ) {
 			logger('Cannot retrieve email address', LOGGER_NORMAL, LOG_ERR);
+			info( t('Unable to retrieve email address from remote identity provider' . EOL);
 			goaway(z_root());
 		}
 
@@ -172,11 +175,11 @@ function socialauth_signin($provider, $auth)
 		goaway(z_root());
 	}
 	catch ( \Hybridauth\Exception\HttpClientFailureException $e ) {
-		logger('Network error : ' . print_r( $auth->getHttpClient()->getResponseClientError(), true) , LOGGER_NORMAL, LOG_ERR);
+		logger('Network error : ' . print_r( $adapter->getHttpClient()->getResponseClientError(), true) , LOGGER_NORMAL, LOG_ERR);
 		info ( t('Network error') . EOL );
 	}
 	catch ( \Hybridauth\Exception\HttpRequestFailedException $e ) {
-		logger('Raw API response: ' . print_r( $auth->getHttpClient()->getResponseBody(), true), LOGGER_NORMAL, LOG_ERR);
+		logger('Raw API response: ' . print_r( $adapter->getHttpClient()->getResponseBody(), true), LOGGER_NORMAL, LOG_ERR);
 		info ( t('API error') . EOL );
 	}
 	catch ( \Exception $e ) {
@@ -288,6 +291,13 @@ class SocialAuth extends Controller {
 				} else {
 					logger("Missing custom endpoints", LOGGER_NORMAL, LOG_ERR);
 				}
+
+				$custom_scope = $provider["scope"];
+				$content .= replace_macros(get_markup_template('field_input.tpl'),
+					[
+						'$field' => [ \SocialAuthConfig::getKey($name, "scope"), "Scope", $custom_scope, t('Word')]
+					]
+				);
 			}
 
 		}

@@ -24,6 +24,7 @@ Your provider docs should explain
   - the authorize URL (initial call by the socialauth app)
   - the access token URL (second call by the socialauth app)
   - the user endpoint, i.e. how an external system can request a user profile from the provider e.g. "api/v1/user" (3rd call by the socialauth app)
+  - scope. e.g. to configure Hubzilla as openid provider, use as scope "openid email"
 
 Note: by default, the email address field in the user profile record is 'email'. If this field has another name, enter it in the parameter "userprofile_email_field"
 
@@ -61,7 +62,8 @@ Note: the values you entered for this provider remain in the database, so if you
 ## Notes
   * You shoud assume that your login attempts might logged at the Identity provider
   * It is assumed that, if the socialauth app is able to fetch the user's email address (because the user authenticated at the Identity provider), the identity is proven and login to Hubzilla is granted as if the user entered his or her Hubzilla credentials 
-  * The socialauth app does not select a scope. Hence, often the full user profile (username, profile photo etc) is provided to the socialauth app, but only the email address is used to match against a Hubzilla account's email address
+  * The socialauth app can select a scope for custom providers. The different scopes should be seperated by a space.
+  * Often the full user profile (username, profile photo etc) is provided to the socialauth app, but only the email address is used to match against a Hubzilla account's email address
   * The author does not take responsibility for possible security issues introduced by this add-on. In other words, use at your own risk.
 
 ## Credits

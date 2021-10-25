@@ -149,6 +149,7 @@ class SocialAuthConfig {
 
 			$r[$provider]['endpoints'] = $endpoint_collection;
 			$r[$provider]['adapter'] = '\Hybridauth\Provider\Customauth';
+			$r[$provider]['scope'] = get_config('socialauth', self::getKey($provider, "scope"));
 		}
  
 		$hybridauthconfig = [
@@ -170,6 +171,7 @@ class SocialAuthConfig {
 				foreach (self::getCustomProviderEndpoints() as $endpoint) {
 					$keys[] = $endpoint;
 				}
+				$keys[] = "scope";
 			}
 
 			foreach($keys as $key) {
