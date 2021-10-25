@@ -89,7 +89,7 @@ function piwik_analytics($a,&$b) {
 		$b .= "</div>";
 	}
 }
-function piwik_plugin_admin (&$a, &$o) {
+function piwik_plugin_admin (&$o) {
 	$t = get_markup_template( "admin.tpl", "addon/piwik/" );
 	$o = replace_macros( $t, array(
 		'$submit' => t('Submit'),
@@ -102,7 +102,7 @@ function piwik_plugin_admin (&$a, &$o) {
 }
 
 
-function piwik_plugin_admin_post (&$a) {
+function piwik_plugin_admin_post () {
 	$url = ((x($_POST, 'baseurl')) ? notags(trim($_POST['baseurl'])) : '');
 	$id = ((x($_POST, 'siteid')) ? trim($_POST['siteid']) : '');
 	$optout = ((x($_POST, 'optout')) ? trim($_POST['optout']) : '');

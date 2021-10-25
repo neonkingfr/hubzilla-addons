@@ -1,6 +1,7 @@
 <?php
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Crypto;
 
 require_once('addon/diaspora/Receiver.php');
 
@@ -18,19 +19,34 @@ function diaspora_dispatch_public($msg) {
 		$sys['system'] = true;
 	}
 
-	$app_id = hash('whirlpool','Diaspora Protocol');
+	$r = [];
 
-	// find everybody using the Diaspora Protocol by seeing who has the 'Diaspora Protocol' app installed
-
-	$r = q("SELECT * from channel where channel_id in ( SELECT app_channel from app where app_channel != 0 and app_id = '%s' ) and channel_removed = 0 ",
-		dbesc($app_id)
-	);
-
-	if($r && $sys) {
-		$r = array_merge($r,[$sys]);
+	if(get_config('diaspora', 'delivery_try_all')) {
+		// Attempt delivery to anybody who has the 'Diaspora Protocol' app installed
+		// This can be resource intensive on hubs with many channels
+		$app_id = hash('whirlpool','Diaspora Protocol');
+		$r = q("SELECT * from channel where channel_id in ( SELECT app_channel from app where app_channel != 0 and app_id = '%s' ) and channel_removed = 0 ",
+			dbesc($app_id)
+		);
+	}
+	else {
+		if(isset($msg['msg']['parent_guid'])) {
+			// If we have a parent, attempt delivery to anybody who owns the parent
+			$r = q("SELECT * FROM channel WHERE channel_id IN ( SELECT uid FROM item WHERE uuid = '%s' ) AND channel_removed = 0",
+				dbesc($msg['msg']['parent_guid'])
+			);
+		}
+		else {
+			// Attempt delivery to anybody who is connected with the sender
+			$r = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network = 'diaspora' and xchan_hash = '%s') and channel_removed = 0",
+				dbesc($msg['author'])
+			);
+		}
 	}
 
-	$msg['public'] = 1;
+	if($sys) {
+		$r = array_merge($r,[$sys]);
+	}
 
 	if($r) {
 		foreach($r as $rr) {
@@ -46,7 +62,7 @@ function diaspora_dispatch_public($msg) {
 
 
 
-function diaspora_dispatch($importer,$msg) {
+function diaspora_dispatch($importer, $msg, $force = false) {
 
 	$ret = 0;
 
@@ -56,16 +72,6 @@ function diaspora_dispatch($importer,$msg) {
 	if(! array_key_exists('public',$msg))
 		$msg['public'] = 0;
 
-	$host = substr($msg['author'],strpos($msg['author'],'@')+1);
-	$ssl = ((array_key_exists('HTTPS',$_SERVER) && strtolower($_SERVER['HTTPS']) === 'on') ? true : false);
-	$url = (($ssl) ? 'https://' : 'http://') . $host;
-
-	q("update site set site_dead = 0, site_update = '%s' where site_type = %d and site_url = '%s'",
-		dbesc(datetime_convert()),
-		intval(SITE_TYPE_NOTZOT),
-		dbesc($url)
-	);
-
 	$allowed = (($importer['system']) ? 1 : Apps::addon_app_installed($importer['channel_id'], 'diaspora'));
 
 	if(! intval($allowed)) {
@@ -74,119 +80,65 @@ function diaspora_dispatch($importer,$msg) {
 	}
 
 
-	/**
-	 * xml2array is based on libxml(/expat?) which loses whitespace in Cyrillic text presented as HTML entities
-	 * Here is a test string. The first space character is nearly always lost in parsing when included in an XML tagged structure. 
-	 * Spaces after punctuation seem to be preserved. We've ruled out character encoding/charset specification issues but 
-	 * clearly there is a character encoding/charset issue involved. When called with a custom libxml parser, the content is mangled
-	 * before it ever reaches a parsing callback. 
-	 * &#x41D;&#x430;&#x447;&#x430;&#x43B; &#x437;&#x430;&#x43C;&#x435;&#x447;&#x430;&#x442;&#x44C;, &#x447;&#x442;&#x43E; &#x43F;&#x43E;&#x440;&#x43D;&#x43E;&#x441;&#x43F;&#x430;&#x43C; &#x434;&#x43E;&#x431;&#x440;&#x430;&#x43B;&#x441;&#x44F; &#x434;&#x43E; &#x444;&#x435;&#x434;&#x435;&#x440;&#x430;&#x442;&#x438;&#x432;&#x43D;&#x44B;&#x445; &#x441;&#x435;&#x442;&#x435;&#x439;. &#x41D;&#x430;&#x43F;&#x440;&#x438;&#x43C;&#x435;&#x440;, &#x43A; &#x43D;&#x435;&#x441;&#x43A;&#x43E;&#x43B;&#x44C;&#x43A;&#x438;&#x43C; &#x43F;&#x43E;&#x441;&#x442;&#x430;&#x43C;
-	 * parse_xml_string() uses simplexml and doesn't have this issue, but cannot be easily used with XML that provides more structure
-	 * (attributes and namespaces). Therefore we can't easily use this to parse salmon magic envelopes. At this higher level, we can 
-	 * use xml2array() however because the unicode content has been base64'd and doesn't trigger the bug. 
-	 * @FIXME
-	 * We're using parse_xml_string() with some additional hacks to make the output resemble the simple case of xml2array() 
-	 * Ideally we^H^Hyou should figure out what's wrong with libxml and figure out how to get the correct output from xml2array()
-	 * or get the root cause fixed upstream in libxml and php. Change here and in diaspora/util.php
-	 */
+	switch($msg['msg_type']) {
 
-	$oxml = parse_xml_string($msg['message'],false);
-	$pxml = sxml2array($oxml);
-	$parsed_xml = [ strtolower($oxml->getName()) => $pxml ];
-
-	//	$parsed_xml = xml2array($msg['message'],false,0,'tag');
-
-	if($parsed_xml) {
-		if(array_key_exists('xml',$parsed_xml) && array_key_exists('post',$parsed_xml['xml']))
-			$xmlbase = $parsed_xml['xml']['post'];
-		else
-			$xmlbase = $parsed_xml;
-	}
-
-	//	logger('diaspora_dispatch: ' . print_r($xmlbase,true), LOGGER_DATA);
-
-	if($xmlbase['request']) {
-		$base = $xmlbase['request'];
-		$fn = 'request';
-	}
-	elseif($xmlbase['contact']) {
-		$base = $xmlbase['contact'];
-		$fn = 'request';
-	}
-	elseif($xmlbase['status_message']) {
-		$base = $xmlbase['status_message'];
-		$fn = 'post';
-	}
-	elseif($xmlbase['profile']) {
-		$base = $xmlbase['profile'];
-		$fn = 'profile';
-	}
-	elseif($xmlbase['comment']) {
-		$base = $xmlbase['comment'];
-		$fn = 'comment';
-	}
-	elseif($xmlbase['like']) {
-		$base = $xmlbase['like'];
-		$fn = 'like';
-	}
-	elseif($xmlbase['reshare']) {
-		$base = $xmlbase['reshare'];
-		$fn = 'reshare';
-	}
-	elseif($xmlbase['retraction']) {
-		$base = $xmlbase['retraction'];
-		$fn = 'retraction';
-	}
-	elseif($xmlbase['signed_retraction']) {
-		$base = $xmlbase['signed_retraction'];
-		$fn = 'retraction';
-	}
-	elseif($xmlbase['relayable_retraction']) {
-		$base = $xmlbase['relayable_retraction'];
-		$fn = 'retraction';
-	}
-	elseif($xmlbase['photo']) {
-		$base = $xmlbase['photo'];
-		$fn = 'photo';
-	}
-	elseif($xmlbase['conversation']) {
-		$base = $xmlbase['conversation'];
-		$fn = 'conversation';
-	}
-	elseif($xmlbase['message']) {
-		$base = $xmlbase['message'];
-		$fn = 'message';
-	}
-	elseif($xmlbase['participation']) {
-		$base = $xmlbase['participation'];
-		$fn = 'participation';
-	}
-	elseif($xmlbase['event']) {
-		$base = $xmlbase['event'];
-		$fn = 'event';
-	}
-	elseif($xmlbase['event_participation']) {
-		$base = $xmlbase['event_participation'];
-		$fn = 'event_participation';
-	}
-	elseif($xmlbase['account_deletion']) {
-		$base = $xmlbase['account_deletion'];
-		$fn = 'account_deletion';
-	}
-	elseif($xmlbase['account_migration']) {
-		$base = $xmlbase['account_migration'];
-		$fn = 'account_migration';
-	}
-	elseif($xmlbase['poll_participation']) {
-		$base = $xmlbase['poll_participation'];
-		$fn = 'poll_participation';
-	}
-	else {
-		logger('diaspora_dispatch: unknown message type: ' . print_r($xmlbase,true));
+		case 'request':
+		case 'contact':
+			$fn = 'request';
+			break;
+		case 'status_message':
+			$fn = 'post';
+			break;
+		case 'profile':
+			$fn = 'profile';
+			break;
+		case 'comment':
+			$fn = 'comment';
+			break;
+		case 'like':
+			$fn = 'like';
+			break;
+		case 'reshare':
+			$fn = 'reshare';
+			break;
+		case 'retraction':
+		case 'signed_retraction':
+		case 'relayable_retraction':
+			$fn = 'retraction';
+			break;
+		case 'photo':
+			$fn = 'photo';
+			break;
+		case 'conversation':
+			$fn = 'conversation';
+			break;
+		case 'message':
+			$fn = 'message';
+			break;
+		case 'participation':
+			$fn = 'participation';
+			break;
+		case 'event':
+			$fn = 'event';
+			break;
+		case 'event_participation':
+			$fn = 'event_participation';
+			break;
+		case 'account_deletion':
+			$fn = 'account_deletion';
+			break;
+		case 'account_migration':
+			$fn = 'account_migration';
+			break;
+		case 'poll_participation':
+			$fn = 'poll_participation';
+			break;
+		default:
+			logger('diaspora_dispatch: unknown message type: ' . print_r($msg['msg_type'],true));
+			break;
 	}
 
-	$rec = new Diaspora_Receiver($importer,$base,$msg);
-
+	$rec = new Diaspora_Receiver($importer, $msg, $force);
 	$ret = $rec->$fn();
 
 	return $ret;
@@ -214,7 +166,7 @@ function diaspora_is_blacklisted($s) {
  * diaspora_decode($importer,$xml,$format)
  *   array $importer -> from user table
  *   string $xml -> urldecoded Diaspora salmon
- *   string $format 'legacy', 'salmon', or 'json' 
+ *   string $format 'legacy', 'salmon', or 'json'
  *
  * Returns array
  * 'message' -> decoded Diaspora XML message
@@ -278,7 +230,7 @@ function diaspora_decode($importer,$xml,$format) {
 			    [sig] => ((the RSA-SHA256 signature of the above data))
 			)
 		**/
-	} 
+	}
 	else {
 
 		$children = $basedom->children('https://joindiaspora.com/protocol');
@@ -328,7 +280,7 @@ function diaspora_decode($importer,$xml,$format) {
 			logger('decrypted: ' . $decrypted, LOGGER_DATA);
 			$idom = parse_xml_string($decrypted,false);
 			if($idom === false) {
-				logger('failed to parse decrypted content');				
+				logger('failed to parse decrypted content');
 				http_status_exit(400);
 			}
 
@@ -338,7 +290,7 @@ function diaspora_decode($importer,$xml,$format) {
 			$author_link = str_replace('acct:','',$idom->author_id);
 		}
 	}
-	
+
 	$dom = $basedom->children(NAMESPACE_SALMON_ME);
 
 	// figure out where in the DOM tree our data is hiding
@@ -401,7 +353,7 @@ function diaspora_decode($importer,$xml,$format) {
 		http_status_exit(400);
 	}
 
-	$verify = rsa_verify($signed_data,$signature,$key);
+	$verify = Crypto::verify($signed_data,$signature,$key);
 
 	if(! $verify) {
 		logger('mod-diaspora: Message did not verify. Discarding.', LOGGER_NORMAL, LOG_ERR);
@@ -410,7 +362,7 @@ function diaspora_decode($importer,$xml,$format) {
 
 	logger('mod-diaspora: Message verified.');
 
-	return array('message' => $final_msg, 'author' => $author_link, 'key' => $key, 'format' => $format);
+	return array('message' => $final_msg, 'author' => $author_link, 'key' => $key, 'signature' => base64url_encode($signature), 'format' => $format);
 
 }
 

@@ -16,7 +16,7 @@ class Smileybutton extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'smileybutton'))
 			return;
 
-		check_form_security_token_redirectOnErr('smileybutton', 'smileybutton');
+		check_form_security_token_redirectOnErr('/smileybutton', 'smileybutton');
 
 		set_pconfig(local_channel(),'smileybutton','nobutton',intval($_POST['smileybutton']));
 		set_pconfig(local_channel(),'smileybutton','deactivated',intval($_POST['deactivated']));
@@ -31,10 +31,8 @@ class Smileybutton extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'smileybutton')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Smileybutton App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Adds a smileybutton to the jot editor');
-			return $o;
+			$papp = Apps::get_papp('Smileybutton');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$nobutton = get_pconfig(local_channel(),'smileybutton','nobutton');

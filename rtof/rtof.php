@@ -6,9 +6,9 @@
  * Version: 1.0
  * Maintainer: none
  */
- 
+
 /*
- *   Red to Friendica 
+ *   Red to Friendica
  */
 
 use Zotlabs\Lib\Apps;
@@ -47,7 +47,7 @@ function rtof_jot_nets(&$a,&$b) {
 
 	$rtof_defpost = get_pconfig(local_channel(),'rtof','post_by_default');
 	$selected = ((intval($rtof_defpost) == 1) ? ' checked="checked" ' : '');
-	$b .= '<div class="profile-jot-net"><input type="checkbox" name="rtof_enable"' . $selected . ' value="1" /> ' 
+	$b .= '<div class="profile-jot-net"><input type="checkbox" name="rtof_enable"' . $selected . ' value="1" /> '
 		. '<i class="fa fa-fw fa-friendica"></i> ' . t('Post to Friendica') . '</div>';
 }
 
@@ -103,12 +103,12 @@ function rtof_post_hook(&$a,&$b) {
 
 	load_pconfig($b['uid'], 'rtof');
 
-	
+
 	$api      = get_pconfig($b['uid'], 'rtof', 'baseapi');
 	if(substr($api,-1,1) != '/')
 		$api .= '/';
 	$username = get_pconfig($b['uid'], 'rtof', 'username');
-	$password = z_unobscure(get_pconfig($b['uid'], 'rtof', 'password'));
+	$password = unobscurify(get_pconfig($b['uid'], 'rtof', 'password'));
 
 	$msg = $b['body'];
 

@@ -1,7 +1,7 @@
 <div class="generic-content-wrapper dm42cart catalog">
 	<div class="section-title-wrapper clearfix">
 		{{if $total_qty}}
-		<a href="cart/{{$sellernick}}/checkout/start" class="btn btn-sm btn-success float-right"><i class="fa fa-shopping-cart"></i> Checkout ({{$total_qty}})</a>
+		<a href="cart/{{$sellernick}}/checkout/start" class="btn btn-sm btn-success float-end"><i class="fa fa-shopping-cart"></i> Checkout ({{$total_qty}})</a>
 		{{/if}}
 		<h2>{{if $title}}{{$title}}{{else}}Catalog{{/if}}</h2>
 	</div>

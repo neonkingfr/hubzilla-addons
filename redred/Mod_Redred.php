@@ -15,7 +15,7 @@ class Redred extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'redred'))
 			return;
 
-		check_form_security_token_redirectOnErr('redred', 'redred');
+		check_form_security_token_redirectOnErr('/redred', 'redred');
 
 		$channel = App::get_channel();
 		// Don't let somebody post to their self channel. Since we aren't passing message-id this would be very very bad.
@@ -32,7 +32,7 @@ class Redred extends Controller {
 
 		set_pconfig(local_channel(), 'redred', 'baseapi',         trim($_POST['redred_baseapi']));
 		set_pconfig(local_channel(), 'redred', 'username',        trim($_POST['redred_username']));
-		set_pconfig(local_channel(), 'redred', 'password',        z_obscure(trim($_POST['redred_password'])));
+		set_pconfig(local_channel(), 'redred', 'password',        obscurify(trim($_POST['redred_password'])));
 		set_pconfig(local_channel(), 'redred', 'channel',         trim($_POST['redred_channel']));
 		set_pconfig(local_channel(), 'redred', 'post_by_default', intval($_POST['redred_default']));
 		info( t('Hubzilla Crosspost Connector Settings saved.') . EOL);
@@ -46,15 +46,13 @@ class Redred extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'redred')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Hubzilla Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Relay public postings to another Hubzilla channel');
-			return $o;
+			$papp = Apps::get_papp('Hubzilla Crosspost Connector');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$api     = get_pconfig(local_channel(), 'redred', 'baseapi');
 		$username    = get_pconfig(local_channel(), 'redred', 'username' );
-		$password = z_unobscure(get_pconfig(local_channel(), 'redred', 'password' ));
+		$password = unobscurify(get_pconfig(local_channel(), 'redred', 'password' ));
 		$channel = get_pconfig(local_channel(), 'redred', 'channel' );
 		$defenabled = get_pconfig(local_channel(),'redred','post_by_default');
 		$defchecked = (($defenabled) ? 1 : false);

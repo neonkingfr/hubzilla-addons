@@ -4,7 +4,7 @@ $(document).ready(function() {
 	var imgMinSize = 300;
 
 	$(document).on('click', selector, function(e) {
-		if(e.target.naturalWidth < imgMinSize)
+		if(e.target.naturalWidth < imgMinSize && e.target.naturalHeight < imgMinSize)
 			return;
 
 		e.preventDefault();
@@ -26,7 +26,7 @@ $(document).ready(function() {
 		var img = $('#' + id).find('img');
 
 		img.each( function (index, item) {
-			if(item.naturalWidth < imgMinSize)
+			if(item.naturalWidth < imgMinSize && item.naturalHeight < imgMinSize)
 				return;
 
 			if(item.src == e.target.src)
@@ -61,7 +61,7 @@ $(document).ready(function() {
 	});
 
 	$(document).on('mouseenter', selector, function(e) {
-		if(e.target.naturalWidth < imgMinSize)
+		if(e.target.naturalWidth < imgMinSize && e.target.naturalHeight < imgMinSize)
 			return;
 
 		$(this).css('cursor', 'zoom-in');

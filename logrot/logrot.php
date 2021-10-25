@@ -18,7 +18,7 @@ function logrot_unload() {
 }
 
 
-function logrot_plugin_admin(&$a, &$o) {
+function logrot_plugin_admin(&$o) {
 	$t = get_markup_template("admin.tpl", "addon/logrot/");
 	$logrotpath = get_config('logrot', 'logrotpath');
 	if(! $logrotpath)
@@ -39,7 +39,7 @@ function logrot_plugin_admin(&$a, &$o) {
 	));
 }
 
-function logrot_plugin_admin_post(&$a) {
+function logrot_plugin_admin_post() {
 	$logrotpath = ((x($_POST, 'logrotpath')) ? notags(trim($_POST['logrotpath'])) : '');
 	$logrotsize = ((x($_POST, 'logrotsize')) ? intval($_POST['logrotsize']) : 0);
 	$logretained = ((x($_POST, 'logretained')) ? intval($_POST['logretained']) : 0);

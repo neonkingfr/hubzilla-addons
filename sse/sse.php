@@ -6,7 +6,7 @@
  * Description: Server sent events notifications
  * Version: 1.0
  * Author: Mario Vavti
- * Maintainer: Mario Vavti <mario@hub.somaton.com> 
+ * Maintainer: Mario Vavti <mario@hub.somaton.com>
  * MinVersion: 4.7
  */
 
@@ -34,6 +34,11 @@ function sse_item_stored($item) {
 	if(! $item['uid'])
 		return;
 
+	if(! is_item_normal($item))
+		return;
+
+	$is_file = in_array($item['obj_type'], ['Document', 'Video', 'Audio', 'Image']);
+
 	$item_uid = $item['uid'];
 
 	$sys = false;
@@ -56,14 +61,21 @@ function sse_item_stored($item) {
 	if(! $hashes)
 		return;
 
+	$r[0] = $item;
+	xchan_query($r);
+
 	foreach($hashes as $hash) {
+
+		if (!$hash) {
+			continue;
+		}
 
 		if($sys) {
 			$current_channel = channelx_by_hash($hash);
 			$item_uid = $current_channel ? $current_channel['channel_id'] : $item_uid;
 		}
 
-		$vnotify = get_pconfig($item_uid, 'system', 'vnotify');
+		$vnotify = get_pconfig($item_uid, 'system', 'vnotify', -1);
 
 		if($item['verb'] === ACTIVITY_LIKE && !($vnotify & VNOTIFY_LIKE))
 			continue;
@@ -73,9 +85,6 @@ function sse_item_stored($item) {
 
 		if($hash === $item['author_xchan'])
 			continue;
-
-		$r[0] = $item;
-		xchan_query($r);
 
 		XConfig::Load($hash);
 
@@ -100,24 +109,30 @@ function sse_item_stored($item) {
 		push_lang(XConfig::Get($hash, 'sse', 'language', 'en'));
 
 		if($sys) {
-			if(is_item_normal($item) && ($vnotify & VNOTIFY_PUBS || $sys))
+			if(($vnotify & VNOTIFY_PUBS || $sys) && !$is_file  && intval($item['item_private']) === 0)
 				$x['pubs']['notifications'][] = Enotify::format($r[0]);
 		}
 		else {
-			if(is_item_normal($item) && $item['item_wall'])
+			if(($vnotify & VNOTIFY_CHANNEL) && $item['item_wall'] && !$is_file && in_array(intval($item['item_private']), [0, 1]))
 				$x['home']['notifications'][] = Enotify::format($r[0]);
 
-			if(is_item_normal($item) && !$item['item_wall'])
+			if(($vnotify & VNOTIFY_NETWORK) && !$item['item_wall'] && !$is_file && in_array(intval($item['item_private']), [0, 1]))
 				$x['network']['notifications'][] = Enotify::format($r[0]);
 
-			if($item['obj_type'] === ACTIVITY_OBJ_FILE)
-				$x['files']['notifications'][] = Enotify::format_files($r[0]);
+			if(($vnotify & VNOTIFY_MAIL) && !$is_file && intval($item['item_private']) === 2)
+				$x['dm']['notifications'][] = Enotify::format($r[0]);
+
+			if(($vnotify & VNOTIFY_FILES) && $is_file)
+				$x['files']['notifications'][] = Enotify::format($r[0]);
 		}
 
 		pop_lang();
 
 		if(is_array($x['network']['notifications']))
 			$x['network']['count'] = count($x['network']['notifications']);
+
+		if(is_array($x['dm']['notifications']))
+			$x['dm']['count'] = count($x['dm']['notifications']);
 
 		if(is_array($x['home']['notifications']))
 			$x['home']['count'] = count($x['home']['notifications']);
@@ -148,6 +163,10 @@ function sse_event_store_event_end($item) {
 	if(! $channel)
 		return;
 
+	$vnotify = get_pconfig($channel['channel_id'], 'system', 'vnotify', -1);
+	if(! ($vnotify & VNOTIFY_EVENT))
+		return;
+
 	XConfig::Load($channel['channel_hash']);
 
 	$t = XConfig::Get($channel['channel_hash'], 'sse', 'timestamp', NULL_DATE);
@@ -155,10 +174,6 @@ function sse_event_store_event_end($item) {
 	if(datetime_convert('UTC', 'UTC', $t) < datetime_convert('UTC', 'UTC', '- 30 seconds')) {
 		XConfig::Set($channel['channel_hash'], 'sse', 'notifications', []);
 	}
-
-	$vnotify = get_pconfig($item_uid, 'system', 'vnotify');
-	if(!($vnotify & VNOTIFY_EVENT))
-		return;
 
 	$xchan = q("SELECT * FROM xchan WHERE xchan_hash = '%s'",
 		dbesc($item['event_xchan'])
@@ -187,6 +202,10 @@ function sse_enotify_store_end($item) {
 	$channel = channelx_by_n($item['uid']);
 
 	if(! $channel)
+		return;
+
+	$vnotify = get_pconfig($channel['channel_id'], 'system', 'vnotify', -1);
+	if(! ($vnotify & VNOTIFY_SYSTEM))
 		return;
 
 	XConfig::Load($channel['channel_hash']);
@@ -218,6 +237,10 @@ function sse_permissions_create($item) {
 	$channel = channelx_by_hash($item['recipient']['xchan_hash']);
 
 	if(! $channel)
+		return;
+
+	$vnotify = get_pconfig($channel['channel_id'], 'system', 'vnotify', -1);
+	if(! ($vnotify & VNOTIFY_SYSTEM))
 		return;
 
 	XConfig::Load($channel['channel_hash']);

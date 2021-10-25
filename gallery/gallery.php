@@ -34,6 +34,11 @@ function gallery_channel_apps(&$b) {
 	if(! Apps::addon_app_installed($uid, 'gallery'))
 		return;
 
+	$p = get_all_perms($uid, get_observer_hash());
+
+	if (! $p['view_storage'])
+		return;
+
 	$b['tabs'][] = [
 		'label' => t('Gallery'),
 		'url'   => z_root() . '/gallery/' . $b['nickname'],
@@ -165,7 +170,7 @@ function gallery_prepare_body(&$arr) {
 	switch($img_nodes) {
 		case 1:
 			$row_height = 300;
-			$last_row = 'justify';
+			$last_row = 'center';
 			break;
 		case 2:
 			$row_height = 240;
@@ -177,7 +182,7 @@ function gallery_prepare_body(&$arr) {
 			break;
 		default:
 			$row_height = 120;
-			$last_row = 'nojustify';
+			$last_row = 'justify';
 	}
 
 	$js = <<<EOF
@@ -196,11 +201,29 @@ function gallery_prepare_body(&$arr) {
 				$('#gallery-wrapper-$id').justifiedGallery({
 					captions: false,
 					rowHeight: $row_height,
+					maxRowHeight: divmore_height,
 					lastRow: '$last_row',
 					justifyThreshold: 0.5,
 					border: 0,
-					margins: 3
-				}).on('jg.complete', function(e){ justifiedGalleryActive = false; setTimeout(scrollToItem, 100); });
+					margins: 3,
+					maxRowsCount: 1
+				}).on('jg.complete', function(e){
+					justifiedGalleryActive = false;
+					setTimeout(scrollToItem, 100);
+					if($('#gallery-wrapper-$id .jg-entry').length === 1) {
+						$('#' + this.parentNode.id).css('background-image', 'url(/addon/gallery/view/img/bg.svg)');
+					}
+					if($('#gallery-wrapper-$id .jg-entry-visible').length < $('#gallery-wrapper-$id .jg-entry').length) {
+						var more_count = $('#gallery-wrapper-$id .jg-entry').length - $('#gallery-wrapper-$id .jg-entry-visible').length;
+						$('#gallery-wrapper-$id').append('<div id="jg-more-count-$id" class="jg-more-count">+ ' + more_count + ' <i class="fa fa-image"></i></div>');
+					}
+				}).on('jg.resize', function(e){
+					if($('#gallery-wrapper-$id .jg-entry-visible').length < $('#gallery-wrapper-$id .jg-entry').length) {
+						var more_count = $('#gallery-wrapper-$id .jg-entry').length - $('#gallery-wrapper-$id .jg-entry-visible').length;
+						$('#jg-more-count-$id').html('+ ' + more_count + ' <i class="fa fa-image"></i>');
+					}
+				});
+
 			}
 		</script>
 EOF;

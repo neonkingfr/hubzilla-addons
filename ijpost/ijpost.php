@@ -92,7 +92,7 @@ function ijpost_send(&$a,&$b) {
 
 	logger('Insanejournal xpost invoked');
 
-	// insanejournal post in the LJ user's timezone. 
+	// insanejournal post in the LJ user's timezone.
 	// Hopefully the person's Friendica account
 	// will be set to the same thing.
 
@@ -102,10 +102,10 @@ function ijpost_send(&$a,&$b) {
 		intval($b['uid'])
 	);
 	if($x && strlen($x[0]['channel_timezone']))
-		$tz = $x[0]['channel_timezone'];	
+		$tz = $x[0]['channel_timezone'];
 
 	$ij_username = get_pconfig($b['uid'],'ijpost','ij_username');
-	$ij_password = z_unobscure(get_pconfig($b['uid'],'ijpost','ij_password'));
+	$ij_password = unobscurify(get_pconfig($b['uid'],'ijpost','ij_password'));
 	$ij_blog = 'http://www.insanejournal.com/interface/xmlrpc';
 
 	if($ij_username && $ij_password && $ij_blog) {

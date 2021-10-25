@@ -5,6 +5,7 @@ namespace Zotlabs\Module;
 use App;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Web\Controller;
+use Zotlabs\Lib\Libsync;
 
 class Superblock extends Controller {
 
@@ -16,10 +17,8 @@ class Superblock extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'superblock')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Superblock App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Block channels');
-			return $o;
+			$papp = Apps::get_papp('Superblock');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$words = get_pconfig(local_channel(),'system','blocked');
@@ -58,7 +57,7 @@ class Superblock extends Controller {
 
 		if($config_changed) {
 			set_pconfig(local_channel(),'system','blocked',$words);
-			build_sync_packet();
+			Libsync::build_sync_packet(local_channel(), [ 'config' ]);
 
 			info( t('superblock settings updated') . EOL );
 		}

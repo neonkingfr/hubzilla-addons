@@ -110,12 +110,14 @@ function webmention_process($url,$source) {
         }
 	}
 
+	$dom = new DOMDocument();
+
 	if($links) {
 		webmention_post($links,$url,$source);
 	}
 	elseif($html_content) {
 		try {
-			$dom = HTML5_Parser::parse($x['body']);
+			$dom->loadHTML($x['body']);
 		}
 		catch (DOMException $e) {
 			logger('webmention: parse error: ' . $e);

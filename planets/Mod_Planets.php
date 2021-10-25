@@ -16,12 +16,12 @@ class Planets extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'planets')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Random Planet App') . ' (' . t('Not Installed') . '):</b><br>';
+			$papp = Apps::get_papp('Random Planet');
+			return Apps::app_render($papp, 'module');
 		}
 		else
-		    $o = '<b>' . t('Random Planet App') . ' (' . t('Installed') . '):</b><br>';
-		    
+		    $o = '<h3>' . t('Random Planet App') . '</h3>';
+
 		$o .= t('Set a random planet from the Star Wars Empire as your location when posting');
 		return $o;
 

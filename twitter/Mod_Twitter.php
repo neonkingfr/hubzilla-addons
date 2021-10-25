@@ -16,7 +16,7 @@ class Twitter extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'twitter'))
 			return;
 
-		check_form_security_token_redirectOnErr('twitter', 'twitter');
+		check_form_security_token_redirectOnErr('/twitter', 'twitter');
 
 		if (isset($_POST['twitter-disconnect'])) {
 			/***
@@ -74,10 +74,8 @@ class Twitter extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'twitter')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Twitter Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Relay public posts to Twitter');
-			return $o;
+			$papp = Apps::get_papp('Twitter Crosspost Connector');
+			return Apps::app_render($papp, 'module');
 		}
 
 		/***

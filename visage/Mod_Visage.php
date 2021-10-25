@@ -16,10 +16,8 @@ class Visage extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'visage')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>Visitors App (Not Installed):</b><br>';
-			$o .= t('Who viewed my channel/profile');
-			return $o;
+			$papp = Apps::get_papp('Visitors');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$o = '<h3>' . t('Recent Channel/Profile Viewers') . '</h3>';

@@ -17,7 +17,7 @@ class Pumpio extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'pumpio'))
 			return;
 
-		check_form_security_token_redirectOnErr('pumpio', 'pumpio');
+		check_form_security_token_redirectOnErr('/pumpio', 'pumpio');
 
 		// filtering the username if it is filled wrong
 		$user = $_POST['pumpio_user'];
@@ -49,10 +49,8 @@ class Pumpio extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'pumpio')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Pump.io Crosspost Connector App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Relay public posts to pump.io');
-			return $o;
+			$papp = Apps::get_papp('Pump.io Crosspost Connector');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$def_enabled = get_pconfig(local_channel(),'pumpio','post_by_default');

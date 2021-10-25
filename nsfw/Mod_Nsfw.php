@@ -15,7 +15,7 @@ class Nsfw extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'nsfw'))
 			return;
 
-		check_form_security_token_redirectOnErr('nsfw', 'nsfw');
+		check_form_security_token_redirectOnErr('/nsfw', 'nsfw');
 
 		set_pconfig(local_channel(),'nsfw','words',trim($_POST['nsfw-words']));
 
@@ -29,10 +29,8 @@ class Nsfw extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'nsfw')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('NSFW App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Collapse content that contains predefined words');
-			return $o;
+			$papp = Apps::get_papp('NSFW');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$words = get_pconfig(local_channel(),'nsfw','words');
@@ -44,7 +42,7 @@ class Nsfw extends Controller {
 		$content .= t('This app looks in posts for the words/text you specify below, and collapses any content containing those keywords so it is not displayed at inappropriate times, such as sexual innuendo that may be improper in a work setting. It is polite and recommended to tag any content containing nudity with #NSFW.  This filter can also match any other word/text you specify, and can thereby be used as a general purpose content filter.');
 		$content .= '</div>';
 
-		$content .= replace_macros(get_markup_template('field_input.tpl'), 
+		$content .= replace_macros(get_markup_template('field_input.tpl'),
 			[
 				'$field' => ['nsfw-words', t('Comma separated list of keywords to hide'), $words, t('Word, /regular-expression/, lang=xx, lang!=xx')]
 			]
@@ -63,5 +61,5 @@ class Nsfw extends Controller {
 
 		return $o;
 	}
-	
+
 }

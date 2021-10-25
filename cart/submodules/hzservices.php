@@ -10,6 +10,8 @@
  */
 
 use Zotlabs\Lib\Apps;
+use Zotlabs\Lib\Connect;
+use Zotlabs\Lib\Libsync;
 
 class Cart_hzservices {
 
@@ -22,7 +24,7 @@ class Cart_hzservices {
     static public function load (){
       Zotlabs\Extend\Hook::register('cart_addon_settings', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::addon_settings',1);
       Zotlabs\Extend\Hook::register('cart_addon_settings_post', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::addon_settings_post',1);
-      
+
       Zotlabs\Extend\Hook::register('cart_myshop_menufilter', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::myshop_menuitems',1,1001);
       Zotlabs\Extend\Hook::register('cart_myshop_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::itemadmin',1,1001);
       Zotlabs\Extend\Hook::register('cart_fulfill_hzservices', 'addon/cart/submodules/hzservices.php', 'Cart_hzservices::fulfill_hzservices',1,1001);
@@ -429,8 +431,8 @@ class Cart_hzservices {
         case "addconnection":
           notice ("Add connection".EOL);
           $buyer_url=$buyer_channel["address"];
-          require_once ('include/follow.php');
-          $result=new_contact($seller_chaninfo["channel_id"],$buyer_url,$seller_chaninfo,false, true);
+
+          $result = Connect::connect($seller_chaninfo,$buyer_url);
           if (!$result["success"]){
             $errortext = $result["message"];
             $calldata["fulfillment_errors"][]=$errortext;
@@ -506,7 +508,7 @@ class Cart_hzservices {
           }
 
           $removed=contact_remove(Cart::get_seller_id(), $cn[0]['abook_id']);
-          build_sync_packet($seller_uid,
+          Libsync::build_sync_packet($seller_uid,
             array('abook' => array(array(
                   'abook_xchan' => $cn[0]['abook_xchan'],
                   'entry_deleted' => true))

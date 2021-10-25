@@ -16,7 +16,7 @@ class Startpage extends Controller {
 		if(! Apps::addon_app_installed(local_channel(),'startpage'))
 			return;
 
-		check_form_security_token_redirectOnErr('startpage', 'startpage');
+		check_form_security_token_redirectOnErr('/startpage', 'startpage');
 
 		$channel = App::get_channel();
 
@@ -46,10 +46,8 @@ class Startpage extends Controller {
 		if(! Apps::addon_app_installed(local_channel(), 'startpage')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-
-			$o = '<b>' . t('Startpage App') . ' (' . t('Not Installed') . '):</b><br>';
-			$o .= t('Set a preferred page to load on login from home page');
-			return $o;
+			$papp = Apps::get_papp('Startpage');
+			return Apps::app_render($papp, 'module');
 		}
 
 		$r = q("select channel_startpage from channel where channel_id = %d",

@@ -2,8 +2,10 @@
 
 namespace Zotlabs\Module\Settings;
 
+use App;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\AConfig;
+use Zotlabs\Lib\System;
 
 class Totp {
 	function totp_installed() {
@@ -21,7 +23,7 @@ class Totp {
 		# generate and deliver QR code png image
 		require_once("addon/addon_common/phpqrcode/qrlib.php");
 		require_once("addon/totp/class_totp.php");
-		$totp = new \TOTP(get_config('system', 'banner'),
+		$totp = new \TOTP(ucfirst(System::get_platform_name()),
 				$account['account_email'],
 				$this->get_secret($account['account_id']), 30, 6);
 		$tmpfile = tempnam(sys_get_temp_dir(), "qr");
@@ -34,7 +36,7 @@ class Totp {
 	function post() {
 		if (!$this->totp_installed())
 			json_return_and_die(array("status" => false));
-		$account = \App::get_account();
+		$account = App::get_account();
 		if (!$account) json_return_and_die(array("status" => false));
 		$id = intval($account['account_id']);
 		if (isset($_POST['set_secret'])) {
@@ -44,7 +46,7 @@ class Totp {
 				json_return_and_die(array("auth" => false));
 				}
 			require_once("addon/totp/class_totp.php");
-			$totp = new \TOTP(get_config('system', 'banner'),
+			$totp = new \TOTP(ucfirst(System::get_platform_name()),
 						$account['account_email'], null, 30, 6);
 			$this->set_secret($id, $totp->secret);
 			json_return_and_die(
@@ -58,7 +60,7 @@ class Totp {
 			require_once("addon/totp/class_totp.php");
 			$ref = intval($_POST['totp_code']);
 			$secret = $this->get_secret($id);
-			$totp = new \TOTP(get_config('system', 'banner'),
+			$totp = new \TOTP(ucfirst(System::get_platform_name()),
 							$account['account_email'],
 							$secret, 30, 6);
 			$match = ($totp->authcode($totp->timestamp()) == $ref);
@@ -67,7 +69,7 @@ class Totp {
 		}
 	function get() {
 		if (!$this->totp_installed()) return;
-		$account = \App::get_account();
+		$account = App::get_account();
 		if (!$account) return;
 		preg_match('/([^\/]+)$/', $_SERVER['REQUEST_URI'], $matches);
 		$path = $matches[1];
@@ -79,7 +81,7 @@ class Totp {
 		$acct_id = $account['account_id'];
 		require_once("addon/totp/class_totp.php");
 		$secret = $this->get_secret($acct_id);
-		$totp = new \TOTP(get_config('system', 'banner'),
+		$totp = new \TOTP(ucfirst(System::get_platform_name()),
 							$account['account_email'],
 							$secret, 30, 6);
 		$sc = replace_macros(get_markup_template('settings.tpl',
