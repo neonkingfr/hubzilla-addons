@@ -149,7 +149,7 @@ function socialauth_signin($provider, $auth)
 		$email = $userprofile->email;
 		if ( !x($email) ) {
 			logger('Cannot retrieve email address', LOGGER_NORMAL, LOG_ERR);
-			info( t('Unable to retrieve email address from remote identity provider' . EOL);
+			info( t('Unable to retrieve email address from remote identity provider') . EOL);
 			goaway(z_root());
 		}
 
