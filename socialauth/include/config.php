@@ -95,7 +95,7 @@ class SocialAuthConfig {
 	}
 
 	static public function addCustomProvider($provider) {
-		self::addProvider(self::$customPrefix . $provider);
+		return self::addProvider(self::$customPrefix . $provider);
 	}
 
 	static public function removeProvider($provider) {

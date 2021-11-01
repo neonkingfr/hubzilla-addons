@@ -380,8 +380,15 @@ class SocialAuth extends Controller {
 		}
 
 		// handle custom provider
-		$newcustomprovider = $_POST["CustomProvider"];
-		if ( x($newcustomprovider) ) {
+		$argnewcustomprovider = $_POST["CustomProvider"];
+		if ( x($argnewcustomprovider) ) {
+			// PHP will replace dots and spaces by an underscore for POST arguments
+			// as we will used the value of the CustomProvider parameter later as POST argument, we make the conversion already
+			$newcustomprovider = str_replace(array(".", " "), "_", $argnewcustomprovider);
+			if ($newcustomprovider !== $argnewcustomprovider) {
+				logger('Converted new custom provider name ' . print_r($argnewcustomprovider, true) . ' to ' . print_r($newcustomprovider, true), LOGGER_INFO);
+			}
+
 			if ( \SocialAuthConfig::addCustomProvider( $newcustomprovider ) ) {
 				logger("Added new custom provider ". print_r( $newcustomprovider, true), LOGGER_DEBUG);
 			}
