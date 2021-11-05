@@ -197,6 +197,9 @@ class SocialAuth extends Controller {
 		if(! local_channel())
 			return;
 
+		if(! is_site_admin())
+			return;
+
 		if(! Apps::addon_app_installed(local_channel(), 'socialauth')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
@@ -344,6 +347,9 @@ class SocialAuth extends Controller {
 	function post() {
 
 		if(! local_channel())
+			return;
+
+		if(! is_site_admin())
 			return;
 
 		if(! Apps::addon_app_installed(local_channel(),'socialauth'))
