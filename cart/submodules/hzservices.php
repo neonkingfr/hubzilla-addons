@@ -431,7 +431,7 @@ class Cart_hzservices {
         case "addconnection":
           notice ("Add connection".EOL);
           $buyer_url=$buyer_channel["address"];
-          require_once ('include/follow.php');
+
           $result = Connect::connect($seller_chaninfo,$buyer_url);
           if (!$result["success"]){
             $errortext = $result["message"];

@@ -22,9 +22,13 @@ class QueueWorkerUtils {
 	public static $workermaxage = 0;
 	public static $workersleep = 100;
 	public static $default_priorities = [
-		'Notifier'    => 10,
-		'Deliver'     => 10,
-		'Cache_query' => 10
+		'Notifier'          => 10,
+		'Deliver'           => 10,
+		'Cache_query'       => 10,
+		'Content_importer'  => 1,
+		'File_importer'     => 1,
+		'Channel_purge'     => 1,
+		'Directory'         => 1
 	];
 
 	public static function check_min_version($platform, $minver) {

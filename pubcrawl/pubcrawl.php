@@ -12,12 +12,21 @@
  * get communication flowing.
  */
 
+use Zotlabs\Access\PermissionRoles;
+use Zotlabs\Access\Permissions;
+use Zotlabs\Daemon\Master;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
 use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Crypto;
+use Zotlabs\Lib\LDSignatures;
 use Zotlabs\Lib\Libzot;
+use Zotlabs\Module\Ap_probe;
+use Zotlabs\Module\Followers;
+use Zotlabs\Module\Following;
+use Zotlabs\Module\Inbox;
+use Zotlabs\Module\Nullbox;
 use Zotlabs\Web\HTTPSig;
 use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\Queue;
@@ -50,7 +59,8 @@ function pubcrawl_load() {
 		'is_as_request'              => 'pubcrawl_is_as_request',
 		'get_accept_header_string'   => 'pubcrawl_get_accept_header_string',
 		'encode_person'              => 'pubcrawl_encode_person',
-		'encode_item_xchan'          => 'pubcrawl_encode_item_xchan'
+		'encode_item_xchan'          => 'pubcrawl_encode_item_xchan',
+		'fetch_provider'             => 'pubcrawl_fetch_provider'
 	]);
 	Route::register('addon/pubcrawl/Mod_Pubcrawl.php', 'pubcrawl');
 }
@@ -75,6 +85,37 @@ function pubcrawl_is_as_request(&$arr) {
 	];
 }
 
+function pubcrawl_fetch_provider($arr) {
+
+	$url     = $arr['url'];
+	$channel = App::get_channel();
+
+	if (!Apps::addon_app_installed($channel['channel_id'], 'pubcrawl')) {
+		return;
+	}
+
+	$j = Activity::fetch($url, $channel);
+	if (!$j) {
+		return;
+	}
+
+	$AS = new ActivityStreams($j);
+	if (!$AS->is_valid()) {
+		return;
+	}
+
+	// check if is_an_actor, otherwise import activity
+	if (is_array($AS->obj) && !ActivityStreams::is_an_actor($AS->obj)) {
+		$item = Activity::decode_note($AS);
+		if ($item) {
+			Activity::store($channel, get_observer_hash(), $AS, $item, true, true);
+			goaway(z_root() . '/hq/' . gen_link_id($item['mid']));
+		}
+	}
+
+	return;
+}
+
 function pubcrawl_get_accept_header_string(&$arr) {
 	if (array_key_exists('channel', $arr)) {
 		$channel_id = $arr['channel']['channel_id'];
@@ -88,7 +129,6 @@ function pubcrawl_get_accept_header_string(&$arr) {
 function pubcrawl_encode_person(&$arr) {
 	if (isset($arr['xchan']['channel_id']) && Apps::addon_app_installed($arr['xchan']['channel_id'], 'pubcrawl')) {
 		$arr['encoded']['inbox']        = z_root() . '/inbox/' . $arr['xchan']['channel_address'];
-		$arr['encoded']['outbox']       = z_root() . '/outbox/' . $arr['xchan']['channel_address'];
 		$arr['encoded']['followers']    = z_root() . '/followers/' . $arr['xchan']['channel_address'];
 		$arr['encoded']['following']    = z_root() . '/following/' . $arr['xchan']['channel_address'];
 		$arr['encoded']['endpoints']    = ['sharedInbox' => z_root() . '/inbox'];
@@ -104,6 +144,12 @@ function pubcrawl_encode_person(&$arr) {
 				}
 			}
 		}
+
+		$arr['encoded']['tag'][] = [
+			'type' => 'PropertyValue',
+			'name' => 'Protocol',
+			'value' => 'activitypub'
+		];
 
 		if ($locations) {
 			if (count($locations) === 1) {
@@ -130,7 +176,7 @@ function pubcrawl_encode_person(&$arr) {
 	}
 	else {
 		$collections = Activity::get_actor_collections($arr['xchan']['xchan_hash']);
-		if(empty($collections)) {
+		if (empty($collections)) {
 			$collections = get_xconfig($arr['xchan']['xchan_hash'], 'activitypub', 'collections', []);
 		}
 
@@ -202,7 +248,7 @@ function pubcrawl_post_local_end(&$x) {
 	]],
 		$s
 	);
-	$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $channel);
+	$msg['signature'] = LDSignatures::dopplesign($msg, $channel);
 	$jmsg             = json_encode($msg, JSON_UNESCAPED_SLASHES);
 
 	set_iconfig($item[0]['id'], 'activitypub', 'rawmsg', $jmsg, true);
@@ -234,10 +280,10 @@ function pubcrawl_personal_xrd(&$b) {
 	if (!Apps::addon_app_installed($b['user']['channel_id'], 'pubcrawl'))
 		return;
 
-	$s = '<Link rel="self" type="application/ld+json" href="' . z_root() . '/channel/' . $b['user']['channel_address'] . '" />';
-	$s = '<Link rel="self" type="application/activity+json" href="' . z_root() . '/channel/' . $b['user']['channel_address'] . '" />';
+	$s = '	<Link rel="self" type="application/ld+json" href="' . z_root() . '/channel/' . $b['user']['channel_address'] . '" />' . "\r\n";
+	$s .= '	<Link rel="self" type="application/activity+json" href="' . z_root() . '/channel/' . $b['user']['channel_address'] . '" />';
 
-	$b['xml'] = str_replace('</XRD>', $s . "\n" . '</XRD>', $b['xml']);
+	$b['xml'] = str_replace('</XRD>', $s . "\r\n" . '</XRD>', $b['xml']);
 
 }
 
@@ -332,7 +378,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 }
 
 function pubcrawl_encode_item_xchan(&$arr) {
-	if($arr['encoded_xchan']['network'] !== 'activitypub')
+	if ($arr['encoded_xchan']['network'] !== 'activitypub')
 		return;
 
 	unset($arr['encoded_xchan']['address']);
@@ -399,32 +445,32 @@ function pubcrawl_load_module(&$b) {
 
 	if ($b['module'] === 'inbox') {
 		require_once('addon/pubcrawl/Mod_Inbox.php');
-		$b['controller'] = new \Zotlabs\Module\Inbox();
+		$b['controller'] = new Inbox();
 		$b['installed']  = true;
 	}
-	if ($b['module'] === 'outbox') {
-		require_once('addon/pubcrawl/Mod_Outbox.php');
-		$b['controller'] = new \Zotlabs\Module\Outbox();
-		$b['installed']  = true;
-	}
+	//if ($b['module'] === 'outbox') {
+	//require_once('addon/pubcrawl/Mod_Outbox.php');
+	//$b['controller'] = new \Zotlabs\Module\Outbox();
+	//$b['installed']  = true;
+	//}
 	if ($b['module'] === 'nullbox') {
 		require_once('addon/pubcrawl/Mod_Nullbox.php');
-		$b['controller'] = new \Zotlabs\Module\Nullbox();
+		$b['controller'] = new Nullbox();
 		$b['installed']  = true;
 	}
 	if ($b['module'] === 'ap_probe') {
 		require_once('addon/pubcrawl/Mod_Ap_probe.php');
-		$b['controller'] = new \Zotlabs\Module\Ap_probe();
+		$b['controller'] = new Ap_probe();
 		$b['installed']  = true;
 	}
 	if ($b['module'] === 'followers') {
 		require_once('addon/pubcrawl/Mod_Followers.php');
-		$b['controller'] = new \Zotlabs\Module\Followers();
+		$b['controller'] = new Followers();
 		$b['installed']  = true;
 	}
 	if ($b['module'] === 'following') {
 		require_once('addon/pubcrawl/Mod_Following.php');
-		$b['controller'] = new \Zotlabs\Module\Following();
+		$b['controller'] = new Following();
 		$b['installed']  = true;
 	}
 }
@@ -569,14 +615,14 @@ function pubcrawl_notifier_hub(&$arr) {
 			// Our relayed Likes etc. do not seem to be accepted/displayed by any platform so far.
 			// Some return code 200 but do not display it (masto) others return 400 (pleroma).
 			// If the return code is 400 or 500 they tend to stuff up the  queue basically for nothing.
-			if(in_array($arr['target_item']['verb'], [ACTIVITY_LIKE, ACTIVITY_DISLIKE]))
+			if (in_array($arr['target_item']['verb'], [ACTIVITY_LIKE, ACTIVITY_DISLIKE]))
 				return;
 
 			$signed_msg = get_iconfig($arr['target_item'], 'activitypub', 'rawmsg');
 
 			// If we don't have a signed message and we are not the author,
 			// the message will be misattributed in mastodon
-			if(! $signed_msg) {
+			if (!$signed_msg) {
 				logger('relayed post with no signed message');
 				return;
 			}
@@ -587,7 +633,7 @@ function pubcrawl_notifier_hub(&$arr) {
 	$prv_recips = $arr['env_recips'];
 	stringify_array_elms($prv_recips);
 
-	if(is_array($signed_msg)) {
+	if (is_array($signed_msg)) {
 		// If it's an array it is probably an encrypted zot6 package
 		// which are in the wild due to a bug before 5.4.
 		// Probably in this case it's the best to just unset it.
@@ -610,8 +656,8 @@ function pubcrawl_notifier_hub(&$arr) {
 			z_root() . ZOT_APSCHEMA_REV
 		]], $ti);
 
-		$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $arr['channel']);
-		$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
+		$msg['signature'] = LDSignatures::dopplesign($msg, $arr['channel']);
+		$jmsg             = json_encode($msg, JSON_UNESCAPED_SLASHES);
 	}
 
 	if ($is_profile) {
@@ -632,7 +678,7 @@ function pubcrawl_notifier_hub(&$arr) {
 				'to'     => [z_root() . '/followers/' . $arr['channel']['channel_address']]
 			]);
 
-		$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $arr['channel']);
+		$msg['signature'] = LDSignatures::dopplesign($msg, $arr['channel']);
 		$jmsg             = json_encode($msg, JSON_UNESCAPED_SLASHES);
 	}
 
@@ -653,7 +699,7 @@ function pubcrawl_notifier_hub(&$arr) {
 
 		foreach ($r as $contact) {
 
-			if(in_array($contact['hubloc_id_url'], $processed))
+			if (in_array($contact['hubloc_id_url'], $processed))
 				continue;
 
 			$processed[] = $contact['hubloc_id_url'];
@@ -680,14 +726,14 @@ function pubcrawl_notifier_hub(&$arr) {
 		// See if we can deliver all of them at once
 
 		$x = Activity::get_actor_collections($arr['hub']['hubloc_hash']);
-		if(empty($x)) {
+		if (empty($x)) {
 			$x = get_xconfig($arr['hub']['hubloc_hash'], 'activitypub', 'collections');
 		}
 
 		if ($x && $x['sharedInbox']) {
 			logger('using publicInbox delivery for ' . $arr['hub']['hubloc_url'], LOGGER_DEBUG);
 			$contact['hubloc_callback'] = $x['sharedInbox'];
-			$qi = pubcrawl_queue_message($jmsg, $arr['channel'], $contact, $target_item['mid']);
+			$qi                         = pubcrawl_queue_message($jmsg, $arr['channel'], $contact, $target_item['mid']);
 			if ($qi) {
 				$arr['queued'][] = $qi;
 			}
@@ -707,7 +753,7 @@ function pubcrawl_notifier_hub(&$arr) {
 
 			foreach ($r as $contact) {
 
-				if(in_array($contact['hubloc_id_url'], $processed))
+				if (in_array($contact['hubloc_id_url'], $processed))
 					continue;
 
 				$processed[] = $contact['hubloc_id_url'];
@@ -850,7 +896,7 @@ function pubcrawl_connection_remove(&$x) {
 		);
 	}
 
-	$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $channel);
+	$msg['signature'] = LDSignatures::dopplesign($msg, $channel);
 
 	$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
 
@@ -864,7 +910,7 @@ function pubcrawl_connection_remove(&$x) {
 	if ($single && $h) {
 		$qi = pubcrawl_queue_message($jmsg, $channel, $h[0]);
 		if ($qi) {
-			\Zotlabs\Daemon\Master::Summon(['Deliver', $qi]);
+			Master::Summon(['Deliver', $qi]);
 		}
 	}
 
@@ -897,7 +943,7 @@ function pubcrawl_permissions_create(&$x) {
 		]);
 
 
-	$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $x['sender']);
+	$msg['signature'] = LDSignatures::dopplesign($msg, $x['sender']);
 
 	$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
 
@@ -967,7 +1013,7 @@ function pubcrawl_permissions_accept(&$x) {
 			'to'     => [$x['recipient']['xchan_hash']]
 		]);
 
-	$msg['signature'] = \Zotlabs\Lib\LDSignatures::dopplesign($msg, $x['sender']);
+	$msg['signature'] = LDSignatures::dopplesign($msg, $x['sender']);
 
 	$jmsg = json_encode($msg, JSON_UNESCAPED_SLASHES);
 
@@ -986,8 +1032,8 @@ function pubcrawl_permissions_accept(&$x) {
 
 	$x['success'] = true;
 
-	$perms       = \Zotlabs\Access\PermissionRoles::role_perms('social');
-	$their_perms = \Zotlabs\Access\Permissions::FilledPerms($perms['perms_connect']);
+	$perms       = PermissionRoles::role_perms('social');
+	$their_perms = Permissions::FilledPerms($perms['perms_connect']);
 
 	// We accepted their follow request - set default permissions
 	foreach ($their_perms as $k => $v) {
@@ -1034,7 +1080,7 @@ function pubcrawl_thing_mod_init($x) {
 
 		$headers                     = [];
 		$headers['Content-Type']     = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
-		$x['signature']              = \Zotlabs\Lib\LDSignatures::dopplesign($x, $chan);
+		$x['signature']              = LDSignatures::dopplesign($x, $chan);
 		$ret                         = json_encode($x, JSON_UNESCAPED_SLASHES);
 		$headers['Date']             = datetime_convert('UTC', 'UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 		$headers['Digest']           = HTTPSig::generate_digest_header($ret);
@@ -1087,7 +1133,7 @@ function pubcrawl_locs_mod_init($x) {
 
 		$headers                     = [];
 		$headers['Content-Type']     = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
-		$x['signature']              = \Zotlabs\Lib\LDSignatures::dopplesign($x, $chan);
+		$x['signature']              = LDSignatures::dopplesign($x, $chan);
 		$ret                         = json_encode($x, JSON_UNESCAPED_SLASHES);
 		$headers['Date']             = datetime_convert('UTC', 'UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 		$headers['Digest']           = HTTPSig::generate_digest_header($ret);
@@ -1138,7 +1184,7 @@ function pubcrawl_follow_mod_init($x) {
 
 		$headers                     = [];
 		$headers['Content-Type']     = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
-		$x['signature']              = \Zotlabs\Lib\LDSignatures::dopplesign($x, $chan);
+		$x['signature']              = LDSignatures::dopplesign($x, $chan);
 		$ret                         = json_encode($x, JSON_UNESCAPED_SLASHES);
 		$headers['Date']             = datetime_convert('UTC', 'UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T');
 		$headers['Digest']           = HTTPSig::generate_digest_header($ret);

@@ -1,12 +1,14 @@
 <?php
 
+use Zotlabs\Access\PermissionRoles;
+use Zotlabs\Access\Permissions;
 use Zotlabs\Lib\Apps;
 use Zotlabs\Daemon\Master;
 use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\ActivityStreams;
-use Zotlabs\Lib\Keyutils;
 use Zotlabs\Lib\Libzot;
 use Zotlabs\Lib\Libsync;
+use Zotlabs\Lib\MessageFilter;
 
 require_once('include/event.php');
 
@@ -943,8 +945,8 @@ function as_follow($channel,$act) {
 		}
 	}
 
-	$x = \Zotlabs\Access\PermissionRoles::role_perms('social');
-	$their_perms = \Zotlabs\Access\Permissions::FilledPerms($x['perms_connect']);
+	$x = PermissionRoles::role_perms('social');
+	$their_perms = Permissions::FilledPerms($x['perms_connect']);
 
 	if($contact && $contact['abook_id']) {
 
@@ -1021,7 +1023,7 @@ function as_follow($channel,$act) {
 	}
 	$ret = $r[0];
 
-	$p = \Zotlabs\Access\Permissions::connect_perms($channel['channel_id']);
+	$p = Permissions::connect_perms($channel['channel_id']);
 	$my_perms  = $p['perms'];
 	$automatic = $p['automatic'];
 
@@ -1130,8 +1132,8 @@ function as_unfollow($channel,$act) {
 		);
 		if($r) {
 			// This is just to get a list of permission names, we don't care about the values
-			$x = \Zotlabs\Access\PermissionRoles::role_perms('social');
-			$my_perms = \Zotlabs\Access\Permissions::FilledPerms($x['perms_connect']);
+			$x = PermissionRoles::role_perms('social');
+			$my_perms = Permissions::FilledPerms($x['perms_connect']);
 
 			// remove all permissions they provided
 			foreach($my_perms as $k => $v) {
@@ -1260,26 +1262,29 @@ function as_create_note($channel,$observer_hash,$act) {
 		return;
 	}
 
-	$announce_author = as_get_attributed_to_person($act);
+	$s['author_xchan'] = $act->actor['id'];
 
-	$s['author_xchan'] = (($announce) ? $announce_author : $act->actor['id']);
-
-	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
-		dbesc($s['author_xchan']),
-		intval($channel['channel_id'])
-	);
+	if ($announce) {
+		$s['author_xchan'] = as_get_attributed_to_person($act);
+	}
 
 	$content = as_get_content($act->obj);
 
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
-	$s['uuid'] = '';
+	$s['mid'] = ((is_array($act->obj) && isset($act->obj['id'])) ? $act->obj['id'] : $act->obj);
+
+	if (!$s['mid']) {
+		return false;
+	}
 
 	// Friendica sends the diaspora guid in a nonstandard field via AP
-	if($act->obj['diaspora:guid'])
-		$s['uuid'] = $act->obj['diaspora:guid'];
+	$s['uuid'] = ((is_array($act->obj) && isset($act->obj['diaspora:guid'])) ? $act->obj['diaspora:guid'] : '');
 
-	$s['mid'] = urldecode($act->obj['id']);
+	if (!$s['uuid']) {
+		// If no uuid is provided we will create an uuid v5 from the mid
+		$s['uuid'] = uuid_from_url($s['mid']);
+	}
 
 	if(in_array($act->obj['type'],[ 'Note','Article','Page' ])) {
 		$ptr = null;
@@ -1367,11 +1372,23 @@ function as_create_note($channel,$observer_hash,$act) {
 	}
 
 	if($channel['channel_system']) {
-		if(! \Zotlabs\Lib\MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
+		if(! MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
 			logger('post is filtered');
 			return;
 		}
 	}
+
+	$s['author_xchan'] = Activity::find_best_identity($s['author_xchan']);
+
+	if(!$s['author_xchan']) {
+		logger('No author: ' . print_r($act, true));
+		return;
+	}
+
+	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
+		dbesc($s['author_xchan']),
+		intval($channel['channel_id'])
+	);
 
 	if($abook) {
 		if(! post_is_importable($s,$abook[0])) {
@@ -1438,19 +1455,12 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	// Make sure we use the zot6 identity where applicable
 
-	$s['author_xchan'] = Activity::find_best_identity($s['author_xchan']);
 	$s['owner_xchan']  = Activity::find_best_identity($s['owner_xchan']);
-
-	if(!$s['author_xchan']) {
-		logger('No author: ' . print_r($act, true));
-	}
 
 	if(!$s['owner_xchan']) {
 		logger('No owner: ' . print_r($act, true));
-	}
-
-	if(!$s['author_xchan'] || !$s['owner_xchan'])
 		return;
+	}
 
 	$a = Activity::decode_taxonomy($act->obj);
 	if($a) {
@@ -1775,7 +1785,7 @@ function as_announce_note($channel,$observer_hash,$act) {
 	$s['app']      = t('ActivityPub');
 
 	if($channel['channel_system']) {
-		if(! \Zotlabs\Lib\MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
+		if(! MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
 			logger('post is filtered');
 			return;
 		}
@@ -1857,11 +1867,23 @@ function as_like_note($channel,$observer_hash,$act) {
 
 	$s = [];
 
-	$s['parent_mid'] = $act->obj['id'];
-	if(! $s['parent_mid'])
-		return;
-
 	$s['mid'] = $act->id;
+	if(!$s['mid']) {
+		return;
+	}
+
+	$s['parent_mid'] = ((is_array($act->obj) && isset($act->obj['id'])) ? $act->obj['id'] : $act->obj);
+	if(!$s['parent_mid']) {
+		return;
+	}
+
+	// Friendica sends the diaspora guid in a nonstandard field via AP
+	$s['uuid'] = ((is_array($act->data) && isset($act->data['diaspora:guid'])) ? $act->data['diaspora:guid'] : '');
+	if (!$s['uuid']) {
+		// If no uuid is provided we will create an uuid v5 from the mid
+		$s['uuid'] = uuid_from_url($s['mid']);
+	}
+
 
 	if($act->type === 'Like')
 		$s['verb'] = ACTIVITY_LIKE;
@@ -1926,20 +1948,11 @@ function as_like_note($channel,$observer_hash,$act) {
 
 	$s['aid'] = $channel['channel_account_id'];
 	$s['uid'] = $channel['channel_id'];
-	$s['uuid'] = '';
-	// Friendica sends the diaspora guid in a nonstandard field via AP
-	if($act->data['diaspora:guid'])
-		$s['uuid'] = $act->data['diaspora:guid'];
-
-	if(! $s['parent_mid'])
-		$s['parent_mid'] = $s['mid'];
 
 	$post_type = (($parent_item['resource_type'] === 'photo') ? t('photo') : t('status'));
 
 	$links = array(array('rel' => 'alternate','type' => 'text/html', 'href' => $parent_item['plink']));
 	$objtype = (($parent_item['resource_type'] === 'photo') ? ACTIVITY_OBJ_PHOTO : ACTIVITY_OBJ_NOTE );
-
-	$body = $parent_item['body'];
 
 	$z = q("select * from xchan where xchan_hash = '%s'",
 		dbesc($parent_item['author_xchan'])
@@ -1950,7 +1963,7 @@ function as_like_note($channel,$observer_hash,$act) {
 	$object = json_encode(array(
 		'type'    => $post_type,
 		'id'      => $parent_item['mid'],
-		'asld'    => \Zotlabs\Lib\Activity::fetch_item( [ 'id' => $parent_item['mid'] ] ),
+		'asld'    => Activity::fetch_item( ['id' => $parent_item['mid'] ] ),
 		'parent'  => (($parent_item['thr_parent']) ? $parent_item['thr_parent'] : $parent_item['parent_mid']),
 		'link'    => $links,
 		'title'   => $parent_item['title'],

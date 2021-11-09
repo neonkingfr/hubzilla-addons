@@ -1260,7 +1260,7 @@ class Workflow_Utils {
 		$basicfilters .= "<div role='tab' id='basicfilters'>";
 		$basicfilters .= "<h4><a data-toggle='collapse' data-target='#basicfilters-collapse' href='#' class='collapsed' aria-expanded='false'>Search Parameters</a></h4>";
 		$basicfilters .= "</div>";
-		$basicfilters .= "<div id='basicfilters-collapse' class='collapse' role='tabpanel' aria-labelledby='basicfilters' data-parent='#basicfilters' style='z-index:100;position:absolute;background-color:#fff;padding:4px 20px 4px 20px;border:solid 4px black;'>";
+		$basicfilters .= "<div id='basicfilters-collapse' class='collapse' role='tabpanel' aria-labelledby='basicfilters' data-bs-parent='#basicfilters' style='z-index:100;position:absolute;background-color:#fff;padding:4px 20px 4px 20px;border:solid 4px black;'>";
 		$basicfilters .= "<div id='basicfilters-tool' style='float:right;'><a data-toggle='collapse' data-target='#basicfilters-collapse' class='btn btn-outline-secondary btn-sm border-0' style='margin-right:-25px;margin-top:-10px;' href='#'><i class='fa fa-close'></i></a></div>";
 		$basicfilters .= "<form method='get'>";
 		$minprio = isset($_REQUEST['minpriority']) ? intval($_REQUEST['minpriority']) : 1;

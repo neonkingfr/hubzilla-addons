@@ -76,7 +76,6 @@ class Inbox extends \Zotlabs\Web\Controller {
 			$arr = [];
 			$arr['author']['url'] = as_get_attributed_to_person($AS);
 			pubcrawl_import_author($arr);
-
 		}
 
 		$observer_hash = '';

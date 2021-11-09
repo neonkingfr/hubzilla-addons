@@ -126,9 +126,9 @@ function diaspora_get_cached_actor_provider(&$arr) {
 	}
 }
 
-function diaspora_fetch_provider(&$arr) {
-	$url      = $arr['data'];
-	$importer = $arr['channel'];
+function diaspora_fetch_provider($arr) {
+	$url      = $arr['url'];
+	$importer = App::get_channel();
 
 	if (!Apps::addon_app_installed($importer['channel_id'], 'diaspora'))
 		return;
@@ -144,6 +144,7 @@ function diaspora_fetch_provider(&$arr) {
 
 	// fetch the json
 	$x = z_fetch_url($thread_url, false, 1, ['headers' => ['Accept: application/json']]);
+
 	if (!$x['success'])
 		return;
 
@@ -159,12 +160,23 @@ function diaspora_fetch_provider(&$arr) {
 	// We will first fetch the parent via the /fetch endpoint
 
 	$fetch_url = $parts['scheme'] . '://' . $parts['host'] . '/fetch/post/' . $guid;
-	$x         = z_fetch_url($fetch_url);
+	$x = z_fetch_url($fetch_url);
 
 	if (!$x['success'])
 		return;
 
-	$msg           = diaspora_decode($importer, $x['body'], 'salmon');
+	$msg = diaspora_decode($importer, $x['body'], 'salmon');
+
+	$oxml = parse_xml_string($msg['message'],false);
+	if($oxml) {
+		$msg['msg_type'] = strtolower($oxml->getName());
+	}
+
+	$pxml = sxml2array($oxml);
+	if($pxml) {
+		$msg['msg'] = $pxml;
+	}
+
 	$msg['public'] = $public;
 
 	// dispatch toplevel post
@@ -176,9 +188,11 @@ function diaspora_fetch_provider(&$arr) {
 
 	if ($thread_data && array_path_exists('interactions/comments', $thread_data)) {
 		$comments = $thread_data['interactions']['comments'];
-		$msg      = [];
 		foreach ($comments as $comment) {
-			$msg_arr        = [
+			$msg = [];
+			$msg['author']  = $comment['author']['diaspora_id'];
+			$msg['msg_type'] = 'comment';
+			$msg['msg'] = [
 				'author'      => $comment['author']['diaspora_id'],
 				'guid'        => $comment['guid'],
 				'parent_guid' => $guid,
@@ -186,10 +200,7 @@ function diaspora_fetch_provider(&$arr) {
 				'edited_at'   => $comment['edited_at'],
 				'text'        => $comment['text']
 			];
-			$msg['message'] = arrtoxml('comment', $msg_arr);
-			$msg['author']  = $comment['author']['diaspora_id'];
 			diaspora_dispatch(App::get_channel(), $msg, true);
-			$msg = [];
 		}
 	}
 
@@ -197,20 +208,21 @@ function diaspora_fetch_provider(&$arr) {
 		$likes = $thread_data['interactions']['likes'];
 		$msg   = [];
 		foreach ($likes as $like) {
-			$msg_arr        = [
+			$msg = [];
+			$msg['author']  = $like['author']['diaspora_id'];
+			$msg['msg_type'] = 'like';
+			$msg['msg'] = [
 				'positive'    => 'true', // this is not provided and MUST be a string
 				'author'      => $like['author']['diaspora_id'],
 				'guid'        => $like['guid'],
 				'parent_guid' => $guid,
 				'created_at'  => $like['created_at']
 			];
-			$msg['message'] = arrtoxml('like', $msg_arr);
-			$msg['author']  = $like['author']['diaspora_id'];
 			diaspora_dispatch(App::get_channel(), $msg, true);
 		}
 	}
 
-	goaway(z_root() . '/display/' . gen_link_id(z_root() . '/item/' . $return_guid));
+	goaway(z_root() . '/hq/' . gen_link_id(z_root() . '/item/' . $return_guid));
 
 }
 

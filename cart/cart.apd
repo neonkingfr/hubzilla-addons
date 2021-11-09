@@ -1,5 +1,5 @@
-version: 2
-url: $baseurl/cart/$nick
+version: 3
+url: $baseurl/cart/$nick, $baseurl/settings/cart
 requires: local_channel
 name: Cart
 photo: icon:shopping-cart
