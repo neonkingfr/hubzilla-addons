@@ -1032,7 +1032,9 @@ function pubcrawl_permissions_accept(&$x) {
 
 	$x['success'] = true;
 
-	$perms       = PermissionRoles::role_perms('social');
+
+	$role = get_pconfig($x['sender']['channel_id'], 'system', 'permissions_role', 'personal');
+	$perms       = PermissionRoles::role_perms($role);
 	$their_perms = Permissions::FilledPerms($perms['perms_connect']);
 
 	// We accepted their follow request - set default permissions
