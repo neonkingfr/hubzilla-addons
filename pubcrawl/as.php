@@ -1220,8 +1220,6 @@ function as_create_note($channel,$observer_hash,$act) {
 
 		// an ugly way to recognise a mastodon direct message
 
-
-
 		if ($act->obj['type'] === 'Note' &&
 			!isset($act->raw_recips['cc']) &&
 			is_array($act->raw_recips['to']) &&

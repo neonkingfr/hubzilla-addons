@@ -57,8 +57,7 @@ class Diaspora_Receiver {
 		// Please note some permissions such as PERMS_R_PAGES are impossible for Disapora.
 		// They cannot currently authenticate to our system.
 
-		$role = get_pconfig($this->importer['channel_id'], 'system', 'permissions_role', 'personal');
-		$x = PermissionRoles::role_perms($role);
+		$x = PermissionRoles::role_perms('social');
 		$their_perms = Permissions::FilledPerms($x['perms_connect']);
 
 		if(! $sharing) {
