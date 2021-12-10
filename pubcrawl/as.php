@@ -9,6 +9,7 @@ use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Libzot;
 use Zotlabs\Lib\Libsync;
 use Zotlabs\Lib\MessageFilter;
+use Zotlabs\Lib\AccessList;
 
 require_once('include/event.php');
 
@@ -1102,10 +1103,9 @@ function as_follow($channel,$act) {
 	/* If there is a default group for this channel and permissions are automatic, add this member to it */
 
 	if($channel['channel_default_group'] && $automatic) {
-		require_once('include/group.php');
-		$g = group_rec_byhash($channel['channel_id'],$channel['channel_default_group']);
+		$g = AccessList::by_hash($channel['channel_id'],$channel['channel_default_group']);
 		if($g)
-			group_add_member($channel['channel_id'],'',$ret['xchan_hash'],$g['id']);
+			AccessList::member_add($channel['channel_id'],'',$ret['xchan_hash'],$g['id']);
 	}
 
 

@@ -6,6 +6,7 @@ use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Enotify;
 use Zotlabs\Lib\MessageFilter;
 use Zotlabs\Lib\Libsync;
+use Zotlabs\Lib\AccessList;
 use Zotlabs\Daemon\Master;
 
 class Diaspora_Receiver {
@@ -192,10 +193,9 @@ class Diaspora_Receiver {
 		/* If there is a default group for this channel and friending is automatic, add this member to it */
 
 		if($this->importer['channel_default_group'] && $automatic) {
-			require_once('include/group.php');
-			$g = group_rec_byhash($this->importer['channel_id'],$this->importer['channel_default_group']);
+			$g = AccessList::by_hash($this->importer['channel_id'],$this->importer['channel_default_group']);
 			if($g)
-				group_add_member($this->importer['channel_id'],'',$contact_record['xchan_hash'],$g['id']);
+				AccessList::member_add($this->importer['channel_id'],'',$contact_record['xchan_hash'],$g['id']);
 		}
 
 		return;
