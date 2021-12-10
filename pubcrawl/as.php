@@ -1351,6 +1351,10 @@ function as_create_note($channel,$observer_hash,$act) {
 		if ($act->obj['endTime']) {
 			$s['comments_closed'] = datetime_convert('UTC','UTC', $act->obj['endTime']);
 		}
+		// pleroma
+		if ($act->obj['closed']) {
+			$s['comments_closed'] = datetime_convert('UTC','UTC', $act->obj['closed']);
+		}
 	}
 
 	// Mastodon does not provide update timestamps when updating poll tallies which means race conditions may occur here.
