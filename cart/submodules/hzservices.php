@@ -12,6 +12,7 @@
 use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\Connect;
 use Zotlabs\Lib\Libsync;
+use Zotlabs\Lib\AccessList;
 
 class Cart_hzservices {
 
@@ -414,13 +415,13 @@ class Cart_hzservices {
       switch ($command["cmd"]) {
         case "addtoprivacygroup":
           $grouphash = $command["params"]["group"];
-          $grouprecord = group_rec_byhash($seller_uid,$grouphash);
+          $grouprecord = AccessList::by_hash($seller_uid,$grouphash);
           if (!$grouprecord) {
             $errortext = "Unable to add buyer to group: [Group Not Found] ".$groupname;
             $calldata["fulfillment_errors"][]=$errortext;
           }
           $groupname = $grouprecord["gname"];
-          $r=group_add_member($seller_uid,$groupname,$buyer_xchan);
+          $r = AccessList::member_add($seller_uid,$groupname,$buyer_xchan);
           if (!$r) {
             $errortext = "Unable to add buyer to group: [Add Failed] ".$groupname;
             $calldata["fulfillment_errors"][]=$errortext;
@@ -485,13 +486,13 @@ class Cart_hzservices {
       switch ($command["cmd"]) {
         case "rmvfromprivacygroup":
           $grouphash = $command["params"]["group"];
-          $grouprecord = group_rec_byhash($seller_uid,$grouphash);
+          $grouprecord = AccessList::by_hash($seller_uid,$grouphash);
           if (!$grouprecord) {
             $errortext = "Unable to remove buyer from group: [Group Not Found] ".$groupname;
             $calldata["rollback_errors"][]=$errortext;
             logger($errortext." ORDER: ".$orderhash, LOGGER_NORMAL);
           }
-          $r=group_rmv_member($seller_uid,$groupname,$buyer_xchan);
+          $r = AccessList::member_remove($seller_uid,$groupname,$buyer_xchan);
           if (!$r) {
             $errortext = "Unable to remove buyer from group: ".$groupname;
             $calldata["rollback_errors"][]=$errortext;
@@ -691,7 +692,7 @@ class Cart_hzservices {
         switch($command["cmd"]) {
           case "addtoprivacygroup":
             $cmdtext.="Add buyer to privacy group: ";
-            $grouprec=group_rec_byhash($seller_uid,$command["params"]["group"]);
+            $grouprec = AccessList::by_hash($seller_uid,$command["params"]["group"]);
             $cmdtext.=$grouprec["gname"];
             $cmdtext.=' <button class="btn btn-sm" type="submit" name="del" value="'.$command["cmdhash"].'"><i class="fa fa-trash fa-fw" aria-hidden="true"></i></button>';
             break;
@@ -731,7 +732,7 @@ class Cart_hzservices {
         switch($command["cmd"]) {
           case "rmvfromprivacygroup":
             $cmdtext.="Remove buyer from privacy group: ";
-            $grouprec=group_rec_byhash($seller_uid,$command["params"]["group"]);
+            $grouprec = AccessList::by_hash($seller_uid,$command["params"]["group"]);
             $cmdtext.=$grouprec["gname"];
             $cmdtext.=' <button class="btn btn-sm" type="submit" name="del" value="'.$command["cmdhash"].'"><i class="fa fa-trash fa-fw" aria-hidden="true"></i></button>';
             break;

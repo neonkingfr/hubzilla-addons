@@ -2,9 +2,9 @@
 
 use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\Connect;
+use Zotlabs\Lib\AccessList;
 
 require_once('include/markdown.php');
-require_once('include/group.php');
 require_once('include/photo/photo_driver.php');
 
 function import_diaspora_account($data) {
@@ -108,12 +108,11 @@ function import_diaspora_account($data) {
 
 	if($data['user']['contact_groups']) {
 		foreach($data['user']['contact_groups'] as $aspect) {
-			group_add($channel_id,escape_tags($aspect['name']),intval($aspect['contacts_visible']));
+			AccessList::add($channel_id,escape_tags($aspect['name']),intval($aspect['contacts_visible']));
 		}
 	}
 
 	// now add connections and send friend requests
-
 
 	if($data['user']['contacts']) {
 		foreach($data['user']['contacts'] as $contact) {
@@ -121,7 +120,7 @@ function import_diaspora_account($data) {
 			if($result['success']) {
 				if($contact['contact_groups_membership']) {
 					foreach($contact['contact_groups_membership'] as $aspect) {
-						group_add_member($channel_id,$aspect['name'],$result['abook']['xchan_hash']);
+						AccessList::member_add($channel_id,$aspect['name'],$result['abook']['xchan_hash']);
 					}
 				}
 			}
