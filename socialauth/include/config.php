@@ -30,7 +30,7 @@ class SocialAuthConfig {
 	}
 
 	static public function getCallback() {
-		return z_root() . '/socialauthsignin.php';
+		return z_root() . '/socialauthsignin';
 	}
 
 	static public function getBuiltinProviders() {
@@ -95,7 +95,7 @@ class SocialAuthConfig {
 	}
 
 	static public function addCustomProvider($provider) {
-		self::addProvider(self::$customPrefix . $provider);
+		return self::addProvider(self::$customPrefix . $provider);
 	}
 
 	static public function removeProvider($provider) {
@@ -149,6 +149,7 @@ class SocialAuthConfig {
 
 			$r[$provider]['endpoints'] = $endpoint_collection;
 			$r[$provider]['adapter'] = '\Hybridauth\Provider\Customauth';
+			$r[$provider]['scope'] = get_config('socialauth', self::getKey($provider, "scope"));
 		}
  
 		$hybridauthconfig = [
@@ -170,6 +171,7 @@ class SocialAuthConfig {
 				foreach (self::getCustomProviderEndpoints() as $endpoint) {
 					$keys[] = $endpoint;
 				}
+				$keys[] = "scope";
 			}
 
 			foreach($keys as $key) {
