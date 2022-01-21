@@ -272,7 +272,8 @@ class QueueWorkerUtils {
 				dbesc($uuid)
 			);
 			if ($r) {
-				logger("Ignoring duplicate workerq task", LOGGER_DEBUG);
+				logger("Summon: Ignoring duplicate workerq task", LOGGER_DEBUG);
+				logger(print_r($workinfo,true));
 				$arr = ['argv' => []];
 				return;
 			}
@@ -319,7 +320,9 @@ class QueueWorkerUtils {
 				dbesc($uuid)
 			);
 			if ($r) {
-				logger("Duplicate task - do not insert.", LOGGER_DEBUG);
+				logger("Release: Duplicate task - do not insert.", LOGGER_DEBUG);
+				logger(print_r($workinfo,true));
+
 				$arr = ['argv' => []];
 				return;
 			}

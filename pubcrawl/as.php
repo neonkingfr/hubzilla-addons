@@ -9,6 +9,7 @@ use Zotlabs\Lib\ActivityStreams;
 use Zotlabs\Lib\Libzot;
 use Zotlabs\Lib\Libsync;
 use Zotlabs\Lib\MessageFilter;
+use Zotlabs\Lib\AccessList;
 
 require_once('include/event.php');
 
@@ -1102,10 +1103,9 @@ function as_follow($channel,$act) {
 	/* If there is a default group for this channel and permissions are automatic, add this member to it */
 
 	if($channel['channel_default_group'] && $automatic) {
-		require_once('include/group.php');
-		$g = group_rec_byhash($channel['channel_id'],$channel['channel_default_group']);
+		$g = AccessList::by_hash($channel['channel_id'],$channel['channel_default_group']);
 		if($g)
-			group_add_member($channel['channel_id'],'',$ret['xchan_hash'],$g['id']);
+			AccessList::member_add($channel['channel_id'],'',$ret['xchan_hash'],$g['id']);
 	}
 
 
@@ -1218,36 +1218,23 @@ function as_create_note($channel,$observer_hash,$act) {
 	if ($act->recips && (!in_array(ACTIVITY_PUBLIC_INBOX, $act->recips))) {
 		$s['item_private'] = 1;
 
-		// an ugly way to recognise a mastodon direct message
-
-		if ($act->obj['type'] === 'Note' &&
-			!isset($act->raw_recips['cc']) &&
-			is_array($act->raw_recips['to']) &&
-			in_array(channel_url($channel), $act->raw_recips['to']) &&
-			is_array($act->obj['tag']) &&
-			count($act->raw_recips['to']) === count($act->obj['tag'])
-		) {
-			$mentions = [];
-			foreach($act->obj['tag'] as $t) {
-				if ($t['type'] === 'Mention' && isset($t['href'])) {
-					$mentions[] = $t['href'];
-				}
-			}
-
-			$diff = array_diff($act->raw_recips['to'], $mentions);
-
-			if(!count($diff)) {
+		if (array_key_exists('directMessage', $act->data)) {
+			// the litebub way to determine a direct message (pleroma, friendica)
+			if (intval($act->data['directMessage'])) {
 				$s['item_private'] = 2;
 			}
 		}
-
-		// the litebub way to determine a direct message (pleroma, friendica)
-		if (is_array($act->data)) {
-			if (array_key_exists('directMessage',$act->data) && intval($act->data['directMessage'])) {
+		else {
+			// an ugly and imperfect way to recognise a mastodon direct message
+			if (
+				!isset($act->raw_recips['cc']) &&
+				is_array($act->raw_recips['to']) &&
+				in_array(channel_url($channel), $act->raw_recips['to']) &&
+				!in_array($act->actor['followers'], $act->raw_recips['to'])
+			) {
 				$s['item_private'] = 2;
 			}
 		}
-
 	}
 
 	if (intval($s['item_private']) === 2) {
@@ -1363,6 +1350,10 @@ function as_create_note($channel,$observer_hash,$act) {
 	if ($act->obj['type'] === 'Question' && in_array($act->type,['Create','Update'])) {
 		if ($act->obj['endTime']) {
 			$s['comments_closed'] = datetime_convert('UTC','UTC', $act->obj['endTime']);
+		}
+		// pleroma
+		if ($act->obj['closed']) {
+			$s['comments_closed'] = datetime_convert('UTC','UTC', $act->obj['closed']);
 		}
 	}
 

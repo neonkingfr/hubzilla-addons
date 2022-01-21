@@ -6,6 +6,7 @@ use Zotlabs\Lib\Crypto;
 use Zotlabs\Lib\Enotify;
 use Zotlabs\Lib\MessageFilter;
 use Zotlabs\Lib\Libsync;
+use Zotlabs\Lib\AccessList;
 use Zotlabs\Daemon\Master;
 
 class Diaspora_Receiver {
@@ -57,7 +58,9 @@ class Diaspora_Receiver {
 		// Please note some permissions such as PERMS_R_PAGES are impossible for Disapora.
 		// They cannot currently authenticate to our system.
 
-		$x = PermissionRoles::role_perms('social');
+		$role = get_pconfig($this->importer['channel_id'], 'system', 'permissions_role', 'personal');
+		$x = PermissionRoles::role_perms($role);
+
 		$their_perms = Permissions::FilledPerms($x['perms_connect']);
 
 		if(! $sharing) {
@@ -118,7 +121,8 @@ class Diaspora_Receiver {
 				'abook_connected' => datetime_convert(),
 				'abook_dob'       => NULL_DATE,
 				'abook_pending'   => intval(($automatic) ? 0 : 1),
-				'abook_instance'  => z_root()
+				'abook_instance'  => z_root(),
+				'abook_role'      => $role
 			]
 		);
 
@@ -146,7 +150,7 @@ class Diaspora_Receiver {
 							'type'	       => NOTIFY_INTRO,
 							'from_xchan'   => $ret['xchan_hash'],
 							'to_xchan'     => $this->importer['channel_hash'],
-							'link'         => z_root() . '/connedit/' . $new_connection[0]['abook_id'],
+							'link'         => z_root() . '/connections#' . $new_connection[0]['abook_id'],
 						]
 					);
 				}
@@ -191,10 +195,9 @@ class Diaspora_Receiver {
 		/* If there is a default group for this channel and friending is automatic, add this member to it */
 
 		if($this->importer['channel_default_group'] && $automatic) {
-			require_once('include/group.php');
-			$g = group_rec_byhash($this->importer['channel_id'],$this->importer['channel_default_group']);
+			$g = AccessList::by_hash($this->importer['channel_id'],$this->importer['channel_default_group']);
 			if($g)
-				group_add_member($this->importer['channel_id'],'',$contact_record['xchan_hash'],$g['id']);
+				AccessList::member_add($this->importer['channel_id'],'',$contact_record['xchan_hash'],$g['id']);
 		}
 
 		return;
