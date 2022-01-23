@@ -1263,10 +1263,30 @@ function pubcrawl_queue_deliver(&$b) {
 				}
 			}
 		}
+		elseif ($result['return_code'] >= 400 && $result['return_code'] < 500) {
+			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s'",
+				dbesc('delivery rejected:' . ' ' . $result['return_code'] . ' ' . $result['body']),
+				dbesc(datetime_convert()),
+				dbesc($outq['outq_hash'])
+			);
+			Queue::remove($outq['outq_hash']);
+		}
 		else {
-			logger('pubcrawl_queue_deliver: queue post returned ' . $result['return_code'] . ' from ' . $outq['outq_posturl'], LOGGER_DEBUG);
+			$dr = q("select * from dreport where dreport_queue = '%s'",
+				dbesc($outq['outq_hash'])
+			);
+			if ($dr) {
+				// update every queue entry going to this site with the most recent communication error
+				q("update dreport set dreport_log = '%s' where dreport_site = '%s'",
+					dbesc(z_curl_error($result)),
+					dbesc($dr[0]['dreport_site'])
+				);
+			}
 			Queue::update($outq['outq_hash'], 10);
 		}
+
+		logger('pubcrawl_queue_deliver: queue post returned ' . $result['return_code'] . ' from ' . $outq['outq_posturl'], LOGGER_DEBUG);
+
 	}
 }
 
