@@ -612,12 +612,6 @@ function pubcrawl_notifier_hub(&$arr) {
 		// which we are sending downstream, use that signed activity as is.
 		// The channel will then sign the HTTP transaction.
 		if ($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) {
-			// Our relayed Likes etc. do not seem to be accepted/displayed by any platform so far.
-			// Some return code 200 but do not display it (masto) others return 400 (pleroma).
-			// If the return code is 400 or 500 they tend to stuff up the  queue basically for nothing.
-			if (in_array($arr['target_item']['verb'], [ACTIVITY_LIKE, ACTIVITY_DISLIKE]))
-				return;
-
 			$signed_msg = get_iconfig($arr['target_item'], 'activitypub', 'rawmsg');
 
 			// If we don't have a signed message and we are not the author,
@@ -1278,7 +1272,7 @@ function pubcrawl_queue_deliver(&$b) {
 			if ($dr) {
 				// update every queue entry going to this site with the most recent communication error
 				q("update dreport set dreport_log = '%s' where dreport_site = '%s'",
-					dbesc(z_curl_error($result)),
+					dbesc('delivery failed:' . ' ' . $result['return_code'] . ' ' . $result['body']),
 					dbesc($dr[0]['dreport_site'])
 				);
 			}
