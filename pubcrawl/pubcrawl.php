@@ -294,7 +294,6 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	$protocol = $b['protocol'];
 
 	logger('probing: activitypub');
-
 	if ($protocol && strtolower($protocol) !== 'activitypub')
 		return;
 
@@ -326,6 +325,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 	if (($url) && (strpos($url, 'http') === 0)) {
 		$x = Activity::fetch($url);
+
 		if (!$x) {
 			return;
 		}
@@ -357,6 +357,10 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	}
 	else {
 		return;
+	}
+
+	if (isset($person_obj['id'])) {
+		$url = $person_obj['id'];
 	}
 
 	Activity::actor_store($url, $person_obj, true);
@@ -1271,7 +1275,7 @@ function pubcrawl_queue_deliver(&$b) {
 			);
 			if ($dr) {
 				// update every queue entry going to this site with the most recent communication error
-				q("update dreport set dreport_log = '%s' where dreport_site = '%s'",
+				q("update dreport set dreport_result = '%s' where dreport_site = '%s'",
 					dbesc('delivery failed:' . ' ' . $result['return_code'] . ' ' . (($result['error']) ? $result['error'] : escape_tags($result['body']))),
 					dbesc($dr[0]['dreport_site'])
 				);
