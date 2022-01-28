@@ -294,7 +294,6 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	$protocol = $b['protocol'];
 
 	logger('probing: activitypub');
-
 	if ($protocol && strtolower($protocol) !== 'activitypub')
 		return;
 
@@ -326,6 +325,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 
 	if (($url) && (strpos($url, 'http') === 0)) {
 		$x = Activity::fetch($url);
+
 		if (!$x) {
 			return;
 		}
@@ -357,6 +357,10 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	}
 	else {
 		return;
+	}
+
+	if (isset($person_obj['id'])) {
+		$url = $person_obj['id'];
 	}
 
 	Activity::actor_store($url, $person_obj, true);
@@ -612,12 +616,6 @@ function pubcrawl_notifier_hub(&$arr) {
 		// which we are sending downstream, use that signed activity as is.
 		// The channel will then sign the HTTP transaction.
 		if ($arr['channel']['channel_hash'] != $arr['target_item']['author_xchan']) {
-			// Our relayed Likes etc. do not seem to be accepted/displayed by any platform so far.
-			// Some return code 200 but do not display it (masto) others return 400 (pleroma).
-			// If the return code is 400 or 500 they tend to stuff up the  queue basically for nothing.
-			if (in_array($arr['target_item']['verb'], [ACTIVITY_LIKE, ACTIVITY_DISLIKE]))
-				return;
-
 			$signed_msg = get_iconfig($arr['target_item'], 'activitypub', 'rawmsg');
 
 			// If we don't have a signed message and we are not the author,
@@ -1263,10 +1261,30 @@ function pubcrawl_queue_deliver(&$b) {
 				}
 			}
 		}
+		elseif ($result['return_code'] >= 400 && $result['return_code'] < 500) {
+			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s'",
+				dbesc('delivery rejected:' . ' ' . $result['return_code'] . ' ' . (($result['error']) ? $result['error'] : escape_tags($result['body']))),
+				dbesc(datetime_convert()),
+				dbesc($outq['outq_hash'])
+			);
+			Queue::remove($outq['outq_hash']);
+		}
 		else {
-			logger('pubcrawl_queue_deliver: queue post returned ' . $result['return_code'] . ' from ' . $outq['outq_posturl'], LOGGER_DEBUG);
+			$dr = q("select * from dreport where dreport_queue = '%s'",
+				dbesc($outq['outq_hash'])
+			);
+			if ($dr) {
+				// update every queue entry going to this site with the most recent communication error
+				q("update dreport set dreport_result = '%s' where dreport_site = '%s'",
+					dbesc('delivery failed:' . ' ' . $result['return_code'] . ' ' . (($result['error']) ? $result['error'] : escape_tags($result['body']))),
+					dbesc($dr[0]['dreport_site'])
+				);
+			}
 			Queue::update($outq['outq_hash'], 10);
 		}
+
+		logger('pubcrawl_queue_deliver: queue post returned ' . $result['return_code'] . ' from ' . $outq['outq_posturl'], LOGGER_DEBUG);
+
 	}
 }
 
