@@ -127,7 +127,7 @@ function pubcrawl_get_accept_header_string(&$arr) {
 }
 
 function pubcrawl_encode_person(&$arr) {
-	if (isset($arr['xchan']['channel_id']) && Apps::addon_app_installed($arr['xchan']['channel_id'], 'pubcrawl')) {
+	if (isset($arr['xchan']['channel_id']) && (Apps::addon_app_installed($arr['xchan']['channel_id'], 'pubcrawl') || intval($arr['xchan']['channel_system']))) {
 		$arr['encoded']['inbox']        = z_root() . '/inbox/' . $arr['xchan']['channel_address'];
 		$arr['encoded']['followers']    = z_root() . '/followers/' . $arr['xchan']['channel_address'];
 		$arr['encoded']['following']    = z_root() . '/following/' . $arr['xchan']['channel_address'];
@@ -258,7 +258,8 @@ function pubcrawl_webfinger(&$b) {
 	if (!$b['channel'])
 		return;
 
-	if (!Apps::addon_app_installed($b['channel']['channel_id'], 'pubcrawl'))
+	$is_sys = intval($b['channel']['channel_system']);
+	if (!$is_sys && !Apps::addon_app_installed($b['channel']['channel_id'], 'pubcrawl'))
 		return;
 
 	$b['result']['properties']['http://purl.org/zot/federation'] .= ',activitypub';
@@ -277,7 +278,8 @@ function pubcrawl_webfinger(&$b) {
 
 function pubcrawl_personal_xrd(&$b) {
 
-	if (!Apps::addon_app_installed($b['user']['channel_id'], 'pubcrawl'))
+	$is_sys = intval($b['user']['channel_system']);
+	if (!$is_sys && !Apps::addon_app_installed($b['user']['channel_id'], 'pubcrawl'))
 		return;
 
 	$s = '	<Link rel="self" type="application/ld+json" href="' . z_root() . '/channel/' . $b['user']['channel_address'] . '" />' . "\r\n";
