@@ -24,13 +24,20 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 		logger('inbox_activity: ' . jindent($data), LOGGER_DATA);
 
-		$hsig = HTTPSig::verify($data);
+		$d = json_decode($data,true);
+		$key = '';
+		$keytype = (($d['type'] === 'Delete') ? 'deleted' : '');
+
+		$hsig = HTTPSig::verify($data, $key, $keytype);
 
 		if (! ($hsig['header_signed'] && $hsig['header_valid'] && $hsig['content_signed'] && $hsig['content_valid'])) {
 			logger('HTTPSig::verify() failed: ' . print_r($hsig,true), LOGGER_DEBUG);
 			$d = json_decode($data,true);
-			$data = Activity::fetch($d['id']);
-			$data_fetched = true;
+
+			if ($d['type'] !== 'Delete') {
+				$data = Activity::fetch($d['id']);
+				$data_fetched = true;
+			}
 			//http_status_exit(403,'Permission denied');
 		}
 
