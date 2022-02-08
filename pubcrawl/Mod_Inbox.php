@@ -162,16 +162,16 @@ class Inbox extends \Zotlabs\Web\Controller {
 			return;
 		}
 
-		$is_public = false;
+		$shared_inbox = false;
 
 		if(argc() == 1 || argv(1) === '[public]') {
-			$is_public = true;
+			$shared_inbox = true;
 		}
 		else {
 			$channels = [ channelx_by_nick(argv(1)) ];
 		}
 
-		if($is_public) {
+		if($shared_inbox) {
 			$parent = ((is_array($AS->obj) && array_key_exists('inReplyTo',$AS->obj) && $AS->obj['inReplyTo']) ? urldecode($AS->obj['inReplyTo']) : '');
 
 			if($parent) {
