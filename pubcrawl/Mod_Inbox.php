@@ -171,9 +171,8 @@ class Inbox extends \Zotlabs\Web\Controller {
 			$channels = [ channelx_by_nick(argv(1)) ];
 		}
 
-
 		if($is_public) {
-			$parent = ((is_array($AS->obj) && array_key_exists('inReplyTo',$AS->obj)) ? urldecode($AS->obj['inReplyTo']) : '');
+			$parent = ((is_array($AS->obj) && array_key_exists('inReplyTo',$AS->obj) && $AS->obj['inReplyTo']) ? urldecode($AS->obj['inReplyTo']) : '');
 
 			if($parent) {
 				// this is a comment - deliver to everybody who owns the parent
@@ -210,23 +209,43 @@ class Inbox extends \Zotlabs\Web\Controller {
 
 				}
 				else {
-					// deliver to anybody following $AS->actor
-					$channels = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network = 'activitypub' and xchan_hash = '%s' ) and channel_removed = 0 ",
-						dbesc($observer_hash)
-					);
+
+					$collections = Activity::get_actor_collections($AS->actor['id']);
+
+					if (in_array($collections['followers'], $AS->recips) || in_array(ACTIVITY_PUBLIC_INBOX,$AS->recips)) {
+						// deliver to anybody at this site following $AS->actor
+						$channels = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network = 'activitypub' and xchan_hash = '%s' ) and channel_removed = 0 ",
+							dbesc($observer_hash)
+						);
+					}
+					else {
+						// deliver to anybody at this site directly addressed
+						$channel_addr = '';
+
+						foreach($AS->recips as $recip) {
+							if (strpos($recip, z_root()) === 0) {
+								$channel_addr .= '\'' . dbesc(basename($recip)) . '\',';
+							}
+						}
+
+						if ($channel_addr) {
+							$channel_addr = rtrim($channel_addr, ',');
+							$channels = dbq("SELECT * FROM channel WHERE channel_address IN ($channel_addr) AND channel_removed = 0");
+						}
+					}
 				}
 			}
+
 			if($channels === false)
 				$channels = [];
 
-
-			if(in_array(ACTIVITY_PUBLIC_INBOX,$AS->recips)) {
+			if(in_array(ACTIVITY_PUBLIC_INBOX, $AS->recips)) {
 
 				// look for channels with send_stream = PERMS_PUBLIC
 
 				$r = q("select * from channel where channel_id in (select uid from pconfig where cat = 'perm_limits' and k = 'send_stream' and v = '1' ) and channel_removed = 0 ");
 				if($r) {
-					$channels = array_merge($channels,$r);
+					$channels = array_merge($channels, $r);
 				}
 
 				if(! $sys_disabled) {
@@ -239,12 +258,14 @@ class Inbox extends \Zotlabs\Web\Controller {
 		if(! $channels)
 			return;
 
+		// Bto and Bcc will only be present in a C2S transaction and should not be stored.
 		$saved_recips = [];
 		foreach( [ 'to', 'cc', 'audience' ] as $x ) {
 			if(array_key_exists($x,$AS->data)) {
 				$saved_recips[$x] = $AS->data[$x];
 			}
 		}
+
 		$AS->set_recips($saved_recips);
 
 		foreach($channels as $channel) {

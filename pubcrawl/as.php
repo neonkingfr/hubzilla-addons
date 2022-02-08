@@ -1200,7 +1200,7 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	$announce = (($act->type === 'Announce') ? true  : false);
 	$is_sys_channel = is_sys_channel($channel['channel_id']);
-	$parent = ((array_key_exists('inReplyTo',$act->obj) && !$announce) ? urldecode($act->obj['inReplyTo']) : false);
+	$parent = ((array_key_exists('inReplyTo',$act->obj) && $act->obj['inReplyTo'] && !$announce) ? urldecode($act->obj['inReplyTo']) : false);
 	$allowed = true;
 
 	if(!$parent) {
