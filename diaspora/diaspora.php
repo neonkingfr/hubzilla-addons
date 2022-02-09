@@ -1204,7 +1204,7 @@ function diaspora_import_author(&$b) {
 
 	$x = $b['author'];
 
-	if(strpos($x['network'],'diaspora') === false)
+	if($x['network'] && strpos($x['network'], 'diaspora') === false)
 		return;
 
 	if(! $x['address'])

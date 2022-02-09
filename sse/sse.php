@@ -100,10 +100,10 @@ function sse_item_stored($item) {
 
 		// this is neccessary for Enotify::format() to calculate the right time and language
 		if($sys && $current_channel) {
-			date_default_timezone_set($current_channel['channel_timezone']);
+			date_default_timezone_set((string)$current_channel['channel_timezone']);
 		}
 		else {
-			date_default_timezone_set($channel['channel_timezone']);
+			date_default_timezone_set((string)$channel['channel_timezone']);
 		}
 
 		push_lang(XConfig::Get($hash, 'sse', 'language', 'en'));
