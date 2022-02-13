@@ -1467,6 +1467,16 @@ function as_create_note($channel,$observer_hash,$act) {
 		$s['body'] = as_bb_attach($s['attach']) . $s['body'];
 	}
 
+	if (isset($act->obj['quoteUrl'])) {
+		$quote_bbcode = Activity::get_quote_bbcode($act->obj['quoteUrl']);
+
+		if ($s['body']) {
+			$s['body'] .= "\r\n\r\n";
+		}
+
+		$s['body'] .= $quote_bbcode;
+	}
+
 	// we will need a hook here to extract magnet links e.g. peertube
 	// right now just link to the largest mp4 we find that will fit in our
 	// standard content region
