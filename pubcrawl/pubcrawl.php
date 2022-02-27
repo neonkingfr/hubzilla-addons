@@ -46,7 +46,7 @@ function pubcrawl_load() {
 		'permissions_update'         => 'pubcrawl_permissions_update',
 		'permissions_accept'         => 'pubcrawl_permissions_accept',
 		'connection_remove'          => 'pubcrawl_connection_remove',
-		'post_local_end'             => 'pubcrawl_post_local_end',
+		'post_local'                 => 'pubcrawl_post_local',
 		'notifier_process'           => 'pubcrawl_notifier_process',
 		'notifier_hub'               => 'pubcrawl_notifier_hub',
 		'channel_links'              => 'pubcrawl_channel_links',
@@ -226,7 +226,7 @@ function pubcrawl_channel_links(&$b) {
 	}
 }
 
-function pubcrawl_post_local_end(&$x) {
+function pubcrawl_post_local(&$x) {
 	$item[] = $x;
 
 	if ($item[0]['mid'] === $item[0]['parent_mid'])
@@ -251,7 +251,7 @@ function pubcrawl_post_local_end(&$x) {
 	$msg['signature'] = LDSignatures::dopplesign($msg, $channel);
 	$jmsg             = json_encode($msg, JSON_UNESCAPED_SLASHES);
 
-	set_iconfig($item[0]['id'], 'activitypub', 'rawmsg', $jmsg, true);
+	set_iconfig($x, 'activitypub', 'rawmsg', $jmsg, true);
 }
 
 function pubcrawl_webfinger(&$b) {
