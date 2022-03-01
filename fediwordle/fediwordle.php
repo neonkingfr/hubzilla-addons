@@ -109,7 +109,9 @@ function fediwordle_notifier_process($arr) {
 		return;
 	}
 
-	$answer = strtoupper(trim($item['body']));
+	// Remove possible mentions
+	$answer = preg_replace('/@*\[([zu])rl(.*?)\](.*?)\[\/([zu])rl\]/ism', '' ,$item['body']);
+	$answer = strtoupper(trim($answer));
 
 	$result = fediwordle_prepare_result($answer, $iconfig);
 	if ($result['success']) {
@@ -120,9 +122,7 @@ function fediwordle_notifier_process($arr) {
 		set_iconfig($parent['id'], 'fediwordle', 'word', $result['iconfig']);
 	}
 
-
 	$body = '';
-
 	$body .= (($result['success']) ? 'Well done, ' : '');
 	$body .= '@{' . (($item['author']['xchan_address']) ? $item['author']['xchan_address'] : $item['author']['xchan_url']) . '}';
 	$body .= (($result['success']) ? '! ' : ' ');
