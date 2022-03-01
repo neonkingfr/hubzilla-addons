@@ -479,7 +479,7 @@ class Diaspora_Receiver {
 			$datarray['comment_policy'] = 'network: diaspora';
 		}
 
-		if (($contact) && (!post_is_importable($datarray, $contact)) && (!$this->force)) {
+		if (($contact) && (!post_is_importable($this->importer['channel_id'], $datarray, [$contact])) && (!$this->force)) {
 			logger('diaspora_post: filtering this author.');
 			return 202;
 		}
@@ -698,7 +698,7 @@ class Diaspora_Receiver {
 			}
 		}
 
-		if(! post_is_importable($datarray,$contact) && !$this->force) {
+		if(! post_is_importable($this->importer['channel_id'], $datarray, [$contact]) && !$this->force) {
 			logger('diaspora_reshare: filtering this author.');
 			return 202;
 		}
@@ -1216,7 +1216,7 @@ class Diaspora_Receiver {
 
 		$datarray['app'] = $app;
 
-		if ($contact && !post_is_importable($datarray, $contact)) {
+		if ($contact && !post_is_importable($this->importer['channel_id'], $datarray, [$contact])) {
 			logger('diaspora_post: filtering this author.');
 			return 202;
 		}

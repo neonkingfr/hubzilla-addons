@@ -1376,22 +1376,6 @@ function as_create_note($channel,$observer_hash,$act) {
 		return;
 	}
 
-	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
-		dbesc($s['author_xchan']),
-		intval($channel['channel_id'])
-	);
-
-	if($abook) {
-		if(! post_is_importable($s,$abook[0])) {
-			logger('post is filtered');
-			return;
-		}
-	}
-
-	if($act->obj['conversation']) {
-		set_iconfig($s,'ostatus','conversation',$act->obj['conversation'],1);
-	}
-
 	if($parent) {
 		$p = q("select parent_mid, owner_xchan, obj_type from item where mid = '%s' and uid = %d limit 1",
 			dbesc($s['parent_mid']),
@@ -1451,6 +1435,23 @@ function as_create_note($channel,$observer_hash,$act) {
 	if(!$s['owner_xchan']) {
 		logger('No owner: ' . print_r($act, true));
 		return;
+	}
+
+	$abook = q("select * from abook where (abook_xchan = '%s' OR abook_xchan  = '%s') and abook_channel = %d ",
+		dbesc($s['author_xchan']),
+		dbesc($s['owner_xchan']),
+		intval($channel['channel_id'])
+	);
+
+	if ($abook) {
+		if (!post_is_importable($channel['channel_id'], $s, $abook)) {
+			logger('post is filtered');
+			return;
+		}
+	}
+
+	if($act->obj['conversation']) {
+		set_iconfig($s, 'ostatus', 'conversation', $act->obj['conversation'], 1);
 	}
 
 	$a = Activity::decode_taxonomy($act->obj);
@@ -1752,6 +1753,7 @@ function as_create_note($channel,$observer_hash,$act) {
 
 }
 
+/* this is deprecated and not used anymore
 function as_announce_note($channel,$observer_hash,$act) {
 
 	$s = [];
@@ -1863,6 +1865,7 @@ function as_announce_note($channel,$observer_hash,$act) {
 	}
 
 }
+*/
 
 function as_like_note($channel,$observer_hash,$act) {
 
