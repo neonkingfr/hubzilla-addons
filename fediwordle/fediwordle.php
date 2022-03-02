@@ -64,6 +64,11 @@ function fediwordle_notifier_process($arr) {
 	$item = $arr['target_item'];
 	$parent = $arr['parent_item'];
 
+	// A cheap check if the parent body contains fediwordle emojis before checking anything else
+	if (strpos($parent['body'], '🔵🔵🔵') === false) {
+		return;
+	}
+
 	if(!Apps::addon_app_installed($channel['channel_id'], 'fediwordle')) {
 		return;
 	}
