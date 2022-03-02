@@ -1265,7 +1265,7 @@ function pubcrawl_queue_deliver(&$b) {
 		}
 		elseif ($result['return_code'] >= 400 && $result['return_code'] < 500) {
 			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s'",
-				dbesc('delivery rejected:' . ' ' . $result['return_code'] . ' ' . (($result['error']) ? substr($result['error'], 0, 191) : substr(escape_tags($result['body']), 0, 191))),
+				dbesc('delivery rejected:' . ' ' . $result['return_code'] . ' ' . (($result['error']) ? substr($result['error'], 0, 160) : substr(escape_tags($result['body']), 0, 160))),
 				dbesc(datetime_convert()),
 				dbesc($outq['outq_hash'])
 			);
@@ -1278,7 +1278,7 @@ function pubcrawl_queue_deliver(&$b) {
 			if ($dr) {
 				// update every queue entry going to this site with the most recent communication error
 				q("update dreport set dreport_result = '%s' where dreport_site = '%s'",
-					dbesc('delivery failed:' . ' ' . $result['return_code'] . ' ' . (($result['error']) ? $result['error'] : escape_tags($result['body']))),
+					dbesc('delivery failed:' . ' ' . $result['return_code'] . ' ' . (($result['error']) ?  substr($result['error'], 0, 160) :  substr(escape_tags($result['body']), 0, 160))),
 					dbesc($dr[0]['dreport_site'])
 				);
 			}
