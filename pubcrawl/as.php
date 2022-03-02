@@ -1528,7 +1528,6 @@ function as_create_note($channel,$observer_hash,$act) {
 					}
 					// handle peertube's weird url link tree if we find it here
 					// 0 => html link, 1 => application/x-mpegURL with 'tag' set to an array of actual media links
-					/* this seems to be for a fragmented playlist which is not what we are looking for atm.
 					foreach ($ptr as $idex) {
 						if (is_array($idex) && array_key_exists('mediaType',$idex)) {
 							if ($idex['mediaType'] === 'application/x-mpegURL' && isset($idex['tag']) && is_array($idex['tag'])) {
@@ -1537,7 +1536,7 @@ function as_create_note($channel,$observer_hash,$act) {
 							}
 						}
 					}
-					*/
+
 					foreach ($ptr as $vurl) {
 						if (array_key_exists('mediaType',$vurl)) {
 							if (in_array($vurl['mediaType'], $vtypes)) {
