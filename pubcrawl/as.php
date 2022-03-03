@@ -1159,6 +1159,7 @@ function as_delete_action($channel,$observer_hash,$act) {
 
 }
 
+/* deprecated
 function as_announce_action($channel,$observer_hash,$act) {
 
 	if(in_array($act->type, [ 'Announce' ])) {
@@ -1166,7 +1167,7 @@ function as_announce_action($channel,$observer_hash,$act) {
 	}
 
 }
-
+*/
 
 function as_like_action($channel,$observer_hash,$act) {
 
@@ -1203,6 +1204,8 @@ function as_create_note($channel,$observer_hash,$act) {
 	$parent = ((array_key_exists('inReplyTo',$act->obj) && $act->obj['inReplyTo'] && !$announce) ? urldecode($act->obj['inReplyTo']) : false);
 	$allowed = true;
 
+	$s['item_thread_top'] = 0;
+
 	if(!$parent) {
 		if(!perm_is_allowed($channel['channel_id'], $observer_hash, 'send_stream') && !$is_sys_channel) {
 			// Fall through on update activities since we already accepted the item.
@@ -1213,6 +1216,7 @@ function as_create_note($channel,$observer_hash,$act) {
 			}
 		}
 		$s['owner_xchan'] = $observer_hash;
+		$s['item_thread_top'] = 1;
 	}
 
 	if ($act->recips && (!in_array(ACTIVITY_PUBLIC_INBOX, $act->recips))) {
@@ -1328,7 +1332,7 @@ function as_create_note($channel,$observer_hash,$act) {
 	$s['body']     = as_bb_content($content,'content');
 	$s['verb']     = (($announce) ? ACTIVITY_SHARE : ACTIVITY_POST);
 	$s['obj_type'] = ACTIVITY_OBJ_NOTE;
-	$s['obj']      = '';
+	$s['obj']      = $act->obj;
 	$s['app']      = t('ActivityPub');
 
 	// This isn't perfect but the best we can do for now.
@@ -1344,7 +1348,6 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	if($act->obj['type'] === 'Question') {
 		$s['obj_type'] = 'Question';
-		$s['obj'] = $act->obj;
 	}
 
 	if ($act->obj['type'] === 'Question' && in_array($act->type,['Create','Update'])) {
@@ -1363,7 +1366,10 @@ function as_create_note($channel,$observer_hash,$act) {
 	}
 
 	if($channel['channel_system']) {
-		if(! MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
+		$incl = get_config('system','pubstream_incl');
+		$excl = get_config('system','pubstream_excl');
+
+		if(($incl || $excl) && !MessageFilter::evaluate($s, $incl, $excl)) {
 			logger('post is filtered');
 			return;
 		}

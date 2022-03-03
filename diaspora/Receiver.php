@@ -466,8 +466,11 @@ class Diaspora_Receiver {
 		}
 
 		if ($this->importer['system']) {
-			if (!MessageFilter::evaluate($datarray, get_config('system', 'pubstream_incl'), get_config('system', 'pubstream_excl'))) {
-				logger('diaspora_post: filtering this author.');
+			$incl = get_config('system','pubstream_incl');
+			$excl = get_config('system','pubstream_excl');
+
+			if(($incl || $excl) && !MessageFilter::evaluate($datarray, $incl, $excl)) {
+				logger('diaspora_reshare: filtering this author.');
 				return 202;
 			}
 		}
@@ -690,9 +693,11 @@ class Diaspora_Receiver {
 			logger('diaspora_reshare: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
-		if($this->importer['system']) {
-			if(! MessageFilter::evaluate($datarray,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
+		if ($this->importer['system']) {
+			$incl = get_config('system','pubstream_incl');
+			$excl = get_config('system','pubstream_excl');
 
+			if(($incl || $excl) && !MessageFilter::evaluate($datarray, $incl, $excl)) {
 				logger('diaspora_reshare: filtering this author.');
 				return 202;
 			}
@@ -995,13 +1000,14 @@ class Diaspora_Receiver {
 		}
 
 		// set the route to that of the parent so downstream hubs won't reject it.
-		$datarray['route']        = $parent_item['route'];
-		$datarray['changed']      = $datarray['edited'] = $edited_at;
-		$datarray['created']      = $created_at;
-		$datarray['item_private'] = $parent_item['item_private'];
-		$datarray['owner_xchan']  = $parent_item['owner_xchan'];
-		$datarray['author_xchan'] = $person['xchan_hash'];
-		$datarray['body']         = $body;
+		$datarray['route']           = $parent_item['route'];
+		$datarray['changed']         = $datarray['edited'] = $edited_at;
+		$datarray['created']         = $created_at;
+		$datarray['item_private']    = $parent_item['item_private'];
+		$datarray['owner_xchan']     = $parent_item['owner_xchan'];
+		$datarray['author_xchan']    = $person['xchan_hash'];
+		$datarray['body']            = $body;
+		$datarray['item_thread_top'] = 0;
 
 		if (strstr($person['xchan_network'], 'friendica'))
 			$app = 'Friendica';
@@ -1044,10 +1050,18 @@ class Diaspora_Receiver {
 		}
 
 		if ($this->importer['system']) {
-			if (!MessageFilter::evaluate($datarray, get_config('system', 'pubstream_incl'), get_config('system', 'pubstream_excl'))) {
-				logger('diaspora_comment: filtering this author.');
+			$incl = get_config('system','pubstream_incl');
+			$excl = get_config('system','pubstream_excl');
+
+			if(($incl || $excl) && !MessageFilter::evaluate($datarray, $incl, $excl)) {
+				logger('diaspora_reshare: filtering this author.');
 				return 202;
 			}
+		}
+
+		if (($contact) && (!post_is_importable($this->importer['channel_id'], $datarray, [$contact])) && (!$this->force)) {
+			logger('diaspora_post: filtering this author.');
+			return 202;
 		}
 
 		set_iconfig($datarray, 'diaspora', 'fields', $unxml, true);
