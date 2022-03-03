@@ -123,7 +123,13 @@ function pubcrawl_get_accept_header_string(&$arr) {
 		if (!$is_sys && !Apps::addon_app_installed($channel_id, 'pubcrawl'))
 			return;
 	}
-	$arr['data'] = 'application/x-zot-activity+json, application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
+
+	$x = [
+		'application/activity+json',
+		'application/ld+json; profile="https://www.w3.org/ns/activitystreams"'
+	];
+
+	$arr['data'] = array_merge($x, $arr['data']);
 }
 
 function pubcrawl_encode_person(&$arr) {
