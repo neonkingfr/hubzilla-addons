@@ -31,7 +31,7 @@ use Zotlabs\Web\HTTPSig;
 use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\Queue;
 
-require_once('addon/pubcrawl/as.php');
+//require_once('addon/pubcrawl/as.php');
 
 function pubcrawl_load() {
 	Hook::register_array('addon/pubcrawl/pubcrawl.php', [
@@ -245,7 +245,7 @@ function pubcrawl_post_local(&$x) {
 
 	$channel = channelx_by_hash($item[0]['author_xchan']);
 
-	$s = asencode_activity($item[0]);
+	$s = Activity::encode_activity($item[0]);
 
 	$msg              = array_merge(['@context' => [
 		ACTIVITYSTREAMS_JSONLD_REV,
@@ -652,7 +652,7 @@ function pubcrawl_notifier_hub(&$arr) {
 	}
 
 	if ($target_item && !$signed_msg) {
-		$ti = asencode_activity($target_item);
+		$ti = Activity::encode_activity($target_item);
 		if (!$ti)
 			return;
 
