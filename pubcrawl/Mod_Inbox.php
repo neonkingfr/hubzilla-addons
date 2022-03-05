@@ -373,8 +373,7 @@ class Inbox extends Controller {
 					if (is_array($AS->obj)) {
 						$item = Activity::decode_note($AS);
 					} else {
-						hz_syslog('unresolved object: ' . print_r($AS->obj, true));
-						hz_syslog(print_r($AS,true));
+						logger('unresolved object: ' . print_r($AS->obj, true));
 					}
 					break;
 				case 'Undo':
