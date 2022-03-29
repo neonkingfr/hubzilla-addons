@@ -1363,7 +1363,10 @@ function as_create_note($channel,$observer_hash,$act) {
 	}
 
 	if($channel['channel_system']) {
-		if(! MessageFilter::evaluate($s,get_config('system','pubstream_incl'),get_config('system','pubstream_excl'))) {
+		$incl = get_config('system','pubstream_incl');
+		$excl = get_config('system','pubstream_excl');
+
+		if(($incl || $excl) && !MessageFilter::evaluate($s, $incl, $excl)) {
 			logger('post is filtered');
 			return;
 		}
@@ -1374,22 +1377,6 @@ function as_create_note($channel,$observer_hash,$act) {
 	if(!$s['author_xchan']) {
 		logger('No author: ' . print_r($act, true));
 		return;
-	}
-
-	$abook = q("select * from abook where abook_xchan = '%s' and abook_channel = %d limit 1",
-		dbesc($s['author_xchan']),
-		intval($channel['channel_id'])
-	);
-
-	if($abook) {
-		if(! post_is_importable($s,$abook[0])) {
-			logger('post is filtered');
-			return;
-		}
-	}
-
-	if($act->obj['conversation']) {
-		set_iconfig($s,'ostatus','conversation',$act->obj['conversation'],1);
 	}
 
 	if($parent) {
@@ -1453,6 +1440,23 @@ function as_create_note($channel,$observer_hash,$act) {
 		return;
 	}
 
+	$abook = q("select * from abook where (abook_xchan = '%s' OR abook_xchan  = '%s') and abook_channel = %d ",
+		dbesc($s['author_xchan']),
+		dbesc($s['owner_xchan']),
+		intval($channel['channel_id'])
+	);
+
+	if ($abook) {
+		if (!post_is_importable($channel['channel_id'], $s, $abook)) {
+			logger('post is filtered');
+			return;
+		}
+	}
+
+	if($act->obj['conversation']) {
+		set_iconfig($s, 'ostatus', 'conversation', $act->obj['conversation'], 1);
+	}
+
 	$a = Activity::decode_taxonomy($act->obj);
 	if($a) {
 		$s['term'] = $a;
@@ -1465,6 +1469,16 @@ function as_create_note($channel,$observer_hash,$act) {
 
 	if($act->obj['type'] === 'Note' && $s['attach']) {
 		$s['body'] = as_bb_attach($s['attach']) . $s['body'];
+	}
+
+	if (isset($act->obj['quoteUrl'])) {
+		$quote_bbcode = Activity::get_quote_bbcode($act->obj['quoteUrl']);
+
+		if ($s['body']) {
+			$s['body'] .= "\r\n\r\n";
+		}
+
+		$s['body'] .= $quote_bbcode;
 	}
 
 	// we will need a hook here to extract magnet links e.g. peertube
@@ -1517,7 +1531,6 @@ function as_create_note($channel,$observer_hash,$act) {
 					}
 					// handle peertube's weird url link tree if we find it here
 					// 0 => html link, 1 => application/x-mpegURL with 'tag' set to an array of actual media links
-					/* this seems to be for a fragmented playlist which is not what we are looking for atm.
 					foreach ($ptr as $idex) {
 						if (is_array($idex) && array_key_exists('mediaType',$idex)) {
 							if ($idex['mediaType'] === 'application/x-mpegURL' && isset($idex['tag']) && is_array($idex['tag'])) {
@@ -1526,7 +1539,7 @@ function as_create_note($channel,$observer_hash,$act) {
 							}
 						}
 					}
-					*/
+
 					foreach ($ptr as $vurl) {
 						if (array_key_exists('mediaType',$vurl)) {
 							if (in_array($vurl['mediaType'], $vtypes)) {
@@ -1742,6 +1755,7 @@ function as_create_note($channel,$observer_hash,$act) {
 
 }
 
+/* this is deprecated and not used anymore
 function as_announce_note($channel,$observer_hash,$act) {
 
 	$s = [];
@@ -1853,6 +1867,7 @@ function as_announce_note($channel,$observer_hash,$act) {
 	}
 
 }
+*/
 
 function as_like_note($channel,$observer_hash,$act) {
 

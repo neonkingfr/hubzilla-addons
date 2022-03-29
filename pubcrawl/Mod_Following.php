@@ -4,6 +4,7 @@ namespace Zotlabs\Module;
 
 use App;
 use Zotlabs\Lib\ActivityStreams;
+use Zotlabs\Lib\Activity;
 use Zotlabs\Lib\LDSignatures;
 use Zotlabs\Web\Controller;
 use Zotlabs\Web\HTTPSig;
@@ -32,16 +33,16 @@ class Following extends Controller {
 		}
 
 		$r = q("select * from abconfig left join xchan on abconfig.xchan = xchan_hash where abconfig.chan = %d and abconfig.cat = 'my_perms' and abconfig.k = 'send_stream' and abconfig.v = '1'",
-			intval($channel['channel_id'])	
+			intval($channel['channel_id'])
 		);
-			
+
 		if(ActivityStreams::is_as_request()) {
 
 			$x = array_merge(['@context' => [
 				ACTIVITYSTREAMS_JSONLD_REV,
 				'https://w3id.org/security/v1',
 				z_root() . ZOT_APSCHEMA_REV
-				]], asencode_follow_collection($r, App::$query_string, 'OrderedCollection'));
+				]], Activity::encode_follow_collection($r, App::$query_string, 'OrderedCollection'));
 
 
 			$headers = [];
