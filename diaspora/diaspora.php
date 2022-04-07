@@ -963,9 +963,6 @@ function diaspora_discover(&$b) {
 
 function diaspora_post_local(&$item) {
 
-	if (!Apps::addon_app_installed($item['uid'], 'diaspora'))
-		return;
-
 	require_once('include/markdown.php');
 
 	$meta = null;
