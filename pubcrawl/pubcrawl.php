@@ -59,6 +59,8 @@ function pubcrawl_load() {
 		'is_as_request'              => 'pubcrawl_is_as_request',
 		'get_accept_header_string'   => 'pubcrawl_get_accept_header_string',
 		'encode_person'              => 'pubcrawl_encode_person',
+		'encode_item'                => 'pubcrawl_encode_item',
+		'encode_activity'            => 'pubcrawl_encode_activity',
 		'encode_item_xchan'          => 'pubcrawl_encode_item_xchan',
 		'fetch_provider'             => 'pubcrawl_fetch_provider'
 	]);
@@ -191,6 +193,298 @@ function pubcrawl_encode_person(&$arr) {
 		}
 	}
 }
+
+function pubcrawl_encode_item(&$arr) {
+
+	if (!Apps::addon_app_installed($arr['item']['uid'], 'pubcrawl')) {
+		return;
+	}
+
+	$images = false;
+	$has_images = preg_match_all('/\[[zi]mg(.*?)\](.*?)\[/ism', $arr['item']['body'], $images, PREG_SET_ORDER);
+
+	if ($has_images && $arr['encoded']['type'] === 'Note') {
+		foreach ($images as $match) {
+			$img = [];
+			// handle Friendica/Hubzilla style img links with [img=$url]$alttext[/img]
+			if (strpos($match[1], '=http') === 0) {
+				$img[] = ['type' => 'Image', 'url' => substr($match[1], 1), 'name' => $match[2]];
+			} // preferred mechanism for adding alt text
+			elseif (strpos($match[1], 'alt=') !== false) {
+				$txt = str_replace('&quot;', '"', $match[1]);
+				$txt = substr($match[1], strpos($match[1], 'alt="') + 5, -1);
+				$img[] = ['type' => 'Image', 'url' => $match[2], 'name' => $txt];
+			} else {
+				$img[] = ['type' => 'Image', 'url' => $match[2]];
+			}
+
+			if (!$arr['encoded']['attachment']) {
+				$arr['encoded']['attachment'] = [];
+			}
+			$already_added = false;
+			if ($img) {
+				for ($pc = 0; $pc < count($arr['encoded']['attachment']); $pc++) {
+					// caution: image attachments use url and links use href, and our own links will be 'attach' links based on the image href
+					// We could alternatively supply the correct attachment info when item is saved, but by replacing here we will pick up
+					// any "per-post" or manual changes to the image alt-text before sending.
+
+					if ((isset($arr['encoded']['attachment'][$pc]['href']) && strpos($img[0]['url'], str_replace('/attach/', '/photo/', $arr['encoded']['attachment'][$pc]['href'])) !== false) || (isset($arr['encoded']['attachment'][$pc]['url']) && $arr['encoded']['attachment'][$pc]['url'] === $img[0]['url'])) {
+						// if it's already there, replace it with our alt-text aware version
+						$arr['encoded']['attachment'][$pc] = $img[0];
+						$already_added = true;
+					}
+				}
+				if (!$already_added) {
+					// add it
+					$arr['encoded']['attachment'] = array_merge($img, $arr['encoded']['attachment']);
+				}
+			}
+		}
+	}
+
+	// addressing madness
+
+	$parent_i = [];
+	$arr['encoded']['to'] = [];
+	$arr['encoded']['cc'] = [];
+
+	$public = (($arr['item']['item_private']) ? false : true);
+	$top_level = (($arr['item']['mid'] === $arr['item']['parent_mid']) ? true : false);
+
+	if (!$top_level) {
+		if (intval($arr['item']['parent'])) {
+			$recips = get_iconfig($arr['item']['parent'], 'activitypub', 'recips');
+		} else {
+			// if we are encoding this item for storage there won't be a parent.
+			$p = q(
+				"select parent from item where parent_mid = '%s' and uid = %d",
+				dbesc($arr['item']['parent_mid']),
+				intval($arr['item']['uid'])
+			);
+			if ($p) {
+				$recips = get_iconfig($p[0]['parent'], 'activitypub', 'recips');
+			}
+		}
+		if ($recips) {
+			$parent_i['to'] = $recips['to'];
+			$parent_i['cc'] = $recips['cc'];
+		}
+	}
+
+
+	if ($public) {
+		$arr['encoded']['to'] = [ACTIVITY_PUBLIC_INBOX];
+		if (isset($parent_i['to']) && is_array($parent_i['to'])) {
+			$arr['encoded']['to'] = array_values(array_unique(array_merge($arr['encoded']['to'], $parent_i['to'])));
+		}
+		if ($arr['item']['item_origin']) {
+			$arr['encoded']['cc'] = [z_root() . '/followers/' . substr($arr['item']['author']['xchan_addr'], 0, strpos($arr['item']['author']['xchan_addr'], '@'))];
+		}
+		if (isset($parent_i['cc']) && is_array($parent_i['cc'])) {
+			$arr['encoded']['cc'] = array_values(array_unique(array_merge($arr['encoded']['cc'], $parent_i['cc'])));
+		}
+	} else {
+		// private activity
+
+		if ($top_level) {
+			$arr['encoded']['to'] = Activity::map_acl($arr['item']);
+			if (isset($parent_i['to']) && is_array($parent_i['to'])) {
+				$arr['encoded']['to'] = array_values(array_unique(array_merge($arr['encoded']['to'], $parent_i['to'])));
+			}
+		} else {
+			$arr['encoded']['cc'] = Activity::map_acl($arr['item']);
+			if (isset($parent_i['cc']) && is_array($parent_i['cc'])) {
+				$arr['encoded']['cc'] = array_values(array_unique(array_merge($arr['encoded']['cc'], $parent_i['cc'])));
+			}
+			if ($arr['encoded']['tag']) {
+				foreach ($arr['encoded']['tag'] as $mention) {
+					if (is_array($mention) && array_key_exists('ttype', $mention) && in_array($mention['ttype'], [TERM_FORUM, TERM_MENTION]) && array_key_exists('href', $mention) && $mention['href']) {
+						$h = q(
+							"select * from hubloc where hubloc_id_url = '%s' or hubloc_hash = '%s' limit 1",
+							dbesc($mention['href']),
+							dbesc($mention['href'])
+						);
+						if ($h) {
+							if ($h[0]['hubloc_network'] === 'activitypub') {
+								$addr = $h[0]['hubloc_hash'];
+							} else {
+								$addr = $h[0]['hubloc_id_url'];
+							}
+							if (!in_array($addr, $arr['encoded']['to'])) {
+								$arr['encoded']['to'][] = $addr;
+							}
+						}
+					}
+				}
+			}
+
+
+			$d = q(
+				"select hubloc.*  from hubloc left join item on hubloc_hash = owner_xchan where item.parent_mid = '%s' and item.uid = %d limit 1",
+				dbesc($arr['item']['parent_mid']),
+				intval($arr['item']['uid'])
+			);
+
+			if ($d) {
+				if ($d[0]['hubloc_network'] === 'activitypub') {
+					$addr = $d[0]['hubloc_hash'];
+				} else {
+					$addr = $d[0]['hubloc_id_url'];
+				}
+				$arr['encoded']['cc'][] = $addr;
+			}
+		}
+	}
+
+	$mentions = Activity::map_mentions($arr['item']);
+	if (count($mentions) > 0) {
+		if (!$arr['encoded']['to']) {
+			$arr['encoded']['to'] = $mentions;
+		} else {
+			$arr['encoded']['to'] = array_values(array_unique(array_merge($arr['encoded']['to'], $mentions)));
+		}
+	}
+
+	// remove any duplicates from 'cc' that are present in 'to'
+	// as this may indicate that mentions changed the audience from secondary to primary
+
+	$cc = [];
+	if ($arr['encoded']['cc'] && is_array($arr['encoded']['cc'])) {
+		foreach ($arr['encoded']['cc'] as $e) {
+			if (!is_array($arr['encoded']['to'])) {
+				$cc[] = $e;
+			} elseif (!in_array($e, $arr['encoded']['to'])) {
+				$cc[] = $e;
+			}
+		}
+	}
+	$arr['encoded']['cc'] = $cc;
+}
+
+function pubcrawl_encode_activity(&$arr) {
+
+	if (!Apps::addon_app_installed($arr['item']['uid'], 'pubcrawl')) {
+		return;
+	}
+
+	$parent_i = [];
+	$arr['encoded']['to'] = [];
+	$arr['encoded']['cc'] = [];
+
+	$public = (($arr['item']['item_private']) ? false : true);
+	$top_level = (($arr['item']['mid'] === $arr['item']['parent_mid']) ? true : false);
+
+	if (!$top_level) {
+		if (intval($arr['item']['parent'])) {
+			$recips = get_iconfig($arr['item']['parent'], 'activitypub', 'recips');
+		} else {
+			// if we are encoding this item for storage there won't be a parent.
+			$p = q(
+				"select parent from item where parent_mid = '%s' and uid = %d",
+				dbesc($arr['item']['parent_mid']),
+				intval($arr['item']['uid'])
+			);
+			if ($p) {
+				$recips = get_iconfig($p[0]['parent'], 'activitypub', 'recips');
+			}
+		}
+		if ($recips) {
+			$parent_i['to'] = $recips['to'];
+			$parent_i['cc'] = $recips['cc'];
+		}
+	}
+
+
+	if ($public) {
+		$arr['encoded']['to'] = [ACTIVITY_PUBLIC_INBOX];
+		if (isset($parent_i['to']) && is_array($parent_i['to'])) {
+			$arr['encoded']['to'] = array_values(array_unique(array_merge($arr['encoded']['to'], $parent_i['to'])));
+		}
+		if ($arr['item']['item_origin']) {
+			$arr['encoded']['cc'] = [z_root() . '/followers/' . substr($arr['item']['author']['xchan_addr'], 0, strpos($arr['item']['author']['xchan_addr'], '@'))];
+		}
+		if (isset($parent_i['cc']) && is_array($parent_i['cc'])) {
+			$arr['encoded']['cc'] = array_values(array_unique(array_merge($arr['encoded']['cc'], $parent_i['cc'])));
+		}
+	} else {
+		// private activity
+
+		if ($top_level) {
+			$arr['encoded']['to'] = Activity::map_acl($arr['item']);
+			if (isset($parent_i['to']) && is_array($parent_i['to'])) {
+				$arr['encoded']['to'] = array_values(array_unique(array_merge($arr['encoded']['to'], $parent_i['to'])));
+			}
+		} else {
+			$arr['encoded']['cc'] = Activity::map_acl($arr['item']);
+			if (isset($parent_i['cc']) && is_array($parent_i['cc'])) {
+				$arr['encoded']['cc'] = array_values(array_unique(array_merge($arr['encoded']['cc'], $parent_i['cc'])));
+			}
+			if ($arr['encoded']['tag']) {
+				foreach ($arr['encoded']['tag'] as $mention) {
+					if (is_array($mention) && array_key_exists('ttype', $mention) && in_array($mention['ttype'], [TERM_FORUM, TERM_MENTION]) && array_key_exists('href', $mention) && $mention['href']) {
+						$h = q(
+							"select * from hubloc where hubloc_id_url = '%s' or hubloc_hash = '%s' limit 1",
+							dbesc($mention['href']),
+							dbesc($mention['href'])
+						);
+						if ($h) {
+							if ($h[0]['hubloc_network'] === 'activitypub') {
+								$addr = $h[0]['hubloc_hash'];
+							} else {
+								$addr = $h[0]['hubloc_id_url'];
+							}
+							if (!in_array($addr, $arr['encoded']['to'])) {
+								$arr['encoded']['to'][] = $addr;
+							}
+						}
+					}
+				}
+			}
+
+
+			$d = q(
+				"select hubloc.*  from hubloc left join item on hubloc_hash = owner_xchan where item.parent_mid = '%s' and item.uid = %d limit 1",
+				dbesc($arr['item']['parent_mid']),
+				intval($arr['item']['uid'])
+			);
+
+			if ($d) {
+				if ($d[0]['hubloc_network'] === 'activitypub') {
+					$addr = $d[0]['hubloc_hash'];
+				} else {
+					$addr = $d[0]['hubloc_id_url'];
+				}
+				$arr['encoded']['cc'][] = $addr;
+			}
+		}
+	}
+
+	$mentions = Activity::map_mentions($arr['item']);
+	if (count($mentions) > 0) {
+		if (!$arr['encoded']['to']) {
+			$arr['encoded']['to'] = $mentions;
+		} else {
+			$arr['encoded']['to'] = array_values(array_unique(array_merge($arr['encoded']['to'], $mentions)));
+		}
+	}
+
+	// remove any duplicates from 'cc' that are present in 'to'
+	// as this may indicate that mentions changed the audience from secondary to primary
+
+	$cc = [];
+	if ($arr['encoded']['cc'] && is_array($arr['encoded']['cc'])) {
+		foreach ($arr['encoded']['cc'] as $e) {
+			if (!is_array($arr['encoded']['to'])) {
+				$cc[] = $e;
+			} elseif (!in_array($e, $arr['encoded']['to'])) {
+				$cc[] = $e;
+			}
+		}
+	}
+	$arr['encoded']['cc'] = $cc;
+
+}
+
 
 function pubcrawl_channel_protocols(&$b) {
 
