@@ -85,7 +85,7 @@ function fediwordle_notifier_process($arr) {
 		return;
 	}
 
-	// it's not i direct descendent of the toplevel post - dismiss
+	// it's not a direct descendent of the toplevel post - dismiss
 	if ($item['thr_parent'] !== $parent['mid']) {
 		return;
 	}
@@ -230,19 +230,25 @@ function fediwordle_prepare_result($answer, $iconfig) {
 			if (isset($process_char_count_arr[$char])) {
 				$process_char_count_arr[$char]--;
 			}
+
+			if (!$process_char_count_arr[$char]) {
+				if (($key = array_search($char, $ret['iconfig']['?_chars'])) !== false) {
+					unset($ret['iconfig']['?_chars'][$key]);
+				}
+			}
 		}
 	}
 
 	$res_char_count_arr = array_count_values($ret['iconfig']['chars']);
 
 	foreach ($answer_arr as $i => $char) {
-		$ret['iconfig']['?_chars'][$i] = '';
+		//$ret['iconfig']['?_chars'][$i] = '';
 
 		if (in_array($char, $word_arr) && !isset($res[$i]) && $process_char_count_arr[$char] > 0) {
 			$res[$i] = '🟡';
 
-			if ($res_char_count_arr[$char] !== $char_count_arr[$char]) {
-				$ret['iconfig']['?_chars'][$i] = $char;
+			if ($res_char_count_arr[$char] !== $char_count_arr[$char] && !in_array($char, $ret['iconfig']['?_chars'])) {
+				$ret['iconfig']['?_chars'][] = $char;
 			}
 
 			$ret['success'] = false;
