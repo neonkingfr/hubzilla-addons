@@ -1,4 +1,5 @@
 <?php
+
 namespace Zotlabs\Module;
 
 use App;
@@ -16,18 +17,20 @@ class Articles extends Controller {
 
 	function init() {
 
-		if(argc() > 1)
+		$which = '';
+		if (argc() > 1)
 			$which = argv(1);
 
-                if(! $which) {
-                        if(local_channel()) {
-                                $channel = App::get_channel();
-                                if($channel && $channel['channel_address'])
-                                $which = $channel['channel_address'];
-                        } else {
+		if (!$which) {
+			if (local_channel()) {
+				$channel = App::get_channel();
+				if ($channel && $channel['channel_address'])
+					$which = $channel['channel_address'];
+			}
+			else {
 				return;
 			}
-                }
+		}
 
 		profile_load($which);
 
@@ -35,20 +38,20 @@ class Articles extends Controller {
 
 	function get($update = 0, $load = false) {
 
-		if(observer_prohibited(true)) {
+		if (observer_prohibited(true)) {
 			return login();
 		}
 
-		if(! App::$profile) {
-			notice( t('Requested profile is not available.') . EOL );
+		if (!App::$profile) {
+			notice(t('Requested profile is not available.') . EOL);
 			App::$error = 404;
 			return;
 		}
 
-		if(! Apps::system_app_installed(App::$profile_uid, 'Articles')) {
+		if (!Apps::addon_app_installed(App::$profile_uid, 'articles')) {
 			//Do not display any associated widgets at this point
 			App::$pdl = '';
-			$papp = Apps::get_papp('Articles');
+			$papp     = Apps::get_papp('Articles');
 			return Apps::app_render($papp, 'module');
 		}
 
@@ -62,16 +65,15 @@ class Articles extends Controller {
 		]);
 
 
-		$category = (($_REQUEST['cat']) ? escape_tags(trim($_REQUEST['cat'])) : '');
+		$category   = (($_REQUEST['cat']) ? escape_tags(trim($_REQUEST['cat'])) : '');
+		$sql_extra2 = '';
 
-		if($category) {
-			$sql_extra2 .= protect_sprintf(term_item_parent_query(App::$profile['profile_uid'],'item', $category, TERM_CATEGORY));
+		if ($category) {
+			$sql_extra2 .= protect_sprintf(term_item_parent_query(App::$profile['profile_uid'], 'item', $category, TERM_CATEGORY));
 		}
 
-		$datequery = ((x($_GET,'dend') && is_a_date_arg($_GET['dend'])) ? notags($_GET['dend']) : '');
-		$datequery2 = ((x($_GET,'dbegin') && is_a_date_arg($_GET['dbegin'])) ? notags($_GET['dbegin']) : '');
-
-		$which = argv(1);
+		$datequery  = ((x($_GET, 'dend') && is_a_date_arg($_GET['dend'])) ? notags($_GET['dend']) : '');
+		$datequery2 = ((x($_GET, 'dbegin') && is_a_date_arg($_GET['dbegin'])) ? notags($_GET['dbegin']) : '');
 
 		$selected_card = ((argc() > 2) ? argv(2) : '');
 
@@ -83,8 +85,8 @@ class Articles extends Controller {
 
 		$ob_hash = (($observer) ? $observer['xchan_hash'] : '');
 
-		if(! perm_is_allowed($owner,$ob_hash,'view_pages')) {
-			notice( t('Permission denied.') . EOL);
+		if (!perm_is_allowed($owner, $ob_hash, 'view_pages')) {
+			notice(t('Permission denied.') . EOL);
 			return;
 		}
 
@@ -92,21 +94,19 @@ class Articles extends Controller {
 
 		$channel = channelx_by_n($owner);
 
-		if($channel) {
-			$channel_acl = array(
+		if ($channel) {
+			$channel_acl = [
 				'allow_cid' => $channel['channel_allow_cid'],
 				'allow_gid' => $channel['channel_allow_gid'],
 				'deny_cid'  => $channel['channel_deny_cid'],
 				'deny_gid'  => $channel['channel_deny_gid']
-			);
+			];
 		}
 		else {
-			$channel_acl = [ 'allow_cid' => '', 'allow_gid' => '', 'deny_cid' => '', 'deny_gid' => '' ];
+			$channel_acl = ['allow_cid' => '', 'allow_gid' => '', 'deny_cid' => '', 'deny_gid' => ''];
 		}
 
-
-
-		if(perm_is_allowed($owner,$ob_hash,'write_pages')) {
+		if (perm_is_allowed($owner, $ob_hash, 'write_pages')) {
 
 			$x = [
 				'webpage'           => ITEM_TYPE_ARTICLE,
@@ -129,47 +129,47 @@ class Articles extends Controller {
 				'layoutselect'      => false,
 				'expanded'          => false,
 				'novoting'          => false,
-				'catsenabled'       => feature_enabled($owner,'categories'),
+				'catsenabled'       => feature_enabled($owner, 'categories'),
 				'bbco_autocomplete' => 'bbcode',
 				'bbcode'            => true
 			];
 
-			if($_REQUEST['title'])
+			if ($_REQUEST['title'])
 				$x['title'] = $_REQUEST['title'];
-			if($_REQUEST['body'])
+			if ($_REQUEST['body'])
 				$x['body'] = $_REQUEST['body'];
-			$editor = status_editor($a,$x,false,'Articles');
 
+			$editor = status_editor($a, $x, false, 'Articles');
 		}
 		else {
 			$editor = '';
 		}
 
-		$itemspage = get_pconfig(local_channel(),'system','itemspage');
+		$itemspage = get_pconfig(local_channel(), 'system', 'itemspage');
 		App::set_pager_itemspage(((intval($itemspage)) ? $itemspage : 10));
 		$pager_sql = sprintf(" LIMIT %d OFFSET %d ", intval(App::$pager['itemspage']), intval(App::$pager['start']));
 
 
 		$sql_extra = item_permissions_sql($owner);
-		$sql_item = '';
+		$sql_item  = '';
 
-		if($selected_card) {
+		if ($selected_card) {
 			$r = q("select * from iconfig where iconfig.cat = 'system' and iconfig.k = 'ARTICLE' and iconfig.v = '%s' limit 1",
 				dbesc($selected_card)
 			);
-			if($r) {
+			if ($r) {
 				$sql_item = "and item.id = " . intval($r[0]['iid']) . " ";
 			}
 		}
-		if($datequery) {
-			$sql_extra2 .= protect_sprintf(sprintf(" AND item.created <= '%s' ", dbesc(datetime_convert(date_default_timezone_get(),'',$datequery))));
-			$order = 'post';
+		if ($datequery) {
+			$sql_extra2 .= protect_sprintf(sprintf(" AND item.created <= '%s' ", dbesc(datetime_convert(date_default_timezone_get(), '', $datequery))));
+			$order      = 'post';
 		}
-		if($datequery2) {
-			$sql_extra2 .= protect_sprintf(sprintf(" AND item.created >= '%s' ", dbesc(datetime_convert(date_default_timezone_get(),'',$datequery2))));
+		if ($datequery2) {
+			$sql_extra2 .= protect_sprintf(sprintf(" AND item.created >= '%s' ", dbesc(datetime_convert(date_default_timezone_get(), '', $datequery2))));
 		}
 
-		if($datequery || $datequery2) {
+		if ($datequery || $datequery2) {
 			$sql_extra2 .= " and item.item_thread_top != 0 ";
 		}
 
@@ -184,11 +184,11 @@ class Articles extends Controller {
 			and item.item_unpublished = 0 and item.item_delayed = 0 and item.item_pending_remove = 0
 			and item.item_blocked = 0 ";
 
-		if($r) {
+		if ($r) {
 
 			$pager_total = count($r);
 
-			$parents_str = ids_to_querystr($r,'id');
+			$parents_str = ids_to_querystr($r, 'id');
 
 			$r = q("SELECT item.*, item.id AS item_id
 				FROM item
@@ -198,35 +198,35 @@ class Articles extends Controller {
 				intval(App::$profile['profile_uid']),
 				dbesc($parents_str)
 			);
-			if($r) {
+			if ($r) {
 				xchan_query($r);
 				$items = fetch_post_tags($r, true);
-				$items = conv_sort($items,'updated');
+				$items = conv_sort($items, 'updated');
 			}
 			else
 				$items = [];
 		}
 
 		// Add Opengraph markup
-		opengraph_add_meta((! empty($items) ? $r[0] : []), $channel);
+		opengraph_add_meta((!empty($items) ? $r[0] : []), $channel);
 
 		$mode = 'articles';
 
-		if(get_pconfig(local_channel(),'system','articles_list_mode') && (! $selected_card))
-            $page_mode = 'pager_list';
-        else
-            $page_mode = 'traditional';
+		if (get_pconfig(local_channel(), 'system', 'articles_list_mode') && (!$selected_card))
+			$page_mode = 'pager_list';
+		else
+			$page_mode = 'traditional';
 
-     	$content = conversation($items,$mode,false,$page_mode);
+		$content = conversation($items, $mode, false, $page_mode);
 
 		$o = replace_macros(get_markup_template('cards.tpl'), [
-			'$title' => t('Articles'),
-			'$editor' => $editor,
+			'$title'   => t('Articles'),
+			'$editor'  => $editor,
 			'$content' => $content,
-			'$pager' => alt_pager($pager_total)
+			'$pager'   => alt_pager($pager_total)
 		]);
 
-        return $o;
-    }
+		return $o;
+	}
 
 }
