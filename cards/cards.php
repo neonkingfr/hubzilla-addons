@@ -17,7 +17,7 @@ function cards_load() {
 }
 
 function cards_unload() {
-	Hook::unregister('module_loaded', 'addon/gallery/cards.php', 'cards_load_module');
+	Hook::unregister('module_loaded', 'addon/cards/cards.php', 'cards_load_module');
 }
 
 function cards_load_module(&$b) {
