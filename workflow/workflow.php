@@ -329,6 +329,11 @@ class Workflow_Utils {
         }
 
 	public static function item_custom_display($target_item) {
+
+		if ($target_item['item_type'] !== ITEM_TYPE_CUSTOM) {
+			return;
+		}
+
 		$uid = isset($target_item['uid']) ? intval($target_item['uid']) : false;
 
 		if (!Apps::addon_app_installed($uid,'workflow')) { return; }
