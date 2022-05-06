@@ -77,7 +77,10 @@ function sse_item_stored($item) {
 
 		$vnotify = get_pconfig($item_uid, 'system', 'vnotify', -1);
 
-		if($item['verb'] === ACTIVITY_LIKE && !($vnotify & VNOTIFY_LIKE))
+		if(in_array($item['verb'], [ACTIVITY_LIKE, ACTIVITY_DISLIKE]) && !($vnotify & VNOTIFY_LIKE))
+			continue;
+
+		if(in_array($item['verb'], [ACTIVITY_DISLIKE]) && !feature_enabled($item_uid, 'dislike'))
 			continue;
 
 		if($item['obj_type'] === ACTIVITY_OBJ_FILE && !($vnotify & VNOTIFY_FILES))
