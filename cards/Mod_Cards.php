@@ -46,7 +46,12 @@ class Cards extends Controller {
 
 		if(! Apps::addon_app_installed(App::$profile_uid, 'cards')) {
 			//Do not display any associated widgets at this point
-			App::$pdl = '';
+			App::$pdl = EMPTY_STR;
+
+			if (App::$profile_uid !== local_channel()) {
+				return EMPTY_STR;
+			}
+
 			$papp = Apps::get_papp('Cards');
 			return Apps::app_render($papp, 'module');
 		}

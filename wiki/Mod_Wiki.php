@@ -48,7 +48,12 @@ class Wiki extends Controller {
 
 		if(! Apps::addon_app_installed(App::$profile_uid, 'wiki')) {
 			//Do not display any associated widgets at this point
-			App::$pdl = '';
+			App::$pdl = EMPTY_STR;
+
+			if (App::$profile_uid !== local_channel()) {
+				return EMPTY_STR;
+			}
+
 			$papp = Apps::get_papp('Wiki');
 			return Apps::app_render($papp, 'module');
 		}
