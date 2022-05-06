@@ -179,7 +179,7 @@ class Articles extends Controller {
 		}
 
 		$r = q("select * from item
-			where item.uid = %d and item_type = %d
+			where item.uid = %d and item_type = %d and item_thread_top = 1
 			$sql_extra $sql_extra2 $sql_item order by item.created desc $pager_sql",
 			intval($owner),
 			intval(ITEM_TYPE_ARTICLE)

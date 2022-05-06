@@ -164,7 +164,7 @@ class Cards extends Controller {
 		}
 
 		$r = q("select * from item
-			where uid = %d and item_type = %d and item.item_thread_top = 1
+			where uid = %d and item_type = %d and item_thread_top = 1
 			$sql_extra $sql_item order by item.created desc $pager_sql",
 			intval($owner),
 			intval(ITEM_TYPE_CARD)
