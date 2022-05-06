@@ -16,12 +16,14 @@ function cards_load() {
 	Hook::register('module_loaded', 'addon/cards/cards.php', 'cards_load_module');
 	Hook::register('display_item', 'addon/cards/cards.php', 'cards_display_item');
 	Hook::register('item_custom_display', 'addon/cards/cards.php', 'cards_item_custom_display');
+	Hook::register('post_local', 'addon/cards/cards.php', 'cards_post_local');
 }
 
 function cards_unload() {
 	Hook::unregister('module_loaded', 'addon/cards/cards.php', 'cards_load_module');
 	Hook::unregister('display_item', 'addon/cards/cards.php', 'cards_display_item');
 	Hook::unregister('item_custom_display', 'addon/cards/cards.php', 'cards_item_custom_display');
+	Hook::unregister('post_local', 'addon/cards/cards.php', 'cards_post_local');
 }
 
 function cards_load_module(&$arr) {
@@ -37,10 +39,19 @@ function cards_display_item(&$arr) {
 		return;
 	}
 
+	// rewrite edit link
 	if (isset($arr['output']['edpost'])) {
 		$arr['output']['edpost'] = [
 			z_root() . '/card_edit/' . $arr['item']['id'],
 			t('Edit')
+		];
+	}
+
+	// rewrite conv link
+	if (isset($arr['output']['conv'])) {
+		$arr['output']['conv'] = [
+			'href' => $arr['item']['plink'],
+			'title' => t('View in context')
 		];
 	}
 }
@@ -64,5 +75,21 @@ function cards_item_custom_display($target_item) {
 
 	notice(t('Page not found.') . EOL);
 	return EMPTY_STR;
+}
 
+function cards_post_local(&$arr) {
+	if ($arr['item_type'] !== ITEM_TYPE_CARD) {
+		return;
+	}
+
+	// rewrite category URLs
+	if (is_array($arr['term'])) {
+		$i = 0;
+		foreach ($arr['term'] as $t) {
+			if ($t['ttype'] === TERM_CATEGORY) {
+				$arr['term'][$i]['url'] = str_replace('/channel/', '/cards/', $t['url']);
+			}
+			$i++;
+		}
+	}
 }

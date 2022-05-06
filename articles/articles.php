@@ -15,13 +15,16 @@ require_once('addon/articles/Mod_Articles.php');
 function articles_load() {
 	Hook::register('module_loaded', 'addon/articles/articles.php', 'articles_load_module');
 	Hook::register('display_item', 'addon/articles/articles.php', 'articles_display_item');
-	Hook::register('item_custom_display', 'addon/cards/cards.php', 'articles_item_custom_display');
+	Hook::register('item_custom_display', 'addon/articles/articles.php', 'articles_item_custom_display');
+	Hook::register('post_local', 'addon/articles/articles.php', 'articles_post_local');
+
 }
 
 function articles_unload() {
 	Hook::unregister('module_loaded', 'addon/articles/articles.php', 'articles_load_module');
 	Hook::unregister('display_item', 'addon/articles/articles.php', 'articles_display_item');
-	Hook::unregister('item_custom_display', 'addon/cards/cards.php', 'articles_item_custom_display');
+	Hook::unregister('item_custom_display', 'addon/articles/articles.php', 'articles_item_custom_display');
+	Hook::unregister('post_local', 'addon/articles/articles.php', 'articles_post_local');
 }
 
 function articles_load_module(&$b) {
@@ -37,10 +40,19 @@ function articles_display_item(&$arr) {
 		return;
 	}
 
+	// rewrite edit link
 	if (isset($arr['output']['edpost'])) {
 		$arr['output']['edpost'] = [
 			z_root() . '/article_edit/' . $arr['item']['id'],
 			t('Edit')
+		];
+	}
+
+	// rewrite conv link
+	if (isset($arr['output']['conv'])) {
+		$arr['output']['conv'] = [
+			'href' => $arr['item']['plink'],
+			'title' => t('View in context')
 		];
 	}
 }
@@ -64,5 +76,21 @@ function articles_item_custom_display($target_item) {
 
 	notice(t('Page not found.') . EOL);
 	return EMPTY_STR;
+}
 
+function articles_post_local(&$arr) {
+	if ($arr['item_type'] !== ITEM_TYPE_ARTICLE) {
+		return;
+	}
+
+	// rewrite category URLs
+	if (is_array($arr['term'])) {
+		$i = 0;
+		foreach ($arr['term'] as $t) {
+			if ($t['ttype'] === TERM_CATEGORY) {
+				$arr['term'][$i]['url'] = str_replace('/channel/', '/articles/', $t['url']);
+			}
+			$i++;
+		}
+	}
 }
