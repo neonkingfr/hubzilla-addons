@@ -13,6 +13,7 @@ use Zotlabs\Module\Card_edit;
 require_once('addon/cards/Mod_Cards.php');
 
 function cards_load() {
+	Hook::register('channel_apps', 'addon/cards/cards.php', 'cards_channel_apps');
 	Hook::register('module_loaded', 'addon/cards/cards.php', 'cards_load_module');
 	Hook::register('display_item', 'addon/cards/cards.php', 'cards_display_item');
 	Hook::register('item_custom_display', 'addon/cards/cards.php', 'cards_item_custom_display');
@@ -20,10 +21,32 @@ function cards_load() {
 }
 
 function cards_unload() {
+	Hook::unregister('channel_apps', 'addon/cards/cards.php', 'cards_channel_apps');
 	Hook::unregister('module_loaded', 'addon/cards/cards.php', 'cards_load_module');
 	Hook::unregister('display_item', 'addon/cards/cards.php', 'cards_display_item');
 	Hook::unregister('item_custom_display', 'addon/cards/cards.php', 'cards_item_custom_display');
 	Hook::unregister('post_local', 'addon/cards/cards.php', 'cards_post_local');
+}
+
+function cards_channel_apps(&$arr) {
+	$uid = ((App::$profile_uid) ? App::$profile_uid : intval(local_channel()));
+
+	if(! Apps::addon_app_installed($uid, 'cards'))
+		return;
+
+	$p = get_all_perms($uid, get_observer_hash());
+
+	if (! $p['view_pages'])
+		return;
+
+	$arr['tabs'][] = [
+		'label' => t('Cards'),
+		'url'   => z_root() . '/cards/' . $arr['nickname'],
+		'sel'   => ((argv(0) == 'cards') ? 'active' : ''),
+		'title' => t('View Cards'),
+		'id'    => 'cards-tab',
+		'icon'  => 'list'
+	];
 }
 
 function cards_load_module(&$arr) {

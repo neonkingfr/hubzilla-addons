@@ -13,6 +13,7 @@ use Zotlabs\Module\Article_edit;
 require_once('addon/articles/Mod_Articles.php');
 
 function articles_load() {
+	Hook::register('channel_apps', 'addon/articles/articles.php', 'articles_channel_apps');
 	Hook::register('module_loaded', 'addon/articles/articles.php', 'articles_load_module');
 	Hook::register('display_item', 'addon/articles/articles.php', 'articles_display_item');
 	Hook::register('item_custom_display', 'addon/articles/articles.php', 'articles_item_custom_display');
@@ -21,17 +22,40 @@ function articles_load() {
 }
 
 function articles_unload() {
+	Hook::unregister('channel_apps', 'addon/articles/articles.php', 'articles_channel_apps');
 	Hook::unregister('module_loaded', 'addon/articles/articles.php', 'articles_load_module');
 	Hook::unregister('display_item', 'addon/articles/articles.php', 'articles_display_item');
 	Hook::unregister('item_custom_display', 'addon/articles/articles.php', 'articles_item_custom_display');
 	Hook::unregister('post_local', 'addon/articles/articles.php', 'articles_post_local');
 }
 
-function articles_load_module(&$b) {
-	if ($b['module'] === 'article_edit') {
+function articles_channel_apps(&$arr) {
+	$uid = ((App::$profile_uid) ? App::$profile_uid : intval(local_channel()));
+
+	if(! Apps::addon_app_installed($uid, 'articles'))
+		return;
+
+	$p = get_all_perms($uid, get_observer_hash());
+
+	if (! $p['view_pages'])
+		return;
+
+	$arr['tabs'][] = [
+		'label' => t('Articles'),
+		'url'   => z_root() . '/articles/' . $arr['nickname'],
+		'sel'   => ((argv(0) == 'articles') ? 'active' : ''),
+		'title' => t('View Articles'),
+		'id'    => 'articles-tab',
+		'icon'  => 'file-text-o'
+	];
+}
+
+
+function articles_load_module(&$arr) {
+	if ($arr['module'] === 'article_edit') {
 		require_once('addon/articles/Mod_Article_edit.php');
-		$b['controller'] = new Article_edit();
-		$b['installed']  = true;
+		$arr['controller'] = new Article_edit();
+		$arr['installed']  = true;
 	}
 }
 
