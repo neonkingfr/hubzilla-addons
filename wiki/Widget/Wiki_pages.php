@@ -44,7 +44,7 @@ class Wiki_pages {
 
 	function widget($arr) {
 
-		if(argc() < 3)
+		if(argv(0) !== 'wiki' || argc() < 3)
 			return;
 
 		if(! $arr['resource_id']) {
