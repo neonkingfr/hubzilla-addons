@@ -676,7 +676,7 @@ class Diaspora_Receiver {
 		$datarray['plink'] = $plink;
 		$datarray['owner_xchan'] = $contact['xchan_hash'];
 		$datarray['author_xchan'] = $contact['xchan_hash'];
-
+		$datarray['verb'] = ACTIVITY_SHARE;
 		$datarray['body'] = $newbody;
 		$datarray['app']  = 'Diaspora';
 
