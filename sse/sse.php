@@ -156,6 +156,9 @@ function sse_item_stored($item) {
 
 function sse_event_store_event_end($item) {
 
+	if($item['etype'] === 'task')
+		return;
+
 	if(! $item['uid'])
 		return;
 
