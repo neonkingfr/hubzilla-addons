@@ -224,7 +224,7 @@ class Articles extends Controller {
 
 		$content = conversation($items, $mode, false, $page_mode);
 
-		$o = replace_macros(get_markup_template('cards.tpl'), [
+		$o = replace_macros(get_markup_template('articles.tpl', 'addon/articles'), [
 			'$title'   => t('Articles'),
 			'$editor'  => $editor,
 			'$content' => $content,

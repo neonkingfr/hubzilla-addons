@@ -205,7 +205,7 @@ class Cards extends Controller {
 
 		$content = conversation($items_result, $mode, false, $page_mode);
 
-		$o = replace_macros(get_markup_template('cards.tpl'), [
+		$o = replace_macros(get_markup_template('cards.tpl', 'addon/cards'), [
 			'$title' => t('Cards'),
 			'$editor' => $editor,
 			'$content' => $content,

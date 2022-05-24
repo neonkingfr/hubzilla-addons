@@ -11,6 +11,8 @@ use Zotlabs\Extend\Hook;
 use Zotlabs\Module\Card_edit;
 
 require_once('addon/cards/Mod_Cards.php');
+require_once('addon/cards/Widget/Cards_categories.php');
+
 
 function cards_load() {
 	Hook::register('channel_apps', 'addon/cards/cards.php', 'cards_channel_apps');
@@ -18,6 +20,7 @@ function cards_load() {
 	Hook::register('display_item', 'addon/cards/cards.php', 'cards_display_item');
 	Hook::register('item_custom_display', 'addon/cards/cards.php', 'cards_item_custom_display');
 	Hook::register('post_local', 'addon/cards/cards.php', 'cards_post_local');
+	Hook::register('construct_page', 'addon/cards/cards.php', 'cards_construct_page');
 }
 
 function cards_unload() {
@@ -26,6 +29,7 @@ function cards_unload() {
 	Hook::unregister('display_item', 'addon/cards/cards.php', 'cards_display_item');
 	Hook::unregister('item_custom_display', 'addon/cards/cards.php', 'cards_item_custom_display');
 	Hook::unregister('post_local', 'addon/cards/cards.php', 'cards_post_local');
+	Hook::unregister('construct_page', 'addon/cards/cards.php', 'cards_construct_page');
 }
 
 function cards_channel_apps(&$arr) {
@@ -115,4 +119,9 @@ function cards_post_local(&$arr) {
 			$i++;
 		}
 	}
+}
+
+function cards_construct_page(&$b){
+	$o = new Cards_categories();
+	$b['layout']['region_aside'] = $b['layout']['region_aside'] . $o->widget([]);
 }
