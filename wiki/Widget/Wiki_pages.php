@@ -24,7 +24,7 @@ class Wiki_pages {
                 $pageName = NativeWiki::name_decode(escape_tags(argv(3)));
 
 		$wikiname = $w['urlName'];
-		return replace_macros(get_markup_template('wiki_page_not_found.tpl'), array(
+		return replace_macros(get_markup_template('wiki_page_not_found.tpl', 'addon/wiki'), array(
 				'$resource_id' => $arr['resource_id'],
 				'$channel_address' => $arr['channel_address'],
 				'$wikiname' => $wikiname,
@@ -79,7 +79,7 @@ class Wiki_pages {
 
 		$can_delete = ((local_channel() && (local_channel() == \App::$profile['uid'])) ? true : false);
 
-		return replace_macros(get_markup_template('wiki_page_list.tpl'), array(
+		return replace_macros(get_markup_template('wiki_page_list.tpl', 'addon/wiki'), array(
 				'$resource_id' => $arr['resource_id'],
 				'$header' => t('Wiki Pages'),
 				'$channel_address' => $arr['channel_address'],

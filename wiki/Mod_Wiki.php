@@ -205,7 +205,7 @@ class Wiki extends Controller {
 				$wikis = NativeWiki::listwikis($owner, get_observer_hash());
 
 				if($wikis) {
-					$o .= replace_macros(get_markup_template('wikilist.tpl'), array(
+					$o .= replace_macros(get_markup_template('wikilist.tpl', 'addon/wiki'), array(
 						'$header' => t('Wikis'),
 						'$channel' => $owner['channel_address'],
 						'$wikis' => $wikis['wikis'],
@@ -377,7 +377,7 @@ class Wiki extends Controller {
 		$placeholder = t('Short description of your changes (optional)');
 
 		$zrl = z_root() . '/wiki/' . argv(1) . '/' . NativeWiki::name_encode($wikiUrlName) . '/' . NativeWiki::name_encode($pageUrlName);
-		$o .= replace_macros(get_markup_template('wiki.tpl'),array(
+		$o .= replace_macros(get_markup_template('wiki.tpl', 'addon/wiki'),array(
 			'$wikiheaderName' => $wikiheaderName,
 			'$wikiheaderPage' => $wikiheaderPage,
 			'$renamePage' => $renamePage,
