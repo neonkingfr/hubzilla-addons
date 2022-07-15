@@ -398,10 +398,18 @@ class NativeWikiPage {
 
 		$ret = item_store($item, false, false);
 
-		if ($ret['item_id'])
+		if ($ret['item_id']) {
+			q("update item set changed = '%s' where id = %d and uid = %d",
+				dbesc(datetime_convert()),
+				intval($w['wiki']['id']),
+				intval($w['wiki']['uid'])
+			);
+
 			return ['message' => '', 'item_id' => $ret['item_id'], 'filename' => $pageUrlName, 'success' => true];
-		else
+		}
+		else {
 			return ['message' => t('Page update failed.'), 'success' => false];
+		}
 	}
 
 
