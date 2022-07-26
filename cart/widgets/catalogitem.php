@@ -15,7 +15,7 @@ class Catalogitem {
 			return '';
 
 		$sku = preg_replace('/[^a-zA-Z0-9\-\_]/','',$args['sku']);
-		$info = bbcode($args['info']);
+		$info = bbcode($args['info'], ['tryoembed' => false]);
 
 		$id = '';
 		$count = 0;

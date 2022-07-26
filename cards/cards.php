@@ -21,6 +21,7 @@ function cards_load() {
 	Hook::register('item_custom_display', 'addon/cards/cards.php', 'cards_item_custom_display');
 	Hook::register('post_local', 'addon/cards/cards.php', 'cards_post_local');
 	Hook::register('construct_page', 'addon/cards/cards.php', 'cards_construct_page');
+	Hook::register('channel_activities_widget', 'addon/cards/cards.php', 'cards_channel_activities_widget');
 }
 
 function cards_unload() {
@@ -30,6 +31,7 @@ function cards_unload() {
 	Hook::unregister('item_custom_display', 'addon/cards/cards.php', 'cards_item_custom_display');
 	Hook::unregister('post_local', 'addon/cards/cards.php', 'cards_post_local');
 	Hook::unregister('construct_page', 'addon/cards/cards.php', 'cards_construct_page');
+	Hook::unregister('channel_activities_widget', 'addon/cards/cards.php', 'cards_channel_activities_widget');
 }
 
 function cards_channel_apps(&$arr) {
@@ -124,4 +126,49 @@ function cards_post_local(&$arr) {
 function cards_construct_page(&$b){
 	$o = new Cards_categories();
 	$b['layout']['region_aside'] = $b['layout']['region_aside'] . $o->widget([]);
+}
+
+function cards_channel_activities_widget(&$arr){
+
+	if(! Apps::addon_app_installed($arr['channel']['channel_id'], 'cards')) {
+		return;
+	}
+
+	$r = q("SELECT edited, plink, body, title FROM item WHERE uid = %d
+		AND author_xchan = '%s'	AND item_type = 6
+		AND item_thread_top = 1 AND item_deleted = 0
+		ORDER BY edited DESC LIMIT %d",
+		intval($arr['channel']['channel_id']),
+		dbesc($arr['channel']['channel_hash']),
+		intval($arr['limit'])
+	);
+
+	if (!$r) {
+		return;
+	}
+
+	foreach($r as $rr) {
+		$summary = html2plain(purify_html(bbcode($rr['body'], ['drop_media' => true, 'tryoembed' => false]), 85, true));
+		if ($summary) {
+			$summary = substr_words(htmlentities($summary, ENT_QUOTES, 'UTF-8', false), 85);
+		}
+
+		$i[] = [
+			'url' => $rr['plink'],
+			'title' => $rr['title'],
+			'summary' => $summary,
+			'footer' => datetime_convert('UTC', date_default_timezone_get(), $rr['edited'])
+		];
+
+	}
+
+	$arr['activities']['cards'] = [
+		'label' => t('Cards'),
+		'icon' => 'list',
+		'url' => z_root() . '/cards/' . $arr['channel']['channel_address'],
+		'date' => $r[0]['edited'],
+		'items' => $i,
+		'tpl' => 'channel_activities.tpl'
+	];
+
 }
