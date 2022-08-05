@@ -12,7 +12,6 @@ use Zotlabs\Extend\Widget;
 use Zotlabs\Module\Article_edit;
 
 require_once('addon/articles/Mod_Articles.php');
-require_once('addon/articles/Widget/Articles_categories.php');
 
 function articles_load() {
 	Hook::register('channel_apps', 'addon/articles/articles.php', 'articles_channel_apps');
