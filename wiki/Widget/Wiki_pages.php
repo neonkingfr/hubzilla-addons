@@ -1,5 +1,7 @@
 <?php
 
+namespace Zotlabs\Widget;
+
 use NativeWiki;
 use NativeWikiPage;
 

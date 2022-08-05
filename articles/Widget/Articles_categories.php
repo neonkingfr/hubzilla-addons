@@ -1,5 +1,7 @@
 <?php
 
+namespace Zotlabs\Widget;
+
 use App;
 
 class Articles_categories {
