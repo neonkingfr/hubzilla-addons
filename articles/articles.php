@@ -8,10 +8,10 @@
 
 use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Widget;
 use Zotlabs\Module\Article_edit;
 
 require_once('addon/articles/Mod_Articles.php');
-require_once('addon/articles/Widget/Articles_categories.php');
 
 function articles_load() {
 	Hook::register('channel_apps', 'addon/articles/articles.php', 'articles_channel_apps');
@@ -19,8 +19,8 @@ function articles_load() {
 	Hook::register('display_item', 'addon/articles/articles.php', 'articles_display_item');
 	Hook::register('item_custom_display', 'addon/articles/articles.php', 'articles_item_custom_display');
 	Hook::register('post_local', 'addon/articles/articles.php', 'articles_post_local');
-	Hook::register('construct_page', 'addon/articles/articles.php', 'articles_construct_page');
 	Hook::register('channel_activities_widget', 'addon/articles/articles.php', 'articles_channel_activities_widget');
+	Widget::register('addon/articles/Widget/Articles_categories.php', 'articles_categories');
 }
 
 function articles_unload() {
@@ -29,8 +29,8 @@ function articles_unload() {
 	Hook::unregister('display_item', 'addon/articles/articles.php', 'articles_display_item');
 	Hook::unregister('item_custom_display', 'addon/articles/articles.php', 'articles_item_custom_display');
 	Hook::unregister('post_local', 'addon/articles/articles.php', 'articles_post_local');
-	Hook::unregister('construct_page', 'addon/articles/articles.php', 'articles_construct_page');
 	Hook::unregister('channel_activities_widget', 'addon/articles/articles.php', 'articles_channel_activities_widget');
+	Widget::unregister('addon/cards/Widget/Articles_categories.php', 'articles_categories');
 }
 
 function articles_channel_apps(&$arr) {
@@ -121,11 +121,6 @@ function articles_post_local(&$arr) {
 			$i++;
 		}
 	}
-}
-
-function articles_construct_page(&$b){
-	$o = new Articles_categories();
-	$b['layout']['region_aside'] = $b['layout']['region_aside'] . $o->widget([]);
 }
 
 function articles_channel_activities_widget(&$arr){

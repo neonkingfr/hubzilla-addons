@@ -8,25 +8,20 @@
 
 use Zotlabs\Lib\Apps;
 use Zotlabs\Extend\Hook;
+use Zotlabs\Extend\Widget;
 
 require_once('addon/wiki/Mod_Wiki.php');
 require_once('addon/wiki/Lib/NativeWiki.php');
 require_once('addon/wiki/Lib/NativeWikiPage.php');
-require_once('addon/wiki/Widget/Wiki_pages.php');
 
 function wiki_load() {
-	Hook::register('construct_page', 'addon/wiki/wiki.php', 'wiki_construct_page');
 	Hook::register('channel_activities_widget', 'addon/wiki/wiki.php', 'wiki_channel_activities_widget');
+	Widget::register('addon/wiki/Widget/Wiki_pages.php', 'wiki_pages');
 }
 
 function wiki_unload() {
-	Hook::unregister('construct_page', 'addon/wiki/wiki.php', 'wiki_construct_page');
 	Hook::unregister('channel_activities_widget', 'addon/wiki/wiki.php', 'wiki_channel_activities_widget');
-}
-
-function wiki_construct_page(&$b){
-	$o = new Wiki_pages();
-	$b['layout']['region_aside'] = $b['layout']['region_aside'] . $o->widget([]);
+	Widget::unregister('addon/wiki/Widget/Wiki_pages.php', 'wiki_pages');
 }
 
 function wiki_channel_activities_widget(&$arr){
