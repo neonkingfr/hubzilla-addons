@@ -64,7 +64,7 @@ function articles_load_module(&$arr) {
 }
 
 function articles_display_item(&$arr) {
-	if ($arr['item']['item_type'] !== ITEM_TYPE_ARTICLE) {
+	if (intval($arr['item']['item_type']) !== ITEM_TYPE_ARTICLE) {
 		return;
 	}
 
@@ -86,7 +86,7 @@ function articles_display_item(&$arr) {
 }
 
 function articles_item_custom_display($target_item) {
-	if ($target_item['item_type'] !== ITEM_TYPE_ARTICLE) {
+	if (intval($target_item['item_type']) !== ITEM_TYPE_ARTICLE) {
 		return;
 	}
 
@@ -107,7 +107,7 @@ function articles_item_custom_display($target_item) {
 }
 
 function articles_post_local(&$arr) {
-	if ($arr['item_type'] !== ITEM_TYPE_ARTICLE) {
+	if (intval($arr['item_type']) !== ITEM_TYPE_ARTICLE) {
 		return;
 	}
 

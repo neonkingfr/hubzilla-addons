@@ -62,7 +62,7 @@ function cards_load_module(&$arr) {
 }
 
 function cards_display_item(&$arr) {
-	if ($arr['item']['item_type'] !== ITEM_TYPE_CARD) {
+	if (intval($arr['item']['item_type']) !== ITEM_TYPE_CARD) {
 		return;
 	}
 
@@ -84,7 +84,7 @@ function cards_display_item(&$arr) {
 }
 
 function cards_item_custom_display($target_item) {
-	if ($target_item['item_type'] !== ITEM_TYPE_CARD) {
+	if (intval($target_item['item_type']) !== ITEM_TYPE_CARD) {
 		return;
 	}
 
@@ -105,7 +105,7 @@ function cards_item_custom_display($target_item) {
 }
 
 function cards_post_local(&$arr) {
-	if ($arr['item_type'] !== ITEM_TYPE_CARD) {
+	if (intval($arr['item_type']) !== ITEM_TYPE_CARD) {
 		return;
 	}
 
