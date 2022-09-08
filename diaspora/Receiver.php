@@ -890,6 +890,7 @@ class Diaspora_Receiver {
 					return;
 				}
 			}
+
 			if ($author_signature || $this->msg['type'] === 'legacy') {
 				$x = diaspora_verify_fields($unxml, $author_signature, $key);
 				if (!$x) {

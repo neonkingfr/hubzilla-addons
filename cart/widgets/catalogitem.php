@@ -63,7 +63,7 @@ class Catalogitem {
 			'$posturl'=>'/cart/'.$nick.'/checkout'
 		];
 
-		if ($args['returnhere']) {
+		if (isset($args['returnhere'])) {
 			$arr['$returnurl'] = urlencode($_SERVER['REQUEST_URI']);
 		}
 

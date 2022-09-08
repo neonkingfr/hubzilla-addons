@@ -200,7 +200,7 @@ load_config("cart");
 global $cart_submodules;
 $cart_submodules=Array("paypalbuttonV2","hzservices","subscriptions","manualcat","orderoptions");
 
-$cart_manualpayments = get_pconfig ($id,'cart','enable_manual_payments');
+$cart_manualpayments = cart_getcartconfig('enable_manual_payments');
 if ($cart_manualpayments) {
 	require_once("./manual_payments.php");
 }

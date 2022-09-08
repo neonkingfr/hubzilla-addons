@@ -5,7 +5,7 @@
  * Description: Collapse posts with inappropriate content
  * Version: 1.0
  * Author: Mike Macgirvin <http://macgirvin.com/profile/mike>
- * Maintainer: Mike Macgirvin <mike@macgirvin.com> 
+ * Maintainer: Mike Macgirvin <mike@macgirvin.com>
  */
 
 
@@ -25,15 +25,15 @@ function nsfw_uninstall() {
 }
 
 
-// This function isn't perfect and isn't trying to preserve the html structure - it's just a 
-// quick and dirty filter to pull out embedded photo blobs because 'nsfw' seems to come up 
+// This function isn't perfect and isn't trying to preserve the html structure - it's just a
+// quick and dirty filter to pull out embedded photo blobs because 'nsfw' seems to come up
 // inside them quite often. We don't need anything fancy, just pull out the data blob so we can
-// check against the rest of the body. 
- 
+// check against the rest of the body.
+
 function nsfw_extract_photos($body) {
 
 	$new_body = '';
-	
+
 	$img_start = strpos($body,'src="data:');
 	if(! $img_start)
 		return $body;
@@ -45,7 +45,7 @@ function nsfw_extract_photos($body) {
 	while($img_end !== false) {
 		$img_end += $img_start;
 		$new_body = $new_body . substr($body,0,$img_start);
-	
+
 		$cnt ++;
 		$body = substr($body,0,$img_end);
 
@@ -112,7 +112,7 @@ function nsfw_prepare_body(&$b) {
 			if(strpos($word,'::') !== false) {
 				$author = substr($word,0,strpos($word,'::'));
 				$word = substr($word,strpos($word,'::')+2);
-			}			
+			}
 			if($author && (stripos($b['item']['author']['xchan_name'],$author) === false) && (stripos($b['item']['author']['xchan_addr'],$author) === false))
 				continue;
 
@@ -131,7 +131,7 @@ function nsfw_prepare_body(&$b) {
 					$found = true;
 					break;
 				}
-				if($b['item']['term']) {
+				if(isset($b['item']['term'])) {
 					foreach($b['item']['term'] as $t) {
 						if(stristr($t['term'],$word )) {
 							$found = true;
@@ -140,17 +140,17 @@ function nsfw_prepare_body(&$b) {
 					}
 				}
 				if($found)
-					break; 
+					break;
 			}
 		}
 	}
 
 	$ob_hash = get_observer_hash();
-	if((! $ob_hash) 
+	if((! $ob_hash)
 		&& (intval($b['item']['author']['xchan_censored']) || intval($b['item']['author']['xchan_selfcensored']))) {
 		$found = true;
 		$orig_word = t('Possible adult content');
-	}	
+	}
 	if($found) {
 		$rnd = random_string(8);
 

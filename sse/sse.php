@@ -131,19 +131,19 @@ function sse_item_stored($item) {
 
 		pop_lang();
 
-		if(is_array($x['network']['notifications']))
+		if(isset($x['network']['notifications']))
 			$x['network']['count'] = count($x['network']['notifications']);
 
-		if(is_array($x['dm']['notifications']))
+		if(isset($x['dm']['notifications']))
 			$x['dm']['count'] = count($x['dm']['notifications']);
 
-		if(is_array($x['home']['notifications']))
+		if(isset($x['home']['notifications']))
 			$x['home']['count'] = count($x['home']['notifications']);
 
-		if(is_array($x['pubs']['notifications']))
+		if(isset($x['pubs']['notifications']))
 			$x['pubs']['count'] = count($x['pubs']['notifications']);
 
-		if(is_array($x['files']['notifications']))
+		if(isset($x['files']['notifications']))
 			$x['files']['count'] = count($x['files']['notifications']);
 
 		XConfig::Set($hash, 'sse', 'timestamp', datetime_convert());
