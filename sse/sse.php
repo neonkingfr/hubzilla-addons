@@ -42,6 +42,7 @@ function sse_item_stored($item) {
 	$item_uid = $item['uid'];
 
 	$sys = false;
+	$channel = [];
 
 	if(is_sys_channel($item_uid)) {
 		$sys = true;
@@ -102,11 +103,12 @@ function sse_item_stored($item) {
 		$x = XConfig::Get($hash, 'sse', 'notifications', []);
 
 		// this is neccessary for Enotify::format() to calculate the right time and language
-		if($sys && $current_channel) {
-			date_default_timezone_set((string)$current_channel['channel_timezone']);
+		if($sys && isset($current_channel['channel_timezone'])) {
+			date_default_timezone_set($current_channel['channel_timezone']);
 		}
-		else {
-			date_default_timezone_set((string)$channel['channel_timezone']);
+
+		if ($channel && isset($channel['channel_timezone'])) {
+			date_default_timezone_set($channel['channel_timezone']);
 		}
 
 		push_lang(XConfig::Get($hash, 'sse', 'language', 'en'));
