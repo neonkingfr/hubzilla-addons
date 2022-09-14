@@ -218,7 +218,7 @@ function pubcrawl_encode_item(&$arr) {
 				$img[] = ['type' => 'Image', 'url' => $match[2]];
 			}
 
-			if (!$arr['encoded']['attachment']) {
+			if (!isset($arr['encoded']['attachment'])) {
 				$arr['encoded']['attachment'] = [];
 			}
 			$already_added = false;
