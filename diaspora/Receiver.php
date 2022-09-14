@@ -836,8 +836,6 @@ class Diaspora_Receiver {
 	     who sent the pseudo-salmon
 		*/
 
-		$signed_data = $guid . ';' . $parent_guid . ';' . $text . ';' . $diaspora_handle;
-		$key         = $this->msg['key'];
 
 		/* WARN: As a side effect of this, all of $this->xmlbase will now be unxmlified */
 
@@ -859,6 +857,8 @@ class Diaspora_Receiver {
 			// If a parent_author_signature exists, then we've received the comment
 			// relayed from the top-level post owner *or* it is legacy protocol.
 
+			$key = $this->msg['key'];
+
 			$x = diaspora_verify_fields($unxml, $parent_author_signature, $key);
 			if (!$x) {
 				logger('diaspora_comment: top-level owner verification failed.');
@@ -869,6 +869,8 @@ class Diaspora_Receiver {
 
 			// the comment is being sent to the owner to relay
 			// *or* there is no parent signature because it is the new format
+
+			$key = $this->msg['msg_author_key'];
 
 			if ($this->importer['system'] && $this->msg['format'] === 'legacy') {
 				// don't relay to the sys channel
@@ -1593,11 +1595,11 @@ class Diaspora_Receiver {
 			$bodyverb = t('%1$s dislikes %2$s\'s %3$s');
 		}
 
-		$key = $this->msg['key'];
-
 		if ($parent_author_signature && !$this->force) {
 			// If a parent_author_signature exists, then we've received the like
 			// relayed from the top-level post owner.
+
+			$key = $this->msg['key'];
 
 			$x = diaspora_verify_fields($this->xmlbase, $parent_author_signature, $key);
 			if (!$x) {
@@ -1611,6 +1613,8 @@ class Diaspora_Receiver {
 			// from the like creator. In that case, the person is "like"ing
 			// our post, so he/she must be a contact of ours and his/her public key
 			// should be in $this->msg['key']
+
+			$key = $this->msg['msg_author_key'];
 
 			$x = diaspora_verify_fields($this->xmlbase, $author_signature, $key);
 			if (!$x) {
