@@ -115,11 +115,11 @@ function diaspora_plugin_admin_post() {
 
 function diaspora_get_actor_provider(&$arr) {
 
-	if(!$arr['activity']) {
+	if(!isset($arr['activity'])) {
 		return;
 	}
 
-	if(!$arr['activity']['attachment']) {
+	if(!isset($arr['activity']['attachment'])) {
 		return;
 	}
 
@@ -840,6 +840,8 @@ function diaspora_discover(&$b) {
 		}
 	}
 
+/*
+
 	if(! ($diaspora && $diaspora_base)) {
 		$x = false;
 	}
@@ -878,7 +880,7 @@ function diaspora_discover(&$b) {
 			}
 		}
 	}
-
+*/
 	if($diaspora && $diaspora_base) {
 
 		if($diaspora_guid)
