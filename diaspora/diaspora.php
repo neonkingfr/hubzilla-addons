@@ -1245,10 +1245,10 @@ function diaspora_import_author(&$b) {
 
 	$x = $b['author'];
 
-	if($x['network'] && strpos($x['network'], 'diaspora') === false)
+	if(isset($x['network']) && strpos($x['network'], 'diaspora') === false)
 		return;
 
-	if(! $x['address'])
+	if(!(isset($x['address']) && $x['address']))
 		return;
 
 	$r = q("select * from xchan where xchan_addr = '%s' limit 1",
