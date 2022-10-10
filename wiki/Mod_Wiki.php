@@ -312,19 +312,13 @@ class Wiki extends Controller {
 					$p = NativeWikiPage::get_page_content(array('channel_id' => $owner['channel_id'], 'observer_hash' => $observer_hash, 'resource_id' => $resource_id, 'pageUrlName' => $pageUrlName));
 				}
 				if(! ($p && $p['success'])) {
-			                $x = new Wiki_pages();
 
-			                $html = $x->create_missing_page([
-				                'resource_id' => $resource_id,
-				                'channel_id' => $owner['channel_id'],
-				                'channel_address' => $owner['channel_address'],
-				                'refresh' => true
-			                ]);
-			                //json_return_and_die(array('pages' => $page_list_html, 'message' => '', 'success' => true));
+					$html = self::create_missing_page();
+					//json_return_and_die(array('pages' => $page_list_html, 'message' => '', 'success' => true));
 					notice( t('Error retrieving page content') . EOL);
 					//goaway(z_root() . '/' . argv(0) . '/' . argv(1) );
-				        $renderedContent = NativeWikiPage::convert_links($html, argv(0) . '/' . argv(1) . '/' . NativeWiki::name_encode($wikiUrlName));
-				        $showPageControls = $wiki_editor;
+					$renderedContent = NativeWikiPage::convert_links($html, argv(0) . '/' . argv(1) . '/' . NativeWiki::name_encode($wikiUrlName));
+					$showPageControls = $wiki_editor;
 				}
                                 else {
 				    $mimeType = $p['pageMimeType'];
@@ -876,4 +870,42 @@ class Wiki extends Controller {
 		json_return_and_die(array('message' => t('You must be authenticated.'), 'success' => false));
 
 	}
+
+	function create_missing_page() {
+		if(argc() < 4)
+			return;
+
+		$c = channelx_by_nick(argv(1));
+		$w = NativeWiki::exists_by_name($c['channel_id'],NativeWiki::name_decode(argv(2)));
+		$arr = array(
+			'resource_id' => $w['resource_id'],
+			'channel_id' => $c['channel_id'],
+			'channel_address' => $c['channel_address'],
+			'refresh' => false
+		);
+
+		$can_create = perm_is_allowed(\App::$profile['uid'],get_observer_hash(),'write_wiki');
+
+		$can_delete = ((local_channel() && (local_channel() == \App::$profile['uid'])) ? true : false);
+                $pageName = NativeWiki::name_decode(escape_tags(argv(3)));
+
+		$wikiname = $w['urlName'];
+		return replace_macros(get_markup_template('wiki_page_not_found.tpl', 'addon/wiki'), array(
+				'$resource_id' => $arr['resource_id'],
+				'$channel_address' => $arr['channel_address'],
+				'$wikiname' => $wikiname,
+				'$canadd' => $can_create,
+				'$candel' => $can_delete,
+				'$addnew' => t('Add new page'),
+				'$typelock' => $typelock,
+				'$lockedtype' => $w['mimeType'],
+				'$mimetype' => mimetype_select(0,$w['mimeType'],
+					[ 'text/markdown' => t('Markdown'), 'text/bbcode' => t('BBcode'), 'text/plain' => t('Text') ]),
+				'$pageName' => array('missingPageName', 'Create Page' , $pageName),
+				'$refresh' => $arr['refresh'],
+				'$options' => t('Options'),
+				'$submit' => t('Submit')
+		));
+	}
+
 }
