@@ -6,12 +6,12 @@
  * Description: block channels
  * Version: 2.0
  * Author: Mike Macgirvin
- * Maintainer: Mike Macgirvin <mike@macgirvin.com> 
+ * Maintainer: Mike Macgirvin <mike@macgirvin.com>
  * MinVersion: 1.1.3
  */
 
 /**
- * This function uses some helper code in include/conversation; which handles filtering item authors. 
+ * This function uses some helper code in include/conversation; which handles filtering item authors.
  * Those function should ultimately be moved to this plugin.
  *
  */
@@ -25,6 +25,7 @@ function superblock_load() {
 	register_hook('thread_author_menu', 'addon/superblock/superblock.php', 'superblock_item_photo_menu');
 	register_hook('enotify_store', 'addon/superblock/superblock.php', 'superblock_enotify_store');
 	register_hook('enotify_format', 'addon/superblock/superblock.php', 'superblock_enotify_format');
+	register_hook('messages_widget', 'addon/superblock/superblock.php', 'superblock_messages_widget');
 	register_hook('item_store', 'addon/superblock/superblock.php', 'superblock_item_store');
 	register_hook('directory_item', 'addon/superblock/superblock.php', 'superblock_directory_item');
 	register_hook('api_format_items', 'addon/superblock/superblock.php', 'superblock_api_format_items');
@@ -42,6 +43,7 @@ function superblock_unload() {
 	unregister_hook('thread_author_menu', 'addon/superblock/superblock.php', 'superblock_item_photo_menu');
 	unregister_hook('enotify_store', 'addon/superblock/superblock.php', 'superblock_enotify_store');
 	unregister_hook('enotify_format', 'addon/superblock/superblock.php', 'superblock_enotify_format');
+	unregister_hook('messages_widget', 'addon/superblock/superblock.php', 'superblock_messages_widget');
 	unregister_hook('item_store', 'addon/superblock/superblock.php', 'superblock_item_store');
 	unregister_hook('directory_item', 'addon/superblock/superblock.php', 'superblock_directory_item');
 	unregister_hook('api_format_items', 'addon/superblock/superblock.php', 'superblock_api_format_items');
@@ -72,11 +74,17 @@ class Superblock {
 	function match($n) {
 		if(! $this->list)
 			return false;
-		foreach($this->list as $l) {
-			if(trim($n) === trim($l)) {
-				return true;
-			}
+
+		//foreach($this->list as $l) {
+		//	if(trim($n) === trim($l)) {
+		//		return true;
+		//	}
+		//}
+
+		if (in_array($n, $this->list)) {
+			return true;
 		}
+
 		return false;
 	}
 
@@ -157,11 +165,6 @@ function superblock_post_mail(&$a,&$b) {
 	return;
 }
 
-
-
-
-
-
 function superblock_enotify_store(&$a,&$b) {
 
 	if(! Apps::addon_app_installed($b['uid'], 'superblock'))
@@ -189,6 +192,10 @@ function superblock_enotify_store(&$a,&$b) {
 
 function superblock_enotify_format(&$a,&$b) {
 
+	if (!Apps::addon_app_installed($b['uid'], 'superblock')) {
+		return;
+	}
+
 	$sb = new Superblock($b['uid']);
 
 	$found = false;
@@ -201,7 +208,17 @@ function superblock_enotify_format(&$a,&$b) {
 	}
 }
 
+function superblock_messages_widget(&$a,&$b) {
+	if (!Apps::addon_app_installed($b['uid'], 'superblock')) {
+		return;
+	}
 
+	$sb = new Superblock($b['uid']);
+
+	if ($sb->match($b['owner_xchan']) || $sb->match($b['author_xchan'])) {
+		$b['cancel'] = true;
+	}
+}
 
 function superblock_api_format_items(&$a,&$b) {
 
@@ -277,8 +294,9 @@ function superblock_activity_widget(&$a,&$b) {
 
 function superblock_conversation_start(&$a,&$b) {
 
-	if(! local_channel())
+	if(!local_channel()) {
 		return;
+	}
 
 	if(! Apps::addon_app_installed(local_channel(), 'superblock'))
 		return;
@@ -332,7 +350,7 @@ function superblock_item_photo_menu(&$a,&$b) {
 	if($blocked)
 		return;
 
-	$b['menu'][] = [           
+	$b['menu'][] = [
 		'menu' => 'superblock',
 		'title' => t('Block Completely'),
 		'icon' => 'fw',

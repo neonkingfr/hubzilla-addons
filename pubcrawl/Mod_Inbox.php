@@ -74,6 +74,7 @@ class Inbox extends Controller {
 		}
 
 		$AS = new ActivityStreams($data);
+
 		if (
 			$AS->is_valid() && $AS->type === 'Announce' && is_array($AS->obj)
 			&& array_key_exists('object', $AS->obj) && array_key_exists('actor', $AS->obj)
@@ -108,10 +109,20 @@ class Inbox extends Controller {
 			Activity::actor_store($AS->obj['id'], $AS->obj);
 		}
 
-		if (is_array($AS->obj) && is_array($AS->obj['actor']) && array_key_exists('id', $AS->obj['actor']) && $AS->obj['actor']['id'] !== $AS->actor['id']) {
+		if (is_array($AS->obj) && array_key_exists('actor',$AS->obj) && is_array($AS->obj['actor']) && array_key_exists('id', $AS->obj['actor']) && $AS->obj['actor']['id'] !== $AS->actor['id']) {
 			Activity::actor_store($AS->obj['actor']['id'], $AS->obj['actor']);
 			if (!check_channelallowed($AS->obj['actor']['id'])) {
 				http_status_exit(403, 'Permission denied');
+			}
+		}
+
+		if($AS->type === 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo', $AS->obj)) {
+			$attributed_to = Activity::get_attributed_to_actor_url($AS);
+			if ($attributed_to) {
+				Activity::actor_store($attributed_to);
+				if (!check_channelallowed($attributed_to)) {
+					http_status_exit(403, 'Permission denied');
+				}
 			}
 		}
 
@@ -171,7 +182,7 @@ class Inbox extends Controller {
 				http_status_exit(403, 'Permission denied');
 			}
 			// this site obviously isn't dead because they are trying to communicate with us.
-			$test = q("update site set site_dead = 0 where site_dead = 1 and site_url = '%s'",
+			q("update site set site_dead = 0 where site_dead = 1 and site_url = '%s'",
 				dbesc($m['scheme'] . '://' . $m['host'])
 			);
 		}
@@ -181,7 +192,7 @@ class Inbox extends Controller {
 
 		// update the hubloc_connected timestamp, ignore failures
 
-		$test = q("update hubloc set hubloc_connected = '%s' where hubloc_hash = '%s' and hubloc_network = 'activitypub'",
+		q("update hubloc set hubloc_connected = '%s' where hubloc_hash = '%s' and hubloc_network = 'activitypub'",
 			dbesc(datetime_convert()),
 			dbesc($observer_hash)
 		);

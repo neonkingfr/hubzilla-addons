@@ -259,6 +259,10 @@ function photocache_url(&$cache = []) {
 		$hdrs = [];
 		$h = explode("\n", $i['header']);
 		foreach ($h as $l) {
+			if (strpos($l, ':') === false) {
+				continue;
+			}
+
 			list($t,$v) = array_map("trim", explode(":", trim($l), 2));
 			$hdrs[strtolower($t)] = $v;
 		}

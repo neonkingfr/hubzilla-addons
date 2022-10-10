@@ -64,7 +64,7 @@ class Receive extends Controller {
 		// until we see something reasonable. Once we know how many times we are expected to decode we can
 		// refine this.
 
-		if($_POST['xml']) {
+		if(isset($_POST['xml'])) {
 			$xml = ltrim($_POST['xml']);
 			$format = 'legacy';
 			// PHP performed the first decode when populating the $_POST variable.
@@ -156,6 +156,8 @@ class Receive extends Controller {
 
 		if($public)
 			$msg['public'] = true;
+
+		$msg['msg_author_key'] = get_diaspora_key($msg['msg']['author']);
 
 		logger('mod-diaspora: dispatching', LOGGER_DEBUG);
 

@@ -42,6 +42,7 @@ function sse_item_stored($item) {
 	$item_uid = $item['uid'];
 
 	$sys = false;
+	$channel = [];
 
 	if(is_sys_channel($item_uid)) {
 		$sys = true;
@@ -102,11 +103,12 @@ function sse_item_stored($item) {
 		$x = XConfig::Get($hash, 'sse', 'notifications', []);
 
 		// this is neccessary for Enotify::format() to calculate the right time and language
-		if($sys && $current_channel) {
-			date_default_timezone_set((string)$current_channel['channel_timezone']);
+		if($sys && isset($current_channel['channel_timezone'])) {
+			date_default_timezone_set($current_channel['channel_timezone']);
 		}
-		else {
-			date_default_timezone_set((string)$channel['channel_timezone']);
+
+		if ($channel && isset($channel['channel_timezone'])) {
+			date_default_timezone_set($channel['channel_timezone']);
 		}
 
 		push_lang(XConfig::Get($hash, 'sse', 'language', 'en'));
@@ -131,19 +133,19 @@ function sse_item_stored($item) {
 
 		pop_lang();
 
-		if(is_array($x['network']['notifications']))
+		if(isset($x['network']['notifications']))
 			$x['network']['count'] = count($x['network']['notifications']);
 
-		if(is_array($x['dm']['notifications']))
+		if(isset($x['dm']['notifications']))
 			$x['dm']['count'] = count($x['dm']['notifications']);
 
-		if(is_array($x['home']['notifications']))
+		if(isset($x['home']['notifications']))
 			$x['home']['count'] = count($x['home']['notifications']);
 
-		if(is_array($x['pubs']['notifications']))
+		if(isset($x['pubs']['notifications']))
 			$x['pubs']['count'] = count($x['pubs']['notifications']);
 
-		if(is_array($x['files']['notifications']))
+		if(isset($x['files']['notifications']))
 			$x['files']['count'] = count($x['files']['notifications']);
 
 		XConfig::Set($hash, 'sse', 'timestamp', datetime_convert());

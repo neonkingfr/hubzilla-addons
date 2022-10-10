@@ -567,7 +567,7 @@ class Diaspora_Receiver {
 
 			// Check for one or more embedded photo objects
 
-			if($source_xml['status_message']['photo']) {
+			if(isset($source_xml['status_message']['photo'])) {
 				$photos = $source_xml['status_message']['photo'];
 				if(!empty($photos['remote_photo_path'])) {
 					$photos = [ $photos ];
@@ -836,8 +836,6 @@ class Diaspora_Receiver {
 	     who sent the pseudo-salmon
 		*/
 
-		$signed_data = $guid . ';' . $parent_guid . ';' . $text . ';' . $diaspora_handle;
-		$key         = $this->msg['key'];
 
 		/* WARN: As a side effect of this, all of $this->xmlbase will now be unxmlified */
 
@@ -859,6 +857,8 @@ class Diaspora_Receiver {
 			// If a parent_author_signature exists, then we've received the comment
 			// relayed from the top-level post owner *or* it is legacy protocol.
 
+			$key = $this->msg['key'];
+
 			$x = diaspora_verify_fields($unxml, $parent_author_signature, $key);
 			if (!$x) {
 				logger('diaspora_comment: top-level owner verification failed.');
@@ -869,6 +869,8 @@ class Diaspora_Receiver {
 
 			// the comment is being sent to the owner to relay
 			// *or* there is no parent signature because it is the new format
+
+			$key = $this->msg['msg_author_key'];
 
 			if ($this->importer['system'] && $this->msg['format'] === 'legacy') {
 				// don't relay to the sys channel
@@ -890,6 +892,7 @@ class Diaspora_Receiver {
 					return;
 				}
 			}
+
 			if ($author_signature || $this->msg['type'] === 'legacy') {
 				$x = diaspora_verify_fields($unxml, $author_signature, $key);
 				if (!$x) {
@@ -1592,11 +1595,11 @@ class Diaspora_Receiver {
 			$bodyverb = t('%1$s dislikes %2$s\'s %3$s');
 		}
 
-		$key = $this->msg['key'];
-
 		if ($parent_author_signature && !$this->force) {
 			// If a parent_author_signature exists, then we've received the like
 			// relayed from the top-level post owner.
+
+			$key = $this->msg['key'];
 
 			$x = diaspora_verify_fields($this->xmlbase, $parent_author_signature, $key);
 			if (!$x) {
@@ -1610,6 +1613,8 @@ class Diaspora_Receiver {
 			// from the like creator. In that case, the person is "like"ing
 			// our post, so he/she must be a contact of ours and his/her public key
 			// should be in $this->msg['key']
+
+			$key = $this->msg['msg_author_key'];
 
 			$x = diaspora_verify_fields($this->xmlbase, $author_signature, $key);
 			if (!$x) {
@@ -1642,27 +1647,7 @@ class Diaspora_Receiver {
 		$post_type = (($parent_item['resource_type'] === 'photo') ? t('photo') : t('status'));
 		$links     = [['rel' => 'alternate', 'type' => 'text/html', 'href' => $parent_item['plink']]];
 		$objtype   = (($parent_item['resource_type'] === 'photo') ? ACTIVITY_OBJ_PHOTO : ACTIVITY_OBJ_NOTE);
-
-		$object = json_encode([
-			'type'    => $post_type,
-			'id'      => $parent_item['mid'],
-			'asld'    => \Zotlabs\Lib\Activity::fetch_item(['id' => $parent_item['mid']]),
-			'parent'  => (($parent_item['thr_parent']) ? $parent_item['thr_parent'] : $parent_item['parent_mid']),
-			'link'    => $links,
-			'title'   => $parent_item['title'],
-			'content' => $parent_item['body'],
-			'created' => $parent_item['created'],
-			'edited'  => $parent_item['edited'],
-			'author'  => [
-				'name'     => $item_author['xchan_name'],
-				'address'  => $item_author['xchan_addr'],
-				'guid'     => $item_author['xchan_guid'],
-				'guid_sig' => $item_author['xchan_guid_sig'],
-				'link'     => [
-					['rel' => 'alternate', 'type' => 'text/html', 'href' => $item_author['xchan_url']],
-					['rel' => 'photo', 'type' => $item_author['xchan_photo_mimetype'], 'href' => $item_author['xchan_photo_m']]],
-			],
-		]);
+		$object    = \Zotlabs\Lib\Activity::fetch_item(['id' => $parent_item['mid']]);
 
 		$arr               = [];
 		$arr['uid']        = $this->importer['channel_id'];
@@ -1683,10 +1668,10 @@ class Diaspora_Receiver {
 
 		$arr['owner_xchan']  = $parent_item['owner_xchan'];
 		$arr['author_xchan'] = $person['xchan_hash'];
-		$ulink               = '[url=' . $item_author['xchan_url'] . ']' . $item_author['xchan_name'] . '[/url]';
-		$alink               = '[url=' . $parent_item['author']['xchan_url'] . ']' . $parent_item['author']['xchan_name'] . '[/url]';
-		$plink               = '[url=' . z_root() . '/display/' . $guid . ']' . $post_type . '[/url]';
-		$arr['body']         = sprintf($bodyverb, $ulink, $alink, $plink);
+//		$ulink               = '[url=' . $item_author['xchan_url'] . ']' . $item_author['xchan_name'] . '[/url]';
+//		$alink               = '[url=' . $parent_item['author']['xchan_url'] . ']' . $parent_item['author']['xchan_name'] . '[/url]';
+//		$plink               = '[url=' . z_root() . '/display/' . $guid . ']' . $post_type . '[/url]';
+//		$arr['body']         = sprintf($bodyverb, $ulink, $alink, $plink);
 
 		$arr['app'] = 'Diaspora';
 

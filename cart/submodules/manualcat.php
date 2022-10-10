@@ -92,19 +92,19 @@ class Cart_manualcat {
     // 		"sku-1"=>Array("item_sku"=>"sku-1","item_desc"=>"Description Item 1","item_price"=>5.55),
     $itemlist = Cart_manualcat::get_itemlist();
     logger("manualcat - itemlist = ".print_r($itemlist,true),LOGGER_DEBUG);
-    foreach ($itemlist as $item) {
-        $skudata=Cart_manualcat::get_item($item);
-        $catalog[$item] =
-        Array("item_sku"=>$item,
-          "item_desc"=>$skudata["item_description"],
-          "item_price"=>$skudata["item_price"],
-          "item_photo_url"=>$skudata["item_photo_url"],
-          "item_meta"=>cart_maybeunjson($skudata["item_meta"]),
-          "item_type"=>"manualcat",
-          "locked"=>$skudata["locked"]
-        );
-    logger("ADD CATALOG ITEM: ".print_r($catalog[$item],true),LOGGER_DEBUG);
-    }
+	foreach ($itemlist as $item) {
+		$skudata=Cart_manualcat::get_item($item);
+		$catalog[$item] = [
+			"item_sku"=>$item,
+			"item_desc"=>$skudata["item_description"] ?? '',
+			"item_price"=>$skudata["item_price"] ?? 0,
+			"item_photo_url"=>$skudata["item_photo_url"] ?? '',
+			"item_meta"=> isset($skudata["item_meta"]) ? cart_maybeunjson($skudata["item_meta"]) : [],
+			"item_type"=>"manualcat",
+			"locked"=>$skudata["locked"] ?? 0
+		];
+		logger("ADD CATALOG ITEM: ".print_r($catalog[$item],true),LOGGER_DEBUG);
+	}
   }
 
   static public function filter_catalog_display(&$catalog) {
@@ -162,7 +162,7 @@ class Cart_manualcat {
     $skus = Array();
     Cart_manualcat::get_catalog($skus);
     //Cart_manualcat::filter_catalog($skus);
-    
+
     ksort($skus,SORT_STRING);
     $skulist = '';
     $templatevalues=Array("security_token"=>get_form_security_token(),"skus"=>$skus);

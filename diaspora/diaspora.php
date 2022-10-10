@@ -60,6 +60,7 @@ function diaspora_load() {
 		'fetch_provider'              => 'diaspora_fetch_provider',
 		'encode_item_xchan'           => 'diaspora_encode_item_xchan',
 		'direct_message_recipients'   => 'diaspora_direct_message_recipients',
+		'get_actor_provider'          => 'diaspora_get_actor_provider',
 		'get_cached_actor_provider'   => 'diaspora_get_cached_actor_provider'
 	]);
 
@@ -110,6 +111,41 @@ function diaspora_plugin_admin_post() {
 	else
 		set_config('diaspora', 'relay_handle', '');
 
+}
+
+function diaspora_get_actor_provider(&$arr) {
+
+	if(!isset($arr['activity'])) {
+		return;
+	}
+
+	if(!isset($arr['activity']['attachment'])) {
+		return;
+	}
+
+	$diaspora_rawmsg = [];
+
+	foreach($arr['activity']['attachment'] as $a) {
+		if (
+			isset($a['type']) && $a['type'] === 'PropertyValue' &&
+			isset($a['name']) && $a['name'] === 'zot.diaspora.fields' &&
+			isset($a['value'])
+		) {
+			$diaspora_rawmsg = $a['value'];
+			break;
+		}
+
+	}
+
+	if(!$diaspora_rawmsg) {
+		return;
+	}
+
+	$r = find_diaspora_person_by_handle($diaspora_rawmsg['author']);
+
+	if ($r) {
+		$arr['actor'] = Activity::encode_person($r);
+	}
 }
 
 function diaspora_get_cached_actor_provider(&$arr) {
@@ -804,6 +840,8 @@ function diaspora_discover(&$b) {
 		}
 	}
 
+/*
+
 	if(! ($diaspora && $diaspora_base)) {
 		$x = false;
 	}
@@ -842,7 +880,7 @@ function diaspora_discover(&$b) {
 			}
 		}
 	}
-
+*/
 	if($diaspora && $diaspora_base) {
 
 		if($diaspora_guid)
@@ -1207,10 +1245,10 @@ function diaspora_import_author(&$b) {
 
 	$x = $b['author'];
 
-	if($x['network'] && strpos($x['network'], 'diaspora') === false)
+	if(isset($x['network']) && strpos($x['network'], 'diaspora') === false)
 		return;
 
-	if(! $x['address'])
+	if(!(isset($x['address']) && $x['address']))
 		return;
 
 	$r = q("select * from xchan where xchan_addr = '%s' limit 1",

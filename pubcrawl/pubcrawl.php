@@ -218,7 +218,7 @@ function pubcrawl_encode_item(&$arr) {
 				$img[] = ['type' => 'Image', 'url' => $match[2]];
 			}
 
-			if (!$arr['encoded']['attachment']) {
+			if (!isset($arr['encoded']['attachment'])) {
 				$arr['encoded']['attachment'] = [];
 			}
 			$already_added = false;
@@ -693,7 +693,7 @@ function pubcrawl_encode_item_xchan(&$arr) {
 function pubcrawl_import_author(&$b) {
 
 	$url     = $b['author']['url'];
-	$channel = (($b['channel']) ? $b['channel'] : null);
+	$channel = $b['channel'] ?? null;
 
 	if (!$url)
 		return;
@@ -702,7 +702,7 @@ function pubcrawl_import_author(&$b) {
 		dbesc($url)
 	);
 	if ($r) {
-		logger('in_cache: ' . $r[0]['xchan_name'], LOGGER_DATA);
+		logger('in_cache: ' . $r[0]['xchan_hash'], LOGGER_DATA);
 		$b['result'] = $r[0]['xchan_hash'];
 		return;
 	}
