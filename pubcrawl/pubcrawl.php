@@ -878,12 +878,12 @@ function pubcrawl_notifier_hub(&$arr) {
 
 	// allow this to be set per message
 
-	if ($arr['mail']) {
+	if (isset($arr['mail']) && $arr['mail']) {
 		logger('Cannot send mail to activitypub.');
 		return;
 	}
 
-	if ($arr['location'])
+	if (isset($arr['location']) && $arr['location'])
 		return;
 
 	$is_profile = false;
