@@ -252,7 +252,7 @@ function pubcrawl_encode_item(&$arr) {
 	$top_level = (($arr['item']['mid'] === $arr['item']['parent_mid']) ? true : false);
 
 	if (!$top_level) {
-		if (intval($arr['item']['parent'])) {
+		if (isset($arr['item']['parent']) && $arr['item']['parent']) {
 			$recips = get_iconfig($arr['item']['parent'], 'activitypub', 'recips');
 		} else {
 			// if we are encoding this item for storage there won't be a parent.
@@ -266,8 +266,8 @@ function pubcrawl_encode_item(&$arr) {
 			}
 		}
 		if ($recips) {
-			$parent_i['to'] = $recips['to'];
-			$parent_i['cc'] = $recips['cc'];
+			$parent_i['to'] = $recips['to'] ?? [];
+			$parent_i['cc'] = $recips['cc'] ?? [];
 		}
 	}
 
@@ -296,7 +296,7 @@ function pubcrawl_encode_item(&$arr) {
 			if (isset($parent_i['cc']) && is_array($parent_i['cc'])) {
 				$arr['encoded']['cc'] = array_values(array_unique(array_merge($arr['encoded']['cc'], $parent_i['cc'])));
 			}
-			if ($arr['encoded']['tag']) {
+			if (isset($arr['encoded']['tag']) && $arr['encoded']['tag']) {
 				foreach ($arr['encoded']['tag'] as $mention) {
 					if (is_array($mention) && array_key_exists('ttype', $mention) && in_array($mention['ttype'], [TERM_FORUM, TERM_MENTION]) && array_key_exists('href', $mention) && $mention['href']) {
 						$h = q(
@@ -375,7 +375,7 @@ function pubcrawl_encode_activity(&$arr) {
 	$top_level = (($arr['item']['mid'] === $arr['item']['parent_mid']) ? true : false);
 
 	if (!$top_level) {
-		if (intval($arr['item']['parent'])) {
+		if (isset($arr['item']['parent']) && $arr['item']['parent']) {
 			$recips = get_iconfig($arr['item']['parent'], 'activitypub', 'recips');
 		} else {
 			// if we are encoding this item for storage there won't be a parent.
@@ -389,8 +389,8 @@ function pubcrawl_encode_activity(&$arr) {
 			}
 		}
 		if ($recips) {
-			$parent_i['to'] = $recips['to'];
-			$parent_i['cc'] = $recips['cc'];
+			$parent_i['to'] = $recips['to'] ?? [];
+			$parent_i['cc'] = $recips['cc'] ?? [];
 		}
 	}
 
@@ -419,7 +419,7 @@ function pubcrawl_encode_activity(&$arr) {
 			if (isset($parent_i['cc']) && is_array($parent_i['cc'])) {
 				$arr['encoded']['cc'] = array_values(array_unique(array_merge($arr['encoded']['cc'], $parent_i['cc'])));
 			}
-			if ($arr['encoded']['tag']) {
+			if (isset($arr['encoded']['tag']) && $arr['encoded']['tag']) {
 				foreach ($arr['encoded']['tag'] as $mention) {
 					if (is_array($mention) && array_key_exists('ttype', $mention) && in_array($mention['ttype'], [TERM_FORUM, TERM_MENTION]) && array_key_exists('href', $mention) && $mention['href']) {
 						$h = q(

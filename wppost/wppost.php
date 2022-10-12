@@ -52,7 +52,7 @@ function wppost_post_local(&$b) {
 
 	// This can probably be changed to allow editing by pointing to a different API endpoint
 
-	if($b['edit'])
+	if(isset($b['edit']) && $b['edit'])
 		return;
 
 	if((! local_channel()) || (local_channel() != $b['uid']))

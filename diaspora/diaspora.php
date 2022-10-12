@@ -1066,7 +1066,7 @@ function diaspora_post_local(&$item) {
 				'author' => xmlify($author['xchan_addr']),
 				'guid' => xmlify('conversation:' . $item['uuid']),
 				'subject' => (($item['title']) ? xmlify($item['title']) : xmlify(t('No subject'))),
-				'created_at' => xmlify(datetime_convert('UTC','UTC',$item['target_item']['created'],ATOM_TIME)),
+				'created_at' => xmlify(datetime_convert('UTC','UTC',$item['created'],ATOM_TIME)),
 				'participants' => xmlify(implode(';', $participants)),
 				'message' => $message
 			];
