@@ -69,7 +69,7 @@ function articles_display_item(&$arr) {
 	}
 
 	// rewrite edit link
-	if (isset($arr['output']['edpost']) && $arr['item']['uid'] === local_channel()) {
+	if (isset($arr['output']['edpost']) && intval($arr['item']['uid']) === local_channel()) {
 		$arr['output']['edpost'] = [
 			z_root() . '/article_edit/' . $arr['item']['id'],
 			t('Edit')
