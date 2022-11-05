@@ -191,14 +191,15 @@ class Inbox extends Controller {
 		}
 
 		// update the hubloc_connected timestamp, ignore failures
+
 		q("update hubloc set hubloc_connected = '%s' where hubloc_hash = '%s' and hubloc_network = 'activitypub'",
 			dbesc(datetime_convert()),
 			dbesc($observer_hash)
 		);
 
-		$channels = [];
 
 		// Now figure out who the recipients are
+
 		if ($is_public) {
 			if (in_array($AS->type, ['Follow', 'Join']) && is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
 				$channels = q("SELECT * from channel where channel_address = '%s' and channel_removed = 0",
@@ -236,6 +237,10 @@ class Inbox extends Controller {
 					}
 				}
 
+				if (!$channels) {
+					$channels = [];
+				}
+
 				$parent = $AS->parent_id;
 				if ($parent) {
 					// this is a comment - deliver to everybody who owns the parent
@@ -246,6 +251,10 @@ class Inbox extends Controller {
 						$channels = array_merge($channels, $owners);
 					}
 				}
+			}
+
+			if ($channels === false) {
+				$channels = [];
 			}
 
 			if (in_array(ACTIVITY_PUBLIC_INBOX, $AS->recips) || in_array('Public', $AS->recips) || in_array('as:Public', $AS->recips)) {
@@ -262,6 +271,7 @@ class Inbox extends Controller {
 				if ($r) {
 					$channels = array_merge($channels, $r);
 				}
+
 
 				if (!$sys_disabled) {
 					$channels[] = get_sys_channel();
