@@ -842,6 +842,18 @@ function pubcrawl_notifier_process(&$arr) {
 		$arr['recipients'][] = '\'' . $arr['parent_item']['author']['xchan_hash'] . '\'';
 	}
 
+	// If we commented a comment we should also deliver to the thread_parent author
+	if ($arr['target_item']['thr_parent'] !== $arr['target_item']['parent_mid']) {
+		$r = q("SELECT author_xchan FROM item WHERE parent = %d AND mid = '%s'",
+			intval($arr['target_item']['parent']),
+			dbesc($arr['target_item']['thr_parent'])
+		);
+
+		if ($r) {
+			$arr['env_recips'][] = $r[0]['author_xchan'];
+			$arr['recipients'][] = '\'' . $r[0]['author_xchan'] . '\'';
+		}
+	}
 
 	// deliver to local subscribers directly
 	$sys = get_sys_channel();
@@ -853,13 +865,13 @@ function pubcrawl_notifier_process(&$arr) {
 		dbesc($arr['target_item']['owner_xchan']),
 		intval($arr['channel']['channel_id'])
 	);
+
 	if ($r) {
 		foreach ($r as $rr) {
 			$arr['env_recips'][] = $rr['channel_hash'];
 			$arr['recipients'][] = '\'' . $rr['channel_hash'] . '\'';
 		}
 	}
-
 }
 
 function pubcrawl_notifier_hub(&$arr) {
