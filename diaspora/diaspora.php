@@ -1550,10 +1550,10 @@ function diaspora_queue_deliver(&$b) {
 
 					// add a pre-deliver interval, this should not be necessary
 
-					$interval = ((get_config('system','delivery_interval') !== false)
-						? intval(get_config('system','delivery_interval')) : 2 );
-					if($interval)
-						@time_sleep_until(microtime(true) + (float) $interval);
+					//$interval = ((get_config('system','delivery_interval') !== false)
+						//? intval(get_config('system','delivery_interval')) : 2 );
+					//if($interval)
+						//@time_sleep_until(microtime(true) + (float) $interval);
 
 					do_delivery($piled_up,true);
 				}
