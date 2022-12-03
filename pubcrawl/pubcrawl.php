@@ -1017,8 +1017,12 @@ function pubcrawl_notifier_hub(&$arr) {
 		$jmsg             = json_encode($msg, JSON_UNESCAPED_SLASHES);
 	}
 
+	$prv_recips = $arr['env_recips'];
+
 	if ($prv_recips) {
 		// re-explode the recipients, but only for this hub/pod
+
+		stringify_array_elms($prv_recips);
 
 		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
 			and xchan_hash in (" . protect_sprintf(implode(',', $prv_recips)) . ") and xchan_network = 'activitypub'",
