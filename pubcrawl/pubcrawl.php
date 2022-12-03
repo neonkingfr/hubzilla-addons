@@ -968,9 +968,6 @@ function pubcrawl_notifier_hub(&$arr) {
 
 	}
 
-	$prv_recips = $arr['env_recips'];
-	stringify_array_elms($prv_recips);
-
 	if (is_array($signed_msg)) {
 		// If it's an array it is probably an encrypted zot6 package
 		// which are in the wild due to a bug before 5.4.
