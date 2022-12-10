@@ -163,16 +163,16 @@ class Cards extends Controller {
 			}
 		}
 
-		$r = q("select * from item
-			where uid = %d and item_type = %d and item_thread_top = 1
-			$sql_extra $sql_item order by item.created desc $pager_sql",
-			intval($owner),
-			intval(ITEM_TYPE_CARD)
-		);
-
 		$item_normal = " and item.item_hidden = 0 and item.item_type in (0,6) and item.item_deleted = 0
 			and item.item_unpublished = 0 and item.item_delayed = 0 and item.item_pending_remove = 0
 			and item.item_blocked = 0 ";
+
+		$r = q("select id from item
+			where uid = %d and item_type = %d and item_thread_top = 1
+			$sql_extra $sql_extra2 $sql_item $item_normal order by item.created desc $pager_sql",
+			intval($owner),
+			intval(ITEM_TYPE_CARD)
+		);
 
 		$items_result = [];
 		if($r) {
@@ -185,7 +185,7 @@ class Cards extends Controller {
 				FROM item
 				WHERE item.uid = %d $item_normal
 				AND item.parent IN ( %s )
-				$sql_extra $sql_extra2 ",
+				$sql_extra",
 				intval(App::$profile['profile_uid']),
 				dbesc($parents_str)
 			);
