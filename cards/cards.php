@@ -19,6 +19,7 @@ function cards_load() {
 	Hook::register('display_item', 'addon/cards/cards.php', 'cards_display_item');
 	Hook::register('item_custom_display', 'addon/cards/cards.php', 'cards_item_custom_display');
 	Hook::register('post_local', 'addon/cards/cards.php', 'cards_post_local');
+	Hook::register('channel_activities_widget', 'addon/cards/cards.php', 'cards_channel_activities_widget');
 	Widget::register('addon/cards/Widget/Cards_categories.php', 'cards_categories');
 }
 
