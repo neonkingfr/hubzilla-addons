@@ -142,7 +142,7 @@ function cards_channel_activities_widget(&$arr){
 	}
 
 	foreach($r as $rr) {
-		$summary = html2plain(purify_html(bbcode($rr['body'], ['drop_media' => true, 'tryoembed' => false]), 85, true));
+		$summary = html2plain(purify_html(html_entity_decode(bbcode($rr['body'], ['drop_media' => true, 'tryoembed' => false]))), 85, true);
 		if ($summary) {
 			$summary = substr_words(htmlentities($summary, ENT_QUOTES, 'UTF-8', false), 85);
 		}
