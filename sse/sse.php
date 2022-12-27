@@ -92,8 +92,6 @@ function sse_item_stored($item) {
 		if ($item['obj_type'] === ACTIVITY_OBJ_FILE && !($vnotify & VNOTIFY_FILES))
 			continue;
 
-
-
 		if($hash === $item['author_xchan'])
 			continue;
 
