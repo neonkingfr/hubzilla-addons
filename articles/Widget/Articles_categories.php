@@ -1,5 +1,11 @@
 <?php
 
+/**
+ *   * Name: Articles categories
+ *   * Description: Display a menu with links to article categories
+ *   * Requires: articles
+ */
+
 namespace Zotlabs\Widget;
 
 use App;

@@ -1,5 +1,11 @@
 <?php
 
+/**
+ *   * Name: Cards categories
+ *   * Description: Display a menu with links to card categories
+ *   * Requires: cards
+ */
+
 namespace Zotlabs\Widget;
 
 use App;
