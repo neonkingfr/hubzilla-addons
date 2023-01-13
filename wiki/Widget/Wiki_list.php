@@ -2,7 +2,7 @@
 
 /**
  *   * Name: Wiki list
- *   * Description: A list of existing wikis
+ *   * Description: Display a menu with links to all existing wikis
  */
 
 use NativeWiki;

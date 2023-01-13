@@ -49,7 +49,7 @@ function wiki_channel_activities_widget(&$arr){
 			intval($arr['channel']['channel_id'])
 		);
 
-		$summary = html2plain(purify_html(bbcode($x[0]['body'], ['drop_media' => true, 'tryoembed' => false])), 85, true);
+		$summary = html2plain(purify_html(html_entity_decode(bbcode($x[0]['body'], ['drop_media' => true, 'tryoembed' => false]))), 85, true);
 		if ($summary) {
 			$summary = substr_words(htmlentities($summary, ENT_QUOTES, 'UTF-8', false), 85);
 		}

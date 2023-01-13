@@ -19,6 +19,7 @@ function cards_load() {
 	Hook::register('display_item', 'addon/cards/cards.php', 'cards_display_item');
 	Hook::register('item_custom_display', 'addon/cards/cards.php', 'cards_item_custom_display');
 	Hook::register('post_local', 'addon/cards/cards.php', 'cards_post_local');
+	Hook::register('channel_activities_widget', 'addon/cards/cards.php', 'cards_channel_activities_widget');
 	Widget::register('addon/cards/Widget/Cards_categories.php', 'cards_categories');
 }
 
@@ -141,7 +142,7 @@ function cards_channel_activities_widget(&$arr){
 	}
 
 	foreach($r as $rr) {
-		$summary = html2plain(purify_html(bbcode($rr['body'], ['drop_media' => true, 'tryoembed' => false]), 85, true));
+		$summary = html2plain(purify_html(html_entity_decode(bbcode($rr['body'], ['drop_media' => true, 'tryoembed' => false]))), 85, true);
 		if ($summary) {
 			$summary = substr_words(htmlentities($summary, ENT_QUOTES, 'UTF-8', false), 85);
 		}

@@ -76,15 +76,20 @@ function sse_item_stored($item) {
 			$item_uid = $current_channel ? $current_channel['channel_id'] : $item_uid;
 		}
 
+		$site_firehose = get_config('system', 'site_firehose', 0);
 		$vnotify = get_pconfig($item_uid, 'system', 'vnotify', -1);
 
-		if(in_array($item['verb'], [ACTIVITY_LIKE, ACTIVITY_DISLIKE]) && !($vnotify & VNOTIFY_LIKE))
+		// FEP-5624 filter approvals for comments
+		if (in_array($item['verb'], [ACTIVITY_ATTEND, 'Accept', ACTIVITY_ATTENDNO, 'Reject']))
 			continue;
 
-		if(in_array($item['verb'], [ACTIVITY_DISLIKE]) && !feature_enabled($item_uid, 'dislike'))
+		if (in_array($item['verb'], [ACTIVITY_LIKE, ACTIVITY_DISLIKE]) && !($vnotify & VNOTIFY_LIKE))
 			continue;
 
-		if($item['obj_type'] === ACTIVITY_OBJ_FILE && !($vnotify & VNOTIFY_FILES))
+		if (in_array($item['verb'], [ACTIVITY_DISLIKE]) && !feature_enabled($item_uid, 'dislike'))
+			continue;
+
+		if ($item['obj_type'] === ACTIVITY_OBJ_FILE && !($vnotify & VNOTIFY_FILES))
 			continue;
 
 		if($hash === $item['author_xchan'])
@@ -114,10 +119,14 @@ function sse_item_stored($item) {
 		push_lang(XConfig::Get($hash, 'sse', 'language', 'en'));
 
 		if($sys) {
-			if(($vnotify & VNOTIFY_PUBS || $sys) && !$is_file  && intval($item['item_private']) === 0)
+			if (!$site_firehose && ($vnotify & VNOTIFY_PUBS || $sys) && !$is_file  && intval($item['item_private']) === 0)
 				$x['pubs']['notifications'][] = Enotify::format($r[0]);
 		}
 		else {
+			if ($site_firehose && $item['item_wall'] && !$is_file && intval($item['item_private']) === 0) {
+				$x['pubs']['notifications'][] = Enotify::format($r[0]);
+			}
+
 			if(($vnotify & VNOTIFY_CHANNEL) && $item['item_wall'] && !$is_file && in_array(intval($item['item_private']), [0, 1]))
 				$x['home']['notifications'][] = Enotify::format($r[0]);
 

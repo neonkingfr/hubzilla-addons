@@ -539,7 +539,6 @@ function diaspora_process_outbound(&$arr) {
 	}
 
 	$prv_recips = $arr['env_recips'];
-	stringify_array_elms($prv_recips);
 
 	// The Diaspora profile message is unusual and must be handled independently
 	$is_profile = false;
@@ -557,6 +556,7 @@ function diaspora_process_outbound(&$arr) {
 	if ($prv_recips) {
 
 		// re-explode the recipients, but only for this hub/pod
+		stringify_array_elms($prv_recips);
 
 		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
 			and xchan_hash in (" . implode(',', $prv_recips) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
@@ -1550,10 +1550,10 @@ function diaspora_queue_deliver(&$b) {
 
 					// add a pre-deliver interval, this should not be necessary
 
-					$interval = ((get_config('system','delivery_interval') !== false)
-						? intval(get_config('system','delivery_interval')) : 2 );
-					if($interval)
-						@time_sleep_until(microtime(true) + (float) $interval);
+					//$interval = ((get_config('system','delivery_interval') !== false)
+						//? intval(get_config('system','delivery_interval')) : 2 );
+					//if($interval)
+						//@time_sleep_until(microtime(true) + (float) $interval);
 
 					do_delivery($piled_up,true);
 				}

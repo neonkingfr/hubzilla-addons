@@ -63,6 +63,7 @@ function nsfw_extract_photos($body) {
 function nsfw_prepare_body(&$b) {
 
 	$words = 'nsfw,contentwarning';
+	$arr = [];
 
 	if(local_channel()) {
 		$words = ((Apps::addon_app_installed(local_channel(),'nsfw')) ? get_pconfig(local_channel(),'nsfw','words',$words) : EMPTY_STR);

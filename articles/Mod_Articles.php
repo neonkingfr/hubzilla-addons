@@ -178,16 +178,16 @@ class Articles extends Controller {
 			$sql_extra2 .= " and item.item_thread_top != 0 ";
 		}
 
-		$r = q("select * from item
-			where item.uid = %d and item_type = %d and item_thread_top = 1
-			$sql_extra $sql_extra2 $sql_item order by item.created desc $pager_sql",
-			intval($owner),
-			intval(ITEM_TYPE_ARTICLE)
-		);
-
 		$item_normal = " and item.item_hidden = 0 and item.item_type in (0,7) and item.item_deleted = 0
 			and item.item_unpublished = 0 and item.item_delayed = 0 and item.item_pending_remove = 0
 			and item.item_blocked = 0 ";
+
+		$r = q("select id from item
+			where item.uid = %d and item_type = %d and item_thread_top = 1
+			$sql_extra $sql_extra2 $sql_item $item_normal order by item.created desc $pager_sql",
+			intval($owner),
+			intval(ITEM_TYPE_ARTICLE)
+		);
 
 		if ($r) {
 
@@ -199,7 +199,7 @@ class Articles extends Controller {
 				FROM item
 				WHERE item.uid = %d $item_normal
 				AND item.parent IN ( %s )
-				$sql_extra $sql_extra2 ",
+				$sql_extra",
 				intval(App::$profile['profile_uid']),
 				dbesc($parents_str)
 			);

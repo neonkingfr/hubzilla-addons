@@ -297,27 +297,30 @@ function pubcrawl_encode_item(&$arr) {
 				$arr['encoded']['cc'] = array_values(array_unique(array_merge($arr['encoded']['cc'], $parent_i['cc'])));
 			}
 			if (isset($arr['encoded']['tag']) && $arr['encoded']['tag']) {
+				$mentions_str = '';
 				foreach ($arr['encoded']['tag'] as $mention) {
-					if (is_array($mention) && array_key_exists('ttype', $mention) && in_array($mention['ttype'], [TERM_FORUM, TERM_MENTION]) && array_key_exists('href', $mention) && $mention['href']) {
-						$h = q(
-							"select * from hubloc where hubloc_id_url = '%s' or hubloc_hash = '%s' limit 1",
-							dbesc($mention['href']),
-							dbesc($mention['href'])
-						);
-						if ($h) {
-							if ($h[0]['hubloc_network'] === 'activitypub') {
-								$addr = $h[0]['hubloc_hash'];
-							} else {
-								$addr = $h[0]['hubloc_id_url'];
-							}
-							if (!in_array($addr, $arr['encoded']['to'])) {
-								$arr['encoded']['to'][] = $addr;
-							}
+					if (isset($mention['type']) && in_array($mention['type'], ['Mention']) && isset($mention['href']) && $mention['href']) {
+						$mentions_str .= '\'' . dbesc($mention['href']) . '\',';
+					}
+				}
+
+				$mentions_str = trim($mentions_str, ',');
+
+				$h = dbq("select hubloc_network, hubloc_hash, hubloc_id_url from hubloc where hubloc_id_url in ($mentions_str) or hubloc_hash in ($mentions_str)");
+
+				if ($h) {
+					foreach ($h as $hh) {
+						if ($hh['hubloc_network'] === 'activitypub') {
+							$addr = $hh['hubloc_hash'];
+						} else {
+							$addr = $hh['hubloc_id_url'];
+						}
+						if (!in_array($addr, $arr['encoded']['to'])) {
+							$arr['encoded']['to'][] = $addr;
 						}
 					}
 				}
 			}
-
 
 			$d = q(
 				"select hubloc.*  from hubloc left join item on hubloc_hash = owner_xchan where item.parent_mid = '%s' and item.uid = %d limit 1",
@@ -420,27 +423,31 @@ function pubcrawl_encode_activity(&$arr) {
 				$arr['encoded']['cc'] = array_values(array_unique(array_merge($arr['encoded']['cc'], $parent_i['cc'])));
 			}
 			if (isset($arr['encoded']['tag']) && $arr['encoded']['tag']) {
+				$mentions_str = '';
 				foreach ($arr['encoded']['tag'] as $mention) {
-					if (is_array($mention) && array_key_exists('ttype', $mention) && in_array($mention['ttype'], [TERM_FORUM, TERM_MENTION]) && array_key_exists('href', $mention) && $mention['href']) {
-						$h = q(
-							"select * from hubloc where hubloc_id_url = '%s' or hubloc_hash = '%s' limit 1",
-							dbesc($mention['href']),
-							dbesc($mention['href'])
-						);
-						if ($h) {
-							if ($h[0]['hubloc_network'] === 'activitypub') {
-								$addr = $h[0]['hubloc_hash'];
-							} else {
-								$addr = $h[0]['hubloc_id_url'];
-							}
-							if (!in_array($addr, $arr['encoded']['to'])) {
-								$arr['encoded']['to'][] = $addr;
-							}
+					if (isset($mention['type']) && in_array($mention['type'], ['Mention']) && isset($mention['href']) && $mention['href']) {
+						$mentions_str .= '\'' . dbesc($mention['href']) . '\',';
+					}
+				}
+
+				$mentions_str = trim($mentions_str, ',');
+
+				$h = dbq("select hubloc_network, hubloc_hash, hubloc_id_url from hubloc where hubloc_id_url in ($mentions_str) or hubloc_hash in ($mentions_str)");
+
+				if ($h) {
+					foreach ($h as $hh) {
+						if ($hh['hubloc_network'] === 'activitypub') {
+							$addr = $hh['hubloc_hash'];
+						} else {
+							$addr = $hh['hubloc_id_url'];
+						}
+						if (!in_array($addr, $arr['encoded']['to'])) {
+							$arr['encoded']['to'][] = $addr;
 						}
 					}
 				}
-			}
 
+			}
 
 			$d = q(
 				"select hubloc.*  from hubloc left join item on hubloc_hash = owner_xchan where item.parent_mid = '%s' and item.uid = %d limit 1",
@@ -821,7 +828,7 @@ function pubcrawl_salmon_sign($data, $channel) {
 
 function pubcrawl_notifier_process(&$arr) {
 
-	if (!$arr['relay_to_owner'])
+	if (!$arr['upstream'])
 		return;
 
 	if ($arr['target_item']['item_private'])
@@ -842,6 +849,33 @@ function pubcrawl_notifier_process(&$arr) {
 		$arr['recipients'][] = '\'' . $arr['parent_item']['author']['xchan_hash'] . '\'';
 	}
 
+	// If we commented a comment we should also deliver to the thread_parent author
+	if ($arr['target_item']['thr_parent'] !== $arr['target_item']['parent_mid']) {
+		$r = q("SELECT author_xchan FROM item WHERE parent = %d AND mid = '%s'",
+			intval($arr['target_item']['parent']),
+			dbesc($arr['target_item']['thr_parent'])
+		);
+
+		if ($r) {
+			$arr['env_recips'][] = $r[0]['author_xchan'];
+			$arr['recipients'][] = '\'' . $r[0]['author_xchan'] . '\'';
+		}
+	}
+
+	// Add anyone from the 'to' field which will include mentions
+
+	$raw_msg = json_decode(get_iconfig($arr['target_item'], 'activitypub', 'rawmsg'), true);
+
+	if (isset($raw_msg['to'])) {
+		foreach ($raw_msg['to'] as $to) {
+			if ($to === ACTIVITY_PUBLIC_INBOX) {
+				continue;
+			}
+
+			$arr['env_recips'][] = $to;
+			$arr['recipients'][] = '\'' . $to . '\'';
+		}
+	}
 
 	// deliver to local subscribers directly
 	$sys = get_sys_channel();
@@ -853,12 +887,16 @@ function pubcrawl_notifier_process(&$arr) {
 		dbesc($arr['target_item']['owner_xchan']),
 		intval($arr['channel']['channel_id'])
 	);
+
 	if ($r) {
 		foreach ($r as $rr) {
 			$arr['env_recips'][] = $rr['channel_hash'];
 			$arr['recipients'][] = '\'' . $rr['channel_hash'] . '\'';
 		}
 	}
+
+	$arr['env_recips'] = array_values(array_unique($arr['env_recips']));
+	$arr['recipients'] = array_values(array_unique($arr['recipients']));
 
 }
 
@@ -930,9 +968,6 @@ function pubcrawl_notifier_hub(&$arr) {
 
 	}
 
-	$prv_recips = $arr['env_recips'];
-	stringify_array_elms($prv_recips);
-
 	if (is_array($signed_msg)) {
 		// If it's an array it is probably an encrypted zot6 package
 		// which are in the wild due to a bug before 5.4.
@@ -982,8 +1017,12 @@ function pubcrawl_notifier_hub(&$arr) {
 		$jmsg             = json_encode($msg, JSON_UNESCAPED_SLASHES);
 	}
 
+	$prv_recips = $arr['env_recips'];
+
 	if ($prv_recips) {
 		// re-explode the recipients, but only for this hub/pod
+
+		stringify_array_elms($prv_recips);
 
 		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
 			and xchan_hash in (" . protect_sprintf(implode(',', $prv_recips)) . ") and xchan_network = 'activitypub'",

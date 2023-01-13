@@ -1,5 +1,11 @@
 <?php
 
+/**
+ *   * Name: Wiki pages
+ *   * Description: Display a menu with links to the pages of a wiki
+ *   * Requires: wiki
+ */
+
 namespace Zotlabs\Widget;
 
 use NativeWiki;
