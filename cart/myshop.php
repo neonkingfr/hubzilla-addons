@@ -102,8 +102,9 @@ function cart_myshop_allorders (&$pagecontent) {
 }
 
 function cart_myshop_order(&$pagecontent) {
+
   $orderhash = argv(4);
-  $orderhash = preg_replace('/[^a-z0-9]/','',$orderhash);
+  $orderhash = preg_replace('/[^a-z0-9\-]/','',$orderhash);
 	$order = cart_loadorder($orderhash);
   $channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
@@ -136,7 +137,7 @@ function cart_myshop_order_markpaid () {
 	}
 	$itemid = preg_replace('/[^0-9]/','',$_POST["itemid"]);
 	$orderhash = argv(4);
-	$orderhash = preg_replace('/[^a-z0-9]/','',$orderhash);
+	$orderhash = preg_replace('/[^a-z0-9\-]/','',$orderhash);
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
@@ -172,7 +173,7 @@ function cart_myshop_item_fulfill () {
 	}
 	$itemid = preg_replace('/[^0-9]/','',$_POST["itemid"]);
 	$orderhash = argv(4);
-	$orderhash = preg_replace('/[^a-z0-9]/','',$orderhash);
+	$orderhash = preg_replace('/[^a-z0-9\-]/','',$orderhash);
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
@@ -206,7 +207,7 @@ function cart_myshop_item_cancel () {
 	}
 	$itemid = preg_replace('/[^0-9]/','',$_POST["itemid"]);
 	$orderhash = argv(4);
-	$orderhash = preg_replace('/[^a-z0-9]/','',$orderhash);
+	$orderhash = preg_replace('/[^a-z0-9\-]/','',$orderhash);
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
@@ -253,7 +254,7 @@ function cart_myshop_clear_item_exception () {
 
 	$itemid = preg_replace('/[^0-9]/','',$_POST["itemid"]);
 	$orderhash = argv(4);
-	$orderhash = preg_replace('/[^a-z0-9]/','',$orderhash);
+	$orderhash = preg_replace('/[^a-z0-9\-]/','',$orderhash);
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
@@ -288,7 +289,7 @@ function cart_myshop_add_ordernote () {
 	}
 
 	$orderhash = argv(4);
-	$orderhash = preg_replace('/[^a-z0-9]/','',$orderhash);
+	$orderhash = preg_replace('/[^a-z0-9\-]/','',$orderhash);
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];
@@ -311,7 +312,7 @@ function cart_myshop_add_itemnote () {
 
 	$itemid = preg_replace('/[^0-9]/','',$_POST["itemid"]);
 	$orderhash = argv(4);
-	$orderhash = preg_replace('/[^a-z0-9]/','',$orderhash);
+	$orderhash = preg_replace('/[^a-z0-9\-]/','',$orderhash);
 	$order = cart_loadorder($orderhash);
 	$channel=\App::get_channel();
 	$channel_hash=$channel["channel_hash"];

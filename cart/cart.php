@@ -516,8 +516,8 @@ function cart_getorderhash ($create=false) {
   }
 
 	if (!$orderhash && $create === true) {
-		//$channel=\App::get_channel();
-		$orderhash=hash('whirlpool',microtime().$observerhash.$channel_hash);
+		$orderhash = new_uuid();
+
 		q("insert into cart_orders (seller_channel,buyer_xchan,order_hash) values ('%s', '%s', '%s')",
 				dbesc($channel_hash),dbesc($observerhash),dbesc($orderhash));
 	}

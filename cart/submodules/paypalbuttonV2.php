@@ -224,7 +224,8 @@ class Cart_paypalbuttonV2 {
                   'Accept: application/json',
                   'Content-Type: '.$contenttype,
                   'Accept_Language: en_US',
-                  'Content-Length: '.strlen($data));
+                  'Content-Length: '.strlen($data)
+        );
       if (!isset($credentials["bearer"])) {
           curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
           curl_setopt($curl, CURLOPT_USERPWD, $credentials["client"].":".$credentials["secret"]);
@@ -339,7 +340,6 @@ class Cart_paypalbuttonV2 {
     	}
 
     	$order = cart_loadorder($orderhash);
-
       call_hooks('cart_calc_totals',$order);
 
       $page_uid = ((App::$profile_uid) ? App::$profile_uid : local_channel());
@@ -352,6 +352,7 @@ class Cart_paypalbuttonV2 {
 	];
       $paymenturl="/v2/checkout/orders/".$_POST["paymentID"]."/capture";
       $paymentresponse=Cart_paypalbuttonV2::paypal_post(cart_maybejson($payment["body"]),null,$paymenturl,"application/json",$payment["headers"]);
+
       logger("[cart-ppbutton] PAYMENT EXECUTE: ".json_encode($payment,JSON_PRETTY_PRINT),LOGGER_DATA);
       $ordermeta = cart_getorder_meta($orderhash);
       $timestamp = time();
@@ -423,7 +424,7 @@ class Cart_paypalbuttonV2 {
         'purchase_units' => [
           [ //'invoice_id' => $orderhash,
 	    'amount'=>
-            [ 
+            [
 		'currency_code'=>$paypal_currency,
 		'value'=>$order["totals"]["OrderTotal"]
             ]
