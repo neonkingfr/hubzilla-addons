@@ -305,8 +305,11 @@ function pubcrawl_encode_item(&$arr) {
 				}
 
 				$mentions_str = trim($mentions_str, ',');
+				$h  = null;
 
-				$h = dbq("select hubloc_network, hubloc_hash, hubloc_id_url from hubloc where hubloc_id_url in ($mentions_str) or hubloc_hash in ($mentions_str)");
+				if ($mentions_str) {
+					$h = dbq("select hubloc_network, hubloc_hash, hubloc_id_url from hubloc where hubloc_id_url in ($mentions_str) or hubloc_hash in ($mentions_str)");
+				}
 
 				if ($h) {
 					foreach ($h as $hh) {
@@ -431,8 +434,11 @@ function pubcrawl_encode_activity(&$arr) {
 				}
 
 				$mentions_str = trim($mentions_str, ',');
+				$h = null;
 
-				$h = dbq("select hubloc_network, hubloc_hash, hubloc_id_url from hubloc where hubloc_id_url in ($mentions_str) or hubloc_hash in ($mentions_str)");
+				if ($mentions_str) {
+					$h = dbq("select hubloc_network, hubloc_hash, hubloc_id_url from hubloc where hubloc_id_url in ($mentions_str) or hubloc_hash in ($mentions_str)");
+				}
 
 				if ($h) {
 					foreach ($h as $hh) {
