@@ -3,7 +3,7 @@
     <div class="panel-heading"><div class="panel-title"><div class="row">
         <div class="col-sm-12 col-md-2">
         <input type=hidden name="itemoption_type[{{$option.uuid}}]" value="{{$option.type}}">
-        <a data-toggle="collapse" data-bs-parent="#cart-itemoptions-{{$option.uuid}}-wrapper" href="#itemoptdetails_{{$option.uuid}}" style="display:inline;">
+        <a data-bs-toggle="collapse" data-bs-parent="#cart-itemoptions-{{$option.uuid}}-wrapper" href="#itemoptdetails_{{$option.uuid}}" style="display:inline;">
         <span style="font-size:medium;"><label for="id_itemopt_default_{{$option.uuid}}" id="label_{{$option.uuid}}" style="display:inline;">Textarea: </label></span></a>
         </div>
         <div class="col-sm-12 col-md-10">

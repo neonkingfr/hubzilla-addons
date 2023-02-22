@@ -1,6 +1,6 @@
 <div id="cart-itemoptions-wrapper"><div class="panel panel-default">
     <div class="panel-heading"><div class="panel-title">
-      <h2><a data-toggle="collapse" data-bs-parent="#cart-itemoptions-wrapper" href="#itemoptdetails"> {{$sectitle}} </a></h2>
+      <h2><a data-bs-toggle="collapse" data-bs-parent="#cart-itemoptions-wrapper" href="#itemoptdetails"> {{$sectitle}} </a></h2>
     </div></div>
     <div id="itemoptdetails" class="panel-collapse collapse"><div id="cart-itemoptions-form-wrapper">
       <form id="cart-itemoptions-edit-form" method="post">
