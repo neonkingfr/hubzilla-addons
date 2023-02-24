@@ -83,6 +83,7 @@ class Inbox extends Controller {
 		}
 
 		$AS = new ActivityStreams($data);
+		$announce_actor = null;
 
 		if (
 			$AS->is_valid() && $AS->type === 'Announce' && is_array($AS->obj)
@@ -91,6 +92,8 @@ class Inbox extends Controller {
 			// This is a relayed/forwarded Activity (as opposed to a shared/boosted object)
 			// Reparse the encapsulated Activity and use that instead
 			logger('relayed activity', LOGGER_DEBUG);
+
+			$announce_actor = $AS->actor['id'];
 			$AS = new ActivityStreams($AS->obj);
 		}
 
@@ -156,7 +159,7 @@ class Inbox extends Controller {
 
 			// fetch the portable_id for the actor, which may or may not be the sender
 
-			$v = Activity::get_actor_hublocs($AS->actor['id'], 'activitypub,not_deleted');
+			$v = Activity::get_actor_hublocs($announce_actor ?? $AS->actor['id'], 'activitypub,not_deleted');
 
 			if ($v && $v[0]['hubloc_hash'] !== $hsig['portable_id']) {
 				// The sender is not actually the activity actor, so verify the LD signature.
@@ -227,9 +230,8 @@ class Inbox extends Controller {
 						( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash
 						WHERE xchan_network = 'activitypub' and xchan_hash = '%s'
 						) and channel_removed = 0 ",
-						dbesc($observer_hash)
+						dbesc($AS->actor['id'])
 					);
-
 				}
 				else {
 					// deliver to anybody at this site directly addressed
@@ -241,8 +243,7 @@ class Inbox extends Controller {
 					}
 					if ($channel_addr) {
 						$channel_addr = rtrim($channel_addr, ',');
-						$channels = dbq("SELECT * FROM channel
-							WHERE channel_address IN ($channel_addr) AND channel_removed = 0");
+						$channels = dbq("SELECT * FROM channel WHERE channel_address IN ($channel_addr) AND channel_removed = 0");
 					}
 				}
 
@@ -253,11 +254,12 @@ class Inbox extends Controller {
 
 				// if this is a comment - deliver to everybody who owns the parent
 
-				if ($AS->parent_id) {
+				if ($AS->parent_id && $AS->parent_id !== $AS->obj['id']) {
 					// this is a comment - deliver to everybody who owns the parent
 					$owners = q("SELECT * from channel where channel_id in ( SELECT uid from item where mid = '%s' ) ",
 						dbesc($AS->parent_id)
 					);
+
 					if ($owners) {
 						$channels = array_merge($channels, $owners);
 					}
@@ -266,6 +268,7 @@ class Inbox extends Controller {
 				// look for channels with send_stream = PERMS_PUBLIC (accept posts from anybody on the internet)
 
 				$r = dbq("select * from channel where channel_id in (select uid from pconfig where cat = 'perm_limits' and k = 'send_stream' and v = '1' ) and channel_removed = 0 ");
+
 				if ($r) {
 					$channels = array_merge($channels, $r);
 				}
@@ -273,6 +276,7 @@ class Inbox extends Controller {
 				// look for channels that are following hashtags. These will be checked in tgroup_check()
 
 				$r = dbq("select * from channel where channel_id in (select uid from pconfig where cat = 'system' and k = 'followed_tags' and v != '' ) and channel_removed = 0 ");
+
 				if ($r) {
 					$channels = array_merge($channels, $r);
 				}
