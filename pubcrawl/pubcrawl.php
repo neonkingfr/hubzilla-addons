@@ -2,15 +2,10 @@
 
 /**
  * Name: PubCrawl
- * Description: An unapologetically non-compliant ActivityPub Protocol implemention
+ * Description: ActivityPub Protocol
  *
  */
 
-/**
- * This connector is undergoing heavy development at the moment. If you think some shortcuts were taken
- * - you are probably right. These will be cleaned up and moved to generalised interfaces once we actually
- * get communication flowing.
- */
 
 use Zotlabs\Access\PermissionRoles;
 use Zotlabs\Access\Permissions;
