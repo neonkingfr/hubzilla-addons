@@ -93,7 +93,12 @@ class Inbox extends Controller {
 			// Reparse the encapsulated Activity and use that instead
 			logger('relayed activity', LOGGER_DEBUG);
 
-			$announce_actor = $AS->actor['id'];
+			if (is_array($AS->actor) && array_key_exists('id', $AS->actor)) {
+				// store the original actor
+				Activity::actor_store($AS->actor['id'], $AS->actor);
+				$announce_actor = $AS->actor['id'];
+			}
+
 			$AS = new ActivityStreams($AS->obj);
 		}
 
@@ -111,7 +116,6 @@ class Inbox extends Controller {
 			}
 			return;
 		}
-
 
 		if (is_array($AS->actor) && array_key_exists('id', $AS->actor)) {
 			Activity::actor_store($AS->actor['id'], $AS->actor);
@@ -225,12 +229,12 @@ class Inbox extends Controller {
 					|| in_array('Public', $AS->recips)
 					|| in_array('as:Public', $AS->recips)) {
 
-					// deliver to anybody following $AS->actor
+					// deliver to anybody following $observer_hash
 					$channels = q("SELECT * from channel where channel_id in
 						( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash
 						WHERE xchan_network = 'activitypub' and xchan_hash = '%s'
 						) and channel_removed = 0 ",
-						dbesc($AS->actor['id'])
+						dbesc($observer_hash)
 					);
 				}
 				else {
