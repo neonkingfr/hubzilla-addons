@@ -104,6 +104,7 @@ function pubcrawl_fetch_provider($arr) {
 	// check if is_an_actor, otherwise import activity
 	if (is_array($AS->obj) && !ActivityStreams::is_an_actor($AS->obj)) {
 		$item = Activity::decode_note($AS);
+		$item['item_fetched'] = true;
 		if ($item) {
 			Activity::store($channel, get_observer_hash(), $AS, $item, true, true);
 			goaway(z_root() . '/hq/' . gen_link_id($item['mid']));
@@ -661,8 +662,9 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 		// this implements mastodon remote reply functionality
 		$item = Activity::decode_note($AS);
 		if ($item) {
+			$item['item_fetched'] = true;
 			Activity::store(App::get_channel(), get_observer_hash(), $AS, $item, true, true);
-			goaway(z_root() . '/display/' . gen_link_id($item['mid']));
+			goaway(z_root() . '/hq/' . gen_link_id($item['mid']));
 		}
 	}
 	else {
