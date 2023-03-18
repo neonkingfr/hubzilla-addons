@@ -196,6 +196,10 @@ function pubcrawl_encode_item(&$arr) {
 		return;
 	}
 
+	if (strpos($arr['item']['body'], '[/crypt]') !== false) {
+		$arr['encoded']['content'] = preg_replace_callback("/\[crypt (.*?)\](.*?)\[\/crypt\]/ism", 'bb_parse_b64_crypt', $arr['item']['body']);
+	}
+
 	$images = false;
 	$has_images = preg_match_all('/\[[zi]mg(.*?)\](.*?)\[/ism', $arr['item']['body'], $images, PREG_SET_ORDER);
 
