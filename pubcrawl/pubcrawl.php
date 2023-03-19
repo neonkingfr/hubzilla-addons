@@ -2,15 +2,10 @@
 
 /**
  * Name: PubCrawl
- * Description: An unapologetically non-compliant ActivityPub Protocol implemention
+ * Description: ActivityPub Protocol
  *
  */
 
-/**
- * This connector is undergoing heavy development at the moment. If you think some shortcuts were taken
- * - you are probably right. These will be cleaned up and moved to generalised interfaces once we actually
- * get communication flowing.
- */
 
 use Zotlabs\Access\PermissionRoles;
 use Zotlabs\Access\Permissions;
@@ -109,6 +104,7 @@ function pubcrawl_fetch_provider($arr) {
 	// check if is_an_actor, otherwise import activity
 	if (is_array($AS->obj) && !ActivityStreams::is_an_actor($AS->obj)) {
 		$item = Activity::decode_note($AS);
+		$item['item_fetched'] = true;
 		if ($item) {
 			Activity::store($channel, get_observer_hash(), $AS, $item, true, true);
 			goaway(z_root() . '/hq/' . gen_link_id($item['mid']));
@@ -198,6 +194,10 @@ function pubcrawl_encode_item(&$arr) {
 
 	if (!Apps::addon_app_installed($arr['item']['uid'], 'pubcrawl')) {
 		return;
+	}
+
+	if (strpos($arr['item']['body'], '[/crypt]') !== false) {
+		$arr['encoded']['content'] = preg_replace_callback("/\[crypt (.*?)\](.*?)\[\/crypt\]/ism", 'bb_parse_b64_crypt', $arr['item']['body']);
 	}
 
 	$images = false;
@@ -305,8 +305,11 @@ function pubcrawl_encode_item(&$arr) {
 				}
 
 				$mentions_str = trim($mentions_str, ',');
+				$h  = null;
 
-				$h = dbq("select hubloc_network, hubloc_hash, hubloc_id_url from hubloc where hubloc_id_url in ($mentions_str) or hubloc_hash in ($mentions_str)");
+				if ($mentions_str) {
+					$h = dbq("select hubloc_network, hubloc_hash, hubloc_id_url from hubloc where hubloc_id_url in ($mentions_str) or hubloc_hash in ($mentions_str)");
+				}
 
 				if ($h) {
 					foreach ($h as $hh) {
@@ -431,8 +434,11 @@ function pubcrawl_encode_activity(&$arr) {
 				}
 
 				$mentions_str = trim($mentions_str, ',');
+				$h = null;
 
-				$h = dbq("select hubloc_network, hubloc_hash, hubloc_id_url from hubloc where hubloc_id_url in ($mentions_str) or hubloc_hash in ($mentions_str)");
+				if ($mentions_str) {
+					$h = dbq("select hubloc_network, hubloc_hash, hubloc_id_url from hubloc where hubloc_id_url in ($mentions_str) or hubloc_hash in ($mentions_str)");
+				}
 
 				if ($h) {
 					foreach ($h as $hh) {
@@ -660,8 +666,9 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 		// this implements mastodon remote reply functionality
 		$item = Activity::decode_note($AS);
 		if ($item) {
+			$item['item_fetched'] = true;
 			Activity::store(App::get_channel(), get_observer_hash(), $AS, $item, true, true);
-			goaway(z_root() . '/display/' . gen_link_id($item['mid']));
+			goaway(z_root() . '/hq/' . gen_link_id($item['mid']));
 		}
 	}
 	else {
