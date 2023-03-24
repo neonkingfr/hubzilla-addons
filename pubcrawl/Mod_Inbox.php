@@ -217,6 +217,18 @@ class Inbox extends Controller {
 		// Now figure out who the recipients are
 
 		if ($shared_inbox) {
+
+			$channel_addr = '';
+			$sql_extra = '';
+
+			foreach($AS->recips as $recip) {
+				if (strpos($recip, z_root()) === 0) {
+					$channel_addr .= '\'' . dbesc(basename($recip)) . '\',';
+				}
+			}
+
+			$channel_addr = rtrim($channel_addr, ',');
+
 			if (in_array($AS->type, ['Follow', 'Join']) && is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
 				$channels = q("SELECT * from channel where channel_address = '%s' and channel_removed = 0",
 					dbesc(basename($AS->obj['id']))
@@ -229,29 +241,24 @@ class Inbox extends Controller {
 					|| in_array('Public', $AS->recips)
 					|| in_array('as:Public', $AS->recips)) {
 
-					// deliver to anybody following $observer_hash
+					if ($channel_addr) {
+						$sql_extra = " OR channel_address IN ($channel_addr) ";
+					}
+
+					// deliver to anybody following $observer_hash or directly addressed
 					$channels = q("SELECT * from channel where channel_id in
 						( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash
 						WHERE xchan_network = 'activitypub' and xchan_hash = '%s'
-						) and channel_removed = 0 ",
+						) $sql_extra and channel_removed = 0 ",
 						dbesc($observer_hash)
 					);
 				}
 				else {
-					// deliver to anybody at this site directly addressed
-					$channel_addr = '';
-					foreach($AS->recips as $recip) {
-						if (strpos($recip, z_root()) === 0) {
-							$channel_addr .= '\'' . dbesc(basename($recip)) . '\',';
-						}
-					}
+					// deliver to anybody directly addressed
 					if ($channel_addr) {
-						$channel_addr = rtrim($channel_addr, ',');
 						$channels = dbq("SELECT * FROM channel WHERE channel_address IN ($channel_addr) AND channel_removed = 0");
 					}
 				}
-
-
 			}
 
 			if (in_array(ACTIVITY_PUBLIC_INBOX, $AS->recips) || in_array('Public', $AS->recips) || in_array('as:Public', $AS->recips)) {
