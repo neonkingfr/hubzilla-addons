@@ -406,8 +406,8 @@ function diaspora_notifier_process(&$arr) {
 		}
 
 		if($hashes) {
-			$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where
-				xchan_hash in (" . implode(',', $hashes) . ") and
+			$r = dbq("select * from xchan join hubloc on xchan_hash = hubloc_hash where
+				xchan_hash in (" . protect_sprintf(implode(',', $hashes)) . ") and
 				xchan_network in ('diaspora', 'friendica-over-diaspora') and hubloc_deleted = 0 and hubloc_error = 0"
 			);
 
@@ -416,8 +416,8 @@ function diaspora_notifier_process(&$arr) {
 				// we need to send them via diaspora.
 				// It is required to rewrite the hubloc_callback for that.
 
-				$rz = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where
-					xchan_addr in (" . implode(',', $hashes) . ") and
+				$rz = dbq("select * from xchan join hubloc on xchan_hash = hubloc_hash where
+					xchan_addr in (" . protect_sprintf(implode(',', $hashes)) . ") and
 					xchan_network = 'zot6' and hubloc_deleted = 0 and hubloc_error = 0"
 				);
 
@@ -539,6 +539,7 @@ function diaspora_process_outbound(&$arr) {
 	}
 
 	$prv_recips = $arr['env_recips'];
+	stringify_array_elms($prv_recips);
 
 	// The Diaspora profile message is unusual and must be handled independently
 	$is_profile = false;
@@ -548,6 +549,7 @@ function diaspora_process_outbound(&$arr) {
 		$profile_visible = perm_is_allowed($arr['channel']['channel_id'],'','view_profile');
 
 		if(! $profile_visible) {
+			// those are already stringified
 			$prv_recips = $arr['recipients'];
 		}
 	}
@@ -556,10 +558,9 @@ function diaspora_process_outbound(&$arr) {
 	if ($prv_recips) {
 
 		// re-explode the recipients, but only for this hub/pod
-		stringify_array_elms($prv_recips);
 
 		$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s'
-			and xchan_hash in (" . implode(',', $prv_recips) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
+			and xchan_hash in (" . protect_sprintf(implode(',', $prv_recips)) . ") and xchan_network in ('diaspora', 'friendica-over-diaspora') ",
 			dbesc($arr['hub']['hubloc_url'])
 		);
 
