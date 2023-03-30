@@ -122,7 +122,7 @@ class Diaspora_Receiver {
 				'abook_dob'       => NULL_DATE,
 				'abook_pending'   => intval(($automatic) ? 0 : 1),
 				'abook_instance'  => z_root(),
-				'abook_role'      => $role
+				'abook_role'      => get_pconfig($this->importer['channel_id'], 'system', 'default_permcat', 'default')
 			]
 		);
 
