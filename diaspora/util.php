@@ -232,6 +232,11 @@ function diaspora_build_status($item,$owner) {
 
 	$myaddr = channel_reddress($owner);
 
+	if ($item['single_activity']) {
+		// this is a synced item from a clone - rewrite author to primary location
+		$myaddr = $item['author']['xchan_addr'];
+	}
+
 	if($item['mid'] !== $item['parent_mid']) {
 		logger('attempted to send a comment as a top-level post');
 		return '';

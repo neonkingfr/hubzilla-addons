@@ -203,7 +203,7 @@ function pubcrawl_encode_item(&$arr) {
 	// if the the item comes from one of our alternate locations
 	// rewrite the id host to the primary hub
 
-	if ($arr['item']['single_activity']) {
+	if (!empty($arr['item']['single_activity'])) {
 		$parsed = parse_url($arr['encoded']['id']);
 		$parsed_primary = parse_url($arr['item']['author']['hubloc_url']);
 		$parsed_new = array_merge($parsed, $parsed_primary);
@@ -386,7 +386,7 @@ function pubcrawl_encode_activity(&$arr) {
 	// if the the item comes from one of our alternate locations
 	// rewrite the id host to the primary hub
 
-	if ($arr['item']['single_activity']) {
+	if (!empty($arr['item']['single_activity'])) {
 		$parsed = parse_url($arr['encoded']['id']);
 		$parsed_primary = parse_url($arr['item']['author']['hubloc_url']);
 		$parsed_new = array_merge($parsed, $parsed_primary);
@@ -941,16 +941,6 @@ function pubcrawl_notifier_hub(&$arr) {
 	logger('upstream: ' . intval($arr['upstream']));
 	logger('notifier_array: ' . print_r($arr, true), LOGGER_ALL, LOG_INFO);
 
-	// allow this to be set per message
-
-	if (isset($arr['mail']) && $arr['mail']) {
-		logger('Cannot send mail to activitypub.');
-		return;
-	}
-
-	if (isset($arr['location']) && $arr['location'])
-		return;
-
 	$is_profile = false;
 	if ($arr['cmd'] == 'refresh_all')
 		$is_profile = true;
@@ -1009,7 +999,7 @@ function pubcrawl_notifier_hub(&$arr) {
 
 	if ($target_item && !$signed_msg) {
 
-		if ($arr['cmd'] == 'single_activity') {
+		if ($arr['cmd'] === 'single_activity') {
 			$target_item['single_activity'] = 1;
 		}
 
