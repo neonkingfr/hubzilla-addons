@@ -200,6 +200,16 @@ function pubcrawl_encode_item(&$arr) {
 		$arr['encoded']['content'] = preg_replace_callback("/\[crypt (.*?)\](.*?)\[\/crypt\]/ism", 'bb_parse_b64_crypt', $arr['item']['body']);
 	}
 
+	// if the the item comes from one of our alternate locations
+	// rewrite the id host to the primary hub
+
+	if (!empty($arr['item']['single_activity'])) {
+		$parsed = parse_url($arr['encoded']['id']);
+		$parsed_primary = parse_url($arr['item']['author']['hubloc_url']);
+		$parsed_new = array_merge($parsed, $parsed_primary);
+		$arr['encoded']['id'] = unparse_url($parsed_new);
+	}
+
 	$images = false;
 	$has_images = preg_match_all('/\[[zi]mg(.*?)\](.*?)\[/ism', $arr['item']['body'], $images, PREG_SET_ORDER);
 
@@ -371,6 +381,16 @@ function pubcrawl_encode_activity(&$arr) {
 
 	if (!Apps::addon_app_installed($arr['item']['uid'], 'pubcrawl')) {
 		return;
+	}
+
+	// if the the item comes from one of our alternate locations
+	// rewrite the id host to the primary hub
+
+	if (!empty($arr['item']['single_activity'])) {
+		$parsed = parse_url($arr['encoded']['id']);
+		$parsed_primary = parse_url($arr['item']['author']['hubloc_url']);
+		$parsed_new = array_merge($parsed, $parsed_primary);
+		$arr['encoded']['id'] = unparse_url($parsed_new);
 	}
 
 	$parent_i = [];
@@ -921,16 +941,6 @@ function pubcrawl_notifier_hub(&$arr) {
 	logger('upstream: ' . intval($arr['upstream']));
 	logger('notifier_array: ' . print_r($arr, true), LOGGER_ALL, LOG_INFO);
 
-	// allow this to be set per message
-
-	if (isset($arr['mail']) && $arr['mail']) {
-		logger('Cannot send mail to activitypub.');
-		return;
-	}
-
-	if (isset($arr['location']) && $arr['location'])
-		return;
-
 	$is_profile = false;
 	if ($arr['cmd'] == 'refresh_all')
 		$is_profile = true;
@@ -988,6 +998,11 @@ function pubcrawl_notifier_hub(&$arr) {
 	}
 
 	if ($target_item && !$signed_msg) {
+
+		if ($arr['cmd'] === 'single_activity') {
+			$target_item['single_activity'] = 1;
+		}
+
 		$ti = Activity::encode_activity($target_item);
 		if (!$ti)
 			return;

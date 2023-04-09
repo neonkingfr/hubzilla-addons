@@ -336,11 +336,22 @@ function diaspora_is_reshare($body) {
 
 	$ret= array();
 
+	// diaspora
 	$ret["root_handle"] = preg_replace("=https?://(.*)/u/(.*)=ism", "$2@$1", $profile);
+
+	// hubzilla
+	if (($ret["root_handle"] == $profile) OR ($ret["root_handle"] == ""))
+		$ret["root_handle"] = preg_replace("=https?://(.*)/channel/(.*)=ism", "$2@$1", $profile);
+
+	// friendica
+	if (($ret["root_handle"] == $profile) OR ($ret["root_handle"] == ""))
+		$ret["root_handle"] = preg_replace("=https?://(.*)/profile/(.*)=ism", "$2@$1", $profile);
+
 	if (($ret["root_handle"] == $profile) OR ($ret["root_handle"] == ""))
 		return(false);
 
 	$link = "";
+
 	preg_match("/link='(.*?)'/ism", $attributes, $matches);
 	if ($matches[1] != "")
 		$link = $matches[1];
@@ -349,7 +360,17 @@ function diaspora_is_reshare($body) {
 	if ($matches[1] != "")
 		$link = $matches[1];
 
+	// diaspora
 	$ret["root_guid"] = preg_replace("=https?://(.*)/posts/(.*)=ism", "$2", $link);
+
+	// hubzilla
+	if (($ret["root_guid"] == $link) OR ($ret["root_guid"] == ""))
+		$ret["root_guid"] = preg_replace("=https?://(.*)/item/(.*)=ism", "$2", $link);
+
+	// friendica
+	if (($ret["root_guid"] == $link) OR ($ret["root_guid"] == ""))
+		$ret["root_guid"] = preg_replace("=https?://(.*)/display/(.*)=ism", "$2", $link);
+
 	if (($ret["root_guid"] == $link) OR ($ret["root_guid"] == ""))
 		return(false);
 
@@ -539,6 +560,12 @@ function diaspora_send_downstream($item,$owner,$contact,$public_batch = false) {
 
 
 	$myaddr = channel_reddress($owner);
+
+	if (!empty($item['single_activity'])) {
+		// this is a synced item from a clone - rewrite author to primary location
+		$myaddr = $item['author']['xchan_addr'];
+	}
+
 	$theiraddr = $contact['xchan_addr'];
 
 	if($item['item_deleted']) {
@@ -580,6 +607,12 @@ function diaspora_send_downstream($item,$owner,$contact,$public_batch = false) {
 	$signed_fields = get_iconfig($item,'diaspora','fields');
 
 	if($signed_fields) {
+
+		if (!empty($item['single_activity'])) {
+			// this is a synced item from a clone - rewrite author to primary location
+			$signed_fields['author'] = $item['author']['xchan_addr'];
+		}
+
 		if($attendance) {
 			$msg = arrtoxml('event_participation', $signed_fields);
 		}
@@ -619,8 +652,6 @@ function diaspora_send_downstream($item,$owner,$contact,$public_batch = false) {
 
 function diaspora_send_retraction($item,$owner,$contact,$public_batch = false) {
 
-	$myaddr = channel_reddress($owner);
-
 	if(! $item['item_deleted'])
 		return;
 
@@ -633,9 +664,8 @@ function diaspora_send_retraction($item,$owner,$contact,$public_batch = false) {
 	else
 		return;
 
-
 	if( $item['mid'] !== $item['parent_mid'] ) {
-		if(($item['verb'] === ACTIVITY_LIKE || $item['verb'] === ACTIVITY_DISLIKE) && ($item['obj_type'] === ACTIVITY_POST || $item['obj_type'] === ACTIVITY_OBJ_COMMENT)) {
+		if(($item['verb'] === ACTIVITY_LIKE || $item['verb'] === ACTIVITY_DISLIKE) && ($item['obj_type'] === ACTIVITY_OBJ_NOTE || $item['obj_type'] === ACTIVITY_OBJ_COMMENT)) {
 			$target_type = 'Like';
 		}
 		else {

@@ -502,11 +502,6 @@ function diaspora_process_outbound(&$arr) {
 
 	// allow this to be set per message
 
-	if(($arr['mail']) && intval($arr['item']['raw'])) {
-		logger('Cannot send raw data to Diaspora mail service.');
-		return;
-	}
-
 	if(array_key_exists('target_item',$arr) && is_array($arr['target_item'])) {
 		if(intval($arr['target_item']['item_obscured'])) {
 			logger('Cannot send raw data as a Diaspora activity.');
@@ -525,10 +520,12 @@ function diaspora_process_outbound(&$arr) {
 		return;
 	}
 
-	if($arr['location'])
-		return;
-
 	$target_item = $arr['target_item'];
+
+	if ($arr['cmd'] === 'single_activity') {
+		$target_item['single_activity'] = 1;
+	}
+
 
 	if($target_item && array_key_exists('item_obscured',$target_item) && intval($target_item['item_obscured'])) {
 		$key = get_config('system','prvkey');
