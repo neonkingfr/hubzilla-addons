@@ -62,15 +62,15 @@ class Article_edit extends \Zotlabs\Web\Controller {
 		$catsenabled = ((feature_enabled($owner,'categories')) ? 'categories' : '');
 
 		if ($catsenabled){
-		        $itm = fetch_post_tags($itm);
-
-	                $cats = get_terms_oftype($itm[0]['term'], TERM_CATEGORY);
-
-		        foreach ($cats as $cat) {
-		                if (strlen($category))
-		                        $category .= ', ';
-		                $category .= $cat['term'];
-		        }
+			$itm = fetch_post_tags($itm);
+			if (isset($itm[0]['term'])) {
+				$cats = get_terms_oftype($itm[0]['term'], TERM_CATEGORY);
+				foreach ($cats as $cat) {
+					if (strlen($category))
+						$category .= ', ';
+					$category .= $cat['term'];
+				}
+			}
 		}
 
 		if($itm[0]['attach']) {
