@@ -1083,7 +1083,6 @@ function pubcrawl_notifier_hub(&$arr) {
 	else {
 
 		// public message
-
 		// See if we can deliver all of them at once
 
 		$x = Activity::get_actor_collections($arr['hub']['hubloc_hash']);
@@ -1091,7 +1090,7 @@ function pubcrawl_notifier_hub(&$arr) {
 			$x = get_xconfig($arr['hub']['hubloc_hash'], 'activitypub', 'collections');
 		}
 
-		if ($x && $x['sharedInbox']) {
+		if (!empty($x['sharedInbox'])) {
 			logger('using publicInbox delivery for ' . $arr['hub']['hubloc_url'], LOGGER_DEBUG);
 			$contact['hubloc_callback'] = $x['sharedInbox'];
 			$qi                         = pubcrawl_queue_message($jmsg, $arr['channel'], $contact, $target_item['mid']);
@@ -1100,8 +1099,7 @@ function pubcrawl_notifier_hub(&$arr) {
 			}
 		}
 		else {
-
-			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s' and xchan_network = 'activitypub' ",
+			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s' and xchan_hash in (" . protect_sprintf(implode(',', $arr['recipients'])) . ") and xchan_network = 'activitypub' ",
 				dbesc($arr['hub']['hubloc_url'])
 			);
 
