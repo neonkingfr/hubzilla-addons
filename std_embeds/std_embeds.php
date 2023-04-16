@@ -50,7 +50,7 @@ function std_embeds_action(&$arr) {
 	}
 
 	if($realurl) {
-		$arr['url'] = $realurl . (($m['path']) ? $m['path'] : '') . (($m['query']) ? '?' . $m['query'] : '') . (($m['fragment']) ? '#' . $m['fragment'] : ''); 
+		$arr['url'] = $realurl . ((empty($m['path'])) ? '' : $m['path']) . ((empty($m['query'])) ? '' : '?' . $m['query']) . ((empty($m['fragment'])) ? '' : '#' . $m['fragment']);
 		$arr['action'] = 'allow';
 	}
 
