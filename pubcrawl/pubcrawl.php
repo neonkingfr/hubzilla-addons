@@ -1600,11 +1600,14 @@ function pubcrawl_queue_deliver(&$b) {
 				dbesc(datetime_convert()),
 				dbesc($outq['outq_hash'])
 			);
+
 			Queue::remove($outq['outq_hash']);
 
 			// server is responding - see if anything else is going to this destination and is piled up
 			// and try to send some more. We're relying on the fact that do_delivery() results in an
 			// immediate delivery otherwise we could get into a queue loop.
+
+/* this is handled in Queue::remove now
 
 			if (!$immediate) {
 				$x = q("select outq_hash from outq where outq_posturl = '%s' and outq_delivered = 0",
@@ -1621,6 +1624,7 @@ function pubcrawl_queue_deliver(&$b) {
 					do_delivery($piled_up, true);
 				}
 			}
+*/
 		}
 		elseif ($result['return_code'] >= 400 && $result['return_code'] < 500) {
 			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s'",
