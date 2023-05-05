@@ -1297,7 +1297,7 @@ function pubcrawl_permissions_create(&$x) {
 			'id'     => z_root() . '/follow/' . $x['recipient']['abook_id'] . '#follow',
 			'type'   => 'Follow',
 			'actor'  => $p,
-			'object' => $x['recipient']['xchan_url'],
+			'object' => $x['recipient']['xchan_hash'],
 			'to'     => [$x['recipient']['xchan_hash']]
 		]);
 
