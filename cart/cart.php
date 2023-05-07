@@ -205,7 +205,7 @@ $cart_submodules = ["paypalbuttonV2", "hzservices", "subscriptions", "manualcat"
 
 $cart_manualpayments = cart_getcartconfig('enable_manual_payments');
 if ($cart_manualpayments) {
-	require_once("./manual_payments.php");
+	require_once("manual_payments.php");
 }
 
 
