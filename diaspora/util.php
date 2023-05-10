@@ -232,7 +232,7 @@ function diaspora_build_status($item,$owner) {
 
 	$myaddr = channel_reddress($owner);
 
-	if ($item['single_activity']) {
+	if (!empty($item['single_activity'])) {
 		// this is a synced item from a clone - rewrite author to primary location
 		$myaddr = $item['author']['xchan_addr'];
 	}
