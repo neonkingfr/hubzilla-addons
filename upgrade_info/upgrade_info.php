@@ -38,7 +38,7 @@ function upgrade_info_construct_page(&$b){
 	$version = get_pconfig(local_channel(), 'upgrade_info', 'version');
 
 	if(version_compare(STD_VERSION, $version) < 1)
-		return; 
+		return;
 
 	$parts = explode('.', STD_VERSION);
 	$dev = true;
@@ -51,7 +51,7 @@ function upgrade_info_construct_page(&$b){
 	if($dev)
 		$content[] = '<a target="_blank" href="https://framagit.org/hubzilla/core/commits/dev">' . t('git history') . '</a>';
 	else
-		$content[] = '<a target="_blank" href="https://framagit.org/hubzilla/core/tags/' . STD_VERSION . '">' . t('change log') . '</a>';
+		$content[] = '<a target="_blank" href="https://framagit.org/hubzilla/core/-/releases/' . STD_VERSION . '">' . t('change log') . '</a>';
 	$content[] = t('for further info.');
 
 	$tpl = get_markup_template('upgrade_info.tpl', 'addon/upgrade_info');
