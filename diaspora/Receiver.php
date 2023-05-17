@@ -1056,13 +1056,13 @@ class Diaspora_Receiver {
 			$excl = get_config('system','pubstream_excl');
 
 			if(($incl || $excl) && !MessageFilter::evaluate($datarray, $incl, $excl)) {
-				logger('diaspora_reshare: filtering this author.');
+				logger('diaspora_comment: filtering this author.');
 				return 202;
 			}
 		}
 
 		if (($contact) && (!post_is_importable($this->importer['channel_id'], $datarray, [$contact])) && (!$this->force)) {
-			logger('diaspora_post: filtering this author.');
+			logger('diaspora_comment: filtering this author.');
 			return 202;
 		}
 

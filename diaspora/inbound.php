@@ -30,17 +30,22 @@ function diaspora_dispatch_public($msg) {
 		);
 	}
 	else {
-		if(isset($msg['msg']['parent_guid'])) {
-			// If we have a parent, attempt delivery to anybody who owns the parent
-			$r = q("SELECT * FROM channel WHERE channel_id IN ( SELECT uid FROM item WHERE uuid = '%s' ) AND channel_removed = 0",
-				dbesc($msg['msg']['parent_guid'])
-			);
-		}
-		else {
+		if(empty($msg['msg']['parent_guid'])) {
 			// Attempt delivery to anybody who is connected with the sender
 			$r = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network = 'diaspora' and xchan_hash = '%s') and channel_removed = 0",
 				dbesc($msg['author'])
 			);
+		}
+		else {
+			// If we have a parent, attempt delivery to anybody who owns the parent
+			$uids = q("SELECT uid FROM item WHERE uuid = '%s'",
+				dbesc($msg['msg']['parent_guid'])
+			);
+
+			if ($uids) {
+				$uids = ids_to_querystr($uids, 'uid');
+				$r = dbq("SELECT * FROM channel WHERE channel_id IN ($uids) AND channel_removed = 0");
+			}
 		}
 	}
 

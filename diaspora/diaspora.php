@@ -1533,6 +1533,8 @@ function diaspora_queue_deliver(&$b) {
 			// and try to send some more. We're relying on the fact that do_delivery() results in an
 			// immediate delivery otherwise we could get into a queue loop.
 
+/* this is handled in Queue::remove now
+
 			if(! $immediate) {
 				$x = q("select outq_hash from outq where outq_posturl = '%s' and outq_delivered = 0",
 					dbesc($outq['outq_posturl'])
@@ -1556,6 +1558,15 @@ function diaspora_queue_deliver(&$b) {
 					do_delivery($piled_up,true);
 				}
 			}
+*/
+		}
+		elseif ($result['return_code'] >= 400 && $result['return_code'] < 500) {
+			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s'",
+				dbesc('delivery rejected:' . ' ' . $result['return_code'] . ' ' . (($result['error']) ? substr($result['error'], 0, 160) : substr(escape_tags($result['body']), 0, 160))),
+				dbesc(datetime_convert()),
+				dbesc($outq['outq_hash'])
+			);
+			Queue::remove($outq['outq_hash']);
 		}
 		else {
 			logger('diaspora_queue_deliver: queue post returned ' . $result['return_code'] . ' from ' . $outq['outq_posturl'], LOGGER_DEBUG);

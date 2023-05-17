@@ -1083,7 +1083,6 @@ function pubcrawl_notifier_hub(&$arr) {
 	else {
 
 		// public message
-
 		// See if we can deliver all of them at once
 
 		$x = Activity::get_actor_collections($arr['hub']['hubloc_hash']);
@@ -1091,7 +1090,7 @@ function pubcrawl_notifier_hub(&$arr) {
 			$x = get_xconfig($arr['hub']['hubloc_hash'], 'activitypub', 'collections');
 		}
 
-		if ($x && $x['sharedInbox']) {
+		if (!empty($x['sharedInbox'])) {
 			logger('using publicInbox delivery for ' . $arr['hub']['hubloc_url'], LOGGER_DEBUG);
 			$contact['hubloc_callback'] = $x['sharedInbox'];
 			$qi                         = pubcrawl_queue_message($jmsg, $arr['channel'], $contact, $target_item['mid']);
@@ -1100,8 +1099,7 @@ function pubcrawl_notifier_hub(&$arr) {
 			}
 		}
 		else {
-
-			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s' and xchan_network = 'activitypub' ",
+			$r = q("select * from xchan left join hubloc on xchan_hash = hubloc_hash where hubloc_url = '%s' and xchan_hash in (" . protect_sprintf(implode(',', $arr['recipients'])) . ") and xchan_network = 'activitypub' ",
 				dbesc($arr['hub']['hubloc_url'])
 			);
 
@@ -1299,7 +1297,7 @@ function pubcrawl_permissions_create(&$x) {
 			'id'     => z_root() . '/follow/' . $x['recipient']['abook_id'] . '#follow',
 			'type'   => 'Follow',
 			'actor'  => $p,
-			'object' => $x['recipient']['xchan_url'],
+			'object' => $x['recipient']['xchan_hash'],
 			'to'     => [$x['recipient']['xchan_hash']]
 		]);
 
@@ -1602,11 +1600,14 @@ function pubcrawl_queue_deliver(&$b) {
 				dbesc(datetime_convert()),
 				dbesc($outq['outq_hash'])
 			);
+
 			Queue::remove($outq['outq_hash']);
 
 			// server is responding - see if anything else is going to this destination and is piled up
 			// and try to send some more. We're relying on the fact that do_delivery() results in an
 			// immediate delivery otherwise we could get into a queue loop.
+
+/* this is handled in Queue::remove now
 
 			if (!$immediate) {
 				$x = q("select outq_hash from outq where outq_posturl = '%s' and outq_delivered = 0",
@@ -1623,6 +1624,7 @@ function pubcrawl_queue_deliver(&$b) {
 					do_delivery($piled_up, true);
 				}
 			}
+*/
 		}
 		elseif ($result['return_code'] >= 400 && $result['return_code'] < 500) {
 			q("update dreport set dreport_result = '%s', dreport_time = '%s' where dreport_queue = '%s'",

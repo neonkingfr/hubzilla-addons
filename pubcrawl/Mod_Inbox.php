@@ -229,11 +229,26 @@ class Inbox extends Controller {
 
 			$channel_addr = rtrim($channel_addr, ',');
 
-			if (in_array($AS->type, ['Follow', 'Join']) && is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
-				$channels = q("SELECT * from channel where channel_address = '%s' and channel_removed = 0",
+			if (in_array($AS->type, ['Follow', 'Join'])
+				&& is_array($AS->obj)
+				&& ActivityStreams::is_an_actor($AS->obj['type'])) {
+
+				$channels = q("SELECT * FROM channel WHERE channel_address = '%s' AND channel_removed = 0",
 					dbesc(basename($AS->obj['id']))
 				);
-			} else {
+			}
+			// This is primarily for lemmy which accept|reject/follow activities have no addressing
+			// and would otherwise be delivered to the public inbox.
+			elseif (in_array($AS->type, ['Accept', 'Reject'])
+				&& is_array($AS->obj)
+				&& in_array($AS->obj['type'], ['Follow', 'Join'])
+				&& isset($AS->obj['actor'])) {
+
+				$channels = q("SELECT * FROM channel WHERE channel_address = '%s' AND channel_removed = 0",
+					dbesc(basename(is_array($AS->obj['actor']) ? $AS->obj['actor']['id'] : $AS->obj['actor']))
+				);
+			}
+			else {
 				$collections = Activity::get_actor_collections($observer_hash);
 
 				if (in_array($collections['followers'], $AS->recips)
