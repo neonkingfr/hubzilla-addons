@@ -5,10 +5,10 @@
 			    </div>
 			</div>
 			<div class="row">
-				{{foreach $itemmeta as $meta}}
-				<div class="workflow wfmeta-item {{if $meta.cols}}{{$meta.cols}}{{/if}}">{{$meta.html}}
+				{{foreach $itemmeta as $meta}}{{if $meta}}
+				<div class="workflow wfmeta-item {{if $meta.cols}}{{$meta.cols}}{{/if}}">{{if $meta.html}}{{$meta.html}}{{/if}}
 				</div>
-				{{/foreach}}
+				{{/if}}{{/foreach}}
 			</div>
 			<div class="row">
 			    <div class="col-12 workflow wfcontent">
