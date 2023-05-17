@@ -242,6 +242,7 @@ class Workflow_Utils {
 	}
 
 	public static function basicfilter_gatherassigned ($items) {
+		$users=[];
 		foreach ($items as $item) {
 			$assigned = self::maybeunjson(IConfig::Get($item,'workflow','contacts:assigned','{}'));
 			foreach ($assigned as $c) {
@@ -580,7 +581,6 @@ class Workflow_Utils {
 		];
 		call_hooks('workflow_display_sidebar',$sidebarhookinfo);
 		$vars['sidebar'] = $sidebarhookinfo['html'];
-
         	$o = replace_macros($tpl,$vars);
 
 		return $o;
@@ -1140,6 +1140,8 @@ class Workflow_Utils {
 			'items' => $items
 		];
 
+		call_hooks('workflow_get_items_filter',$hookinfo);
+
 		Hook::insert('dm42workflow_display_list','Workflow_Utils::display_list_basicfilter',1,30000);
 
 		Hook::insert('dm42workflow_meta_display','Workflow_Utils::basicmeta_meta_display',1,30000);
@@ -1190,8 +1192,8 @@ class Workflow_Utils {
 		$vars['title']="Current Items";
 		//usort($itemlist,function($a,$b) {
 		usort($items,function($a,$b) {
-			$apriority = (isset($a['workflowdata']['priority']) || $a['workflowdata']['priority'] === 0) ? $a['workflowdata']['priority'] : 1;
-			$bpriority = (isset($b['workflowdata']['priority']) || $b['workflowdata']['priority'] === 0) ? $b['workflowdata']['priority'] : 1;
+			$apriority = (array_key_exists('priority',$a['workflowdata']) ) ? $a['workflowdata']['priority'] : 1;
+			$bpriority = (array_key_exists('priority',$b['workflowdata']) ) ? $b['workflowdata']['priority'] : 1;
 			if (intval(@$apriority) == intval(@$bpriority)) {
 				return 0;
 			}
@@ -1276,7 +1278,7 @@ class Workflow_Utils {
 
 		$basicfilters .= "<input type='submit' value='Search'>";
 
-		$wfusers = self::basicfilter_gatherassigned($items);
+		$wfusers = self::basicfilter_gatherassigned($rows['items']);
 
 		$workflows = self::get_workflowlist();
 		if (count($workflows) > 1) {
