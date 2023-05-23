@@ -68,7 +68,6 @@ class Content_import extends Controller {
 				sleep($poll_interval);
 
 				$page ++;
-				continue;
 			}
 			notice(t('Posts imported') . EOL);
 
