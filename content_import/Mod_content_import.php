@@ -61,7 +61,7 @@ class Content_import extends Controller {
 
 				$j = json_decode($x['body'],true);
 
-				if(! ($j['item'] || count($j['item'])))
+				if(! (isset($j['item']) && count($j['item'])))
 					break;
 
 				proc_run('php','addon/content_import/item_import_helper.php', sprintf('%d',$page), $since, $until, $channel['channel_address'], urlencode($hz_server));
