@@ -570,7 +570,7 @@ function pubcrawl_post_local(&$x) {
 
 	xchan_query($item);
 
-	$channel = channelx_by_hash($item[0]['author_xchan']);
+	$channel = channelx_by_n($item[0]['uid']);
 
 	$s = Activity::encode_activity($item[0]);
 
@@ -581,7 +581,9 @@ function pubcrawl_post_local(&$x) {
 	]],
 		$s
 	);
+
 	$msg['signature'] = LDSignatures::dopplesign($msg, $channel);
+
 	$jmsg             = json_encode($msg, JSON_UNESCAPED_SLASHES);
 
 	set_iconfig($x, 'activitypub', 'rawmsg', $jmsg, true);
@@ -627,6 +629,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	$url      = $b['address'];
 	$x        = $b['webfinger'];
 	$protocol = $b['protocol'];
+	$follow_url = '';
 
 	logger('probing: activitypub');
 	if ($protocol && strtolower($protocol) !== 'activitypub')
@@ -652,6 +655,11 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 				if (array_key_exists('rel', $link) && array_key_exists('type', $link)) {
 					if ($link['rel'] === 'self' && ($link['type'] === 'application/activity+json' || strpos($link['type'], 'ld+json') !== false)) {
 						$url = $link['href'];
+					}
+				}
+				if (array_key_exists('rel', $link)) {
+					if ($link['rel'] === NAMESPACE_OSTATUSSUB) {
+						$follow_url = $link['template'];
 					}
 				}
 			}
@@ -702,8 +710,9 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	Activity::actor_store($url, $person_obj, true);
 
 	if ($address) {
-		q("update xchan set xchan_addr = '%s' where xchan_hash = '%s' and xchan_network = 'activitypub'",
+		q("update xchan set xchan_addr = '%s', xchan_follow = '%s' where xchan_hash = '%s' and xchan_network = 'activitypub'",
 			dbesc($address),
+			dbesc(str_replace('{uri}', '%s', $follow_url)),
 			dbesc($url)
 		);
 		q("update hubloc set hubloc_addr = '%s' where hubloc_hash = '%s' and hubloc_network = 'activitypub'",
