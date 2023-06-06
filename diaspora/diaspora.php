@@ -765,15 +765,11 @@ function diaspora_queue($owner,$contact,$slap,$public_batch,$message_id = '') {
 
 
 function diaspora_follow_allow(&$b) {
-
-	if($b['xchan']['xchan_network'] !== 'diaspora' && $b['xchan']['xchan_network'] !== 'friendica-over-diaspora')
+	if(!in_array($b['xchan']['xchan_network'], ['diaspora', 'friendica-over-diaspora'])) {
 		return;
+	}
 
-	$allowed = Apps::addon_app_installed($b['channel_id'], 'diaspora');
-
-	if($allowed === false)
-		$allowed = 1;
-	$b['allowed'] = $allowed;
+	$b['allowed'] = Apps::addon_app_installed($b['channel_id'], 'diaspora');
 	$b['singleton'] = 1;  // this network does not support channel clones
 }
 

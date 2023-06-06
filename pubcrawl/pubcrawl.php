@@ -531,16 +531,12 @@ function pubcrawl_federated_transports(&$x) {
 }
 
 function pubcrawl_follow_allow(&$b) {
-
-	if ($b['xchan']['xchan_network'] !== 'activitypub')
+	if ($b['xchan']['xchan_network'] !== 'activitypub') {
 		return;
+	}
 
-	$allowed = Apps::addon_app_installed($b['channel_id'], 'pubcrawl');
-	if ($allowed === false)
-		$allowed = 1;
-	$b['allowed']   = $allowed;
+	$b['allowed']   = Apps::addon_app_installed($b['channel_id'], 'pubcrawl');
 	$b['singleton'] = 1;  // this network does not support channel clones
-
 }
 
 function pubcrawl_channel_links(&$b) {
