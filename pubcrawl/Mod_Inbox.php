@@ -350,19 +350,19 @@ class Inbox extends Controller {
 
 			switch ($AS->type) {
 				case 'Follow':
-					if (is_array($AS->obj) && array_key_exists('type', $AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
+					if (ActivityStreams::is_an_actor($AS->objprop('type'))) {
 						// do follow activity
 						Activity::follow($channel, $AS);
 					}
 					break;
 				case 'Invite':
-					if (is_array($AS->obj) && array_key_exists('type', $AS->obj) && $AS->obj['type'] === 'Group') {
+					if ($AS->objprop('type') === 'Group') {
 						// do follow activity
 						Activity::follow($channel, $AS);
 					}
 					break;
 				case 'Join':
-					if (is_array($AS->obj) && array_key_exists('type', $AS->obj) && $AS->obj['type'] === 'Group') {
+					if ($AS->objprop('type') === 'Group') {
 						// do follow activity
 						Activity::follow($channel, $AS);
 					}
@@ -371,7 +371,7 @@ class Inbox extends Controller {
 					// Activitypub for wordpress sends lowercase 'follow' on accept.
 					// https://github.com/pfefferle/wordpress-activitypub/issues/97
 					// Mobilizon sends Accept/"Member" (not in vocabulary) in response to Join/Group
-					if (is_array($AS->obj) && array_key_exists('type', $AS->obj) && in_array($AS->obj['type'], ['Follow', 'follow', 'Member'])) {
+					if (in_array($AS->objprop('type'), ['Follow', 'follow', 'Member'])) {
 						// do follow activity
 						Activity::follow($channel, $AS);
 					}
@@ -388,12 +388,16 @@ class Inbox extends Controller {
 
 			switch ($AS->type) {
 				case 'Update':
-					if (is_array($AS->obj) && array_key_exists('type', $AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
+					if (ActivityStreams::is_an_actor($AS->objprop('type'))) {
 						Activity::actor_store($AS->obj['id'], $AS->obj, true /* force cache refresh */);
 						break;
 					}
+					if ($AS->objprop('type') === 'OrderedCollection') {
+						// gup.pe sends updates for followers list but we do not handle those
+						break;
+					}
 				case 'Accept':
-					if (is_array($AS->obj) && array_key_exists('type', $AS->obj) && (ActivityStreams::is_an_actor($AS->obj['type']) || $AS->obj['type'] === 'Member')) {
+					if (ActivityStreams::is_an_actor($AS->objprop('type')) || $AS->objprop('type') === 'Member') {
 						break;
 					}
 				case 'Create':
@@ -427,13 +431,13 @@ class Inbox extends Controller {
 					}
 					break;
 				case 'Undo':
-					if ($AS->obj && is_array($AS->obj) && array_key_exists('type', $AS->obj) && $AS->obj['type'] === 'Follow') {
+					if ($AS->objprop('type') === 'Follow') {
 						// do unfollow activity
 						Activity::unfollow($channel, $AS);
 						break;
 					}
 				case 'Leave':
-					if ($AS->obj && is_array($AS->obj) && array_key_exists('type', $AS->obj) && $AS->obj['type'] === 'Group') {
+					if ($AS->objprop('type') === 'Group') {
 						// do unfollow activity
 						Activity::unfollow($channel, $AS);
 						break;
@@ -444,9 +448,8 @@ class Inbox extends Controller {
 					break;
 /* not yet implemented
 				case 'Move':
-					if (
-						$observer_hash && $observer_hash === $AS->actor
-						&& is_array($AS->obj) && array_key_exists('type', $AS->obj) && ActivityStream::is_an_actor($AS->obj['type'])
+					if ($observer_hash && $observer_hash === $AS->actor
+						&& ActivityStream::is_an_actor($AS->objprop('type'))
 						&& is_array($AS->tgt) && array_key_exists('type', $AS->tgt) && ActivityStream::is_an_actor($AS->tgt['type'])
 					) {
 						ActivityPub::move($AS->obj, $AS->tgt);
