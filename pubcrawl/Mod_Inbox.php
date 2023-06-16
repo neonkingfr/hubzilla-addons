@@ -58,15 +58,18 @@ class Inbox extends Controller {
 		$channels = [];
 
 		if (!$shared_inbox) {
-			$r = q("SELECT * FROM channel WHERE channel_address = '%s' AND channel_removed = 0",
-				dbesc(argv(1))
-			);
+
+			$r = channelx_by_nick(argv(1), true);
 
 			if (!$r) {
+				http_status_exit(404, 'Not found');
+			}
+
+			if ($r['channel_removed']) {
 				http_status_exit(410, 'Gone');
 			}
 
-			$channels[] = $r[0];
+			$channels[] = $r;
 		}
 
 		logger('inbox_activity: ' . jindent($data), LOGGER_DATA);
@@ -82,7 +85,8 @@ class Inbox extends Controller {
 			http_status_exit(403, 'Permission denied');
 		}
 
-		$AS = new ActivityStreams($data);
+		$AS = new ActivityStreams($data, $hsig['portable_id']);
+
 		$announce_actor = null;
 
 		if (
@@ -216,7 +220,23 @@ class Inbox extends Controller {
 
 		// Now figure out who the recipients are
 
-		if ($shared_inbox) {
+		if ($AS->parent_id && $AS->parent_id !== $AS->objprop('id')) {
+
+			// If the parent originates from this site, only deliver to the owner.
+			// If the item will be accepted by the owner it will be relayed to everybody else.
+			$owner_parent = q("SELECT uid from item where mid = '%s' and item_wall = 1",
+				dbesc($AS->parent_id)
+			);
+
+			if ($owner_parent) {
+				$owner_channel = channelx_by_n($owner_parent[0]['uid']);
+				if ($owner_channel) {
+					$channels = [$owner_channel];
+				}
+			}
+		}
+
+		if (!$channels && $shared_inbox) {
 
 			$channel_addr = '';
 			$sql_extra = '';
@@ -427,7 +447,18 @@ class Inbox extends Controller {
 					if (is_array($AS->obj)) {
 						$item = Activity::decode_note($AS);
 					} else {
-						logger('unresolved object: ' . print_r($AS->obj, true));
+						// The initial object fetch failed using the sys channel credentials.
+						// Try again using the delivery channel credentials.
+
+						$o = Activity::fetch($AS->obj, $channel);
+
+						if ($o) {
+							$AS->obj = $o;
+							$item = Activity::decode_note($AS);
+						}
+						else {
+							logger('unresolved object: ' . print_r($AS->obj, true));
+						}
 					}
 					break;
 				case 'Undo':
