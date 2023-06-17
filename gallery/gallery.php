@@ -128,13 +128,19 @@ function gallery_prepare_body(&$arr) {
 
 	$div = $dom->createElement('div');
 
+
 	foreach($nodes as $node) {
 		if($node->nodeName == 'br') {
 			$node->parentNode->removeChild($node);
 			continue;
 		}
 
-		if(($node->nodeName == 'img') && (strpos($node->getAttribute('class'), 'smiley') === false)) {
+		if($node->nodeName == 'img') {
+			if (strpos($node->getAttribute('class'), 'smiley') !== false) {
+				// Dismiss smilies
+				continue;
+			}
+
 			$img_nodes++;
 
 			//wrap in div
@@ -143,8 +149,14 @@ function gallery_prepare_body(&$arr) {
 			$div_clone->appendChild($node);
 		}
 
-		if($node->nodeName == 'a' && !$node->textContent && $node->firstChild->nodeName == 'img')
+		if($node->nodeName == 'a' && !$node->textContent && $node->firstChild->nodeName == 'img') {
+			if (strpos($node->firstChild->getAttribute('src'), '/xp/') !== false) {
+				// Dismiss streams reshare profile photo
+				continue;
+			}
+
 			$img_nodes++;
+		}
 
 		if(($i > $img_nodes) && ($node->nodeName != 'img' || ($node->nodeName == 'a' && !$node->textContent && $node->firstChild->nodeName == 'img')))
 			break;
