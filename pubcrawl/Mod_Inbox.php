@@ -224,16 +224,26 @@ class Inbox extends Controller {
 
 			// If the parent originates from this site, only deliver to the owner.
 			// If the item will be accepted by the owner it will be relayed to everybody else.
-			$owner_parent = q("SELECT uid from item where mid = '%s' and item_wall = 1",
+			$owner_parent = q("SELECT owner_xchan, item_wall from item where mid = '%s' order by item_wall desc limit 1",
 				dbesc($AS->parent_id)
 			);
 
-			if ($owner_parent) {
-				$owner_channel = channelx_by_n($owner_parent[0]['uid']);
+			if ($owner_parent && $owner_parent[0]['item_wall']) {
+				$owner_channel = channelx_by_hash($owner_parent[0]['owner_xchan']);
 				if ($owner_channel) {
 					$channels = [$owner_channel];
 				}
 			}
+			elseif ($owner_parent && !$owner_parent[0]['item_wall']) {
+				$owner_xchan = q("select xchan_network from xchan where xchan_hash = '%s'",
+					dbesc($owner_parent[0]['owner_xchan'])
+				);
+				if ($owner_xchan && $owner_xchan[0]['xchan_network'] === 'zot6') {
+					logger('AP comment dismissed - it is expected to be relayed from the thread owner');
+					http_status_exit(409, 'Conflict');
+				}
+			}
+
 		}
 
 		if (!$channels && $shared_inbox) {
