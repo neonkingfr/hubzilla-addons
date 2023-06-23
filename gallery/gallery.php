@@ -150,7 +150,7 @@ function gallery_prepare_body(&$arr) {
 		}
 
 		if($node->nodeName == 'a' && !$node->textContent && $node->firstChild->nodeName == 'img') {
-			if (strpos($node->firstChild->getAttribute('src'), '/xp/') !== false) {
+			if (strpos($node->firstChild->getAttribute('src'), '/xp/') !== false || strpos($node->firstChild->getAttribute('src'), '/photo/profile/') !== false) {
 				// Dismiss streams reshare profile photo
 				continue;
 			}
