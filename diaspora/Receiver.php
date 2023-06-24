@@ -744,6 +744,7 @@ class Diaspora_Receiver {
 		$created_at              = ((!empty($this->xmlbase['created_at'])) ? datetime_convert('UTC', 'UTC', $this->get_property('created_at')) : datetime_convert());
 		$edited_at               = ((!empty($this->xmlbase['edited_at'])) ? datetime_convert('UTC', 'UTC', $this->get_property('edited_at')) : $created_at);
 		$thr_parent              = ((!empty($this->xmlbase['thread_parent_guid'])) ? notags($this->get_property('thread_parent_guid')) : '');
+
 		$text                    = $this->get_body();
 		$author_signature        = notags($this->get_property('author_signature'));
 		$parent_author_signature = notags($this->get_property('parent_author_signature'));
@@ -752,6 +753,7 @@ class Diaspora_Receiver {
 			intval($this->importer['channel_id']),
 			dbesc($parent_guid)
 		);
+
 		if (!$r) {
 			logger('diaspora_comment: parent item not found: parent: ' . $parent_guid . ' item: ' . $guid);
 			return;
@@ -766,8 +768,9 @@ class Diaspora_Receiver {
 		}
 
 		// does the parent originate from this site?
-		$local_parent_item = (strpos($parent_item['plink'], z_root()) === 0);
+		//$local_parent_item = (strpos($parent_item['plink'], z_root()) === 0);
 
+/*
 		$parent_owner_uid  = null;
 		if ($local_parent_item) {
 			// find the owner channel_id
@@ -777,14 +780,15 @@ class Diaspora_Receiver {
 			if ($r)
 				$parent_owner_uid = $r[0]['uid'];
 		}
+*/
 
 		$xchan = find_diaspora_person_by_handle($diaspora_handle);
-
 		if (!$xchan) {
 			logger('Cannot resolve diaspora handle ' . $diaspora_handle);
 			return;
 		}
 
+/*
 		$contact = diaspora_get_contact_by_handle((($parent_owner_uid) ? $parent_owner_uid : $this->importer['channel_id']), $this->msg['author']);
 
 		if (is_array($contact)) {
@@ -794,17 +798,20 @@ class Diaspora_Receiver {
 			$contact       = find_diaspora_person_by_handle($this->msg['author']);
 			$abook_contact = false;
 		}
+*/
+		$contact = find_diaspora_person_by_handle($this->msg['author']);
 
-		$pub_comment = 1;
+
+		//$pub_comment = 1;
 
 		// By default comments on public posts are allowed from anybody on Diaspora. That is their policy.
 		// If the parent item originates from this hub we can over-ride the default comment policy.
 
-		if ($parent_owner_uid)
-			$pub_comment = get_pconfig($parent_owner_uid, 'system', 'diaspora_public_comments', 1);
+		//if ($parent_owner_uid)
+		//	$pub_comment = get_pconfig($parent_owner_uid, 'system', 'diaspora_public_comments', 1);
 
-		if (intval($parent_item['item_private']))
-			$pub_comment = 0;
+		//if (intval($parent_item['item_private']))
+		//	$pub_comment = 0;
 
 		$editing = false;
 		$orig_id = null;
@@ -838,7 +845,7 @@ class Diaspora_Receiver {
 
 
 		/* WARN: As a side effect of this, all of $this->xmlbase will now be unxmlified */
-
+/*
 		if ($this->xmlbase) {
 			$unxml = [];
 			foreach ($this->xmlbase as $k => $v) {
@@ -849,7 +856,7 @@ class Diaspora_Receiver {
 				$unxml[$k] = $v;
 			}
 		}
-
+*/
 		// $this->force is true on manual content import.
 		// This way there are no signatures provided for comments.
 
@@ -859,7 +866,7 @@ class Diaspora_Receiver {
 
 			$key = $this->msg['key'];
 
-			$x = diaspora_verify_fields($unxml, $parent_author_signature, $key);
+			$x = diaspora_verify_fields($this->msg['msg'], $parent_author_signature, $key);
 			if (!$x) {
 				logger('diaspora_comment: top-level owner verification failed.');
 				return;
@@ -872,11 +879,13 @@ class Diaspora_Receiver {
 
 			$key = $this->msg['msg_author_key'];
 
+/*
 			if ($this->importer['system'] && $this->msg['format'] === 'legacy') {
 				// don't relay to the sys channel
 				logger('diaspora_comment: relay to sys channel blocked.');
 				return;
 			}
+*/
 
 			// Note: Diaspora verifies both signatures. We only verify the
 			// author_signature when relaying.
@@ -894,7 +903,7 @@ class Diaspora_Receiver {
 			}
 
 			if ($author_signature || $this->msg['type'] === 'legacy') {
-				$x = diaspora_verify_fields($unxml, $author_signature, $key);
+				$x = diaspora_verify_fields($this->msg['msg'], $author_signature, $key);
 				if (!$x) {
 					logger('diaspora_comment: comment author verification failed.');
 					return;
@@ -906,7 +915,7 @@ class Diaspora_Receiver {
 			// magic envelope we will send is signed and verified.
 
 			// if(! defined('DIASPORA_V2'))
-			$unxml['parent_author_signature'] = diaspora_sign_fields($unxml, $this->importer['channel_prvkey']);
+			//$unxml['parent_author_signature'] = diaspora_sign_fields($unxml, $this->importer['channel_prvkey']);
 
 		}
 
@@ -1025,7 +1034,9 @@ class Diaspora_Receiver {
 		// If the parent was public, we allow it.
 		// In all other cases, honour the permissions for this Diaspora connection
 
-		$tgroup = tgroup_check($this->importer['channel_id'], $datarray);
+
+		// A comment can not be tag delivered right?
+		// $tgroup = tgroup_check($this->importer['channel_id'], $datarray);
 
 		// If it's a comment to one of our own posts, check if the commenter has permission to comment.
 		// We should probably check send_stream permission if the stream owner isn't us,
@@ -1035,18 +1046,29 @@ class Diaspora_Receiver {
 		if ($parent_item['owner_xchan'] === $this->importer['channel_hash']) {
 			$allowed = perm_is_allowed($this->importer['channel_id'], $xchan['xchan_hash'], 'post_comments');
 
-			// let the plugin setting (Allow any Diaspora member to comment on your public posts)
-			// over-ride possibly more loose channel permission limits (anyone on the internet).
-			if (!$pub_comment && !$abook_contact)
-				$allowed = false;
+			if (!$allowed) {
+				if (get_pconfig($this->importer['channel_id'], 'system', 'moderate_unsolicited_comments')) {
+					$datarray['item_blocked'] = intval(ITEM_MODERATED);
+					$allowed = true;
+				}
+				else {
+					logger('rejected comment from ' . $datarray['author_xchan'] . ' for ' . $this->importer['channel_address']);
+
+					// TODO: not implemented
+					// let the sender know we received their comment but we don't permit spam here.
+					// send retraction
+
+					$allowed = false;
+				}
+			}
 		}
 		else {
 			$allowed = true;
-			if (!$pub_comment && !$abook_contact)
-				$allowed = false;
+			//if (!$pub_comment && !$abook_contact)
+			//	$allowed = false;
 		}
 
-		if (!$allowed && !$tgroup) {
+		if (!$allowed/* && !$tgroup*/) {
 			logger('diaspora_comment: Ignoring this author.', LOGGER_DEBUG);
 			return 202;
 		}
@@ -1066,7 +1088,7 @@ class Diaspora_Receiver {
 			return 202;
 		}
 
-		set_iconfig($datarray, 'diaspora', 'fields', $unxml, true);
+		set_iconfig($datarray, 'diaspora', 'fields', $this->msg['msg'], true);
 
 		if ($editing) {
 			$result = item_store_update($datarray);
@@ -1490,6 +1512,7 @@ class Diaspora_Receiver {
 			return;
 		}
 
+/*
 		// does the parent originate from this site?
 		$local_parent_item = (strpos($parent_item['plink'], z_root()) === 0);
 
@@ -1502,14 +1525,14 @@ class Diaspora_Receiver {
 			if ($r)
 				$parent_owner_uid = $r[0]['uid'];
 		}
-
+*/
 		$xchan = find_diaspora_person_by_handle($diaspora_handle);
 
 		if (!$xchan) {
 			logger('Cannot resolve diaspora handle ' . $diaspora_handle);
 			return;
 		}
-
+/*
 		$contact = diaspora_get_contact_by_handle((($parent_owner_uid) ? $parent_owner_uid : $this->importer['channel_id']), $this->msg['author']);
 
 		if (is_array($contact)) {
@@ -1519,17 +1542,21 @@ class Diaspora_Receiver {
 			$contact       = find_diaspora_person_by_handle($this->msg['author']);
 			$abook_contact = false;
 		}
+*/
+		$contact = find_diaspora_person_by_handle($this->msg['author']);
 
-		$pub_comment = 1;
+		$arr = [];
+
+		//$pub_comment = 1;
 
 		// By default comments on public posts are allowed from anybody on Diaspora. That is their policy.
 		// If the parent item originates from this hub we can over-ride the default comment policy.
 
-		if ($parent_owner_uid)
-			$pub_comment = get_pconfig($parent_owner_uid, 'system', 'diaspora_public_comments', 1);
+		//if ($parent_owner_uid)
+		//	$pub_comment = get_pconfig($parent_owner_uid, 'system', 'diaspora_public_comments', 1);
 
-		if (intval($parent_item['item_private']))
-			$pub_comment = 0;
+		//if (intval($parent_item['item_private']))
+		//	$pub_comment = 0;
 
 		// If it's a like to one of our own posts, check if the liker has permission to like.
 		// We should probably check send_stream permission if the stream owner isn't us,
@@ -1539,15 +1566,24 @@ class Diaspora_Receiver {
 		if ($parent_item['owner_xchan'] === $this->importer['channel_hash']) {
 			$allowed = perm_is_allowed($this->importer['channel_id'], $xchan['xchan_hash'], 'post_comments');
 
-			// let the plugin setting (Allow any Diaspora member to comment/like your public posts)
-			// over-ride possibly more loose channel permission limits (anyone on the internet).
-			if (!$pub_comment && !$abook_contact)
-				$allowed = false;
+			if (!$allowed) {
+				if (get_pconfig($this->importer['channel_id'], 'system', 'moderate_unsolicited_comments')) {
+					$arr['item_blocked'] = intval(ITEM_MODERATED);
+					$allowed = true;
+				}
+				else {
+					logger('rejected comment from ' . $datarray['author_xchan'] . ' for ' . $this->importer['channel_address']);
+
+					// TODO: not implemented
+					// let the sender know we received their comment but we don't permit spam here.
+					// send retraction
+
+					$allowed = false;
+				}
+			}
 		}
 		else {
 			$allowed = true;
-			if (!$pub_comment && !$abook_contact)
-				$allowed = false;
 		}
 
 		if (!$allowed) {
@@ -1617,13 +1653,14 @@ class Diaspora_Receiver {
 			$key = $this->msg['msg_author_key'];
 
 			$x = diaspora_verify_fields($this->xmlbase, $author_signature, $key);
+
 			if (!$x) {
 				logger('diaspora_like: author verification failed.');
 				return;
 			}
 
-			if (defined('DIASPORA_V2'))
-				$this->xmlbase['parent_author_signature'] = diaspora_sign_fields($this->xmlbase, $this->importer['channel_prvkey']);
+			//if (defined('DIASPORA_V2'))
+			//	$this->xmlbase['parent_author_signature'] = diaspora_sign_fields($this->xmlbase, $this->importer['channel_prvkey']);
 		}
 
 		logger('diaspora_like: signature check complete.', LOGGER_DEBUG);
@@ -1649,7 +1686,6 @@ class Diaspora_Receiver {
 		$objtype   = (($parent_item['resource_type'] === 'photo') ? ACTIVITY_OBJ_PHOTO : ACTIVITY_OBJ_NOTE);
 		$object    = \Zotlabs\Lib\Activity::fetch_item(['id' => $parent_item['mid']]);
 
-		$arr               = [];
 		$arr['uid']        = $this->importer['channel_id'];
 		$arr['aid']        = $this->importer['channel_account_id'];
 		$arr['mid']        = z_root() . '/activity/' . $guid;
@@ -1683,6 +1719,7 @@ class Diaspora_Receiver {
 		$arr['obj_type']     = $objtype;
 		$arr['obj']          = $object;
 
+/*
 		if ($this->xmlbase) {
 			$unxml = [];
 			foreach ($this->xmlbase as $k => $v) {
@@ -1695,8 +1732,8 @@ class Diaspora_Receiver {
 				$unxml[$k] = $v;
 			}
 		}
-
-		set_iconfig($arr, 'diaspora', 'fields', $unxml, true);
+*/
+		set_iconfig($arr, 'diaspora', 'fields', $this->msg['msg'], true);
 
 		$result = item_store($arr);
 
@@ -1717,7 +1754,6 @@ class Diaspora_Receiver {
 
 	function retraction() {
 
-
 		$guid = notags($this->get_target_guid());
 		$diaspora_handle = notags($this->get_author());
 		$type = notags($this->get_type());
@@ -1736,7 +1772,6 @@ class Diaspora_Receiver {
 			);
 
 			if($r) {
-
 				// by default only delete your copy of the item without propagating it further
 
 				$stage = DROPITEM_NORMAL;
@@ -1745,10 +1780,11 @@ class Diaspora_Receiver {
 
 					// If we are the conversation owner, propagate the delete elsewhere
 
-					$p = q("select * from item where uuid = '%s' and uid = %d",
+					$p = q("select * from item where mid = '%s' and uid = %d",
 						dbesc($r[0]['parent_mid']),
 						intval($this->importer['channel_id'])
 					);
+
 					if($p && $p[0]['owner_xchan'] === $this->importer['channel_hash']) {
 						$stage = DROPITEM_PHASE1;
 					}

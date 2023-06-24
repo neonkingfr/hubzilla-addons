@@ -21,7 +21,7 @@ class Diaspora extends Controller {
 
 		check_form_security_token_redirectOnErr('/diaspora', 'diaspora');
 
-		set_pconfig(local_channel(), 'system', 'diaspora_public_comments', intval($_POST['dspr_pubcomment']));
+		//set_pconfig(local_channel(), 'system', 'diaspora_public_comments', intval($_POST['dspr_pubcomment']));
 		set_pconfig(local_channel(), 'system', 'prevent_tag_hijacking', intval($_POST['dspr_hijack']));
 		set_pconfig(local_channel(), 'diaspora', 'sign_unsigned', intval($_POST['dspr_sign']));
 
@@ -58,7 +58,7 @@ class Diaspora extends Controller {
 			return Apps::app_render($papp, 'module');
 		}
 
-		$pubcomments = get_pconfig(local_channel(), 'system', 'diaspora_public_comments', 1);
+		//$pubcomments = get_pconfig(local_channel(), 'system', 'diaspora_public_comments', 1);
 		$hijacking   = get_pconfig(local_channel(), 'system', 'prevent_tag_hijacking');
 		$signing     = get_pconfig(local_channel(), 'diaspora', 'sign_unsigned');
 		$followed    = get_pconfig(local_channel(), 'diaspora', 'followed_tags');
@@ -71,10 +71,11 @@ class Diaspora extends Controller {
 
 		$sc = '<div class="section-content-info-wrapper">' . $desc . '</div>';
 
+/*
 		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), [
 			'$field' => ['dspr_pubcomment', t('Allow any Diaspora member to comment or like your public posts'), $pubcomments, t('If this setting is disabled only your contacts will be able to comment or like your public posts'), $yes_no],
 		]);
-
+*/
 		$sc .= replace_macros(get_markup_template('field_checkbox.tpl'), [
 			'$field' => ['dspr_hijack', t('Prevent your hashtags from being redirected to other sites'), $hijacking, '', $yes_no],
 		]);
