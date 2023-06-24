@@ -866,7 +866,7 @@ class Diaspora_Receiver {
 
 			$key = $this->msg['key'];
 
-			$x = diaspora_verify_fields($this->msg['msg'], $parent_author_signature, $key);
+			$x = diaspora_verify_fields($this->xmlbase, $parent_author_signature, $key);
 			if (!$x) {
 				logger('diaspora_comment: top-level owner verification failed.');
 				return;
@@ -903,7 +903,7 @@ class Diaspora_Receiver {
 			}
 
 			if ($author_signature || $this->msg['type'] === 'legacy') {
-				$x = diaspora_verify_fields($this->msg['msg'], $author_signature, $key);
+				$x = diaspora_verify_fields($this->xmlbase, $author_signature, $key);
 				if (!$x) {
 					logger('diaspora_comment: comment author verification failed.');
 					return;
@@ -1088,7 +1088,7 @@ class Diaspora_Receiver {
 			return 202;
 		}
 
-		set_iconfig($datarray, 'diaspora', 'fields', $this->msg['msg'], true);
+		set_iconfig($datarray, 'diaspora', 'fields', $this->xmlbase, true);
 
 		if ($editing) {
 			$result = item_store_update($datarray);
@@ -1472,6 +1472,7 @@ class Diaspora_Receiver {
 	}
 
 	function like() {
+
 		$guid = notags($this->get_property('guid'));
 		if (!$guid) {
 			logger('diaspora_like: missing guid' . print_r($this->msg, true), LOGGER_DEBUG);
@@ -1652,11 +1653,19 @@ class Diaspora_Receiver {
 
 			$key = $this->msg['msg_author_key'];
 
-			$x = diaspora_verify_fields($this->xmlbase, $author_signature, $key);
+			if (!$author_signature) {
+				if ($parent_item['owner_xchan'] !== $this->msg['author']) {
+					logger('author signature required and not present');
+					return;
+				}
+			}
 
-			if (!$x) {
-				logger('diaspora_like: author verification failed.');
-				return;
+			if ($author_signature) {
+				$x = diaspora_verify_fields($this->xmlbase, $author_signature, $key);
+				if (!$x) {
+					logger('diaspora_like: like author verification failed.');
+					return;
+				}
 			}
 
 			//if (defined('DIASPORA_V2'))
