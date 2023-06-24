@@ -36,6 +36,10 @@ function diaspora_dispatch_public($msg) {
 			$channels = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network = 'diaspora' and xchan_hash = '%s') and channel_removed = 0",
 				dbesc($msg['author'])
 			);
+
+			if($sys) {
+				$channels = array_merge($channels, [$sys]);
+			}
 		}
 		else {
 
