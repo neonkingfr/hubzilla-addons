@@ -19,44 +19,64 @@ function diaspora_dispatch_public($msg) {
 		$sys['system'] = true;
 	}
 
-	$r = [];
+	$channels = [];
+	$owner_parent = [];
 
 	if(get_config('diaspora', 'delivery_try_all')) {
 		// Attempt delivery to anybody who has the 'Diaspora Protocol' app installed
 		// This can be resource intensive on hubs with many channels
 		$app_id = hash('whirlpool','Diaspora Protocol');
-		$r = q("SELECT * from channel where channel_id in ( SELECT app_channel from app where app_channel != 0 and app_id = '%s' ) and channel_removed = 0 ",
+		$channels = q("SELECT * from channel where channel_id in ( SELECT app_channel from app where app_channel != 0 and app_id = '%s' ) and channel_removed = 0 ",
 			dbesc($app_id)
 		);
 	}
 	else {
 		if(empty($msg['msg']['parent_guid'])) {
 			// Attempt delivery to anybody who is connected with the sender
-			$r = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network = 'diaspora' and xchan_hash = '%s') and channel_removed = 0",
+			$channels = q("SELECT * from channel where channel_id in ( SELECT abook_channel from abook left join xchan on abook_xchan = xchan_hash WHERE xchan_network = 'diaspora' and xchan_hash = '%s') and channel_removed = 0",
 				dbesc($msg['author'])
 			);
+
+			if($sys) {
+				$channels = array_merge($channels, [$sys]);
+			}
 		}
 		else {
-			// If we have a parent, attempt delivery to anybody who owns the parent
-			$uids = q("SELECT uid FROM item WHERE uuid = '%s'",
+
+			// If the parent originates from this site, only deliver to the owner.
+			// If the item will be accepted by the owner it will be relayed to everybody else.
+
+			$owner_parent = q("SELECT owner_xchan, item_wall from item where uuid = '%s' order by item_wall desc limit 1",
 				dbesc($msg['msg']['parent_guid'])
 			);
 
-			if ($uids) {
-				$uids = ids_to_querystr($uids, 'uid');
-				$r = dbq("SELECT * FROM channel WHERE channel_id IN ($uids) AND channel_removed = 0");
+			if ($owner_parent && $owner_parent[0]['item_wall']) {
+				$owner_channel = channelx_by_hash($owner_parent[0]['owner_xchan']);
+				if ($owner_channel) {
+					$channels = [$owner_channel];
+				}
+			}
+			else {
+				$uids = q("SELECT uid FROM item WHERE uuid = '%s'",
+					dbesc($msg['msg']['parent_guid'])
+				);
+
+				if ($uids) {
+					$uids = ids_to_querystr($uids, 'uid');
+					$channels = dbq("SELECT * FROM channel WHERE channel_id IN ($uids) AND channel_removed = 0");
+				}
+
+				if($sys) {
+					$channels = array_merge($channels, [$sys]);
+				}
 			}
 		}
 	}
 
-	if($sys) {
-		$r = array_merge($r,[$sys]);
-	}
-
-	if($r) {
-		foreach($r as $rr) {
-			logger('diaspora_public: delivering to: ' . $rr['channel_name'] . ' (' . $rr['channel_address'] . ') ');
-			diaspora_dispatch($rr,$msg);
+	if($channels) {
+		foreach($channels as $channel) {
+			logger('diaspora_public: delivering to: ' . $channel['channel_name'] . ' (' . $channel['channel_address'] . ') ');
+			diaspora_dispatch($channel,$msg);
 		}
 	}
 	else {

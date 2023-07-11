@@ -765,15 +765,11 @@ function diaspora_queue($owner,$contact,$slap,$public_batch,$message_id = '') {
 
 
 function diaspora_follow_allow(&$b) {
-
-	if($b['xchan']['xchan_network'] !== 'diaspora' && $b['xchan']['xchan_network'] !== 'friendica-over-diaspora')
+	if(!in_array($b['xchan']['xchan_network'], ['diaspora', 'friendica-over-diaspora'])) {
 		return;
+	}
 
-	$allowed = Apps::addon_app_installed($b['channel_id'], 'diaspora');
-
-	if($allowed === false)
-		$allowed = 1;
-	$b['allowed'] = $allowed;
+	$b['allowed'] = Apps::addon_app_installed($b['channel_id'], 'diaspora');
 	$b['singleton'] = 1;  // this network does not support channel clones
 }
 
@@ -802,6 +798,7 @@ function diaspora_discover(&$b) {
 	$diaspora_guid = '';
 	$diaspora_key = '';
 	$guid = '';
+	$follow_url = '';
 
 	$dfrn = false;
 
@@ -810,9 +807,13 @@ function diaspora_discover(&$b) {
 	if($x && array_key_exists('links',$x) && $x['links']) {
 		foreach($x['links'] as $link) {
 			if(array_key_exists('rel',$link)) {
-
-				if($link['rel'] === NAMESPACE_DFRN)
+				if($link['rel'] === NAMESPACE_DFRN) {
 					$dfrn = escape_tags($link['href']);
+				}
+
+				if ($link['rel'] === NAMESPACE_OSTATUSSUB) {
+					$follow_url = escape_tags($link['template']);
+				}
 
 				if($link['rel'] === 'http://joindiaspora.com/seed_location') {
 					$diaspora_base = escape_tags($link['href']);
@@ -938,11 +939,12 @@ function diaspora_discover(&$b) {
 		 */
 
 		if($r) {
-			$r = q("update xchan set xchan_name = '%s', xchan_network = '%s', xchan_name_date = '%s', xchan_pubkey = '%s' where xchan_hash = '%s'",
+			$r = q("update xchan set xchan_name = '%s', xchan_network = '%s', xchan_name_date = '%s', xchan_pubkey = '%s', xchan_follow = '%s' where xchan_hash = '%s'",
 				dbesc($vcard['fn']),
 				dbesc($network),
 				dbescdate(datetime_convert()),
 				dbesc($pubkey),
+				dbesc(str_replace('{uri}', '%s', $follow_url)),
 				dbesc($addr)
 			);
 		}
@@ -956,7 +958,8 @@ function diaspora_discover(&$b) {
 					'xchan_url'          => escape_tags($profile),
 					'xchan_name'         => escape_tags($vcard['fn']),
 					'xchan_name_date'    => datetime_convert(),
-					'xchan_network'      => $network
+					'xchan_network'      => $network,
+					'xchan_follow'       => escape_tags(str_replace('{uri}', '%s', $follow_url))
 				]
 			);
 		}
