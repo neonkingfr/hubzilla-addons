@@ -207,7 +207,7 @@ EOT;
 }
 
 
-function diaspora_share($owner,$contact) {
+function diaspora_share($owner, $contact) {
 
 	$allowed = Apps::addon_app_installed($owner['channel_id'], 'diaspora');
 
@@ -250,14 +250,12 @@ function diaspora_share($owner,$contact) {
 		));
 	}
 
-	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey']);
+	$slap = diaspora_prepare_outbound($msg, $owner, $contact, $owner['channel_prvkey'], $contact['xchan_pubkey']);
 
-	return(diaspora_queue($owner,$contact,$slap, false));
-	return;
-
+	return diaspora_queue($owner, $contact, $slap, false);
 }
 
-function diaspora_unshare($owner,$contact) {
+function diaspora_unshare($owner, $contact) {
 
 	$myaddr    = channel_reddress($owner);
 	$theiraddr = $contact['xchan_addr'];
@@ -281,8 +279,8 @@ function diaspora_unshare($owner,$contact) {
 		));
 	}
 
-	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey']);
-	return(diaspora_queue($owner,$contact,$slap, false));
+	$slap = diaspora_prepare_outbound($msg, $owner, $contact, $owner['channel_prvkey'], $contact['xchan_pubkey']);
+	return diaspora_queue($owner, $contact, $slap, false);
 }
 
 

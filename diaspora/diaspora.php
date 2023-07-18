@@ -18,6 +18,8 @@ use Zotlabs\Lib\Queue;
 use Zotlabs\Lib\IConfig;
 use Zotlabs\Extend\Hook;
 use Zotlabs\Extend\Route;
+use Zotlabs\Daemon\Master;
+
 
 // use the new federation protocol
 define('DIASPORA_V2',1);
@@ -44,6 +46,7 @@ function diaspora_load() {
 		'post_local'                  => 'diaspora_post_local',
 		'well_known'                  => 'diaspora_well_known',
 		'create_identity'             => 'diaspora_create_identity',
+		'connection_remove'           => 'diaspora_connection_remove',
 		'profile_sidebar'             => 'diaspora_profile_sidebar',
 		'discover_channel_webfinger'  => 'diaspora_discover',
 		'import_author'               => 'diaspora_import_author',
@@ -371,11 +374,34 @@ function diaspora_webfinger(&$b) {
 
 function diaspora_permissions_create(&$b) {
 	if($b['recipient']['xchan_network'] === 'diaspora' || $b['recipient']['xchan_network'] === 'friendica-over-diaspora') {
-
-		$b['deliveries'] = diaspora_share($b['sender'],$b['recipient']);
+		$b['deliveries'] = diaspora_share($b['sender'], $b['recipient']);
 		if($b['deliveries'])
 			$b['success'] = 1;
 	}
+}
+
+function diaspora_connection_remove(&$b) {
+	$recip = q("select * from abook left join xchan on abook_xchan = xchan_hash left join hubloc on abook_xchan = hubloc_hash where abook_id = %d and abook_channel = %d",
+		intval($b['abook_id']),
+		intval($b['channel_id'])
+	);
+
+	if (!$recip || !in_array($recip[0]['xchan_network'], ['diaspora', 'friendica-over-diaspora'])) {
+		return;
+	}
+
+	$channel = channelx_by_n($b['channel_id']);
+
+	if (!$channel) {
+		return;
+	}
+
+	$qi = diaspora_unshare($channel, $recip[0]);
+
+	if ($qi) {
+		Master::Summon(['Deliver', $qi]);
+	}
+
 }
 
 function diaspora_permissions_update(&$b) {
@@ -707,11 +733,7 @@ function diaspora_process_outbound(&$arr) {
 }
 
 
-
-
-
 function diaspora_queue($owner,$contact,$slap,$public_batch,$message_id = '') {
-
 
 	$allowed = Apps::addon_app_installed($owner['channel_id'], 'diaspora');
 
