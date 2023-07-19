@@ -1350,8 +1350,6 @@ function pubcrawl_queue_deliver(&$b) {
 
 		$xhead = HTTPSig::create_sig($headers, $chan['channel_prvkey'], channel_url($chan));
 
-hz_syslog('sending: ' . print_r(json_decode($outq['outq_msg'], true), true));
-
 		$result = z_post_url($outq['outq_posturl'], $outq['outq_msg'], $retries, ['headers' => $xhead]);
 
 		if ($result['success'] && $result['return_code'] < 300) {

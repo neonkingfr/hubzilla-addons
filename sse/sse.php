@@ -37,6 +37,11 @@ function sse_item_stored($item) {
 	if(! is_item_normal($item))
 		return;
 
+	// Filter FEP-5624 approvals for comments and internal follow activities
+	if (in_array($item['verb'], [ACTIVITY_ATTEND, 'Accept', ACTIVITY_ATTENDNO, 'Reject', ACTIVITY_FOLLOW])) {
+		return;
+	}
+
 	$is_file = in_array($item['obj_type'], ['Document', 'Video', 'Audio', 'Image']);
 
 	$item_uid = $item['uid'];
@@ -78,10 +83,6 @@ function sse_item_stored($item) {
 
 		$site_firehose = get_config('system', 'site_firehose', 0);
 		$vnotify = get_pconfig($item_uid, 'system', 'vnotify', -1);
-
-		// FEP-5624 filter approvals for comments
-		if (in_array($item['verb'], [ACTIVITY_ATTEND, 'Accept', ACTIVITY_ATTENDNO, 'Reject']))
-			continue;
 
 		if (in_array($item['verb'], [ACTIVITY_LIKE, ACTIVITY_DISLIKE]) && !($vnotify & VNOTIFY_LIKE))
 			continue;

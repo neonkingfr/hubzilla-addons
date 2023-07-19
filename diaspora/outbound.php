@@ -3,20 +3,20 @@
 use Zotlabs\Lib\Apps;
 use Zotlabs\Lib\Crypto;
 
-function diaspora_prepare_outbound($msg,$owner,$contact,$owner_prvkey,$contact_pubkey,$public = false) {
+function diaspora_prepare_outbound($msg,$owner,$contact,$public = false) {
 
 	if(defined('DIASPORA_V2')) {
-		$post = diaspora_v2_build($msg,$owner,$contact,$owner_prvkey,$contact_pubkey,$public);
+		$post = diaspora_v2_build($msg,$owner,$contact,$public);
 		logger('diaspora_v2:' . print_r($post,true));
 		return $post;
 	}
 	else {
-		return 'xml=' . urlencode(urlencode(diaspora_msg_build($msg,$owner,$contact,$owner_prvkey,$contact_pubkey,$public)));
+		return 'xml=' . urlencode(urlencode(diaspora_msg_build($msg,$owner,$contact,$public)));
 	}
 }
 
 
-function diaspora_v2_build($msg,$channel,$contact,$prvkey,$pubkey,$public = false) {
+function diaspora_v2_build($msg,$channel,$contact,$public = false) {
 
 	logger('diaspora_v2_build: ' . $msg, LOGGER_DATA, LOG_DEBUG);
 
@@ -33,7 +33,7 @@ function diaspora_v2_build($msg,$channel,$contact,$prvkey,$pubkey,$public = fals
 	$signable_data = $data  . '.' . base64url_encode($type,false) . '.'
 		. base64url_encode($encoding,false) . '.' . base64url_encode($alg,false) ;
 
-	$signature = Crypto::sign($signable_data,$prvkey);
+	$signature = Crypto::sign($signable_data,$channel['channel_prvkey']);
 	$sig = base64url_encode($signature,false);
 
 $magic_env = <<< EOT
@@ -64,7 +64,7 @@ EOT;
 		'iv'  => base64_encode($iv),
 	]);
 
-	openssl_public_encrypt($aes_key,$aes_key1,$pubkey);
+	openssl_public_encrypt($aes_key,$aes_key1,$contact['xchan_pubkey']);
 
 	$j = [
 		'aes_key' => base64_encode($aes_key1),
@@ -250,7 +250,7 @@ function diaspora_share($owner, $contact) {
 		));
 	}
 
-	$slap = diaspora_prepare_outbound($msg, $owner, $contact, $owner['channel_prvkey'], $contact['xchan_pubkey']);
+	$slap = diaspora_prepare_outbound($msg, $owner, $contact);
 
 	return diaspora_queue($owner, $contact, $slap, false);
 }
@@ -279,7 +279,7 @@ function diaspora_unshare($owner, $contact) {
 		));
 	}
 
-	$slap = diaspora_prepare_outbound($msg, $owner, $contact, $owner['channel_prvkey'], $contact['xchan_pubkey']);
+	$slap = diaspora_prepare_outbound($msg, $owner, $contact);
 	return diaspora_queue($owner, $contact, $slap, false);
 }
 
@@ -299,7 +299,7 @@ function diaspora_send_status($item,$owner,$contact,$public_batch = false) {
 		return [];
 
 	logger('diaspora_send_status: '.$owner['channel_name'].' -> '.$contact['xchan_name'].' base message: ' . $msg, LOGGER_DATA);
-	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'], $public_batch);
+	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$public_batch);
 
 	$qi = array(diaspora_queue($owner,$contact,$slap,$public_batch,$item['mid']));
 	return $qi;
@@ -515,7 +515,7 @@ function diaspora_send_upstream($item,$owner,$contact,$public_batch = false,$upl
 
 	logger('diaspora_send_upstream: base message: ' . $msg, LOGGER_DATA);
 
-	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],$public_batch);
+	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$public_batch);
 	return(diaspora_queue($owner,$contact,$slap,$public_batch,$item['mid']));
 }
 
@@ -563,8 +563,6 @@ function diaspora_send_downstream($item,$owner,$contact,$public_batch = false) {
 		// this is a synced item from a clone - rewrite author to primary location
 		$myaddr = $item['author']['xchan_addr'];
 	}
-
-	$theiraddr = $contact['xchan_addr'];
 
 	if($item['item_deleted']) {
 		return diaspora_send_retraction($item,$owner,$contact,$public_batch);
@@ -642,7 +640,7 @@ function diaspora_send_downstream($item,$owner,$contact,$public_batch = false) {
 
 	logger('diaspora_send_downstream: base message: ' . $msg, LOGGER_DATA);
 
-    $slap = diaspora_prepare_outbound($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],$public_batch);
+    $slap = diaspora_prepare_outbound($msg,$owner,$contact,$public_batch);
     return(diaspora_queue($owner,$contact,$slap,$public_batch,$item['mid']));
 
 }
@@ -682,7 +680,7 @@ function diaspora_send_retraction($item,$owner,$contact,$public_batch = false) {
 
 	$msg = arrtoxml('retraction',$fields);
 
-	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$owner['channel_prvkey'],$contact['xchan_pubkey'],$public_batch);
+	$slap = diaspora_prepare_outbound($msg,$owner,$contact,$public_batch);
 	return(diaspora_queue($owner,$contact,$slap,$public_batch,$item['mid']));
 }
 
@@ -696,7 +694,7 @@ function diaspora_send_mail($item, $contact) {
 	else
 		$outmsg = arrtoxml('message', $fields);
 
-	$slap = diaspora_prepare_outbound($outmsg, $owner, $contact, $owner['channel_prvkey'], $contact['xchan_pubkey'], false);
+	$slap = diaspora_prepare_outbound($outmsg, $owner, $contact, false);
 	return(diaspora_queue($owner, $contact, $slap, false, $item['target_item']['mid']));
 
 }
@@ -796,7 +794,7 @@ function diaspora_profile_change($channel,$recip,$public_batch = false,$profile_
 		}
 
 		$outmsg = arrtoxml('profile',$msg);
-		$slap = diaspora_prepare_outbound($outmsg,$channel,$recip,$channel['channel_prvkey'],$recip['xchan_pubkey'],$public_batch);
+		$slap = diaspora_prepare_outbound($outmsg,$channel,$recip,$public_batch);
 		return(diaspora_queue($channel,$recip,$slap,$public_batch,$item['mid']));
 	}
 
@@ -839,7 +837,7 @@ function diaspora_send_participation($channel, $contact, $item) {
 		]
 	);
 
-	$slap = diaspora_prepare_outbound($msg, $channel, $contact, $channel['channel_prvkey'], $contact['xchan_pubkey']);
+	$slap = diaspora_prepare_outbound($msg, $channel, $contact);
 	return (diaspora_queue($channel, $contact, $slap, false));
 }
 
