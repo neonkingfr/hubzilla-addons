@@ -443,7 +443,7 @@ class Inbox extends Controller {
 				case 'Flag':
 				case 'Ignore':
 				case 'Invite':
-				case 'Listen':
+				// case 'Listen':
 				case 'Move':
 				case 'Offer':
 				case 'Question':
