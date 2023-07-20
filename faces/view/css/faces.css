@@ -1,0 +1,113 @@
+* {
+    box-sizing: border-box;
+}
+
+.img-container {
+    float: left;
+    width: 100%;
+    /* height: 100%; */
+}
+
+.img-face {
+    width: 100%;
+}
+
+.clearfix::after {
+    content: "";
+    clear: both;
+    display: table;
+}
+
+/* Container holding the image and the text */
+.face-container {
+    position: relative;
+}
+
+/* for frames in images with faces */
+.face-frame {
+    position: absolute;
+}
+/* shows the name */
+.face-frame-name {
+    color: white;
+    border-style: dashed;
+}
+
+/* close button for selected picture */
+.face-frame-close {
+    right: 5px;
+    top: 5px;
+}
+
+/* close button for selected picture */
+.face-frame-previous {
+    left: 5px;
+    bottom: 5px;
+}
+
+/* close button for selected picture */
+.face-frame-next {
+    right: 5px;
+    bottom: 5px;
+}
+
+/* close button for selected picture */
+#face-frame-edit {
+    color: white;
+    border-style: dashed;
+    text-align: center;
+}
+
+#face-footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    color: white;
+    text-align: center;
+    line-height: 1.5;
+    height: 0px;
+}
+
+#face-footer-buttons {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    color: white;
+    text-align: center;
+    line-height: 1.5;
+    height: 40px;
+}
+
+.face-name-and-buttons {
+    visibility: hidden;
+}
+
+#face-edit-set-name {
+    color:green;
+}
+
+#face-edit-set-ignore {
+    color:red;
+}
+
+#face-scroll-top {
+    height:2px;
+    width: 100%;
+}
+
+#face-scroll-end {
+    min-height:2px;
+    width: 100%;
+}
+
+#face-scoll-top-message {
+    height:20px;
+    width: 100%;
+}
+
+.collapsible {
+    display: none;
+    font-size: 20px;
+}

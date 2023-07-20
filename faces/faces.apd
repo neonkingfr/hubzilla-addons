@@ -1,0 +1,8 @@
+
+version: 1.0
+url: $baseurl/faces/$nick
+requires: local_channel
+name: Faces
+photo: icon:eye
+categories: Multimedia
+desc: Face recognition for your photo album.
