@@ -1,5 +1,5 @@
 version: 2
-url: $baseurl/workflow
+url: $baseurl/workflow, $baseurl/settings/workflow
 requires: local_channel
 name: Workflow / Issue Tracking
 photo: icon:list-ol
