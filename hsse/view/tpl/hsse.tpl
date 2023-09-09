@@ -125,7 +125,7 @@
 				</div>
 				{{if $writefiles || $weblink || $setloc || $clearloc || $feature_expire || $feature_encrypt || $feature_voting}}
 				<div class="btn-group d-lg-none">
-					<button type="button" id="more-tools" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+					<button type="button" id="more-tools" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
 						<i id="more-tools-icon" class="fa fa-cog jot-icons"></i>
 					</button>
 					<div class="dropdown-menu">
@@ -177,12 +177,12 @@
 				</button>
 				{{/if}}
 				{{if $jotnets}}
-				<button id="dbtn-jotnets" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#jotnetsModal" type="button" title="{{$jotnets_label}}" style="{{if $lockstate == 'lock'}}display: none;{{/if}}">
+				<button id="dbtn-jotnets" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#jotnetsModal" type="button" title="{{$jotnets_label}}" style="{{if $lockstate == 'lock'}}display: none;{{/if}}">
 					<i class="fa fa-share-alt jot-icons"></i>
 				</button>
 				{{/if}}
 				{{if $showacl}}
-				<button id="dbtn-acl" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#aclModal" title="{{$permset}}" type="button" data-form_id="profile-jot-form">
+				<button id="dbtn-acl" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#aclModal" title="{{$permset}}" type="button" data-form_id="profile-jot-form">
 					<i id="jot-perms-icon" class="fa fa-{{$lockstate}} jot-icons{{if $bang}} jot-lock-warn{{/if}}"></i>
 				</button>
 				{{/if}}
@@ -200,13 +200,13 @@
 					<div class="modal-content">
 						<div class="modal-header">
 							<h3 class="modal-title" id="expiryModalLabel">{{$jotnets_label}}</h3>
-							<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+							<button type="button" class="close" data-bs-dismiss="modal" aria-hidden="true">&times;</button>
 						</div>
 						<div class="modal-body">
 							{{$jotnets}}
 						</div>
 						<div class="modal-footer">
-							<button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+							<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
 						</div>
 					</div><!-- /.modal-content -->
 				</div><!-- /.modal-dialog -->
@@ -227,7 +227,7 @@
 		<div class="modal-content">
 			<div class="modal-header">
 				<h3 class="modal-title" id="expiryModalLabel">{{$expires}}</h3>
-				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+				<button type="button" class="close" data-bs-dismiss="modal" aria-hidden="true">&times;</button>
 			</div>
 			<div class="modal-body form-group" style="width:90%">
 				<div class="date">
@@ -240,7 +240,7 @@
 				</script>
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-outline-secondary" data-dismiss="modal">{{$expiryModalCANCEL}}</button>
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{$expiryModalCANCEL}}</button>
 				<button id="expiry-modal-OKButton" type="button" class="btn btn-primary">{{$expiryModalOK}}</button>
 			</div>
 		</div><!-- /.modal-content -->
@@ -254,7 +254,7 @@
 		<div class="modal-content">
 			<div class="modal-header">
 				<h3 class="modal-title" id="createdModalLabel">{{$future_txt}}</h3>
-				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+				<button type="button" class="close" data-bs-dismiss="modal" aria-hidden="true">&times;</button>
 			</div>
 			<div class="modal-body form-group" style="width:90%">
 				<div class="date">
@@ -267,7 +267,7 @@
 				</script>
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-outline-secondary" data-dismiss="modal">{{$expiryModalCANCEL}}</button>
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{$expiryModalCANCEL}}</button>
 				<button id="created-modal-OKButton" type="button" class="btn btn-primary">{{$expiryModalOK}}</button>
 			</div>
 		</div><!-- /.modal-content -->
@@ -281,7 +281,7 @@
 		<div class="modal-content">
 			<div class="modal-header">
 				<h3 class="modal-title" id="embedPhotoModalLabel">{{$embedPhotosModalTitle}}</h3>
-				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+				<button type="button" class="close" data-bs-dismiss="modal" aria-hidden="true">&times;</button>
 			</div>
 			<div class="modal-body" id="embedPhotoModalBody" >
 				<div id="embedPhotoModalBodyAlbumListDialog" class="d-none">
