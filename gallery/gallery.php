@@ -75,7 +75,7 @@ function gallery_photo_view_filter(&$arr) {
 function gallery_page_end(&$str) {
 	$uid = ((App::$profile_uid) ? App::$profile_uid : intval(local_channel()));
 
-	if(App::$module === 'page') {
+	if(!in_array(App::$module, gallery_supported_modules())) {
 		return;
 	}
 
