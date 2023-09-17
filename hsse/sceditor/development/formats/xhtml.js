@@ -12,12 +12,6 @@
 (function (sceditor) {
 	'use strict';
 
-	var IE_VER = sceditor.ie;
-
-	// In IE < 11 a BR at the end of a block level element
-	// causes a double line break.
-	var IE_BR_FIX = IE_VER && IE_VER < 11;
-
 	var dom = sceditor.dom;
 	var utils = sceditor.utils;
 
@@ -262,15 +256,15 @@
 		};
 
 		/**
+		 * Replace spaces including newlines with a single
+		 * space except for non-breaking spaces
+		 *
 		 * @param  {string} str
 		 * @return {string}
 		 * @private
 		 */
 		function trim(str) {
-			return str
-				// New lines will be shown as spaces so just convert to spaces.
-				.replace(/[\r\n]/, ' ')
-				.replace(/[^\S|\u00A0]+/g, ' ');
+			return str.replace(/[^\S\u00A0]+/g, ' ');
 		};
 
 		/**
@@ -312,14 +306,7 @@
 		function serializeNode(node, parentIsPre) {
 			switch (node.nodeType) {
 				case 1: // element
-					var tagName = node.nodeName.toLowerCase();
-
-					// IE comment
-					if (tagName === '!') {
-						handleComment(node);
-					} else {
-						handleElement(node, parentIsPre);
-					}
+					handleElement(node, parentIsPre);
 					break;
 
 				case 3: // text
@@ -731,8 +718,7 @@
 					// skip empty nlf elements (new lines automatically
 					// added after block level elements like quotes)
 					if (is(node, '.sceditor-nlf')) {
-						if (!firstChild || (!IE_BR_FIX &&
-							node.childNodes.length === 1 &&
+						if (!firstChild || (node.childNodes.length === 1 &&
 							/br/i.test(firstChild.nodeName))) {
 							// Mark as empty,it will be removed by the next code
 							empty = true;
@@ -793,7 +779,7 @@
 			var ret = {};
 
 			if (filtersA) {
-				extend(ret, filtersA);
+				ret = extend({}, ret, filtersA);
 			}
 
 			if (!filtersB) {
@@ -1188,6 +1174,41 @@
 			},
 			conv: function (node) {
 				node.parentNode.removeChild(node);
+			}
+		},
+		{
+			tags: {
+				'*': {
+					'data-sce-target': null
+				}
+			},
+			conv: function (node) {
+				var rel = attr(node, 'rel') || '';
+				var target = attr(node, 'data-sce-target');
+
+				// Only allow the value _blank and only on links
+				if (target === '_blank' && is(node, 'a')) {
+					if (!/(^|\s)noopener(\s|$)/.test(rel)) {
+						attr(node, 'rel', 'noopener' + (rel ? ' ' + rel : ''));
+					}
+
+					attr(node, 'target', target);
+				}
+
+
+				removeAttr(node, 'data-sce-target');
+			}
+		},
+		{
+			tags: {
+				code: null
+			},
+			conv: function (node) {
+				var node, nodes = node.getElementsByTagName('div');
+				while ((node = nodes[0])) {
+					node.style.display = 'block';
+					convertElement(node, 'span');
+				}
 			}
 		}
 	];
