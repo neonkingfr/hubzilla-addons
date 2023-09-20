@@ -682,8 +682,8 @@ function pubcrawl_notifier_process(&$arr) {
 
 	if ($r) {
 		foreach ($r as $rr) {
-	//		$arr['env_recips'][] = $rr['channel_hash'];
-	//		$arr['recipients'][] = '\'' . $rr['channel_hash'] . '\'';
+			$arr['env_recips'][] = $rr['channel_hash'];
+			$arr['recipients'][] = '\'' . $rr['channel_hash'] . '\'';
 		}
 	}
 
