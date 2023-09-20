@@ -20,11 +20,11 @@ function notifyadmin_unload() {
 /**
  * notifyadmin_register_account - Email the admin when a new account is registered
  * See 'register_account' hook function
- * 
+ *
  * @param array $a - App variable (unused)
  * @param array $arr - Hook-specific array
  */
-function notifyadmin_register_account($a, $arr) {
+function notifyadmin_register_account($arr) {
 	$recip = get_config('system', 'admin_email');
 	$res = z_mail(
 	  [

@@ -98,9 +98,9 @@ function rendezvous_plugin_admin(&$o) {
     ));
 }
 
-function rendezvous_init($a) {}
+function rendezvous_init() {}
 
-function rendezvous_load_pdl($a, &$b) {
+function rendezvous_load_pdl(&$b) {
     if ($b['module'] === 'rendezvous') {
 				if (argc() > 1) {
         $b['layout'] = '
@@ -110,7 +110,7 @@ function rendezvous_load_pdl($a, &$b) {
     }
 }
 
-function rendezvous_content($a) {
+function rendezvous_content() {
 		// Export the rendezvous map markers and members in JSON format
 		// URL: /rendezvous/[group_id]/export/markers
 		// URL: /rendezvous/[group_id]/export/members
@@ -178,10 +178,10 @@ function rendezvous_content($a) {
 								'$deleteMember' => t('Delete member'),
 								'$memberProximity' => t('Edit proximity alert'),
 								'$proximityDialog' => array(t('A proximity alert will be issued when this member is within a certain radius of you.<br><br>Enter a radius in meters (0 to disable):'), t('distance')),
-								'$newMarkerDialog' => array(t('Proximity alert distance (meters)'), 
+								'$newMarkerDialog' => array(t('Proximity alert distance (meters)'),
 									t('A proximity alert will be issued when you are within a certain radius of the marker location.<br><br>Enter a radius in meters (0 to disable):')),
-								'$editMarkerProximityDialog' => array(t('Marker proximity alert'), 
-									t('A proximity alert will be issued when you are within a certain radius of the marker location.<br><br>Enter a radius in meters (0 to disable):'), 
+								'$editMarkerProximityDialog' => array(t('Marker proximity alert'),
+									t('A proximity alert will be issued when you are within a certain radius of the marker location.<br><br>Enter a radius in meters (0 to disable):'),
 									t('distance'),
 									t('Reminder note'),
 									t('Enter a note to be displayed when you are within the specified proximity...')),
@@ -206,7 +206,7 @@ function rendezvous_content($a) {
 		}
 }
 
-function rendezvous_post($a) {
+function rendezvous_post() {
 		$channel = App::get_channel();
 		if (argc() === 4 && argv(1) === 'v1' && argv(2) === 'new' && argv(3) === 'group') {
 				$r = rendezvous_create_group($channel);

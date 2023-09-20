@@ -107,7 +107,7 @@ function openclipatar_sort_result(&$arr, array $prefclipids, $sortprefids) {
 	});
 }
 
-function openclipatar_profile_photo_content_end(&$a, &$o) {
+function openclipatar_profile_photo_content_end(&$o) {
 
 	$prefclipids = get_config('openclipatar', 'prefclipids');
 	$defsearch = get_config('openclipatar', 'defsearch');
@@ -200,7 +200,7 @@ function openclipatar_profile_photo_content_end(&$a, &$o) {
 	}
 }
 
-function openclipatar_content(&$a) {
+function openclipatar_content() {
 	if(! local_channel())
 		return;
 

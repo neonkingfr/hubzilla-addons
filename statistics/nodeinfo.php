@@ -1,6 +1,6 @@
 <?php
 
-function nodeinfo_content(&$a) {
+function nodeinfo_content() {
 
 	// Nodeinfo: what a stinking piece of crap.
 

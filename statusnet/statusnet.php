@@ -132,7 +132,7 @@ function statusnet_unload() {
 	Route::unregister('addon/statusnet/Mod_Statusnet.php','statusnet');
 }
 
-function statusnet_jot_nets(&$a,&$b) {
+function statusnet_jot_nets(&$b) {
 	if(! Apps::addon_app_installed(local_channel(), 'statusnet'))
 		return;
 
@@ -145,7 +145,7 @@ function statusnet_jot_nets(&$a,&$b) {
 		. '<i class="fa fa-fw fa-gnu-social"></i> ' . t('Post to GNU social') . '</div>';
 }
 
-function statusnet_post_local(&$a,&$b) {
+function statusnet_post_local(&$b) {
 	if($b['edit'])
 		return;
 
@@ -326,7 +326,7 @@ function statusnet_shortenmsg($b, $max_char) {
 	return(array("msg"=>trim($msg." ".$msglink), "image"=>$image));
 }
 
-function statusnet_post_hook(&$a,&$b) {
+function statusnet_post_hook(&$b) {
 
 	/**
 	 * Post to statusnet
@@ -510,7 +510,7 @@ function statusnet_post_hook(&$a,&$b) {
 }
 
 
-function statusnet_queue_deliver(&$a,&$b) {
+function statusnet_queue_deliver(&$b) {
 
 	$outq = $b['outq'];
 
@@ -571,7 +571,7 @@ function statusnet_plugin_admin_post(){
 
 }
 
-function statusnet_plugin_admin(&$o){
+function statusnet_plugin_admin(){
 
 	$sites = get_config('statusnet','sites');
 	$sitesform=array();
@@ -604,7 +604,7 @@ function statusnet_plugin_admin(&$o){
 	));
 }
 
-function statusnet_cron($a,$b) {
+function statusnet_cron($b) {
 	$last = get_config('statusnet','last_poll');
 
 	$poll_interval = intval(get_config('statusnet','poll_interval'));
@@ -635,7 +635,7 @@ function statusnet_cron($a,$b) {
 	set_config('statusnet','last_poll', time());
 }
 
-function statusnet_fetchtimeline($a, $uid) {
+function statusnet_fetchtimeline($uid) {
 	$ckey	= get_pconfig($uid, 'statusnet', 'consumerkey');
 	$csecret = get_pconfig($uid, 'statusnet', 'consumersecret');
 	$api	 = get_pconfig($uid, 'statusnet', 'baseapi');

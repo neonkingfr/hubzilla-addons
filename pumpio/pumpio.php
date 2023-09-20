@@ -38,7 +38,7 @@ function pumpio_unload() {
 
 function pumpio_module() {}
 
-function pumpio_content(&$a) {
+function pumpio_content() {
 
 	if(! local_channel()) {
 		notice( t('Permission denied.') . EOL);
@@ -48,7 +48,7 @@ function pumpio_content(&$a) {
 	if(argc() > 1) {
 		switch (argv(1)) {
 			case 'connect':
-				$o = pumpio_connect($a);
+				$o = pumpio_connect();
 				break;
 			default:
 				$o = print_r(App::$argv, true);
@@ -56,12 +56,12 @@ function pumpio_content(&$a) {
 		}
 	}
 	else {
-		$o = pumpio_connect($a);
+		$o = pumpio_connect();
 	}
 	return $o;
 }
 
-function pumpio_registerclient($a, $host) {
+function pumpio_registerclient($host) {
 
 	$url = 'https://' . $host . '/api/client/register';
 
@@ -87,14 +87,14 @@ function pumpio_registerclient($a, $host) {
 		$pumpio = array();
 		$pumpio["client_id"] = $values['client_id'];
 		$pumpio["client_secret"] = $values['client_secret'];
-			
+
 		//print_r($values);
 		return($values);
 	}
 	return(false);
 }
 
-function pumpio_connect($a) {
+function pumpio_connect() {
 
 	// Define the needed keys
 
@@ -156,7 +156,7 @@ function pumpio_connect($a) {
 	return($o);
 }
 
-function pumpio_jot_nets(&$a,&$b) {
+function pumpio_jot_nets(&$b) {
 	if(! Apps::addon_app_installed(local_channel(), 'pumpio'))
 		return;
 
@@ -168,7 +168,7 @@ function pumpio_jot_nets(&$a,&$b) {
 	$b .= '<div class="profile-jot-net"><input type="checkbox" name="pumpio_enable"' . $selected . ' value="1" /> <img src="addon/pumpio/pumpio.png" /> ' . t('Post to Pump.io') . '</div>';
 }
 
-function pumpio_post_local(&$a,&$b) {
+function pumpio_post_local(&$b) {
 
 	// This can probably be changed to allow editing by pointing to a different API endpoint
 
@@ -200,7 +200,7 @@ function pumpio_post_local(&$a,&$b) {
 
 
 
-function pumpio_send(&$a,&$b) {
+function pumpio_send(&$b) {
 
 	if((! is_item_normal($b)) || $b['item_private'] || ($b['created'] !== $b['edited']))
 		return;
@@ -276,7 +276,7 @@ function pumpio_send(&$a,&$b) {
 /*
  * This may not work with zot
 
-function pumpio_cron($a,$b) {
+function pumpio_cron($b) {
 		$last = get_config('pumpio','last_poll');
 
 		$poll_interval = intval(get_config('pumpio','poll_interval'));
@@ -305,7 +305,7 @@ function pumpio_cron($a,$b) {
 		set_config('pumpio','last_poll', time());
 }
 
-function pumpio_fetchtimeline($a, $uid) {
+function pumpio_fetchtimeline($uid) {
 	$ckey     = get_pconfig($uid, 'pumpio', 'consumer_key');
 	$csecret  = get_pconfig($uid, 'pumpio', 'consumer_secret');
 	$otoken   = get_pconfig($uid, 'pumpio', 'oauth_token');

@@ -25,7 +25,7 @@ function xmpp_unload() {
 	Route::unregister('addon/xmpp/Mod_Xmpp.php','xmpp');
 }
 
-function xmpp_login($a,$b) {
+function xmpp_login($b) {
 
 	if(! local_channel())
 		return;
@@ -36,7 +36,7 @@ function xmpp_login($a,$b) {
 	}
 }
 
-function xmpp_plugin_admin(&$o){
+function xmpp_plugin_admin(){
 	$t = get_markup_template("admin.tpl", "addon/xmpp/");
 
 	$o = replace_macros($t, array(
@@ -54,11 +54,11 @@ function xmpp_plugin_admin_post(){
 	info( t('Settings updated.'). EOL );
 }
 
-function xmpp_script(&$a,&$s) {
-	xmpp_converse($a,$s);
+function xmpp_script(&$s) {
+	xmpp_converse($s);
 }
 
-function xmpp_converse(&$a,&$s) {
+function xmpp_converse(&$s) {
 	if (!local_channel())
 		return;
 

@@ -7,7 +7,7 @@
  * Version: 1.1
  * Author: Mike Macgirvin <mike@zothub.com>
  * Maintainer: Mike Macgirvin <mike@macgirvin.com>
- * 
+ *
  */
 
 function bookmarker_load() {
@@ -19,7 +19,7 @@ function bookmarker_unload() {
 	unregister_hook('prepare_body', 'addon/bookmarker/bookmarker.php', 'bookmarker_prepare_body');
 }
 
-function bookmarker_prepare_body(&$a,&$b) {
+function bookmarker_prepare_body(&$b) {
 
 
 	if(get_pconfig(local_channel(),'bookmarker','disable'))
@@ -30,7 +30,7 @@ function bookmarker_prepare_body(&$a,&$b) {
 
 	if(function_exists('redbasic_init') || App::$theme_info['extends'] == 'redbasic')
 		$bookmarkicon = '<i class="fa fa-bookmark"></i>';
-	else 
+	else
 		$bookmarkicon = '<img src="addon/bookmarker/bookmarker.png" width="19px" height="20px" alt="#^" />';
 
 	$id = $b['item']['id'];

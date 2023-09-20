@@ -54,7 +54,7 @@ function irc_plugin_admin_post() {
 	info( t('IRC settings saved.') . EOL);
 }
 
-function irc_app_menu($a,&$b) {
+function irc_app_menu(&$b) {
 	$b['app_menu'][] = '<div class="app-title"><a href="irc">' . t('IRC Chatroom') . '</a></div>';
 }
 

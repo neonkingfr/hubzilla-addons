@@ -85,7 +85,7 @@ function sse_item_stored($item) {
 
 				// Since from here we can not access the last_login_date session variable for the channel
 				// we will use account_lastlog time.
-				if (strtotime($item['created']) < strtotime($current_account['account_lastlog'])) {
+				if ($current_account && strtotime($item['created']) < strtotime($current_account['account_lastlog'])) {
 					continue;
 				}
 			}

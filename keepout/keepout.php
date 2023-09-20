@@ -31,7 +31,7 @@ function keepout_unload() {
 }
 
 
-function keepout_mod_init(&$a,&$b) {
+function keepout_mod_init(&$b) {
 	if((get_config('system','block_public')) && (! get_account_id()) && (! remote_channel())) {
 		notice( t('Permission denied.') . EOL);
 		$b['replace'] = true;

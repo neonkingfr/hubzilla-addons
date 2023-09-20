@@ -36,7 +36,7 @@ function dwpost_unload() {
 }
 
 
-function dwpost_jot_nets(&$a,&$b) {
+function dwpost_jot_nets(&$b) {
 	if(! Apps::addon_app_installed(local_channel(), 'dwpost'))
 		return;
 
@@ -50,7 +50,7 @@ function dwpost_jot_nets(&$a,&$b) {
 }
 
 
-function dwpost_post_local(&$a,&$b) {
+function dwpost_post_local(&$b) {
 
 	// This can probably be changed to allow editing by pointing to a different API endpoint
 
@@ -82,7 +82,7 @@ function dwpost_post_local(&$a,&$b) {
 }
 
 
-function dwpost_send(&$a,&$b) {
+function dwpost_send(&$b) {
 
 	if((! is_item_normal($b)) || $b['item_private'] || ($b['created'] !== $b['edited']))
 		return;

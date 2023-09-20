@@ -27,7 +27,7 @@ function planets_unload() {
 }
 
 
-function planets_post_hook($a, &$item) {
+function planets_post_hook(&$item) {
 
 	/**
 	 *

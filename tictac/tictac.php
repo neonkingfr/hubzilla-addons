@@ -17,8 +17,8 @@ function tictac_unload() {
 
 }
 
-function tictac_app_menu($a,&$b) {
-	$b['app_menu'][] = '<div class="app-title"><a href="tictac">' . t('Three Dimensional Tic-Tac-Toe') . '</a></div>'; 
+function tictac_app_menu(&$b) {
+	$b['app_menu'][] = '<div class="app-title"><a href="tictac">' . t('Three Dimensional Tic-Tac-Toe') . '</a></div>';
 }
 
 
@@ -30,7 +30,7 @@ function tictac_module() {
 
 
 
-function tictac_content(&$a) {
+function tictac_content() {
 
 	$o = '';
 
@@ -40,7 +40,7 @@ function tictac_content(&$a) {
     $dimen = App::$argv[3];
     $yours = App::$argv[4];
     $mine  = App::$argv[5];
-    
+
     $yours .= $_POST['move'];
   }
   elseif(App::$argc > 1) {
@@ -60,7 +60,7 @@ function tictac_content(&$a) {
   $o .=  '<a href="tictac/1">' . t('New game with handicap') . '</a><br />';
   $o .=  '<p>' . t('Three dimensional tic-tac-toe is just like the traditional game except that it is played on multiple levels simultaneously. ');
   $o .= t('In this case there are three levels. You win by getting three in a row on any level, as well as up, down, and diagonally across the different levels.');
-  $o .= '</p><p>'; 
+  $o .= '</p><p>';
   $o .= t('The handicap game disables the center position on the middle level because the player claiming this square often has an unfair advantage.');
   $o .= '</p>';
 
@@ -74,7 +74,7 @@ class tictac {
   private $handicap = 0;
   private $yours;
   private $mine;
-  private $winning_play;  
+  private $winning_play;
   private $you;
   private $me;
   private $debug = 1;
@@ -106,7 +106,7 @@ class tictac {
     array('002','012','022','101','111','121','200','210','220'), // diag right
     array('002','011','020','102','111','120','202','211','220'), // diag x
     array('000','011','022','100','111','122','200','211','222')  // diag x
-    
+
   );
 
 
@@ -210,7 +210,7 @@ class tictac {
          $this->mine .= $move;
          $this->me = $this->parse_moves('me');
        }
-       else {  
+       else {
          $move = $this->offensive_move();
          if(strlen($move)) {
            $this->mine .= $move;
@@ -300,7 +300,7 @@ function winning_move() {
       if($this->handicap) {
         $p = $this->uncontested_plane();
         foreach($this->corners as $c)
-          if((in_array($c,$p)) 
+          if((in_array($c,$p))
             && (! $this->is_yours($c)) && (! $this->is_mine($c)))
               return($c);
       }
@@ -321,11 +321,11 @@ function winning_move() {
           if(in_array($this->me[0],$this->corners)) {
             $p = $this->my_best_plane();
             foreach($this->winner as $w) {
-              if((in_array($w[0],$this->you)) 
+              if((in_array($w[0],$this->you))
               || (in_array($w[1],$this->you))
               || (in_array($w[2],$this->you)))
-                continue;        
-              if(in_array($w[0],$this->corners) 
+                continue;
+              if(in_array($w[0],$this->corners)
                 && in_array($w[2],$this->corners)
                 && in_array($w[0],$p) && in_array($w[2],$p)) {
                   if($this->me[0] == $w[0])
@@ -351,13 +351,13 @@ function winning_move() {
             if(count($w1) && count($w2)) {
               foreach($w1 as $a) {
                 foreach($w2 as $b) {
-                  if((in_array($a[0],$this->you)) 
+                  if((in_array($a[0],$this->you))
                   || (in_array($a[1],$this->you))
                   || (in_array($a[2],$this->you))
                   || (in_array($b[0],$this->you))
                   || (in_array($b[1],$this->you))
                   || (in_array($b[2],$this->you)))
-                    continue; 
+                    continue;
                   if(($a[0] == $b[0]) && ! $this->is_mine($a[0])) {
                     return $a[0];
                   }
@@ -376,8 +376,8 @@ function winning_move() {
  //     && in_array($this->you[0],$this->corners)
  //     && $this->is_neighbor($this->me[0],$this->you[0])) {
 
-      // Yuck. You foiled my plan. Since you obviously aren't playing to win, 
-      // I'll try again. You may keep me busy for a few rounds, but I'm 
+      // Yuck. You foiled my plan. Since you obviously aren't playing to win,
+      // I'll try again. You may keep me busy for a few rounds, but I'm
       // gonna' get you eventually.
 
 //      $p = $this->uncontested_plane();
@@ -412,7 +412,7 @@ function winning_move() {
         if($this->handicap && in_array('111',$this->planes[$p]))
           continue;
         foreach($this->me as $m)
-          if((in_array($m,$this->planes[$p])) 
+          if((in_array($m,$this->planes[$p]))
             && (! in_array($this->planes[$p],$myplanes)))
               $myplanes[] = $this->planes[$p];
       }
@@ -437,7 +437,7 @@ function winning_move() {
 
       // Find out if we are about to force a win.
       // Looking for two winning vectors with a common endpoint
-      // and where we own the middle of both - we are now going to 
+      // and where we own the middle of both - we are now going to
       // grab the endpoint. The game isn't yet over but we've already won.
 
       if(count($candidates)) {
@@ -467,7 +467,7 @@ function winning_move() {
          // We now have a list of winning strategy vectors for our second point
          // Pick one that will force you into defensive mode.
          // Pick a point close to you so we don't risk giving you two
-         // in a row when you block us. That would force *us* into 
+         // in a row when you block us. That would force *us* into
          // defensive mode.
          // We want:        or:         not:
          //           X|O|     X| |       X| |
@@ -476,41 +476,41 @@ function winning_move() {
 
          if(count($this->you) == 1) {
            foreach($this->winner as $w) {
-             if(in_array($this->me[0], $w) && in_array($c[1],$w) 
-               && $this->uncontested_winner($w) 
+             if(in_array($this->me[0], $w) && in_array($c[1],$w)
+               && $this->uncontested_winner($w)
                && $this->is_neighbor($this->you[0],$c[1])) {
                  return($c[1]);
-             }  
+             }
            }
          }
-       }         
+       }
 
-       // You're somewhere else entirely or have made more than one move 
+       // You're somewhere else entirely or have made more than one move
        // - any strategy vector which puts you on the defense will have to do
 
        foreach($candidates as $c) {
          foreach($this->winner as $w) {
-           if(in_array($this->me[0], $w) && in_array($c[1],$w) 
+           if(in_array($this->me[0], $w) && in_array($c[1],$w)
              && $this->uncontested_winner($w)) {
                    return($c[1]);
-           }  
+           }
          }
        }
      }
 
-    // worst case scenario, no strategy we can play, 
+    // worst case scenario, no strategy we can play,
     // just find an empty space and take it
 
     for($x = 0; $x < $this->dimen; $x ++)
       for($y = 0; $y < $this->dimen; $y ++)
         for($z = 0; $z < $this->dimen; $z ++)
-          if((! $this->marked_yours($x,$y,$z)) 
+          if((! $this->marked_yours($x,$y,$z))
             && (! $this->marked_mine($x,$y,$z))) {
             if($this->handicap && $x == 1 && $y == 1 && $z == 1)
               continue;
             return(sprintf("%d%d%d",$x,$y,$z));
           }
-       
+
   return '';
   }
 
@@ -586,7 +586,7 @@ function winning_move() {
         continue;
       foreach($this->you as $m) {
         if(in_array($m,$this->planes[$p]))
-          $contested ++;   
+          $contested ++;
       }
       if(! $contested)
         return($this->planes[$p]);
@@ -611,8 +611,8 @@ function winning_move() {
         if($this->handicap && in_array('111',$pl[$p]))
           continue;
        foreach($this->you as $m) {
-         if(in_array($m,$pl[$p]))   
-           $freeplane = false;         
+         if(in_array($m,$pl[$p]))
+           $freeplane = false;
        }
        if(! $freeplane) {
          $freeplane = true;
@@ -642,7 +642,7 @@ function winning_move() {
           $bordertop = (($y != 0) ? " border-top: 2px solid #000;" : "");
           $borderleft = (($z != 0) ? " border-left: 2px solid #000;" : "");
           if($this->handicap && $x == 1 && $y == 1 && $z == 1)
-            $o .=  "<td style=\"width: 25px; height: 25px; $bordertop $borderleft\" align=\"center\">&nbsp;</td>";                  
+            $o .=  "<td style=\"width: 25px; height: 25px; $bordertop $borderleft\" align=\"center\">&nbsp;</td>";
           elseif($this->marked_yours($x,$y,$z))
             $o .=  "<td style=\"width: 25px; height: 25px; $bordertop $borderleft $winner\" align=\"center\">X</td>";
           elseif($this->marked_mine($x,$y,$z))

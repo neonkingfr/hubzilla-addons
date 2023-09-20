@@ -22,7 +22,7 @@ function visage_unload() {
 	Route::unregister('addon/visage/Mod_Visage.php','visage');
 }
 
-function visage_magic_auth($a, &$b) {
+function visage_magic_auth(&$b) {
 
 //	logger('visage: ' . print_r($b,true));
 
@@ -41,7 +41,7 @@ function visage_magic_auth($a, &$b) {
 	}
 
 //	logger('visage: matches ' . print_r($matches,true));
-	
+
 	$nick = $matches[3];
 
 	$c = q("select channel_id, channel_hash from channel where channel_address = '%s' limit 1",

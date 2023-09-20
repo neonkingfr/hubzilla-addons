@@ -15,7 +15,7 @@ function moremoods_unload() {
 	  unregister_hook('mood_verbs', 'addon/moremoods/moremoods.php', 'moremoods_moods');
 }
 
-function moremoods_moods($a,&$b) {
+function moremoods_moods(&$b) {
 	$b['lonely'] = t('lonely');
 	$b['drunk'] = t('drunk');
 	$b['horny'] = t('horny');
@@ -38,5 +38,5 @@ function moremoods_moods($a,&$b) {
 	$b['defeated'] = t('defeated');
 	$b['envious'] = t('envious');
 	$b['jealous'] = t('jealous');
-	
+
 }

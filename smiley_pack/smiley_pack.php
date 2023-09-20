@@ -3,7 +3,7 @@
  * Name: Smiley Pack
  * Description: Pack of smileys that make master too AOLish.
  * Version: 1.05
- * Author: Thomas Willingham <zot:beardyunixer@beardyunixer.com> 
+ * Author: Thomas Willingham <zot:beardyunixer@beardyunixer.com>
  * Category: Post Tools
  * Screenshot: None
  * Depends: Core
@@ -19,9 +19,9 @@ function smiley_pack_unload() {
 	unregister_hook('smilie', 'addon/smiley_pack/smiley_pack.php', 'smiley_pack_smilies');
 }
 
- 
 
-function smiley_pack_smilies(&$a,&$b) {
+
+function smiley_pack_smilies(&$b) {
 
 
 #Animal smileys.
@@ -33,141 +33,141 @@ function smiley_pack_smilies(&$a,&$b) {
 	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/chick.gif' . '" alt="' . ':chick' . '" />';
 
 	$b['texts'][] = ':bumblebee';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/bee.gif' . '" alt="' . ':bee' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/bee.gif' . '" alt="' . ':bee' . '" />';
 
 	$b['texts'][] = ':ladybird';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/ladybird.gif' . '" alt="' . ':ladybird' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/ladybird.gif' . '" alt="' . ':ladybird' . '" />';
 
 	$b['texts'][] = ':bigspider';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/bigspider.gif' . '" alt="' . ':bigspider' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/bigspider.gif' . '" alt="' . ':bigspider' . '" />';
 
 	$b['texts'][] = ':cat';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/cat.gif' . '" alt="' . ':cat' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/cat.gif' . '" alt="' . ':cat' . '" />';
 
 	$b['texts'][] = ':bunny';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/bunny.gif' . '" alt="' . ':bunny' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/bunny.gif' . '" alt="' . ':bunny' . '" />';
 
 	$b['texts'][] = ':cow';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/cow.gif' . '" alt="' . ':cow' . '" />';	
-    
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/cow.gif' . '" alt="' . ':cow' . '" />';
+
 	$b['texts'][] = ':crab';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/crab.gif' . '" alt="' . ':crab' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/crab.gif' . '" alt="' . ':crab' . '" />';
 
 	$b['texts'][] = ':dolphin';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/dolphin.gif' . '" alt="' . ':dolphin' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/dolphin.gif' . '" alt="' . ':dolphin' . '" />';
 
 	$b['texts'][] = ':dragonfly';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/dragonfly.gif' . '" alt="' . ':dragonfly' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/dragonfly.gif' . '" alt="' . ':dragonfly' . '" />';
 
 	$b['texts'][] = ':frog';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/frog.gif' . '" alt="' . ':frog' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/frog.gif' . '" alt="' . ':frog' . '" />';
 
 	$b['texts'][] = ':hamster';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/hamster.gif' . '" alt="' . ':hamster' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/hamster.gif' . '" alt="' . ':hamster' . '" />';
 
 	$b['texts'][] = ':monkey';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/monkey.gif' . '" alt="' . ':monkey' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/monkey.gif' . '" alt="' . ':monkey' . '" />';
 
 	$b['texts'][] = ':horse';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/horse.gif' . '" alt="' . ':horse' . '" />';	
-  
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/horse.gif' . '" alt="' . ':horse' . '" />';
+
 	$b['texts'][] = ':parrot';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/parrot.gif' . '" alt="' . ':parrot' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/parrot.gif' . '" alt="' . ':parrot' . '" />';
 
 	$b['texts'][] = ':tux';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/tux.gif' . '" alt="' . ':tux' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/tux.gif' . '" alt="' . ':tux' . '" />';
 
 	$b['texts'][] = ':snail';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/snail.gif' . '" alt="' . ':snail' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/snail.gif' . '" alt="' . ':snail' . '" />';
 
 	$b['texts'][] = ':sheep';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/sheep.gif' . '" alt="' . ':sheep' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/sheep.gif' . '" alt="' . ':sheep' . '" />';
 
 	$b['texts'][] = ':dog';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/dog.gif' . '" alt="' . ':dog' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/dog.gif' . '" alt="' . ':dog' . '" />';
 
 	$b['texts'][] = ':elephant';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/elephant.gif' . '" alt="' . ':elephant' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/elephant.gif' . '" alt="' . ':elephant' . '" />';
 
 	$b['texts'][] = ':fish';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/fish.gif' . '" alt="' . ':fish' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/fish.gif' . '" alt="' . ':fish' . '" />';
 
 	$b['texts'][] = ':giraffe';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/giraffe.gif' . '" alt="' . ':giraffe' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/giraffe.gif' . '" alt="' . ':giraffe' . '" />';
 
 	$b['texts'][] = ':pig';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/pig.gif' . '" alt="' . ':pig' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/animals/pig.gif' . '" alt="' . ':pig' . '" />';
 
 
 
 #Baby Smileys
 
 	$b['texts'][] = ':baby';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/babies/baby.gif' . '" alt="' . ':baby' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/babies/baby.gif' . '" alt="' . ':baby' . '" />';
 
 	$b['texts'][] = ':babycot';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/babies/babycot.gif' . '" alt="' . ':babycot' . '" />';	
-	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/babies/babycot.gif' . '" alt="' . ':babycot' . '" />';
+
 
 	$b['texts'][] = ':pregnant';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/babies/pregnant.gif' . '" alt="' . ':pregnant' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/babies/pregnant.gif' . '" alt="' . ':pregnant' . '" />';
 
 	$b['texts'][] = ':stork';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/babies/stork.gif' . '" alt="' . ':stork' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/babies/stork.gif' . '" alt="' . ':stork' . '" />';
 
 
-#Confused Smileys	
+#Confused Smileys
 	$b['texts'][] = ':confused';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/confused/confused.gif' . '" alt="' . ':confused' . '" />';	
-    
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/confused/confused.gif' . '" alt="' . ':confused' . '" />';
+
 	$b['texts'][] = ':shrug';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/confused/shrug.gif' . '" alt="' . ':shrug' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/confused/shrug.gif' . '" alt="' . ':shrug' . '" />';
 
 	$b['texts'][] = ':stupid';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/confused/stupid.gif' . '" alt="' . ':stupid' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/confused/stupid.gif' . '" alt="' . ':stupid' . '" />';
 
 	$b['texts'][] = ':dazed';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/confused/dazed.gif' . '" alt="' . ':dazed' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/confused/dazed.gif' . '" alt="' . ':dazed' . '" />';
 
 
 #Cool Smileys
 
 	$b['texts'][] = ':affro';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/cool/affro.gif' . '" alt="' . ':affro' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/cool/affro.gif' . '" alt="' . ':affro' . '" />';
 
 #Devil/Angel Smileys
 
 	$b['texts'][] = ':angel';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/angel.gif' . '" alt="' . ':angel' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/angel.gif' . '" alt="' . ':angel' . '" />';
 
 	$b['texts'][] = ':cherub';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/cherub.gif' . '" alt="' . ':cherub' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/cherub.gif' . '" alt="' . ':cherub' . '" />';
 
 	$b['texts'][] = ':devilangel';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/blondedevil.gif' . '" alt="' . ':devilangel' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/blondedevil.gif' . '" alt="' . ':devilangel' . '" />';
 
 	$b['texts'][] = ':catdevil';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/catdevil.gif' . '" alt="' . ':catdevil' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/catdevil.gif' . '" alt="' . ':catdevil' . '" />';
 
 	$b['texts'][] = ':devillish';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/devil.gif' . '" alt="' . ':devillish' . '" />';	
-	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/devil.gif' . '" alt="' . ':devillish' . '" />';
+
 	$b['texts'][] = ':daseesaw';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/daseesaw.gif' . '" alt="' . ':daseesaw' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/daseesaw.gif' . '" alt="' . ':daseesaw' . '" />';
 
 	$b['texts'][] = ':turnevil';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/turnevil.gif' . '" alt="' . ':turnevil' . '" />';	
-	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/turnevil.gif' . '" alt="' . ':turnevil' . '" />';
+
 	$b['texts'][] = ':saint';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/saint.gif' . '" alt="' . ':saint' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/saint.gif' . '" alt="' . ':saint' . '" />';
 
 	$b['texts'][] = ':graveside';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/graveside.gif' . '" alt="' . ':graveside' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/devilangel/graveside.gif' . '" alt="' . ':graveside' . '" />';
 
 #Unpleasent smileys.
 
 	$b['texts'][] = ':toilet';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/disgust/toilet.gif' . '" alt="' . ':toilet' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/disgust/toilet.gif' . '" alt="' . ':toilet' . '" />';
 
 	$b['texts'][] = ':fartinbed';
 	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/disgust/fartinbed.gif' . '" alt="' . ':fartinbed' . '" />';
@@ -230,7 +230,7 @@ function smiley_pack_smilies(&$a,&$b) {
 
 	$b['texts'][] = ':snooker';
 	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/sport/snooker.gif' . '" alt="' . ':snooker' . '" />';
-  
+
 	$b['texts'][] = ':horseriding';
 	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/sport/horseriding.gif' . '" alt="' . ':horseriding' . '" />';
 
@@ -315,7 +315,7 @@ function smiley_pack_smilies(&$a,&$b) {
 	$b['texts'][] = ':throwrocks';
 	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/fight/throw-rocks.gif' . '" alt="' . ':throwrocks' . '" />';
 
-#Fantasy smileys - monsters and dragons fantasy.  
+#Fantasy smileys - monsters and dragons fantasy.
 
 	$b['texts'][] = ':alienmonster';
 	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/fantasy/alienmonster.gif' . '" alt="' . ':alienmonster' . '" />';
@@ -456,18 +456,18 @@ function smiley_pack_smilies(&$a,&$b) {
     $b['texts'][] = ':cloud';
 	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/things/cloud9.gif' . '" alt="' . ':cloud' . '" />';
 
-# Regex killers - stick these at the bottom so they appear at the end of the English and 
+# Regex killers - stick these at the bottom so they appear at the end of the English and
 # at the start of $OtherLanguage.
 
 	$b['texts'][] = ':cool';
-	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/cool/cool.gif' . '" alt="' . ':cool' . '" />';	
+	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/cool/cool.gif' . '" alt="' . ':cool' . '" />';
 
 	$b['texts'][] = ':vomit';
 	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/disgust/vomit.gif' . '" alt="' . ':vomit' . '" />';
 
 	$b['texts'][] = ':golf';
 	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/sport/golf.gif' . '" alt="' . ':golf' . '" />';
-	
+
 	$b['texts'][] = ':football';
 	$b['icons'][] = '<img class="smiley" src="' . z_root() . '/addon/smiley_pack/icons/sport/football.gif' . '" alt="' . ':football' . '" />';
 
