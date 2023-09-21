@@ -43,7 +43,7 @@ class Hsse {
 			return;
 		}
 
-		$valid_modules = ['Network','Rpost','Editpost'];
+		$valid_modules = ['Network', 'Rpost', 'Editpost', 'Hq'];
 		if (!in_array($hook_arr['module'],$valid_modules)) {
 			return;
 		}
