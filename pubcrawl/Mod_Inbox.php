@@ -455,7 +455,6 @@ class Inbox extends Controller {
 				case 'EmojiReact':
 					// These require a resolvable object structure
 					if (is_array($AS->obj)) {
-						hz_syslog(print_r($AS, true));
 						$item = Activity::decode_note($AS);
 					} else {
 						// The initial object fetch failed using the sys channel credentials.
