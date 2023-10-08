@@ -454,6 +454,11 @@ class Inbox extends Controller {
 				case 'EmojiReaction':
 				case 'EmojiReact':
 					// These require a resolvable object structure
+					if (empty($AS->obj)) {
+						logger('empty object: ' . print_r($AS, true));
+						http_status_exit(400, 'Empty object');
+					}
+
 					if (is_array($AS->obj)) {
 						$item = Activity::decode_note($AS);
 					} else {
