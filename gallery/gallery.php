@@ -3,8 +3,8 @@
 /**
  * Name: Gallery
  * Description: Album gallery and photo viewer based on photoswipe
- * Version: 0.6
- * MinVersion: 3.8.8
+ * Version: 0.7
+ * MinVersion: 8.7.4
  * Author: Mario
  * Maintainer: Mario
  */
