@@ -15,56 +15,36 @@
 </div>
 {{/if}}
 
-<script>
+<script type="module">
+	import PhotoSwipeLightbox from '/addon/gallery/lib/photoswipe5/dist/photoswipe-lightbox.esm.min.js';
+
 	$(document).ready(function() {
 		{{if ! $aj}}
 		justifyPhotos('photo-albums');
 		{{/if}}
 
-		var gallery = {};
-		var aid = '';
-		var album = '';
-		var share_str = '';
+		let gallery = {};
+		let album_id = '';
+		let album = '{{$album}}';
 
 		// items array
 		{{if ! $aj}}
-		var items = [];
+		let items = [];
 		{{/if}}
 
 		{{if $json}}
-		var items = {{$json}};
+		let items = {{$json}};
 		{{/if}}
 
-		// define options
-		var options = {
-			index: 0, // start at first slide
-			preload: [1, 3],
-			shareButtons: [
-				{{if ! $aj}}
-				{ id: 'conv_link', label: 'View conversation', url: '\{\{raw_image_url\}\}' },
-				{{/if}}
-				{ id: 'download', label: 'Download fullsize image', url: '\{\{raw_image_url\}\}', download: true }
-				],
-			getImageURLForShare: function( shareButtonData ) {
-				if(shareButtonData.id === 'download')
-					return gallery.currItem.osrc;
-				else
-					return 'photos/' + {{$channel_nick}} + '/image/' + gallery.currItem.resource_id;
-			}
-		};
-
-		var pswpElement = document.querySelectorAll('.pswp')[0];
-
 		if(items.length) {
-			// Initializes and opens PhotoSwipe
-			gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
-			gallery.init();
+			pswp_init(items, album);
 		}
+
 		{{if ! $aj}}
 		$(document).on('click', '.init-gallery', function() {
 			album_id = $(this).data('aid');
 			album = $(this).data('album');
-			share_str = '';
+
 			$.post(
 				'gallery/' + {{$channel_nick}},
 				{
@@ -73,20 +53,77 @@
 					'unsafe' : {{$unsafe}}
 				},
 				function(items) {
-					var i;
-					for(i = 0; i < (items.length > 8 ? 8 : items.length); i++) {
-						share_str += '[zrl=' + encodeURIComponent(baseurl + '/gallery/' + {{$channel_nick}} + '/' + album + '?f=%23%26gid=1%26pid=' + (i+1)) + '][zmg]' + encodeURIComponent(items[i].src) + '[/zmg][/zrl]';
-					}
-					share_str += '[zrl=' + {{$observer_url}} + ']' + {{$observer_name}} + '[/zrl] shared [zrl=' + {{$channel_url}} + ']' + {{$channel_name}} + '[/zrl]\'s [zrl=' + encodeURIComponent(baseurl + '/gallery/' + {{$channel_nick}} + '/' + album) + ']album[/zrl] ' + encodeURIComponent(album) + ' (' + items.length + ' images)';
-
-					options.shareButtons.splice(2, 1, { id: 'share_link', label: 'Share this album', url: 'rpost?f=&title=' + encodeURIComponent('Album: ' + album) + '&body=' + share_str});
-					// Initializes and opens PhotoSwipe
-					gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
-					gallery.init();
+					pswp_init(items, album);
 				},
 				'json'
 			);
 		});
 		{{/if}}
+
 	});
+
+	function pswp_init(items, album) {
+		let share_str = '';
+
+		let options = {
+			preload: [1, 3],
+			bgOpacity: 1,
+			bgClickAction: 'toggle-controls',
+			dataSource: items,
+			pswpModule: () => import('/addon/gallery/lib/photoswipe5/dist/photoswipe.esm.js'),
+		};
+
+		const lightbox = new PhotoSwipeLightbox(options);
+
+		lightbox.on('uiRegister', function() {
+			lightbox.pswp.ui.registerElement({
+				name: 'download-button',
+				title: 'Download this photo',
+				order: 8,
+				isButton: true,
+				tagName: 'a',
+				html: '<i class="fa fa-download text-white" style="padding: 1.7rem; font-size: 1rem"></i>',
+				onInit: (el, pswp) => {
+					el.setAttribute('download', '');
+					el.setAttribute('target', '_blank');
+					el.setAttribute('rel', 'noopener');
+
+					pswp.on('change', () => {
+						el.href = pswp.currSlide.data.osrc;
+					});
+				}
+			});
+		});
+
+		if (album) {
+			let i;
+
+			for(i = 0; i < (items.length > 8 ? 8 : items.length); i++) {
+				share_str += '[zrl=' + encodeURIComponent(baseurl + '/gallery/' + {{$channel_nick}} + '/' + album + '?f=%23%26gid=1%26pid=' + (i+1)) + '][zmg]' + encodeURIComponent(items[i].src) + '[/zmg][/zrl]';
+			}
+			share_str += '[zrl=' + {{$observer_url}} + ']' + {{$observer_name}} + '[/zrl] shared [zrl=' + {{$channel_url}} + ']' + {{$channel_name}} + '[/zrl]\'s [zrl=' + encodeURIComponent(baseurl + '/gallery/' + {{$channel_nick}} + '/' + album) + ']album[/zrl] ' + encodeURIComponent(album) + ' (' + items.length + ' images)';
+
+			if (share_str) {
+				lightbox.on('uiRegister', function() {
+					lightbox.pswp.ui.registerElement({
+						name: 'share-button',
+						title: 'Share this album',
+						order: 9,
+						isButton: true,
+						tagName: 'a',
+						html: '<i class="fa fa-share text-white" style="padding: 1.7rem; font-size: 1rem"></i>',
+						onInit: (el, pswp) => {
+							el.setAttribute('target', '_blank');
+							el.setAttribute('rel', 'noopener');
+							el.href = 'rpost?f=&title=' + encodeURIComponent('Album: ' + album) + '&body=' + share_str;
+						}
+					});
+				});
+			}
+		}
+
+		lightbox.init();
+		lightbox.loadAndOpen(0);
+	}
+
 </script>
