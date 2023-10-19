@@ -138,10 +138,8 @@ class Inbox extends Controller {
 
 		if($AS->type === 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo', $AS->obj)) {
 			$attributed_to = Activity::get_attributed_to_actor_url($AS);
-			hz_syslog('attributed_to: ' . print_r($attributed_to, true));
 			if ($attributed_to) {
 				Activity::actor_store(Activity::get_actor($attributed_to));
-
 				if (!check_channelallowed($attributed_to)) {
 					http_status_exit(403, 'Permission denied');
 				}
