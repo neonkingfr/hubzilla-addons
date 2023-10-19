@@ -463,7 +463,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 		$url = $person_obj['id'];
 	}
 
-	Activity::actor_store($url, $person_obj, true);
+	Activity::actor_store($person_obj, true);
 
 	if ($address) {
 		q("update xchan set xchan_addr = '%s', xchan_follow = '%s' where xchan_hash = '%s' and xchan_network = 'activitypub'",
@@ -537,7 +537,7 @@ function pubcrawl_import_author(&$b) {
 		return;
 	}
 
-	Activity::actor_store($url, $person_obj);
+	Activity::actor_store($person_obj);
 
 	$b['result'] = $url;
 

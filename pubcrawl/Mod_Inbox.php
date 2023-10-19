@@ -99,7 +99,7 @@ class Inbox extends Controller {
 
 			if (is_array($AS->actor) && array_key_exists('id', $AS->actor)) {
 				// store the original actor
-				Activity::actor_store($AS->actor['id'], $AS->actor);
+				Activity::actor_store($AS->actor);
 				$announce_actor = $AS->actor['id'];
 			}
 
@@ -122,15 +122,15 @@ class Inbox extends Controller {
 		}
 
 		if (is_array($AS->actor) && array_key_exists('id', $AS->actor)) {
-			Activity::actor_store($AS->actor['id'], $AS->actor);
+			Activity::actor_store($AS->actor);
 		}
 
 		if (is_array($AS->obj) && ActivityStreams::is_an_actor($AS->obj['type'])) {
-			Activity::actor_store($AS->obj['id'], $AS->obj);
+			Activity::actor_store($AS->obj);
 		}
 
 		if (is_array($AS->obj) && array_key_exists('actor',$AS->obj) && is_array($AS->obj['actor']) && array_key_exists('id', $AS->obj['actor']) && $AS->obj['actor']['id'] !== $AS->actor['id']) {
-			Activity::actor_store($AS->obj['actor']['id'], $AS->obj['actor']);
+			Activity::actor_store($AS->obj['actor']);
 			if (!check_channelallowed($AS->obj['actor']['id'])) {
 				http_status_exit(403, 'Permission denied');
 			}
@@ -138,8 +138,10 @@ class Inbox extends Controller {
 
 		if($AS->type === 'Announce' && is_array($AS->obj) && array_key_exists('attributedTo', $AS->obj)) {
 			$attributed_to = Activity::get_attributed_to_actor_url($AS);
+			hz_syslog('attributed_to: ' . print_r($attributed_to, true));
 			if ($attributed_to) {
-				Activity::actor_store($attributed_to);
+				Activity::actor_store(Activity::get_actor($attributed_to));
+
 				if (!check_channelallowed($attributed_to)) {
 					http_status_exit(403, 'Permission denied');
 				}
@@ -419,7 +421,7 @@ class Inbox extends Controller {
 			switch ($AS->type) {
 				case 'Update':
 					if (ActivityStreams::is_an_actor($AS->objprop('type'))) {
-						Activity::actor_store($AS->obj['id'], $AS->obj, true /* force cache refresh */);
+						Activity::actor_store($AS->obj, true /* force cache refresh */);
 						break;
 					}
 					if ($AS->objprop('type') === 'OrderedCollection') {
