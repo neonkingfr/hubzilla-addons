@@ -21,7 +21,7 @@ class Logger_stats extends Controller {
 
 		$content = '';
 		$raw_data = [];
-		$hours = $_REQUEST['h'] ?? 1;
+		$hours = ((isset($_REQUEST['h'])) ? floatval($_REQUEST['h']) : 1);
 		$i = 0;
 
 		$logfile = get_config('system', 'logfile');
