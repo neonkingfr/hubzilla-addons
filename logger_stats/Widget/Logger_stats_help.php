@@ -18,6 +18,14 @@ class Logger_stats_help {
 
 		$content = '';
 
+		if (!get_config('system', 'logfile')) {
+			$content .= <<<EOF
+<div class="alert alert-warning" role="alert">
+	No logfile defined!
+</div>
+EOF;
+		}
+
 		if (!get_config('system', 'debugging')) {
 			$content .= <<<EOF
 <div class="alert alert-warning" role="alert">

@@ -24,7 +24,9 @@ class Logger_stats extends Controller {
 		$hours = $_REQUEST['h'] ?? 1;
 		$i = 0;
 
-		$handle = @fopen(get_config('system', 'logfile'), "r");
+		$logfile = get_config('system', 'logfile');
+		$handle = (($logfile) ? @fopen($logfile, 'r') : null);
+
 		if ($handle) {
 			while (!feof($handle)) {
 
