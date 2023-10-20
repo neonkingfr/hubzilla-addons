@@ -423,7 +423,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	}
 
 	if (($url) && (strpos($url, 'http') === 0)) {
-		$x = Activity::fetch($url);
+		$x = Activity::get_actor($url);
 
 		if (!$x) {
 			return;
