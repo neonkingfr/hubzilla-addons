@@ -96,7 +96,7 @@ class Logger_stats extends Controller {
 		head_add_js('/addon/logger_stats/view/js/momentjs/min/moment.min.js');
 		head_add_js('/addon/logger_stats/view/js/chartjs/moment-adapter.js');
 
-		$content .= '<div id="stats-wrapper" class="text-center">';
+		$content .= '<div id="stats-wrapper">';
 		$content .= '	<canvas id="stats"></canvas>';
 		$content .= '</div>';
 
