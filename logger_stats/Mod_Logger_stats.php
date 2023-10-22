@@ -30,8 +30,7 @@ class Logger_stats extends Controller {
 		if ($handle) {
 			while (!feof($handle)) {
 
-				$buffer = fgets($handle, 4096);
-
+				$buffer = fgets($handle, 1024);
 				if (str_contains($buffer, 'logger_stats_data')) {
 
 					preg_match('/(?<=cmd:).*?(?=\s)/', $buffer, $match);
