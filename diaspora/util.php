@@ -77,7 +77,11 @@ function find_diaspora_person_by_handle($handle) {
 		// try webfinger. Make sure to distinguish between diaspora,
 		// hubzilla w/diaspora protocol and friendica w/diaspora protocol.
 
+
+		$start_timestamp = microtime(true);
 		$result = discover_by_webbie($handle);
+		logger('logger_stats_data cmd:Diaspora_webfinger' . ' start:' . $start_timestamp . ' ' . 'end:' . microtime(true) . ' meta:' . $handle . '#' . random_string(16));
+
 		if($result) {
 
 			$r = q("select * from xchan join hubloc on xchan_hash = hubloc_hash where xchan_addr = '%s' and xchan_network != 'activitypub'",
