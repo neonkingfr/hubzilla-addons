@@ -30,8 +30,7 @@ class Logger_stats extends Controller {
 		if ($handle) {
 			while (!feof($handle)) {
 
-				$buffer = fgets($handle, 4096);
-
+				$buffer = fgets($handle, 1024);
 				if (str_contains($buffer, 'logger_stats_data')) {
 
 					preg_match('/(?<=cmd:).*?(?=\s)/', $buffer, $match);
@@ -96,7 +95,7 @@ class Logger_stats extends Controller {
 		head_add_js('/addon/logger_stats/view/js/momentjs/min/moment.min.js');
 		head_add_js('/addon/logger_stats/view/js/chartjs/moment-adapter.js');
 
-		$content .= '<div id="stats-wrapper" class="text-center">';
+		$content .= '<div id="stats-wrapper">';
 		$content .= '	<canvas id="stats"></canvas>';
 		$content .= '</div>';
 
