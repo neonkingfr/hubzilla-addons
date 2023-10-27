@@ -1526,7 +1526,7 @@ function cart_updateitem_delsku_hook(&$hookdata) {
 }
 
 
-function cart_post(&$a) {
+function cart_post() {
 	$cart_formname = preg_replace('/[^a-zA-Z0-9\_]/', '', $_POST["cart_posthook"]);
 	$formhook      = "cart_post_" . $cart_formname;
 	if (strlen($cart_formname) == 0) {
