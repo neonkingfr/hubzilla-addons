@@ -44,6 +44,7 @@ EOF;
 		<button id="fs-btn" class="btn btn-outline-secondary" type="button">Toggle fullscreen (f or dblclick chart)</button>
 		<button id="zoom-btn" class="btn btn-outline-secondary disabled" type="button">Press ctrl to zoom with mouse</button>
 		<button id="reset-zoom-btn" class="btn btn-outline-secondary" type="button">Reset zoom (r)</button>
+		<button id="decimation-btn" class="btn btn-outline-secondary" type="button">Toggle decimation</button>
 	</div>
 </div>
 EOF;

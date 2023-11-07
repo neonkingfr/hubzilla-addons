@@ -109,6 +109,7 @@ class Logger_stats extends Controller {
 		},
 
 		options: {
+			parsing: false, //required for decimation plugin
 			scales: {
 				x: {
 					type: 'time',
@@ -129,10 +130,10 @@ class Logger_stats extends Controller {
 			},
 			plugins: {
 				decimation: {
-					enabled: true,
+					enabled: false,
 					algorithm: 'lttb',
-					samples: 50,
-					threshold: 1
+					samples: 70,
+					threshold: 4
 				},
 				zoom: {
 					zoom: {
@@ -184,6 +185,7 @@ class Logger_stats extends Controller {
 	$('#scatter-btn').on('click', function () { chart.config.type = 'scatter'; chart.update(); });
 	$('#bar-btn').on('click', function () { chart.config.type = 'bar'; chart.update(); });
 	$('#fs-btn').on('click', function () { $('#stats-wrapper').toggleClass('fs'); });
+	$('#decimation-btn').on('click', function () { chart.options.plugins.decimation.enabled = !chart.options.plugins.decimation.enabled; chart.update(); });
 
 	$(document).on('keypress', function(e) {
 
