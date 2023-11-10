@@ -637,8 +637,8 @@ function pubcrawl_notifier_process(&$arr) {
 
 	// If the parent is an announce activity, add the author to the recipients
 	if ($arr['parent_item']['verb'] === ACTIVITY_SHARE) {
-		$arr['env_recips'][] = $arr['parent_item']['author']['xchan_hash'];
-		$arr['recipients'][] = '\'' . $arr['parent_item']['author']['xchan_hash'] . '\'';
+		$arr['env_recips'][] = $arr['parent_item']['owner']['xchan_hash'];
+		$arr['recipients'][] = '\'' . $arr['parent_item']['owner']['xchan_hash'] . '\'';
 	}
 
 	// If we commented a comment we should also deliver to the thread_parent author
