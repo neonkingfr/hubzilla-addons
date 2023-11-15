@@ -22,7 +22,6 @@ class Logger_stats extends Controller {
 		$content = '';
 		$raw_data = [];
 		$hours = ((isset($_REQUEST['h'])) ? floatval($_REQUEST['h']) : 1);
-		$i = 0;
 
 		$logfile = get_config('system', 'logfile');
 		$handle = (($logfile) ? @fopen($logfile, 'r') : null);
@@ -63,27 +62,73 @@ class Logger_stats extends Controller {
 		$i = 0;
 
 		foreach ($raw_data as $cmd => $data) {
+			$dataset[$i]['label'] = $cmd . ' (CPM)';
+
+			if (!in_array($cmd, ['Cron (CPM)']))
+				$dataset[$i]['hidden'] = true;
+
+			$dataset[$i]['borderWidth'] = 1;
+			$dataset[$i]['pointRadius'] = 2;
+			$dataset[$i]['type'] = 'line';
+			$dataset[$i]['yAxisID'] = 'y1';
+
+			$y = 0;
+			$ii = 0;
+			$start = null;
+			foreach ($data as $d) {
+				if (!$start) {
+					$start =  $d['start'];
+				}
+
+				if ($d['start'] <= ($start + 60)) {
+					$y++;
+					continue;
+				}
+
+				$dataset[$i]['data'][$ii] = [
+					'x' => $start * 1000, // start time in µs
+					'y' => $y, // count
+					'meta' => '---'
+				];
+
+				$y = 1;
+				$ii++;
+				$start = $d['start'];
+			}
+
+			// The start times might not be in order - fix that
+			if (is_array($dataset[$i]['data'])) {
+				$key = array_column($dataset[$i]['data'], 'x');
+				array_multisort($key, SORT_ASC, $dataset[$i]['data']);
+			}
+
+			$i++;
+		}
+
+		foreach ($raw_data as $cmd => $data) {
 			$dataset[$i]['label'] = $cmd;
 
 			if (!in_array($cmd, ['Cron']))
 				$dataset[$i]['hidden'] = true;
 
-		//	$dataset[$i]['borderWidth'] = 1;
-		//	$dataset[$i]['pointRadius'] = 2;
-
+			$dataset[$i]['borderWidth'] = 1;
+			$dataset[$i]['pointRadius'] = 2;
 			$dataset[$i]['barThickness'] = 3;
+			$dataset[$i]['yAxisID'] = 'y';
 
 			foreach ($data as $d) {
 				$dataset[$i]['data'][] = [
-					'x' => intval($d['start'] * 1000),
-					'y' => $d['end'] - $d['start'],
+					'x' => $d['start'] * 1000, // start time in µs
+					'y' => $d['end'] - $d['start'], // duration
 					'meta' => $d['meta']
 				];
 			}
 
 			// The start times might not be in order - fix that
-			$key = array_column($dataset[$i]['data'], 'x');
-			array_multisort($key, SORT_ASC, $dataset[$i]['data']);
+			if (is_array($dataset[$i]['data'])) {
+				$key = array_column($dataset[$i]['data'], 'x');
+				array_multisort($key, SORT_ASC, $dataset[$i]['data']);
+			}
 
 			$i++;
 		}
@@ -110,6 +155,7 @@ class Logger_stats extends Controller {
 
 		options: {
 			parsing: false, //required for decimation plugin
+			tension: 0.2,
 			scales: {
 				x: {
 					type: 'time',
@@ -125,6 +171,17 @@ class Logger_stats extends Controller {
 					title: {
 						display: true,
 						text: 'Seconds'
+					}
+				},
+				y1: {
+					beginAtZero: true,
+					position: 'right',
+					ticks: {
+						stepSize: 1,
+					},
+					title: {
+						display: true,
+						text: 'Calls per minute (CPM)'
 					}
 				}
 			},
