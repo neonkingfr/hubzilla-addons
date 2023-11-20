@@ -38,9 +38,9 @@ EOF;
 <div class="widget">
 	<h3>Controls</h3>
 	<div class="d-grid gap-2">
-		<button id="line-btn" class="btn btn-outline-secondary" type="button">Line chart (l)</button>
-		<button id="scatter-btn" class="btn btn-outline-secondary" type="button">Scatter chart (s)</button>
-		<button id="bar-btn" class="btn btn-outline-secondary" type="button">Bar chart (b)</button>
+		<!--button id="line-btn" class="btn btn-outline-secondary" type="button">Line chart (l)</button-->
+		<!--button id="scatter-btn" class="btn btn-outline-secondary" type="button">Scatter chart (s)</button-->
+		<!--button id="bar-btn" class="btn btn-outline-secondary" type="button">Bar chart (b)</button-->
 		<button id="fs-btn" class="btn btn-outline-secondary" type="button">Toggle fullscreen (f or dblclick chart)</button>
 		<button id="zoom-btn" class="btn btn-outline-secondary disabled" type="button">Press ctrl to zoom with mouse</button>
 		<button id="reset-zoom-btn" class="btn btn-outline-secondary" type="button">Reset zoom (r)</button>

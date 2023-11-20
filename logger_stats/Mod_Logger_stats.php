@@ -238,9 +238,10 @@ class Logger_stats extends Controller {
 
 	$('#stats-wrapper').on('dblclick', function () { $('#stats-wrapper').toggleClass('fs'); });
 	$('#reset-zoom-btn').on('click', function () { chart.resetZoom(); });
-	$('#line-btn').on('click', function () { chart.config.type = 'line'; chart.update(); });
-	$('#scatter-btn').on('click', function () { chart.config.type = 'scatter'; chart.update(); });
-	$('#bar-btn').on('click', function () { chart.config.type = 'bar'; chart.update(); });
+
+	// $('#line-btn').on('click', function () { chart.config.type = 'line'; chart.update(); });
+	// $('#scatter-btn').on('click', function () { chart.config.type = 'scatter'; chart.update(); });
+	// $('#bar-btn').on('click', function () { chart.config.type = 'bar'; chart.update(); });
 	$('#fs-btn').on('click', function () { $('#stats-wrapper').toggleClass('fs'); });
 	$('#decimation-btn').on('click', function () { chart.options.plugins.decimation.enabled = !chart.options.plugins.decimation.enabled; chart.update(); });
 
@@ -252,24 +253,20 @@ class Logger_stats extends Controller {
 
 		e.preventDefault();
 
-		if(e.originalEvent.charCode == 98){
-			chart.config.type = 'bar';
-			chart.update();
-		}
-		if(e.originalEvent.charCode == 102){
-			$('#stats-wrapper').toggleClass('fs');
-		}
-		if(e.originalEvent.charCode == 108){
-			chart.config.type = 'line';
-			chart.update();
-		}
+//		if(e.originalEvent.charCode == 102){
+//			$('#stats-wrapper').toggleClass('fs');
+//		}
+//		if(e.originalEvent.charCode == 108){
+//			chart.config.type = 'line';
+//			chart.update();
+//		}
 		if(e.originalEvent.charCode == 114){
 			chart.resetZoom();
 		}
-		if(e.originalEvent.charCode == 115){
-			chart.config.type = 'scatter';
-			chart.update();
-		}
+//		if(e.originalEvent.charCode == 115){
+//			chart.config.type = 'scatter';
+//			chart.update();
+//		}
 	});
 </script>
 EOF;
