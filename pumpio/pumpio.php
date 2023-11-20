@@ -103,7 +103,7 @@ function pumpio_connect() {
 	$hostname        = get_pconfig(local_channel(), 'pumpio','host');
 
 	if ((($consumer_key == "") || ($consumer_secret == "")) && ($hostname != "")) {
-		$clientdata = pumpio_registerclient($a, $hostname);
+		$clientdata = pumpio_registerclient($hostname);
 		set_pconfig(local_channel(), 'pumpio','consumer_key',    $clientdata['client_id']);
 		set_pconfig(local_channel(), 'pumpio','consumer_secret', $clientdata['client_secret']);
 
@@ -296,7 +296,7 @@ function pumpio_cron($b) {
 		if(count($r)) {
 				foreach($r as $rr) {
 						logger('pumpio: fetching for user '.$rr['uid']);
-						pumpio_fetchtimeline($a, $rr['uid']);
+						pumpio_fetchtimeline($rr['uid']);
 				}
 		}
 

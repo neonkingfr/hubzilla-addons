@@ -28,7 +28,7 @@ function statistics_unload() {
 }
 
 
-function statistics_well_known(&$a,&$b) {
+function statistics_well_known(&$b) {
 	if(argc() > 1 && argv(1) === 'nodeinfo') {
 		$arr = [ 'links' => [
 			[

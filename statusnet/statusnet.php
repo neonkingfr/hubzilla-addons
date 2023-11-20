@@ -626,7 +626,7 @@ function statusnet_cron($b) {
 	if(count($r)) {
 		foreach($r as $rr) {
 			logger('statusnet: fetching for user '.$rr['uid']);
-			statusnet_fetchtimeline($a, $rr['uid']);
+			statusnet_fetchtimeline($rr['uid']);
 		}
 	}
 

@@ -39,7 +39,7 @@ function keepout_mod_init(&$b) {
 }
 
 
-function keepout_mod_content(&$a,&$b) {
+function keepout_mod_content(&$b) {
 	if((get_config('system','block_public')) && (! get_account_id()) && (! remote_channel()))
 		$b['replace'] = true;
 }
