@@ -107,7 +107,7 @@ function openstreetmap_generate_named_map(&$b) {
 		$j = json_decode($x['body'],true);
 		if($j && is_array($j) && $j[0]['lat'] && $j[0]['lon']) {
 			$arr = array('lat' => $j[0]['lat'],'lon' => $j[0]['lon'],'location' => $b['location'], 'html' => '');
-			openstreetmap_generate_map($a,$arr);
+			openstreetmap_generate_map($arr);
 			$b['html'] = $arr['html'];
 		}
 	}
