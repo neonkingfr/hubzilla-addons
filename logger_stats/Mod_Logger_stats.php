@@ -9,8 +9,9 @@ use Zotlabs\Web\Controller;
 class Logger_stats extends Controller {
 
 	function get() {
-		if(!local_channel() && !is_site_admin())
+		if(!local_channel() && !is_site_admin()) {
 			return;
+		}
 
 		if(!Apps::addon_app_installed(local_channel(), 'logger_stats')) {
 			//Do not display any associated widgets at this point
@@ -19,9 +20,9 @@ class Logger_stats extends Controller {
 			return Apps::app_render($papp, 'module');
 		}
 
-		$content = '';
 		$raw_data = [];
 		$hours = ((isset($_REQUEST['h'])) ? floatval($_REQUEST['h']) : 1);
+		$load_time = floor(time() / 60) * 60;
 
 		$logfile = get_config('system', 'logfile');
 		$handle = (($logfile) ? @fopen($logfile, 'r') : null);
@@ -45,7 +46,7 @@ class Logger_stats extends Controller {
 					$meta = $match[0] ?? '';
 
 					// restrict sample size
-					if ($hours && $start < time() - 3600 * $hours) {
+					if ($hours && $start < $load_time - 3600 * $hours) {
 						continue;
 					}
 
@@ -73,15 +74,14 @@ class Logger_stats extends Controller {
 			$dataset[$i]['yAxisID'] = 'y1';
 
 			$y = 0;
+			$z = 0;
 			$ii = 0;
-			$start = null;
-			foreach ($data as $d) {
-				if (!$start) {
-					$start =  $d['start'];
-				}
+			$start = $load_time - ($hours * 3600);
 
-				if ($d['start'] <= ($start + 60)) {
+			while ($start < $load_time) {
+				if (isset($data[$z]) && ($data[$z]['start'] < ($start + 60))) {
 					$y++;
+					$z++;
 					continue;
 				}
 
@@ -91,9 +91,9 @@ class Logger_stats extends Controller {
 					'meta' => '---'
 				];
 
-				$y = 1;
+				$y = 0;
 				$ii++;
-				$start = $d['start'];
+				$start = $start + 60;
 			}
 
 			// The start times might not be in order - fix that
@@ -140,7 +140,7 @@ class Logger_stats extends Controller {
 		head_add_js('/addon/logger_stats/view/js/momentjs/min/moment.min.js');
 		head_add_js('/addon/logger_stats/view/js/chartjs/moment-adapter.js');
 
-		$content .= '<div id="stats-wrapper">';
+		$content = '<div id="stats-wrapper">';
 		$content .= '	<canvas id="stats"></canvas>';
 		$content .= '</div>';
 
