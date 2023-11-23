@@ -2,6 +2,7 @@
 namespace Zotlabs\Module;
 
 use Zotlabs\Web\HTTPSig;
+use Zotlabs\Lib\ActivityStreams;
 
 require_once('library/jsonld/jsonld.php');
 
@@ -9,11 +10,16 @@ class Ap_probe extends \Zotlabs\Web\Controller {
 
 	function get() {
 
+		if (!is_site_admin()) {
+			return;
+		}
+
 		$o .= '<h3>ActivityPub Probe Diagnostic</h3>';
 
 		$o .= '<form action="ap_probe" method="post">';
 		$o .= 'Lookup URI: <input type="text" style="width: 250px;" name="addr" value="' . $_REQUEST['addr'] .'" /><br>';
 		$o .= 'or paste text: <textarea style="width: 250px;" name="text">' . htmlspecialchars($_REQUEST['text']) . '</textarea><br>';
+		$o .= '<input type="checkbox" name="sign" /> Sign request <br>';
 		$o .= '<input type="submit" name="submit" value="Submit" /></form>';
 
 		$o .= '<br /><br />';
@@ -21,11 +27,25 @@ class Ap_probe extends \Zotlabs\Web\Controller {
 		if(x($_REQUEST,'addr')) {
 			$addr = $_REQUEST['addr'];
 
-			$headers = 'Accept: application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams", application/ld+json;profile="https://www.w3.org/ns/activitystreams", application/activity+json, application/ld+json';
+			if ($_REQUEST['sign']) {
+				$channel = get_sys_channel();
+				$m = parse_url($addr);
 
+				$headers = [
+					'Accept'           => ActivityStreams::get_accept_header_string($channel),
+					'Host'             => $m['host'],
+					'Date'             => datetime_convert('UTC', 'UTC', 'now', 'D, d M Y H:i:s \\G\\M\\T'),
+					'(request-target)' => 'get ' . get_request_string($addr)
+				];
+				$headers = HTTPSig::create_sig($headers, $channel['channel_prvkey'], channel_url($channel), false);
+			}
+			else {
+				$headers = 'Accept: application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams", application/ld+json;profile="https://www.w3.org/ns/activitystreams", application/activity+json, application/ld+json';
+			}
 
 			$redirects = 0;
-		    $x = z_fetch_url($addr,true,$redirects, [ 'headers' => [ $headers ]]);
+		    $x = z_fetch_url($addr, true, $redirects, [ 'headers' => $headers ]);
+
 	    	if($x['success'])
 
 				$o .= '<pre>' . htmlspecialchars($x['header']) . '</pre>' . EOL;
