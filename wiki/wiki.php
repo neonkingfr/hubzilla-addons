@@ -17,11 +17,13 @@ require_once('addon/wiki/Lib/NativeWikiPage.php');
 function wiki_load() {
 	Hook::register('channel_activities_widget', 'addon/wiki/wiki.php', 'wiki_channel_activities_widget');
 	Widget::register('addon/wiki/Widget/Wiki_pages.php', 'wiki_pages');
+	Widget::register('addon/wiki/Widget/Wiki_list.php', 'wiki_list');
 }
 
 function wiki_unload() {
 	Hook::unregister('channel_activities_widget', 'addon/wiki/wiki.php', 'wiki_channel_activities_widget');
 	Widget::unregister('addon/wiki/Widget/Wiki_pages.php', 'wiki_pages');
+	Widget::unregister('addon/wiki/Widget/Wiki_list.php', 'wiki_list');
 }
 
 function wiki_channel_activities_widget(&$arr){
