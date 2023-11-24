@@ -108,7 +108,7 @@ function superblock_stream_item(&$b) {
 			$found = true;
 	}
 
-	if($b['item']['children']) {
+	if(!empty($b['item']['children'])) {
 		for($d = 0; $d < count($b['item']['children']); $d ++) {
 			if($sb->match($b['item']['children'][$d]['owner_xchan']))
 				$b['item']['children'][$d]['blocked'] = true;
@@ -338,7 +338,7 @@ function superblock_item_photo_menu(&$b) {
 	if(App::$channel['channel_hash'] == $author)
 		return;
 
-	if(is_array(App::$data['superblock'])) {
+	if(!empty(App::$data['superblock'])) {
 		foreach(App::$data['superblock'] as $bloke) {
 			if(link_compare($bloke,$author)) {
 				$blocked = true;
