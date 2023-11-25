@@ -47,6 +47,7 @@ function workflow_load() {
 	Hook::register('workflow_display_list_headers',__FILE__,'Workflow_Utils::basicfilter_display_header',1,1000);
 	Hook::register('workflow_toolbar',__FILE__,'Workflow_Utils::toolbar_header',1,1000);
 	Hook::register('prepare_body_final',__FILE__,'Workflow_Utils::prepare_body_final',1,1000);
+	Hook::register('widget_settings_menu', 'addon/workflow/Settings/WorkflowSettingsUtil.php','WorkflowSettingsUtil::widgetsettingsmenu',1,1000);
 	Route::register('addon/workflow/Mod_Workflow.php','workflow');
 	Route::register('addon/workflow/Settings/Mod_WorkflowSettings.php','settings/workflow');
 }
@@ -56,6 +57,7 @@ function workflow_unload() {
 	$hookfile = $hookdir.'/workflow.php';
 	Hook::unregister_by_file(__FILE__);
 	Hook::unregister_by_file($hookfile);
+	Hook::unregister_by_file('addon/workflow/Settings/WorkflowSettingsUtil.php');
 	Route::unregister_by_file(dirname(__FILE__).'/Mod_Workflow.php');
 	Route::unregister_by_file(dirname(__FILE__).'/Settings/Mod_WorkflowSettings.php');
 	Route::unregister_by_file($hookdir.'/Mod_Workflow.php');
@@ -504,7 +506,8 @@ class Workflow_Utils {
 							dbesc($relatedlink).'%',
 							dbesc($relatedlink).'%'
 						);
-				if ($reliteminfo) {
+
+				if (count($reliteminfo) > 0) {
 					$relurl = $reliteminfo[0]['llink'];
 					$relatedislocal = true;
 				} else {
@@ -518,6 +521,8 @@ class Workflow_Utils {
 						} else {
 				        		$relurl = self::queryvars_stripzid($relatedlink).'&zid='.get_my_address();
 						}
+					} else {
+						$relurl = $relatedlink;
 					}
 				}
 				$items[$itemidx]['related'][$idx]['jsondata'] = json_encode(['iframeurl'=>$relurl,'action'=>'getmodal_getiframe','raw'=>'raw']);
@@ -535,12 +540,24 @@ class Workflow_Utils {
 		$items = fetch_post_tags($items);
 
 		$item=$items[0];
-		//$itemmeta=self::get_itemmeta_html($item,$uuid,$iframeurl,$posturl,$item['mid']);
-		$itemmeta='';
+		$itemmeta=self::get_itemmeta_html($item,$uuid,$iframeurl,$posturl,$item['mid']);
 
 		$maindata = '';
 		if (isset($items[0]['related']) && is_array($items[0]['related'])) {
+
+			usort($items[0]['related'],function($a,$b) {
+				$apriority = (array_key_exists('priority',$a) ) ? $a['priority'] : 0;
+				$bpriority = (array_key_exists('priority',$b) ) ? $b['priority'] : 0;
+				if (intval(@$apriority) == intval(@$bpriority)) {
+					return 0;
+				}
+
+				$ret = (intval(@$apriority) < intval(@$bpriority)) ? 1 : -1;
+				return $ret;
+			});
+
 			$related = $items[0]['related'];
+
 			$relitem = array_shift($related);
 			$contentvars = [
 				'iframeurl' => $relitem['relurl'],
@@ -598,9 +615,6 @@ class Workflow_Utils {
 			'iframeurl'=>$iframeurl,
 			'posturl'=>$posturl
 		];
-
-		Hook::insert('dm42workflow_meta_display','Workflow_Utils::basicmeta_meta_display',1,30000);
-		Hook::insert('dm42workflow_meta_display','Workflow_Utils::contact_meta_display',1,30000);
 
 		call_hooks('dm42workflow_meta_display',$hookinfo);
 
@@ -883,7 +897,11 @@ class Workflow_Utils {
 
 
 						if ((isset($params['type']) && $params['type']=='int') && ($comparitor != 'is not null'))  {
-							$val = ' and CAST('.$astable.'.v as INTEGER) '.$comparitor.' CAST("'.dbesc($value).'" as INTEGER)';
+							if (ACTIVE_DBTYPE == DBTYPE_MYSQL) {
+								$val = ' and CAST('.$astable.'.v as SIGNED) '.$comparitor.' CAST("'.dbesc($value).'" as SIGNED)';
+							} else {
+								$val = ' and CAST('.$astable.'.v as INTEGER) '.$comparitor.' CAST("'.dbesc($value).'" as INTEGER)';
+							}
 						} else {
 							if ($comparitor == 'is not null') {
 								$val = ' and '.$astable.'.v '.$comparitor;
@@ -902,7 +920,11 @@ class Workflow_Utils {
 						$orderinfo='';
 						$default=$params['orderby']['default'];
 						if (isset($params['orderby']['type']) && strtolower($params['orderby']['type']) == 'int') {
-							$orderinfo = 'COALESCE(CAST ('.$astable.'.'.dbesc($key).' as int),'.intval($default).')';
+							if (ACTIVE_DBTYPE == DBTYPE_MYSQL) {
+								$orderinfo = 'COALESCE(CAST ('.$astable.'.'.dbesc($key).' as SIGNED),'.intval($default).')';
+							} else {
+								$orderinfo = 'COALESCE(CAST ('.$astable.'.'.dbesc($key).' as INTEGER),'.intval($default).')';
+							}
 						} else {
 							$orderinfo = 'COALESCE('.$astable.'.v,'.dbesc($default).')';
 						}
@@ -1265,10 +1287,10 @@ class Workflow_Utils {
 
 		$basicfilters = "<div class='panel'>";
 		$basicfilters .= "<div role='tab' id='basicfilters'>";
-		$basicfilters .= "<h4><a data-toggle='collapse' data-target='#basicfilters-collapse' href='#' class='collapsed' aria-expanded='false'>Search Parameters</a></h4>";
+		$basicfilters .= "<h4><a data-bs-toggle='collapse' data-bs-target='#basicfilters-collapse' href='#' class='collapsed' aria-expanded='false'>Search Parameters</a></h4>";
 		$basicfilters .= "</div>";
 		$basicfilters .= "<div id='basicfilters-collapse' class='collapse' role='tabpanel' aria-labelledby='basicfilters' data-bs-parent='#basicfilters' style='z-index:100;position:absolute;background-color:#fff;padding:4px 20px 4px 20px;border:solid 4px black;'>";
-		$basicfilters .= "<div id='basicfilters-tool' style='float:right;'><a data-toggle='collapse' data-target='#basicfilters-collapse' class='btn btn-outline-secondary btn-sm border-0' style='margin-right:-25px;margin-top:-10px;' href='#'><i class='fa fa-close'></i></a></div>";
+		$basicfilters .= "<div id='basicfilters-tool' style='float:right;'><a data-bs-toggle='collapse' data-bs-target='#basicfilters-collapse' class='btn btn-outline-secondary btn-sm border-0' style='margin-right:-25px;margin-top:-10px;' href='#'><i class='fa fa-close'></i></a></div>";
 		$basicfilters .= "<form method='get'>";
 		$minprio = isset($_REQUEST['minpriority']) ? intval($_REQUEST['minpriority']) : 1;
 		$assigned = (isset($_REQUEST['assigned']) && is_array($_REQUEST['assigned'])) ? $_REQUEST['assigned'] : [];
@@ -1315,7 +1337,7 @@ class Workflow_Utils {
 			];
 	}
 
-	static public function toolbar_backtoworkflow(&$hookinfo) {
+	public static function toolbar_backtoworkflow(&$hookinfo) {
 		$newhookinfo = $hookinfo;
 		$tools = $hookinfo['tools'];
 		$channel = channelx_by_n(App::$profile_uid);
@@ -1355,7 +1377,7 @@ class Workflow_Utils {
 		return;
 	}
 
-	static public function toolbar_header(&$hookinfo) {
+	public static function toolbar_header(&$hookinfo) {
 		$newhookinfo = $hookinfo;
 		$tools = $hookinfo['tools'];
 
@@ -1371,7 +1393,7 @@ class Workflow_Utils {
 		return;
 	}
 
-	static public function maybeunjson ($value) {
+	public static function maybeunjson ($value) {
 
     		if (is_array($value)) {
         	return $value;
@@ -1390,7 +1412,7 @@ class Workflow_Utils {
     		}
 	}
 
-	public function maybejson ($value,$options=0) {
+	public static function maybejson ($value,$options=0) {
 
     		if ($value!=null) {
         		if (!is_array($value)) {
@@ -1762,7 +1784,8 @@ class Workflow_Utils {
 
 		$arr['obj_type'] = WORKFLOW_ACTIVITY_OBJ_TYPE;
 		$arr['mimetype'] = 'text/bbcode';
-		$obj = Activity::encode_item($arr);
+		//$obj = Activity::encode_item($arr);
+		$obj = self::encode_workflow_object($arr);
 		//$arr['obj_type'] = WORKFLOW_ACTIVITY_OBJ_TYPE;
 		unset($arr['obj']);
 
@@ -1907,6 +1930,7 @@ class Workflow_Utils {
 				'relatedlink'=>$relatedlink,
 				'notes'=>(isset($linkparams['notes'])) ? $linkparams['notes'] : '',
 				'title'=>(isset($linkparams['title'])) ? $linkparams['title'] : '',
+				'priority'=>(isset($linkparams['priority'])) ? $linkparams['priority'] : 0,
 				'getarray'=>$getarray
 				];
 			call_hooks("workflow_permissions_relate_link",$hookinfo);
@@ -1921,7 +1945,8 @@ class Workflow_Utils {
 			'relatedlink'=>$relatedlink,
 			'addedby'=>$observer,
 			'notes'=>(isset($linkparams['notes'])) ? $linkparams['notes'] : '',
-			'title'=>(isset($linkparams['title'])) ? $linkparams['title'] : ''
+			'title'=>(isset($linkparams['title'])) ? $linkparams['title'] : '',
+			'priority'=>(isset($linkparams['priority'])) ? $linkparams['priority'] : 0
 		];
 		$linkinfo = json_encode($linkinfo);
 
@@ -2097,6 +2122,7 @@ class Workflow_Utils {
 		$linktitle = $data['linktitle'];
 		$linknotes = $data['linknotes'];
 		$relatedlink = $data['relatedlink'];
+		$priority = isset($data['priority']) ? $data['priority'] : 0;
 
 		$relatedlink = self::queryvars_stripzid($relatedlink);
 		$linkkey=md5($relatedlink);
@@ -2126,7 +2152,8 @@ class Workflow_Utils {
 			'title'=>$linktitle,
 			'notes'=>$linknotes,
 			'timestamp' => datetime_convert(),
-			'history' => $linkhistory
+			'history' => $linkhistory,
+			'priority' => $priority
 		];
 
 		$linkinfo = json_encode($linkinfo);
@@ -2561,6 +2588,7 @@ class Workflow_Utils {
 		$formname = "addlink";
 		$action = "form_addlink";
 		$content = '';
+		$priority = isset($data['priority']) ? $data['priority'] : '0';
 		$relatedlink = isset($data['relatedlink']) ? $data['relatedlink'] : '';
 		$relatedlink = self::queryvars_stripzid($relatedlink);
 		$linkkey=md5($relatedlink);
@@ -2594,7 +2622,8 @@ class Workflow_Utils {
 			$linkinfo = [
 				'title'=>$curlinkinfo['title'],
 				'notes'=>$curlinkinfo['notes'],
-				'history' => $linkhistory
+				'history' => $linkhistory,
+				'priority' => isset($curlinkinfo['priority']) ? $curlinkinfo['priority'] : 0
 			];
 		} else {
 
@@ -2632,6 +2661,14 @@ class Workflow_Utils {
 				t("Notes").":",
 				$linkinfo['notes'],
 				t("Notes and Info"),
+				''
+			]]);
+			$content .= replace_macros(get_markup_template('field_input.tpl'),[ '$field' => [
+				"priority",
+				t("Priority").":",
+				$linkinfo['priority'],
+				t("Used to order links").'.',
+				'',
 				''
 			]]);
 		}
@@ -2827,7 +2864,8 @@ class Workflow_Utils {
 						'relatedlink'=>$relatedlink,
 						'addedby'=>$observer,
 						'title'=>$update['title'],
-						'notes'=>$update['notes']
+						'notes'=>$update['notes'],
+						'priority'=> isset($update['priority']) ? $update['priority'] : 0
 					];
 					$linkinfo = json_encode($linkinfo);
 					IConfig::Set($orig, 'workflow', 'link:related:'.$linkkey, $linkinfo, true);
@@ -3005,8 +3043,7 @@ class Workflow_Utils {
 
 		$uuid=$jsondata['uuid'];
 		$mid=$jsondata['mid'];
-		//$itemmeta=self::get_itemmeta_html($wfitems[0],$uuid,$iframeurl,$posturl,$wfitems[0]['mid']);
-		$itemmeta='';
+		$itemmeta=self::get_itemmeta_html($wfitems[0],$uuid,$iframeurl,$posturl,$wfitems[0]['mid']);
 
 		$html = replace_macros(get_markup_template('workflow_display_wfitemdata.tpl','addon/workflow'), [
 			'$items' => $wfitems,

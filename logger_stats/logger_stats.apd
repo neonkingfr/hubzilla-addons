@@ -1,0 +1,7 @@
+version: 2
+url: $baseurl/logger_stats
+requires: admin, local_channel
+name: Logger Statistics
+photo: icon:line-chart
+categories: Development
+desc: A tool for admins and developers which parses the log file and creates a visual representation of it.

@@ -31,7 +31,7 @@ function libertree_unload() {
 }
 
 
-function libertree_jot_nets(&$a,&$b) {
+function libertree_jot_nets(&$b) {
 	if(! Apps::addon_app_installed(local_channel(), 'libertree'))
 		return;
 
@@ -43,7 +43,7 @@ function libertree_jot_nets(&$a,&$b) {
         $b .= '<div class="profile-jot-net"><input type="checkbox" name="libertree_enable"' . $selected . ' value="1" /> <img src="addon/libertree/libertree.png" /> ' . t('Post to Libertree') . '</div>';
 }
 
-function libertree_post_local(&$a,&$b) {
+function libertree_post_local(&$b) {
 
 	// This can probably be changed to allow editing by pointing to a different API endpoint
 
@@ -74,7 +74,7 @@ function libertree_post_local(&$a,&$b) {
 
 
 
-function libertree_send(&$a,&$b) {
+function libertree_send(&$b) {
 
     if((! is_item_normal($b)) || $b['item_private'] || ($b['created'] !== $b['edited']))
         return;

@@ -15,7 +15,7 @@ function morepokes_unload() {
 	  unregister_hook('poke_verbs', 'addon/morepokes/morepokes.php', 'morepokes_poke_verbs');
 }
 
-function morepokes_poke_verbs($a,&$b) {
+function morepokes_poke_verbs(&$b) {
 	$b['bitchslap'] = array('bitchslapped', t('bitchslap'), t('bitchslapped'));
 	$b['shag'] = array('shagged', t('shag'), t('shagged'));
 	$b['patent'] = array('patented', t('patent'), t('patented'));

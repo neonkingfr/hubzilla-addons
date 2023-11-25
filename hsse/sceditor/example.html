@@ -5,11 +5,11 @@
 
 		<title>SCEditor Demo</title>
 
-		<link rel="stylesheet" href="./minified/themes/default.min.css" id="theme-style" />
+		<link rel="stylesheet" href="minified/themes/default.min.css" id="theme-style" />
 		  
-		<script src="./minified/sceditor.min.js"></script>
-		<script src="./minified/icons/monocons.js"></script>
-		<script src="./minified/formats/bbcode.js"></script>
+		<script src="minified/sceditor.min.js"></script>
+		<script src="minified/icons/monocons.js"></script>
+		<script src="minified/formats/bbcode.js"></script>
 
 		<style>
 			html {
@@ -51,10 +51,8 @@ Give it a try! :)
 
 [ul][li]A simple list[/li][li]list item 2[/li][/ul]
 
-If you are using IE9+ or any non-IE browser just type [b]:[/b]) and it should be converted into :) as you type.</textarea>
+Just type [b]:[/b]) and it should be converted into :) as you type.</textarea>
 
-				<p>If you are using IE9+ or any other browser then it should automatically replace
-					:) and other emoticon codes with theit emoticon images.</p>
 			</div>
 
 			<div>
@@ -76,13 +74,13 @@ If you are using IE9+ or any non-IE browser just type [b]:[/b]) and it should be
 			sceditor.create(textarea, {
 				format: 'bbcode',
 				icons: 'monocons',
-				style: '../minified/themes/content/default.min.css'
+				style: 'minified/themes/content/default.min.css'
 			});
 
 
 			var themeInput = document.getElementById('theme');
 			themeInput.onchange = function() {
-				var theme = '../minified/themes/' + themeInput.value + '.min.css';
+				var theme = 'minified/themes/' + themeInput.value + '.min.css';
 
 				document.getElementById('theme-style').href = theme;
 			};

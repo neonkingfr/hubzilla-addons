@@ -3,8 +3,8 @@
 /**
  * Name: Gallery
  * Description: Album gallery and photo viewer based on photoswipe
- * Version: 0.6
- * MinVersion: 3.8.8
+ * Version: 0.7
+ * MinVersion: 8.7.4
  * Author: Mario
  * Maintainer: Mario
  */
@@ -83,19 +83,14 @@ function gallery_page_end(&$str) {
 		return;
 	}
 
-	if(! Apps::addon_app_installed($uid, 'gallery'))
+	if(! Apps::addon_app_installed($uid, 'gallery')) {
 		return;
+	}
 
-	head_add_js('/addon/gallery/lib/photoswipe/dist/photoswipe.js', 1);
-	head_add_js('/addon/gallery/lib/photoswipe/dist/photoswipe-ui-default.js', 1);
-	head_add_js('/addon/gallery/view/js/gallery.js', 1);
+	App::$page['htmlhead'] .= '<script src="/addon/gallery/view/js/gallery.js" type="module"></script>';
 
-	head_add_css('/addon/gallery/lib/photoswipe/dist/photoswipe.css');
-	head_add_css('/addon/gallery/lib/photoswipe/dist/default-skin/default-skin.css');
+	head_add_css('/addon/gallery/lib/photoswipe5/dist/photoswipe.css');
 	head_add_css('/addon/gallery/view/css/gallery.css');
-
-	$tpl = get_markup_template('gallery_dom.tpl', 'addon/gallery');
-	$str .= replace_macros($tpl, []);
 }
 
 function gallery_prepare_body(&$arr) {
@@ -127,7 +122,6 @@ function gallery_prepare_body(&$arr) {
 	$i = 1;
 
 	$div = $dom->createElement('div');
-
 
 	foreach($nodes as $node) {
 		if($node->nodeName == 'br') {

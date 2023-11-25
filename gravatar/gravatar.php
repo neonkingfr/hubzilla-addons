@@ -30,7 +30,7 @@ function gravatar_unload() {
  * @param $a array
  * @param &$b array
  */
-function gravatar_get_profile_photo($a, &$b) {
+function gravatar_get_profile_photo(&$b) {
     $r = q("SELECT *
             FROM photo
             WHERE imgscale = %d

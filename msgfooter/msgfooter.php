@@ -11,7 +11,7 @@
 function msgfooter_load() {
 
 	/**
-	 * 
+	 *
 	 * Our demo plugin will attach in three places.
 	 * The first is just prior to storing a local post.
 	 *
@@ -55,7 +55,7 @@ function msgfooter_plugin_admin_post(){
 }
 
 
-function msgfooter_post_hook($a, &$item) {
+function msgfooter_post_hook(&$item) {
 
 	/**
 	 *

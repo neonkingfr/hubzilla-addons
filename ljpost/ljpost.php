@@ -36,7 +36,7 @@ function ljpost_unload() {
 }
 
 
-function ljpost_jot_nets(&$a,&$b) {
+function ljpost_jot_nets(&$b) {
 	if(! Apps::addon_app_installed(local_channel(), 'ljpost'))
 		return;
 
@@ -50,7 +50,7 @@ function ljpost_jot_nets(&$a,&$b) {
 }
 
 
-function ljpost_post_local(&$a,&$b) {
+function ljpost_post_local(&$b) {
 
 	// This can probably be changed to allow editing by pointing to a different API endpoint
 
@@ -80,7 +80,7 @@ function ljpost_post_local(&$a,&$b) {
 }
 
 
-function ljpost_send(&$a,&$b) {
+function ljpost_send(&$b) {
 
 	if((! is_item_normal($b)) || $b['item_private'] || ($b['created'] !== $b['edited']))
 		return;

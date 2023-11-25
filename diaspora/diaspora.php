@@ -561,8 +561,11 @@ function diaspora_process_outbound(&$arr) {
 			$target_item['body'] = Crypto::unencapsulate(json_decode($target_item['body'],true),$key);
 	}
 
-	$prv_recips = $arr['env_recips'];
-	stringify_array_elms($prv_recips);
+	$prv_recips = $arr['env_recips'] ?? null;
+
+	if ($prv_recips) {
+		stringify_array_elms($prv_recips);
+	}
 
 	// The Diaspora profile message is unusual and must be handled independently
 	$is_profile = false;
@@ -576,7 +579,6 @@ function diaspora_process_outbound(&$arr) {
 			$prv_recips = $arr['recipients'];
 		}
 	}
-
 
 	if ($prv_recips) {
 
@@ -686,7 +688,7 @@ function diaspora_process_outbound(&$arr) {
 		if(intval($target_item['item_deleted'])
 			&& ($target_item['mid'] === $target_item['parent_mid'])) {
 			// top-level retraction
-			logger('delivery: diaspora retract: ' . $loc);
+			logger('delivery: diaspora retract: ' . $contact['hubloc_id_url']);
 			$qi = diaspora_send_retraction($target_item,$arr['channel'],$contact,true);
 			if($qi)
 				$arr['queued'][] = $qi;
@@ -694,7 +696,7 @@ function diaspora_process_outbound(&$arr) {
 		}
 		elseif($target_item['mid'] !== $target_item['parent_mid']) {
 			// we are the relay - send comments, likes and relayable_retractions to our conversants
-			logger('delivery: diaspora relay: ' . $loc);
+			logger('delivery: diaspora relay: ' . $contact['hubloc_id_url']);
 			$qi = diaspora_send_downstream($target_item,$arr['channel'],$contact,true);
 			if($qi)
 				$arr['queued'][] = $qi;
@@ -702,7 +704,7 @@ function diaspora_process_outbound(&$arr) {
 		}
 		elseif($arr['top_level_post']) {
 			if(perm_is_allowed($arr['channel']['channel_id'],'','view_stream',false)) {
-				logger('delivery: diaspora status: ' . $loc);
+				logger('delivery: diaspora status: ' . $contact['hubloc_id_url']);
 				$qi = diaspora_send_status($target_item,$arr['channel'],$contact,true);
 				if($qi) {
 					foreach($qi as $q)

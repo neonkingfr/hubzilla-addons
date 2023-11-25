@@ -45,7 +45,7 @@ function piwik_unload() {
 	logger("uninstalled piwik plugin");
 }
 
-function piwik_analytics($a,&$b) {
+function piwik_analytics(&$b) {
 
 	/*
 	 *   styling of every HTML block added by this plugin is done in the

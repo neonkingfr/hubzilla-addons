@@ -2,7 +2,7 @@
 	<div class="panel">
 		<div class="section-subtitle-wrapper" role="tab" id="settings-group-{{$groupid}}">
 			<h3>
-				<a data-toggle="collapse" data-target="#wfsettings-{{$groupid}}" href="#">
+				<a data-bs-toggle="collapse" data-bs-target="#wfsettings-{{$groupid}}" href="#">
 					{{$title}}
 				</a>
 			</h3>

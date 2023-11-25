@@ -17,6 +17,6 @@ function bbmath_unload() {
 	unregister_hook('bbcode','addon/bbmath/bbmath.php','bbmath_bbcode');
 }
 
-function bbmath_bbcode($a,&$text) {
+function bbmath_bbcode(&$text) {
 	$text = preg_replace_callback('|\[tex\](.*?)\[/tex\]|',function($m) { return texify($m[1]); },$text);
 }

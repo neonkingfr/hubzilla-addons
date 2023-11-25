@@ -37,7 +37,7 @@ function redred_unload() {
 	Route::unregister('addon/redred/Mod_Redred.php','redred');
 }
 
-function redred_jot_nets(&$a,&$b) {
+function redred_jot_nets(&$b) {
 	if(! Apps::addon_app_installed(local_channel(), 'redred'))
 		return;
 
@@ -52,7 +52,7 @@ function redred_jot_nets(&$a,&$b) {
 
 
 
-function redred_post_local(&$a,&$b) {
+function redred_post_local(&$b) {
 	if($b['created'] != $b['edited'])
 		return;
 
@@ -79,7 +79,7 @@ function redred_post_local(&$a,&$b) {
 }
 
 
-function redred_post_hook(&$a,&$b) {
+function redred_post_hook(&$b) {
 
 	/**
 	 * Post to Red

@@ -27,11 +27,11 @@ function dirstats_module() {}
 
 function dirstats_init() {
 	if(! get_config('dirstats','hubcount'))
-        dirstats_cron($a,$b);
+        dirstats_cron($b);
 
 }
 
-function dirstats_content(&$a) {
+function dirstats_content() {
 
 	$hubcount = get_config('dirstats','hubcount');
 	$zotcount = get_config('dirstats','zotcount');
@@ -120,7 +120,7 @@ else {
 		));
 	}
 }
-function dirstats_cron(&$a, $b) {
+function dirstats_cron($b) {
     // Some hublocs are immortal and won't ever die - they all have null date for hubloc_connected and hubloc_updated
 	$r = q("SELECT count(distinct hubloc_host) as total FROM hubloc where hubloc_deleted = 0 and hubloc_connected > '%s' and hubloc_updated > '%s'",
         dbesc(NULL_DATE),

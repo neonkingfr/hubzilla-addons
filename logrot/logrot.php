@@ -55,7 +55,7 @@ function logrot_plugin_admin_post() {
 }
 
 
-function logrot_logger(&$a,&$b) {
+function logrot_logger(&$b) {
 
 	$logrotpath = get_config('logrot', 'logrotpath');
 	$logrotsize = get_config('logrot', 'logrotsize');
@@ -76,6 +76,6 @@ function logrot_logger(&$a,&$b) {
 		sort($d);
 		$diff = count($d) - $logretained;
 		for($x = 0 ; $x < $diff; $x ++)
-			@unlink($d[$x]);	
+			@unlink($d[$x]);
 	}
 }

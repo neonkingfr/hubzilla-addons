@@ -90,7 +90,7 @@ class Superblock {
 
 }
 
-function superblock_stream_item(&$a,&$b) {
+function superblock_stream_item(&$b) {
 	if(! local_channel())
 		return;
 
@@ -108,7 +108,7 @@ function superblock_stream_item(&$a,&$b) {
 			$found = true;
 	}
 
-	if($b['item']['children']) {
+	if(!empty($b['item']['children'])) {
 		for($d = 0; $d < count($b['item']['children']); $d ++) {
 			if($sb->match($b['item']['children'][$d]['owner_xchan']))
 				$b['item']['children'][$d]['blocked'] = true;
@@ -124,7 +124,7 @@ function superblock_stream_item(&$a,&$b) {
 }
 
 
-function superblock_item_store(&$a,&$b) {
+function superblock_item_store(&$b) {
 
 	if(! Apps::addon_app_installed($b['uid'], 'superblock'))
 		return;
@@ -147,7 +147,7 @@ function superblock_item_store(&$a,&$b) {
 	return;
 }
 
-function superblock_post_mail(&$a,&$b) {
+function superblock_post_mail(&$b) {
 
 	if(! Apps::addon_app_installed($b['channel_id'], 'superblock'))
 		return;
@@ -165,7 +165,7 @@ function superblock_post_mail(&$a,&$b) {
 	return;
 }
 
-function superblock_enotify_store(&$a,&$b) {
+function superblock_enotify_store(&$b) {
 
 	if(! Apps::addon_app_installed($b['uid'], 'superblock'))
 		return;
@@ -190,7 +190,7 @@ function superblock_enotify_store(&$a,&$b) {
 }
 
 
-function superblock_enotify_format(&$a,&$b) {
+function superblock_enotify_format(&$b) {
 
 	if (!Apps::addon_app_installed($b['uid'], 'superblock')) {
 		return;
@@ -208,7 +208,7 @@ function superblock_enotify_format(&$a,&$b) {
 	}
 }
 
-function superblock_messages_widget(&$a,&$b) {
+function superblock_messages_widget(&$b) {
 	if (!Apps::addon_app_installed($b['uid'], 'superblock')) {
 		return;
 	}
@@ -220,7 +220,7 @@ function superblock_messages_widget(&$a,&$b) {
 	}
 }
 
-function superblock_api_format_items(&$a,&$b) {
+function superblock_api_format_items(&$b) {
 
 	if(! Apps::addon_app_installed($b['api_user'], 'superblock'))
 		return;
@@ -246,7 +246,7 @@ function superblock_api_format_items(&$a,&$b) {
 }
 
 
-function superblock_directory_item(&$a,&$b) {
+function superblock_directory_item(&$b) {
 
 	if(! local_channel())
 		return;
@@ -268,7 +268,7 @@ function superblock_directory_item(&$a,&$b) {
 }
 
 
-function superblock_activity_widget(&$a,&$b) {
+function superblock_activity_widget(&$b) {
 
 	if(! local_channel())
 		return;
@@ -292,7 +292,7 @@ function superblock_activity_widget(&$a,&$b) {
 }
 
 
-function superblock_conversation_start(&$a,&$b) {
+function superblock_conversation_start(&$b) {
 
 	if(!local_channel()) {
 		return;
@@ -323,7 +323,7 @@ EOT;
 
 }
 
-function superblock_item_photo_menu(&$a,&$b) {
+function superblock_item_photo_menu(&$b) {
 
 	if(! local_channel())
 		return;
@@ -338,7 +338,7 @@ function superblock_item_photo_menu(&$a,&$b) {
 	if(App::$channel['channel_hash'] == $author)
 		return;
 
-	if(is_array(App::$data['superblock'])) {
+	if(!empty(App::$data['superblock'])) {
 		foreach(App::$data['superblock'] as $bloke) {
 			if(link_compare($bloke,$author)) {
 				$blocked = true;

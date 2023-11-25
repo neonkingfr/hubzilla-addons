@@ -35,7 +35,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
- 
+
 /*   Twitter Plugin for Hubzilla
  *
  *   Author: Tobias Diekershoff
@@ -52,7 +52,7 @@
  *     OAuth Consumer key and secret pair for your application/site.
  *
  *     Activate the plugin from the plugins section of your admin panel.  When you have
- *     done so, add your consumer key and consumer secret in the Plugin Features section 
+ *     done so, add your consumer key and consumer secret in the Plugin Features section
  *     of the admin page. A link to this section will appear on the sidebar of the admin page
  *     called 'twitter'.
  *
@@ -94,7 +94,7 @@ function twitter_unload() {
 }
 
 
-function twitter_jot_nets(&$a,&$b) {
+function twitter_jot_nets(&$b) {
 	if(! local_channel())
 		return;
 
@@ -110,7 +110,7 @@ function twitter_jot_nets(&$a,&$b) {
 }
 
 
-function twitter_post_local(&$a,&$b) {
+function twitter_post_local(&$b) {
 
 	if($b['edit'])
 		return;
@@ -168,16 +168,16 @@ function short_link ($url) {
  * @brief Cut message and add link
  */
 function twitter_short_message(&$msg, $link, $limit, $shortlink = true) {
-	
+
 	if ($shortlink && strlen($link) > 20)
 			$link = short_link($link);
-	
+
 	if (strlen($msg . " " . $link) > $limit) {
 		$msg = substr($msg, 0, ($limit - strlen($link)));
 		if (substr($msg, -1) != "\n")
 			$msg = rtrim(substr($msg, 0, strrpos($msg, " ")), "?.,:;!-") . "...";
 	}
-	
+
 	$msg .= " " . $link;
 }
 
@@ -197,7 +197,7 @@ function twitter_shortenmsg($b) {
 	$body = $b["body"];
 	if ($b["title"] != "")
 		$body = $b["title"] . " : \n" . $body;
-	
+
 	// Check if this is a reshare
 	if(preg_match("/\[share author='([^\']+)/i", $body, $matches)) {
 		$author = str_replace("+", " ", $matches[1]);
@@ -213,8 +213,8 @@ function twitter_shortenmsg($b) {
 	            $image = html_entity_decode($matches[2]);
 	    }
 	}
-	
-	// Choose first URL 
+
+	// Choose first URL
 	$link = '';
 	if (preg_match('/\[url=|\[o?embed\](https?\:\/\/[^\]\[]+)/is', $body, $matches))
 	    $link = html_entity_decode($matches[1]);
@@ -231,24 +231,24 @@ function twitter_shortenmsg($b) {
 	// Then convert it to plain text
 	$msg = trim(html2plain($msg, 0, true));
 	$msg = html_entity_decode($msg, ENT_QUOTES, 'UTF-8');
-	
+
 	// Remove URLs
 	$msg = preg_replace("/https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,\@]+/", "", $msg);
 
 	// Removing multiple newlines
 	while (strpos($msg, "\n\n\n") !== false)
 		$msg = str_replace("\n\n\n", "\n\n", $msg);
-	
+
 	// Removing multiple spaces
 	while (strpos($msg, "  ") !== false)
 		$msg = str_replace("  ", " ", $msg);
-	
+
 	$msg = trim(urldecode($msg));
-	
+
 	// Add URL if exist and no image found
 	if (empty($image) && $link != '')
 		twitter_short_message($msg, $link, $max_char - 23);
-	
+
 	$msglink = $b["plink"];
 
 	// If the message is short enough we send it and embed a picture if necessary it
@@ -262,7 +262,7 @@ function twitter_shortenmsg($b) {
 }
 
 
-function twitter_action($a, $uid, $pid, $action) {
+function twitter_action($uid, $pid, $action) {
 
 	$ckey    = get_config('twitter', 'consumerkey');
 	$csecret = get_config('twitter', 'consumersecret');
@@ -294,7 +294,7 @@ function twitter_action($a, $uid, $pid, $action) {
 }
 
 
-function twitter_post_hook(&$a,&$b) {
+function twitter_post_hook(&$b) {
 
 	/**
 	 * Post to Twitter
@@ -302,10 +302,10 @@ function twitter_post_hook(&$a,&$b) {
 
 	if (! Apps::addon_app_installed($b['uid'], 'twitter'))
 		return;
-		
+
 	if (! is_item_normal($b) || $b['item_private'] || ($b['created'] !== $b['edited']))
 		return;
-		
+
 	if (! perm_is_allowed($b['uid'], '', 'view_stream', false))
 		return;
 
@@ -317,7 +317,7 @@ function twitter_post_hook(&$a,&$b) {
 
 	if ($b['parent'] !== $b['id'])
 		return;
-		
+
 	logger('twitter post invoked');
 
 	load_pconfig($b['uid'], 'twitter');
@@ -341,24 +341,24 @@ function twitter_post_hook(&$a,&$b) {
 
 		require_once('include/bbcode.php');
 
-		// In theory max char is 140 but T. uses t.co to make links 
+		// In theory max char is 140 but T. uses t.co to make links
 		// longer so we give them 10 characters extra
 		if (!$intelligent_shortening) {
 			$max_char = intval(get_pconfig($b['uid'],'twitter','tweet_length',280)) - 10; // max. length for a tweet-
-			
-			// we will only work with up to two times the length of the dent 
-			// we can later send to Twitter. This way we can "gain" some 
-			// information during shortening of potential links but do not 
+
+			// we will only work with up to two times the length of the dent
+			// we can later send to Twitter. This way we can "gain" some
+			// information during shortening of potential links but do not
 			// shorten all the links in a 200000 character long essay.
 			if (! $b['title']=='')
 				$tmp = $b['title'] . " : \n". $b['body']; //substr($tmp, 0, 4 * $max_char);
 			else
 				$tmp = $b['body']; //substr($b['body'], 0, 3 * $max_char);
-				
+
 			// if [url=bla][img]blub.png[/img][/url] get blub.png
 			$tmp = preg_replace( '/\[url\=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]\[img\](\\w+.*?)\\[\\/img\]\\[\\/url\]/i', '$2', $tmp);
 			$tmp = preg_replace( '/\[zrl\=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\]\[zmg\](\\w+.*?)\\[\\/zmg\]\\[\\/zrl\]/i', '$2', $tmp);
-				
+
 			// preserve links to images, videos and audios
 			$tmp = preg_replace( '/\[img\=([0-9]*)x([0-9]*)\](.*?)\[\/img\]/ism', '$3', $tmp);
 			$tmp = preg_replace( '/\[\\/?img(\\s+.*?\]|\])/i', '', $tmp);
@@ -368,9 +368,9 @@ function twitter_post_hook(&$a,&$b) {
 			$tmp = preg_replace( '/\[\\/?youtube(\\s+.*?\]|\])/i', '', $tmp);
 			$tmp = preg_replace( '/\[\\/?vimeo(\\s+.*?\]|\])/i', '', $tmp);
 			$tmp = preg_replace( '/\[\\/?audio(\\s+.*?\]|\])/i', '', $tmp);
-			
+
 			$linksenabled = get_pconfig($b['uid'],'twitter','post_taglinks');
-			
+
 			// if a #tag is linked, don't send the [url] over to SN
 			// that is, don't send if the option is not set in the
 			// connector settings
@@ -383,9 +383,9 @@ function twitter_post_hook(&$a,&$b) {
 				// @-mentions
 				$tmp = preg_replace( '/@\[zrl\=(\w+.*?)\](\w+.*?)\[\/zrl\]/i', '@$2', $tmp);
 			}
-			
+
 			$tmp = preg_replace( '/\[url\=(https?\:\/\/[a-zA-Z0-9\:\/\-\?\&\;\.\=\_\~\#\%\$\!\+\,]+)\](\w+.*?)\[\/url\]/i', '$2 $1', $tmp);
-			
+
 			// find all http or https links in the body of the entry and
 			// apply the shortener if the link is longer then 20 characters
 			if (strlen($tmp) > $max_char && $max_char > 0) {
@@ -399,8 +399,8 @@ function twitter_post_hook(&$a,&$b) {
 					}
 				}
 			}
-					
-			// ok, all the links we want to send out are save, now strip 
+
+			// ok, all the links we want to send out are save, now strip
 			// away the remaining bbcode
 			//$msg = strip_tags(bbcode($tmp, false, false));
 			$msg = bbcode($tmp, false, false);
@@ -416,7 +416,7 @@ function twitter_post_hook(&$a,&$b) {
 				$msg = nl2br(substr($msg, 0, $max_char-strlen($shortlink) - 4));
         	                $msg = str_replace(array('<br>','<br />'),' ',$msg);
 	                        $e = explode(' ', $msg);
-	                        //  remove the last word from the cut down message to 
+	                        //  remove the last word from the cut down message to
 	                        //  avoid sending cut words to the MicroBlog
 	                        array_pop($e);
 	                        $msg = implode(' ', $e);
@@ -425,7 +425,7 @@ function twitter_post_hook(&$a,&$b) {
 
 			$msg = trim($msg);
 			$image = "";
-		} 
+		}
 		else {
 			$msgarr = twitter_shortenmsg($b);
 			$msg = $msgarr["msg"];
@@ -441,7 +441,7 @@ function twitter_post_hook(&$a,&$b) {
 			$cb->setConsumerKey($ckey, $csecret);
 			$cb->setToken($otoken, $osecret);
 			$cb->setTimeout(intval(get_config('system','curl_timeout', 30)) * 1000); // in ms
-			
+
 			$post = [ 'status' => $msg ];
 
 			// Post image if provided
@@ -455,23 +455,23 @@ function twitter_post_hook(&$a,&$b) {
 			    if ($result->httpstatus == 200)
 			        $post['media_ids'] = $result->media_id_string;
 			}
-			
+
 			$result = $cb->statuses_update($post);
 
 //			if ($iscomment)
 //				$post["in_reply_to_status_id"] = substr($orig_post["uri"], 9);
 
 			logger('Tweet send result: ' . print_r((array)$result, true), LOGGER_DEBUG);
-			
+
 			if ($result->httpstatus != 200) {
 				logger('Send to Twitter failed with HTTP status code ' . $result->httpstatus . '; error message: "' . print_r($result->errors, true) . '"');
-				
+
 			logger('twitter post completed');
 
 //				// Workaround: Remove the picture link so that the post can be reposted without it
 //				$msg .= " ".$image;
 //				$image = "";
-//			} 
+//			}
 //			elseif ($iscomment) {
 //				logger('twitter_post: Update extid '.$result->id_str." for post id ".$b['id']);
 //				q("UPDATE item SET extid = '%s', body = '%s' WHERE id = %d",
@@ -507,7 +507,7 @@ logger('Twitter admin');
 }
 
 
-function twitter_expand_entities($a, $body, $item, $no_tags = false, $dontincludemedia) {
+function twitter_expand_entities($body, $item, $no_tags = false, $dontincludemedia) {
 	require_once("include/oembed.php");
 
 	$tags = "";

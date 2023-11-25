@@ -43,88 +43,88 @@ class Hsse {
 			return;
 		}
 
-		$valid_modules = ['Network','Rpost','Editpost'];
+		$valid_modules = ['Network', 'Rpost', 'Editpost', 'Hq'];
 		if (!in_array($hook_arr['module'],$valid_modules)) {
 			return;
 		}
 
 		$x = $hook_arr['x'];
-		$popup = $$hook_arr['popup'];
+		$popup = $hook_arr['popup'];
 
 		$o = '';
 
 		$c = channelx_by_n($x['profile_uid']);
-		if($c && $c['channel_moved']) 
+		if($c && $c['channel_moved'])
 			return;
 
 		$plaintext = true;
 
 	//	if(feature_enabled(local_channel(),'richtext'))
 	//		$plaintext = false;
-	
+
 		$feature_voting = feature_enabled($x['profile_uid'], 'consensus_tools');
 		if(x($x, 'hide_voting'))
 			$feature_voting = false;
-		
+
 		$feature_nocomment = feature_enabled($x['profile_uid'], 'disable_comments');
 		if(x($x, 'disable_comments'))
 			$feature_nocomment = false;
-	
+
 		$feature_expire = ((feature_enabled($x['profile_uid'], 'content_expire') && (! $webpage)) ? true : false);
 		if(x($x, 'hide_expire'))
 			$feature_expire = false;
-	
+
 		$feature_future = ((feature_enabled($x['profile_uid'], 'delayed_posting') && (! $webpage)) ? true : false);
 		if(x($x, 'hide_future'))
 			$feature_future = false;
-	
+
 		$geotag = (($x['allow_location']) ? replace_macros(get_markup_template('jot_geotag.tpl'), array()) : '');
 		$setloc = t('Set your location');
 		$clearloc = ((get_pconfig($x['profile_uid'], 'system', 'use_browser_location')) ? t('Clear browser location') : '');
 		if(x($x, 'hide_location'))
 			$geotag = $setloc = $clearloc = '';
-	
+
 		$mimetype = ((x($x,'mimetype')) ? $x['mimetype'] : 'text/bbcode');
-	
+
 		$mimeselect = ((x($x,'mimeselect')) ? $x['mimeselect'] : false);
 		if($mimeselect)
 			$mimeselect = mimetype_select($x['profile_uid'], $mimetype);
 		else
 			$mimeselect = '<input type="hidden" name="mimetype" value="' . $mimetype . '" />';
-	
+
 		$weblink = (($mimetype === 'text/bbcode') ? t('Insert web link') : false);
 		if(x($x, 'hide_weblink'))
 			$weblink = false;
-		
+
 		$embedPhotos = t('Embed (existing) photo from your photo albums');
-	
+
 		$writefiles = (($mimetype === 'text/bbcode') ? perm_is_allowed($x['profile_uid'], get_observer_hash(), 'write_storage') : false);
 		if(x($x, 'hide_attach'))
 			$writefiles = false;
-	
+
 		$layout = ((x($x,'layout')) ? $x['layout'] : '');
-	
+
 		$layoutselect = ((x($x,'layoutselect')) ? $x['layoutselect'] : false);
 		if($layoutselect)
 			$layoutselect = layout_select($x['profile_uid'], $layout);
 		else
 			$layoutselect = '<input type="hidden" name="layout_mid" value="' . $layout . '" />';
-	
+
 		if(array_key_exists('channel_select',$x) && $x['channel_select']) {
 			require_once('include/channel.php');
 			$id_select = identity_selector();
 		}
 		else
 			$id_select = '';
-	
+
 		$webpage = ((x($x,'webpage')) ? $x['webpage'] : '');
-	
+
 		$reset = ((x($x,'reset')) ? $x['reset'] : '');
-		
+
 		$feature_auto_save_draft = ((feature_enabled($x['profile_uid'], 'auto_save_draft')) ? "true" : "false");
-		
+
 		$tpl = get_markup_template('hsse-header.tpl','addon/hsse/');
-	
+
 		App::$page['htmlhead'] .= replace_macros($tpl, array(
 			'$baseurl' => z_root(),
 			'$editselect' => (($plaintext) ? 'none' : '/(profile-jot-text|prvmail-text)/'),
@@ -147,45 +147,45 @@ class Hsse {
 			'$auto_save_draft' => $feature_auto_save_draft,
 			'$reset' => $reset
 		));
-	
+
 		$tpl = get_markup_template('hsse.tpl','addon/hsse/');
-	
+
 		$preview = t('Preview');
 		if(x($x, 'hide_preview'))
 			$preview = '';
-	
+
 		$defexpire = ((($z = get_pconfig($x['profile_uid'], 'system', 'default_post_expire')) && (! $webpage)) ? $z : '');
 		if($defexpire)
 			$defexpire = datetime_convert('UTC',date_default_timezone_get(),$defexpire,'Y-m-d H:i');
-	
+
 		$defpublish = ((($z = get_pconfig($x['profile_uid'], 'system', 'default_post_publish')) && (! $webpage)) ? $z : '');
 		if($defpublish)
 			$defpublish = datetime_convert('UTC',date_default_timezone_get(),$defpublish,'Y-m-d H:i');
-	
+
 		$cipher = get_pconfig($x['profile_uid'], 'system', 'default_cipher');
 		if(! $cipher)
 			$cipher = 'aes256';
-	
+
 		if(array_key_exists('catsenabled',$x))
 			$catsenabled = $x['catsenabled'];
 		else
 			$catsenabled = ((feature_enabled($x['profile_uid'], 'categories') && (! $webpage)) ? 'categories' : '');
-	
+
 		// avoid illegal offset errors
-		if(! array_key_exists('permissions',$x)) 
+		if(! array_key_exists('permissions',$x))
 			$x['permissions'] = [ 'allow_cid' => '', 'allow_gid' => '', 'deny_cid' => '', 'deny_gid' => '' ];
-	
+
 		$jotplugins = '';
 		call_hooks('jot_tool', $jotplugins);
-	
+
 		$jotnets = '';
 		if(x($x,'jotnets')) {
 			call_hooks('jot_networks', $jotnets);
 		}
-	
+
 		$sharebutton = (x($x,'button') ? $x['button'] : t('Share'));
 		$placeholdtext = (x($x,'content_label') ? $x['content_label'] : $sharebutton);
-	
+
 		$o .= replace_macros($tpl, array(
 			'$return_path' => ((x($x, 'return_path')) ? $x['return_path'] : App::$query_string),
 			'$action' =>  z_root() . '/item',
@@ -263,12 +263,12 @@ class Hsse {
                 	'$is_owner' => ((local_channel() && (local_channel() == $x['profile_uid'])) ? true : false)
 
 		));
-	
+
 		if ($popup === true) {
 			$o = '<div id="jot-popup" style="display:none">' . $o . '</div>';
 		}
 
-		$hook_arr['editor_html'] = $o;	
+		$hook_arr['editor_html'] = $o;
 		return;
 	}
 }

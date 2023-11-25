@@ -38,7 +38,7 @@ function rtof_unload() {
 
 }
 
-function rtof_jot_nets(&$a,&$b) {
+function rtof_jot_nets(&$b) {
 	if(! Apps::addon_app_installed(local_channel(), 'rtof'))
 		return;
 
@@ -51,7 +51,7 @@ function rtof_jot_nets(&$a,&$b) {
 		. '<i class="fa fa-fw fa-friendica"></i> ' . t('Post to Friendica') . '</div>';
 }
 
-function rtof_post_local(&$a,&$b) {
+function rtof_post_local(&$b) {
 	if($b['created'] != $b['edited'])
 		return;
 
@@ -77,7 +77,7 @@ function rtof_post_local(&$a,&$b) {
     }
 }
 
-function rtof_post_hook(&$a,&$b) {
+function rtof_post_hook(&$b) {
 
 	/**
 	 * Post to Friendica

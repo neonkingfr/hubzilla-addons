@@ -423,7 +423,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 	}
 
 	if (($url) && (strpos($url, 'http') === 0)) {
-		$x = Activity::fetch($url);
+		$x = Activity::get_actor($url);
 
 		if (!$x) {
 			return;
@@ -463,7 +463,7 @@ function pubcrawl_discover_channel_webfinger(&$b) {
 		$url = $person_obj['id'];
 	}
 
-	Activity::actor_store($url, $person_obj, true);
+	Activity::actor_store($person_obj, true);
 
 	if ($address) {
 		q("update xchan set xchan_addr = '%s', xchan_follow = '%s' where xchan_hash = '%s' and xchan_network = 'activitypub'",
@@ -537,7 +537,7 @@ function pubcrawl_import_author(&$b) {
 		return;
 	}
 
-	Activity::actor_store($url, $person_obj);
+	Activity::actor_store($person_obj);
 
 	$b['result'] = $url;
 
@@ -637,8 +637,8 @@ function pubcrawl_notifier_process(&$arr) {
 
 	// If the parent is an announce activity, add the author to the recipients
 	if ($arr['parent_item']['verb'] === ACTIVITY_SHARE) {
-		$arr['env_recips'][] = $arr['parent_item']['author']['xchan_hash'];
-		$arr['recipients'][] = '\'' . $arr['parent_item']['author']['xchan_hash'] . '\'';
+		$arr['env_recips'][] = $arr['parent_item']['owner']['xchan_hash'];
+		$arr['recipients'][] = '\'' . $arr['parent_item']['owner']['xchan_hash'] . '\'';
 	}
 
 	// If we commented a comment we should also deliver to the thread_parent author

@@ -50,7 +50,7 @@ function ldapauth_unload() {
 }
 
 
-function ldapauth_hook_authenticate($a,&$b) {
+function ldapauth_hook_authenticate(&$b) {
 
 	$mail = '';
 	$username = '';

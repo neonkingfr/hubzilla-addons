@@ -28,7 +28,7 @@ function testdrive_uninstall() {
 
 }
 
-function testdrive_register_account($a,$b) {
+function testdrive_register_account($b) {
 
 	$aid = $b['account_id'];
 
@@ -44,7 +44,7 @@ function testdrive_register_account($a,$b) {
 };
 
 
-function testdrive_cron($a,$b) {
+function testdrive_cron($b) {
 
 	$r = q("select * from account where account_expires_on < %s + INTERVAL %s and
 		account_expire_notified <= '%s' ",
@@ -97,7 +97,7 @@ function testdrive_cron($a,$b) {
 
 }
 
-function testdrive_enotify(&$a, &$b) {
+function testdrive_enotify(&$b) {
     if (x($b, 'params') && $b['params']['type'] == NOTIFY_SYSTEM
 		&& x($b['params'], 'system_type') && $b['params']['system_type'] === 'testdrive_expire') {
         $b['itemlink'] = z_root();

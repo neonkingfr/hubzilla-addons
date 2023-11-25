@@ -27,7 +27,7 @@ function nsabait_unload() {
 
 
 
-function nsabait_post_hook($a, &$req) {
+function nsabait_post_hook(&$req) {
 	/**
 	 *
 	 * An item was posted on the local system.

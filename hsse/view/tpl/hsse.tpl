@@ -60,7 +60,7 @@
 		</div>
 		{{/if}}
 		<div id="profile-jot-submit-wrapper" class="clearfix p-2 jothidden">
-			<div id="profile-jot-submit-left" class="btn-toolbar float-left">
+			<div id="profile-jot-submit-left" class="btn-toolbar float-start">
 				{{if $bbcode}}
 				<div class="btn-group mr-2">
 				</div>
@@ -170,7 +170,7 @@
 					</div>
 				</div>
 			</div>
-			<div id="profile-jot-submit-right" class="btn-group float-right">
+			<div id="profile-jot-submit-right" class="btn-group float-end">
 				{{if $preview}}
 				<button class="btn btn-outline-secondary btn-sm" onclick="preview_post();return false;" title="{{$preview}}">
 					<i class="fa fa-eye jot-icons" ></i>

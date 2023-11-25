@@ -65,6 +65,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 
 		$json_photo = '';
 		$json_album = '';
+		$album = '';
 
 		$photo = (($_GET['photo']) ? true : false);
 		if($photo) {
@@ -89,14 +90,14 @@ class Gallery extends \Zotlabs\Web\Controller {
 				    $album_name .= '/' . argv($i);
 				}
 
-				$r = q("select hash from attach where is_dir = 1 and uid = %d and display_path = '%s' $sql_extra limit 1",
+				$r = q("select hash, display_path from attach where is_dir = 1 and uid = %d and display_path = '%s' $sql_extra limit 1",
 					intval($owner_uid),
 					dbesc($album_name)
 				);
 
 				if($r) {
 					$arr['album_id'] = $r[0]['hash'];
-
+					$album = $r[0]['display_path'];
 					$album_items = self::get_album_items($arr);
 					$json_album = json_encode($album_items);
 				}
@@ -133,6 +134,7 @@ class Gallery extends \Zotlabs\Web\Controller {
 		$o = replace_macros($tpl, [
 			'$title' => t('Gallery'),
 			'$albums' => $items,
+			'$album' => $album,
 			'$channel_nick' => json_encode(App::$data['channel']['channel_address']),
 			'$channel_name' => json_encode(App::$data['channel']['channel_name']),
 			'$channel_url' => json_encode(App::$data['channel']['xchan_url']),

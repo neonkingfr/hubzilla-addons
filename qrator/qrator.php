@@ -23,7 +23,7 @@ function qrator_module() {}
 
 
 
-function qrator_photo_mod_init(&$a,&$b) {
+function qrator_photo_mod_init(&$b) {
 
 	if(argc() > 1 && argv(1) === 'qr') {
 		$t = $_GET['qr'];
@@ -49,7 +49,7 @@ function qrator_bb_qr($match) {
 }
 
 
-function qrator_bbcode(&$a,&$b) {
+function qrator_bbcode(&$b) {
 
 	if (strpos($b,'[/qr]') !== false) {
 		$b = preg_replace_callback("/\[qr\](.*?)\[\/qr\]/ism", 'qrator_bb_qr', $b);
@@ -58,7 +58,7 @@ function qrator_bbcode(&$a,&$b) {
 }
 
 
-function qrator_content(&$a) {
+function qrator_content() {
 
 $header = t('QR Generator');
 $prompt = t('Enter some text');

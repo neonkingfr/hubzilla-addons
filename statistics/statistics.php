@@ -28,7 +28,7 @@ function statistics_unload() {
 }
 
 
-function statistics_well_known(&$a,&$b) {
+function statistics_well_known(&$b) {
 	if(argc() > 1 && argv(1) === 'nodeinfo') {
 		$arr = [ 'links' => [
 			[
@@ -49,7 +49,7 @@ function statistics_well_known(&$a,&$b) {
 }
 
 
-function statistics_load_module(&$a, &$b) {
+function statistics_load_module(&$b) {
 	if($b['module'] === 'nodeinfo') {
 		require_once('addon/statistics/nodeinfo.php');
 		$b['installed'] = true;
@@ -78,7 +78,7 @@ function statistics_init() {
 	// ignore $_REQUEST['module_format'] ('json')
 
 	$hidden = get_config('diaspora','hide_in_statistics');
-	
+
 
 	$statistics = array(
 		"name" => get_config('system','sitename'),
@@ -104,7 +104,7 @@ function statistics_init() {
  * End commenting out old statistics.json interface
  */
 
-function statistics_cron_weekly($a,$b) {
+function statistics_cron_weekly($b) {
 
 	logger('statistics_cron: cron_start');
 

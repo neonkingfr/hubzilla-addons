@@ -15,7 +15,7 @@ use Zotlabs\Extend\Route;
 function fuzzloc_load() {
 
 	/**
-	 * 
+	 *
 	 * Our plugin will attach in three places.
 	 * The first is just prior to storing a local post.
 	 *
@@ -46,7 +46,7 @@ function fuzzloc_unload() {
 
 
 
-function fuzzloc_post_hook($a, &$item) {
+function fuzzloc_post_hook(&$item) {
 
 	/**
 	 *
@@ -104,7 +104,7 @@ function fuzzloc_post_hook($a, &$item) {
 	if($dir2)
 		$offset2 = 0 - $offset2;
 
-	// $fuzz is in meters. 
+	// $fuzz is in meters.
 
 	$lat = $lat + fuzzloc_mtod($offset1,$lat);
     $lon = $lon + fuzzloc_mtod($offset2,$lat);

@@ -107,7 +107,7 @@ function openclipatar_sort_result(&$arr, array $prefclipids, $sortprefids) {
 	});
 }
 
-function openclipatar_profile_photo_content_end(&$a, &$o) {
+function openclipatar_profile_photo_content_end(&$o) {
 
 	$prefclipids = get_config('openclipatar', 'prefclipids');
 	$defsearch = get_config('openclipatar', 'defsearch');
@@ -200,7 +200,7 @@ function openclipatar_profile_photo_content_end(&$a, &$o) {
 	}
 }
 
-function openclipatar_content(&$a) {
+function openclipatar_content() {
 	if(! local_channel())
 		return;
 
@@ -330,7 +330,7 @@ function openclipatar_content(&$a) {
 
 	} else {
 		//invoked as module, we place in content pane the same as we would for the end of the profile photo page. Also handles json for endless scroll for either invokation.
-		openclipatar_profile_photo_content_end($a, $o);
+		openclipatar_profile_photo_content_end($o);
 	}
 	return $o;
 }

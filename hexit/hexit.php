@@ -17,7 +17,7 @@ function hexit_module() {}
 
 
 
-function hexit_content(&$a) {
+function hexit_content() {
 
 
 $o .= <<< EOT

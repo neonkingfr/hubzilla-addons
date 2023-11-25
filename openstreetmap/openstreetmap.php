@@ -28,7 +28,7 @@ function openstreetmap_unload() {
 	logger("removed openstreetmap");
 }
 
-function openstreetmap_alterheader($a, &$navHtml) {
+function openstreetmap_alterheader(&$navHtml) {
 	$addScriptTag = '<script type="text/javascript" src="' . z_root() . '/addon/openstreetmap/openstreetmap.js"></script>' . "\r\n";
 	App::$page['htmlhead'] .= $addScriptTag;
 }
@@ -38,18 +38,18 @@ function openstreetmap_alterheader($a, &$navHtml) {
  *
  * If an item has coordinates add link to a tile map server, e.g. openstreetmap.org.
  * If an item has a location open it with the help of OSM's Nominatim reverse geocode search.
- * 
+ *
  * @param mixed $a
  * @param array& $item
  */
-function openstreetmap_location($a, &$item) {
+function openstreetmap_location(&$item) {
 
 	if(! (strlen($item['location']) || strlen($item['coord'])))
 		return;
 
 	/*
 	 * Get the configuration variables from the config.
-	 * @todo Separate the tile map server from the text-string to map tile server 
+	 * @todo Separate the tile map server from the text-string to map tile server
 	 * since they apparently use different URL conventions.
 	 * We use OSM's current convention of "#map=zoom/lat/lon" and optional
 	 * ?mlat=lat&mlon=lon for markers.
@@ -94,7 +94,7 @@ function openstreetmap_location($a, &$item) {
 }
 
 
-function openstreetmap_generate_named_map(&$a,&$b) {
+function openstreetmap_generate_named_map(&$b) {
 	$nomserver = get_config('openstreetmap', 'nomserver', 'https://nominatim.openstreetmap.org/search.php');
 	if(! $nomserver)
 		$nomserver = 'https://nominatim.openstreetmap.org/search.php';
@@ -107,13 +107,13 @@ function openstreetmap_generate_named_map(&$a,&$b) {
 		$j = json_decode($x['body'],true);
 		if($j && is_array($j) && $j[0]['lat'] && $j[0]['lon']) {
 			$arr = array('lat' => $j[0]['lat'],'lon' => $j[0]['lon'],'location' => $b['location'], 'html' => '');
-			openstreetmap_generate_map($a,$arr);
+			openstreetmap_generate_map($arr);
 			$b['html'] = $arr['html'];
 		}
 	}
 }
 
-function openstreetmap_generate_map(&$a,&$b) {
+function openstreetmap_generate_map(&$b) {
 	$tmsserver = get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org');
 	if(! $tmsserver)
 		$tmsserver = 'https://www.openstreetmap.org';
@@ -137,7 +137,7 @@ function openstreetmap_generate_map(&$a,&$b) {
 
 }
 
-function openstreetmap_plugin_admin(&$o) {
+function openstreetmap_plugin_admin() {
 	$t = get_markup_template("admin.tpl", "addon/openstreetmap/");
 
 	$tmsserver = get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org');
@@ -171,6 +171,6 @@ function openstreetmap_plugin_admin_post() {
 	info( t('Settings updated.') . EOL);
 }
 
-function openstreetmap_content_security_policy(&$a, &$csp) {
+function openstreetmap_content_security_policy(&$csp) {
 	$csp["frame-src"][] = parse_url(get_config('openstreetmap', 'tmsserver', 'https://www.openstreetmap.org'), PHP_URL_HOST);
 }

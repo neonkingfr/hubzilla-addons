@@ -81,12 +81,13 @@ Class WorkflowSettingsUtil {
 
 		$content = '';
 
-		$statuscount = count($statuses);
+		$statuscount = $statuses ? count($statuses) : 0;
 
 		$content .= "<input type=hidden name='statuscount' value='".$statuscount."'>";
 		$count = 0;
 		$content .= "<div id='status-list'>";
-		foreach ($statuses as $status) {
+		if (is_array($statuses)) {
+		  foreach ($statuses as $status) {
 			$templatevars = [ '$status'=> [
 				"status[".$count."]",
 				$status['status']
@@ -98,6 +99,7 @@ Class WorkflowSettingsUtil {
 			];
 			$content .= replace_macros(get_markup_template('settings_status_input.tpl','addon/workflow'),$templatevars);
 			$count++;
+		  }
 		}
 
 	$content .= '</div>';
@@ -133,4 +135,17 @@ Class WorkflowSettingsUtil {
 	$hookinfo = $entries;
 	}
 
+	public static function widgetsettingsmenu(&$moretabs) {
+		$uid = (App::$profile_uid) ? App::$profile_uid : local_channel();
+		if (!$uid) { return; }
+
+		if (!Apps::addon_app_installed($uid,'workflow')) { return; }
+
+		$moretabs[] =       array(
+			'label' => t('Workflow settings'),
+			'url'   => z_root().'/settings/workflow',
+			'selected'      => ((argv(1) === 'workflow') ? 'active' : ''),
+		);
+
+	}
 }

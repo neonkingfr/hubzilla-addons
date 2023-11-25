@@ -22,7 +22,7 @@ function randpost_unload() {
 }
 
 
-function randpost_enotify_store(&$a,&$b) {
+function randpost_enotify_store(&$b) {
 
 	if(! ($b['ntype'] == NOTIFY_COMMENT || $b['ntype'] == NOTIFY_TAGSELF))
 		return;
@@ -224,7 +224,7 @@ function randpost_enotify_store(&$a,&$b) {
 
 
 
-function randpost_fetch(&$a,&$b) {
+function randpost_fetch(&$b) {
 
 	$fort_server = get_config('fortunate','server');
 	if(! $fort_server)

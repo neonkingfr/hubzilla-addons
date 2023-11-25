@@ -8,6 +8,9 @@
 
 namespace Zotlabs\Widget;
 
+require_once('addon/wiki/Lib/NativeWiki.php');
+require_once('addon/wiki/Lib/NativeWikiPage.php');
+
 use NativeWiki;
 use NativeWikiPage;
 

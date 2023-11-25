@@ -1,7 +1,9 @@
 (function ($) {
 	'use strict';
 
-	$ = $ && $.hasOwnProperty('default') ? $['default'] : $;
+	function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { default: e }; }
+
+	var $__default = /*#__PURE__*/_interopDefaultLegacy($);
 
 	/**
 	 * Check if the passed argument is the
@@ -62,30 +64,46 @@
 		var target = isTargetBoolean ? sourceArg : targetArg;
 		var isDeep = isTargetBoolean ? targetArg : false;
 
+		function isObject(value) {
+			return value !== null && typeof value === 'object' &&
+				Object.getPrototypeOf(value) === Object.prototype;
+		}
+
 		for (; i < arguments.length; i++) {
 			var source = arguments[i];
 
 			// Copy all properties for jQuery compatibility
 			/* eslint guard-for-in: off */
 			for (var key in source) {
+				var targetValue = target[key];
 				var value = source[key];
 
-				// Skip undefined values to match jQuery and
-				// skip if target to prevent infinite loop
-				if (!isUndefined(value)) {
-					var isObject = value !== null && typeof value === 'object' &&
-						Object.getPrototypeOf(value) === Object.prototype;
-					var isArray = Array.isArray(value);
+				// Skip undefined values to match jQuery
+				if (isUndefined(value)) {
+					continue;
+				}
 
-					if (isDeep && (isObject || isArray)) {
-						target[key] = extend(
-							true,
-							target[key] || (isArray ? [] : {}),
-							value
-						);
-					} else {
-						target[key] = value;
-					}
+				// Skip special keys to prevent prototype pollution
+				if (key === '__proto__' || key === 'constructor') {
+					continue;
+				}
+
+				var isValueObject = isObject(value);
+				var isValueArray = Array.isArray(value);
+
+				if (isDeep && (isValueObject || isValueArray)) {
+					// Can only merge if target type matches otherwise create
+					// new target to merge into
+					var isSameType = isObject(targetValue) === isValueObject &&
+						Array.isArray(targetValue) === isValueArray;
+
+					target[key] = extend(
+						true,
+						isSameType ? targetValue : (isValueArray ? [] : {}),
+						value
+					);
+				} else {
+					target[key] = value;
 				}
 			}
 		}
@@ -150,21 +168,7 @@
 	 *
 	 * @type {number}
 	 */
-
-
-	/**
-	 * Node type document nodes
-	 *
-	 * @type {number}
-	 */
-
-
-	/**
-	 * Node type constant for document fragments
-	 *
-	 * @type {number}
-	 */
-
+	var COMMENT_NODE = 8;
 
 	function toFloat(value) {
 		value = parseFloat(value);
@@ -198,15 +202,6 @@
 
 		return node;
 	}
-
-	/**
-	 * Returns an array of parents that matches the selector
-	 *
-	 * @param {!HTMLElement} node
-	 * @param {!string} [selector]
-	 * @returns {Array<HTMLElement>}
-	 */
-
 
 	/**
 	 * Gets the first parent node that matches the selector
@@ -276,14 +271,6 @@
 	 * @type {boolean}
 	 */
 	var EVENT_CAPTURE = true;
-
-	/**
-	 * For on() and off() if to add/remove the event
-	 * to the bubble phase
-	 *
-	 * @type {boolean}
-	 */
-
 
 	/**
 	 * Adds an event listener for the specified events.
@@ -450,7 +437,7 @@
 
 
 	/**
-	 * Gets or sets thee data attributes on a node
+	 * Gets or sets the data attributes on a node
 	 *
 	 * Unlike the jQuery version this only stores data
 	 * in the DOM attributes which means only strings
@@ -813,7 +800,9 @@
 	 * @type {string}
 	 */
 	var blockLevelList = '|body|hr|p|div|h1|h2|h3|h4|h5|h6|address|pre|' +
-		'form|table|tbody|thead|tfoot|th|tr|td|li|ol|ul|blockquote|center|';
+		'form|table|tbody|thead|tfoot|th|tr|td|li|ol|ul|blockquote|center|' +
+		'details|section|article|aside|nav|main|header|hgroup|footer|fieldset|' +
+		'dl|dt|dd|figure|figcaption|';
 
 	/**
 	 * List of elements that do not allow children separated by bars (|)
@@ -869,9 +858,27 @@
 	 *
 	 * @param {HTMLElement} from
 	 * @param {HTMLElement} to
+	 * @deprecated since v3.1.0
 	 */
 	function copyCSS(from, to) {
-		to.style.cssText = from.style.cssText + to.style.cssText;
+		if (to.style && from.style) {
+			to.style.cssText = from.style.cssText + to.style.cssText;
+		}
+	}
+
+	/**
+	 * Checks if a DOM node is empty
+	 *
+	 * @param {Node} node
+	 * @returns {boolean}
+	 */
+	function isEmpty(node) {
+		if (node.lastChild && isEmpty(node.lastChild)) {
+			remove(node.lastChild);
+		}
+
+		return node.nodeType === 3 ? !node.nodeValue :
+			(canHaveChildren(node) && !node.childNodes.length);
 	}
 
 	/**
@@ -883,30 +890,44 @@
 	 * @param {HTMLElement} node
 	 */
 	function fixNesting(node) {
-		var	getLastInlineParent = function (node) {
-			while (isInline(node.parentNode, true)) {
-				node = node.parentNode;
-			}
-
-			return node;
-		};
-
 		traverse(node, function (node) {
 			var list = 'ul,ol',
-				isBlock = !isInline(node, true);
+				isBlock = !isInline(node, true) && node.nodeType !== COMMENT_NODE,
+				parent = node.parentNode;
 
 			// Any blocklevel element inside an inline element needs fixing.
-			if (isBlock && isInline(node.parentNode, true)) {
-				var	parent = getLastInlineParent(node),
-					before = extractContents(parent, node),
-					middle = node;
+			// Also <p> tags that contain blocks should be fixed
+			if (isBlock && (isInline(parent, true) || parent.tagName === 'P')) {
+				// Find the last inline parent node
+				var	lastInlineParent = node;
+				while (isInline(lastInlineParent.parentNode, true) ||
+					lastInlineParent.parentNode.tagName === 'P') {
+					lastInlineParent = lastInlineParent.parentNode;
+				}
 
-				// copy current styling so when moved out of the parent
-				// it still has the same styling
-				copyCSS(parent, middle);
+				var before = extractContents(lastInlineParent, node);
+				var middle = node;
 
-				insertBefore(before, parent);
-				insertBefore(middle, parent);
+				// Clone inline styling and apply it to the blocks children
+				while (parent && isInline(parent, true)) {
+					if (parent.nodeType === ELEMENT_NODE) {
+						var clone = parent.cloneNode();
+						while (middle.firstChild) {
+							appendChild(clone, middle.firstChild);
+						}
+
+						appendChild(middle, clone);
+					}
+					parent = parent.parentNode;
+				}
+
+				insertBefore(middle, lastInlineParent);
+				if (!isEmpty(before)) {
+					insertBefore(before, middle);
+				}
+				if (isEmpty(lastInlineParent)) {
+					remove(lastInlineParent);
+				}
 			}
 
 			// Fix invalid nested lists which should be wrapped in an li tag
@@ -1088,7 +1109,7 @@
 	 * @return {string}
 	 */
 	function getStyle(elm, property) {
-		var	direction, styleValue,
+		var	styleValue,
 			elmStyle = elm.style;
 
 		if (!cssPropertyNameCache[property]) {
@@ -1100,18 +1121,10 @@
 
 		// Add an exception for text-align
 		if ('textAlign' === property) {
-			direction  = elmStyle.direction;
 			styleValue = styleValue || css(elm, property);
 
 			if (css(elm.parentNode, property) === styleValue ||
 				css(elm, 'display') !== 'block' || is(elm, 'hr,th')) {
-				return '';
-			}
-
-			// IE changes text-align to the same as the current direction
-			// so skip unless its not the same
-			if ((/right/i.test(styleValue) && direction === 'rtl') ||
-				(/left/i.test(styleValue) && direction === 'ltr')) {
 				return '';
 			}
 		}
@@ -1139,6 +1152,160 @@
 
 		return !values || styleValue === values ||
 			(Array.isArray(values) && values.indexOf(styleValue) > -1);
+	}
+
+	/**
+	 * Returns true if both nodes have the same number of inline styles and all the
+	 * inline styles have matching values
+	 *
+	 * @param {HTMLElement} nodeA
+	 * @param {HTMLElement} nodeB
+	 * @returns {boolean}
+	 */
+	function stylesMatch(nodeA, nodeB) {
+		var i = nodeA.style.length;
+		if (i !== nodeB.style.length) {
+			return false;
+		}
+
+		while (i--) {
+			var prop = nodeA.style[i];
+			if (nodeA.style[prop] !== nodeB.style[prop]) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Returns true if both nodes have the same number of attributes and all the
+	 * attribute values match
+	 *
+	 * @param {HTMLElement} nodeA
+	 * @param {HTMLElement} nodeB
+	 * @returns {boolean}
+	 */
+	function attributesMatch(nodeA, nodeB) {
+		var i = nodeA.attributes.length;
+		if (i !== nodeB.attributes.length) {
+			return false;
+		}
+
+		while (i--) {
+			var prop = nodeA.attributes[i];
+			var notMatches = prop.name === 'style' ?
+				!stylesMatch(nodeA, nodeB) :
+				prop.value !== attr(nodeB, prop.name);
+
+			if (notMatches) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Removes an element placing its children in its place
+	 *
+	 * @param {HTMLElement} node
+	 */
+	function removeKeepChildren(node) {
+		while (node.firstChild) {
+			insertBefore(node.firstChild, node);
+		}
+
+		remove(node);
+	}
+
+	/**
+	 * Merges inline styles and tags with parents where possible
+	 *
+	 * @param {Node} node
+	 * @since 3.1.0
+	 */
+	function merge(node) {
+		if (node.nodeType !== ELEMENT_NODE) {
+			return;
+		}
+
+		var parent = node.parentNode;
+		var tagName = node.tagName;
+		var mergeTags = /B|STRONG|EM|SPAN|FONT/;
+
+		// Merge children (in reverse as children can be removed)
+		var i = node.childNodes.length;
+		while (i--) {
+			merge(node.childNodes[i]);
+		}
+
+		// Should only merge inline tags and should not merge <br> tags
+		if (!isInline(node) || tagName === 'BR') {
+			return;
+		}
+
+		// Remove any inline styles that match the parent style
+		i = node.style.length;
+		while (i--) {
+			var prop = node.style[i];
+			if (css(parent, prop) === css(node, prop)) {
+				node.style.removeProperty(prop);
+			}
+		}
+
+		// Can only remove / merge tags if no inline styling left.
+		// If there is any inline style left then it means it at least partially
+		// doesn't match the parent style so must stay
+		if (!node.style.length) {
+			removeAttr(node, 'style');
+
+			// Remove font attributes if match parent
+			if (tagName === 'FONT') {
+				if (css(node, 'fontFamily').toLowerCase() ===
+					css(parent, 'fontFamily').toLowerCase()) {
+					removeAttr(node, 'face');
+				}
+
+				if (css(node, 'color') === css(parent, 'color')) {
+					removeAttr(node, 'color');
+				}
+
+				if (css(node, 'fontSize') === css(parent, 'fontSize')) {
+					removeAttr(node, 'size');
+				}
+			}
+
+			// Spans and font tags with no attributes can be safely removed
+			if (!node.attributes.length && /SPAN|FONT/.test(tagName)) {
+				removeKeepChildren(node);
+			} else if (mergeTags.test(tagName)) {
+				var isBold = /B|STRONG/.test(tagName);
+				var isItalic = tagName === 'EM';
+
+				while (parent && isInline(parent) &&
+					(!isBold || /bold|700/i.test(css(parent, 'fontWeight'))) &&
+					(!isItalic || css(parent, 'fontStyle') === 'italic')) {
+
+					// Remove if parent match
+					if ((parent.tagName === tagName ||
+						(isBold && /B|STRONG/.test(parent.tagName))) &&
+						attributesMatch(parent, node)) {
+						removeKeepChildren(node);
+						break;
+					}
+
+					parent = parent.parentNode;
+				}
+			}
+		}
+
+		// Merge siblings if attributes, including inline styles, match
+		var next = node.nextSibling;
+		if (next && next.tagName === tagName && attributesMatch(next, node)) {
+			appendChild(node, next);
+			removeKeepChildren(next);
+		}
 	}
 
 	/**
@@ -1484,6 +1651,19 @@
 		disableBlockRemove: false,
 
 		/**
+		 * Array of allowed URL (should be either strings or regex) for iframes.
+		 *
+		 * If it's a string then iframes where the start of the src matches the
+		 * specified string will be allowed.
+		 *
+		 * If it's a regex then iframes where the src matches the regex will be
+		 * allowed.
+		 *
+		 * @type {Array}
+		 */
+		allowedIframeUrls: [],
+
+		/**
 		 * BBCode parser options, only applies if using the editor in BBCode
 		 * mode.
 		 *
@@ -1498,141 +1678,33 @@
 		 *
 		 * @type {Object}
 		 */
-		dropDownCss: { }
+		dropDownCss: { },
+
+		/**
+		 * An array of tags that are allowed in the editor content.
+		 * If a tag is not listed here, it will be removed when the content is
+		 * sanitized.
+		 *
+		 * 1 Tag is already added by default: ['iframe']. No need to add this
+		 * further.
+		 *
+		 * @type {Array}
+		 */
+		allowedTags: [],
+
+		/**
+		 * An array of attributes that are allowed on tags in the editor content.
+		 * If an attribute is not listed here, it will be removed when the content
+		 * is sanitized.
+		 *
+		 * 3 Attributes are already added by default:
+		 * 	['allowfullscreen', 'frameborder', 'target'].
+		 * No need to add these further.
+		 *
+		 * @type {Array}
+		 */
+		allowedAttributes: []
 	};
-
-	var USER_AGENT = navigator.userAgent;
-
-	/**
-	 * Detects the version of IE is being used if any.
-	 *
-	 * Will be the IE version number or undefined if the
-	 * browser is not IE.
-	 *
-	 * Source: https://gist.github.com/527683 with extra code
-	 * for IE 10 & 11 detection.
-	 *
-	 * @function
-	 * @name ie
-	 * @type {number}
-	 */
-	var ie = (function () {
-		var	undef,
-			v   = 3,
-			doc = document,
-			div = doc.createElement('div'),
-			all = div.getElementsByTagName('i');
-
-		do {
-			div.innerHTML = '<!--[if gt IE ' + (++v) + ']><i></i><![endif]-->';
-		} while (all[0]);
-
-		// Detect IE 10 as it doesn't support conditional comments.
-		if ((doc.documentMode && doc.all && window.atob)) {
-			v = 10;
-		}
-
-		// Detect IE 11
-		if (v === 4 && doc.documentMode) {
-			v = 11;
-		}
-
-		return v > 4 ? v : undef;
-	}());
-
-	var edge = '-ms-ime-align' in document.documentElement.style;
-
-	/**
-	 * Detects if the browser is iOS
-	 *
-	 * Needed to fix iOS specific bugs
-	 *
-	 * @function
-	 * @name ios
-	 * @memberOf jQuery.sceditor
-	 * @type {boolean}
-	 */
-	var ios = /iPhone|iPod|iPad| wosbrowser\//i.test(USER_AGENT);
-
-	/**
-	 * If the browser supports WYSIWYG editing (e.g. older mobile browsers).
-	 *
-	 * @function
-	 * @name isWysiwygSupported
-	 * @return {boolean}
-	 */
-	var isWysiwygSupported = (function () {
-		var	match, isUnsupported;
-
-		var div = document.createElement('div');
-		div.contentEditable = true ;
-
-		// Check if the contentEditable attribute is supported
-		if (!('contentEditable' in document.documentElement) ||
-			div.contentEditable !== 'true') {
-			return false;
-		}
-
-		// I think blackberry supports contentEditable or will at least
-		// give a valid value for the contentEditable detection above
-		// so it isn't included in the below tests.
-
-		// I hate having to do UA sniffing but some mobile browsers say they
-		// support contentediable when it isn't usable, i.e. you can't enter
-		// text.
-		// This is the only way I can think of to detect them which is also how
-		// every other editor I've seen deals with this issue.
-
-		// Exclude Opera mobile and mini
-		isUnsupported = /Opera Mobi|Opera Mini/i.test(USER_AGENT);
-
-		if (/Android/i.test(USER_AGENT)) {
-			isUnsupported = true;
-
-			if (/Safari/.test(USER_AGENT)) {
-				// Android browser 534+ supports content editable
-				// This also matches Chrome which supports content editable too
-				match = /Safari\/(\d+)/.exec(USER_AGENT);
-				isUnsupported = (!match || !match[1] ? true : match[1] < 534);
-			}
-		}
-
-		// The current version of Amazon Silk supports it, older versions didn't
-		// As it uses webkit like Android, assume it's the same and started
-		// working at versions >= 534
-		if (/ Silk\//i.test(USER_AGENT)) {
-			match = /AppleWebKit\/(\d+)/.exec(USER_AGENT);
-			isUnsupported = (!match || !match[1] ? true : match[1] < 534);
-		}
-
-		// iOS 5+ supports content editable
-		if (ios) {
-			// Block any version <= 4_x(_x)
-			isUnsupported = /OS [0-4](_\d)+ like Mac/i.test(USER_AGENT);
-		}
-
-		// Firefox does support WYSIWYG on mobiles so override
-		// any previous value if using FF
-		if (/Firefox/i.test(USER_AGENT)) {
-			isUnsupported = false;
-		}
-
-		if (/OneBrowser/i.test(USER_AGENT)) {
-			isUnsupported = false;
-		}
-
-		// UCBrowser works but doesn't give a unique user agent
-		if (navigator.vendor === 'UCWEB') {
-			isUnsupported = false;
-		}
-
-		// IE <= 9 is not supported any more
-		if (ie <= 9) {
-			isUnsupported = true;
-		}
-
-		return !isUnsupported;
-	}());
 
 	// Must start with a valid scheme
 	// 		^
@@ -1654,7 +1726,6 @@
 	function regex(str) {
 		return str.replace(/([\-.*+?^=!:${}()|\[\]\/\\])/g, '\\$1');
 	}
-
 	/**
 	 * Escapes all HTML entities in a string
 	 *
@@ -1693,7 +1764,6 @@
 
 		return str;
 	}
-
 	/**
 	 * Escape URI scheme.
 	 *
@@ -1749,13 +1819,6 @@
 			'<!DOCTYPE html>' +
 			'<html{attrs}>' +
 				'<head>' +
-					'<style>.ie * {min-height: auto !important} ' +
-						'.ie table td {height:15px} ' +
-						// Target Edge (fixes edge issues)
-						'@supports (-ms-ime-align:auto) { ' +
-							'* { min-height: auto !important; } ' +
-						'}' +
-						'</style>' +
 					'<meta http-equiv="Content-Type" ' +
 						'content="text/html;charset={charset}" />' +
 					'<link rel="stylesheet" type="text/css" href="{style}" />' +
@@ -1791,7 +1854,7 @@
 				' /></div>',
 
 		image:
-			'<div><label for="link">{url}</label> ' +
+			'<div><label for="image">{url}</label> ' +
 				'<input type="text" id="image" dir="ltr" placeholder="https://" /></div>' +
 			'<div><label for="width">{width}</label> ' +
 				'<input type="text" id="width" size="2" dir="ltr" /></div>' +
@@ -1823,7 +1886,7 @@
 
 		youtube:
 			'<iframe width="560" height="315" frameborder="0" allowfullscreen ' +
-			'src="https://www.youtube.com/embed/{id}?wmode=opaque&start={time}" ' +
+			'src="https://www.youtube-nocookie.com/embed/{id}?wmode=opaque&start={time}" ' +
 			'data-youtube-id="{id}"></iframe>'
 	};
 
@@ -1854,10 +1917,6 @@
 
 		return template;
 	}
-
-	// In IE < 11 a BR at the end of a block level element
-	// causes a line break. In all other browsers it's collapsed.
-	var IE_BR_FIX = ie && ie < 11;
 
 	/**
 	 * Fixes a bug in FF where it sometimes wraps
@@ -1957,7 +2016,9 @@
 					var isLtr = css(node, 'direction') === 'ltr';
 					var align = css(node, 'textAlign');
 
-					return align === 'left' || align === (isLtr ? 'start' : 'end');
+					// Can be -moz-left
+					return /left/.test(align) ||
+						align === (isLtr ? 'start' : 'end');
 				}
 			},
 			exec: 'justifyleft',
@@ -1981,7 +2042,9 @@
 					var isLtr = css(node, 'direction') === 'ltr';
 					var align = css(node, 'textAlign');
 
-					return align === 'right' || align === (isLtr ? 'end' : 'start');
+					// Can be -moz-right
+					return /right/.test(align) ||
+						align === (isLtr ? 'end' : 'start');
 				}
 			},
 			exec: 'justifyright',
@@ -2178,7 +2241,7 @@
 		// END_COMMAND
 		// START_COMMAND: Indent
 		indent: {
-			state: function (parent$$1, firstBlock) {
+			state: function (parent, firstBlock) {
 				// Only works with lists, for now
 				var	range, startParent, endParent;
 
@@ -2231,7 +2294,7 @@
 		// END_COMMAND
 		// START_COMMAND: Outdent
 		outdent: {
-			state: function (parents$$1, firstBlock) {
+			state: function (parents, firstBlock) {
 				return closest(firstBlock, 'ul,ol,menu') ? 0 : -1;
 			},
 			exec: function () {
@@ -2265,7 +2328,7 @@
 						html += Array(rows + 1).join(
 							'<tr>' +
 								Array(cols + 1).join(
-									'<td>' + (IE_BR_FIX ? '' : '<br />') + '</td>'
+									'<td><br /></td>'
 								) +
 							'</tr>'
 						);
@@ -2296,7 +2359,7 @@
 			exec: function () {
 				this.wysiwygEditorInsertHtml(
 					'<code>',
-					(IE_BR_FIX ? '' : '<br />') + '</code>'
+					'<br /></code>'
 				);
 			},
 			tooltip: 'Code'
@@ -2342,19 +2405,21 @@
 					editor,
 					caller,
 					'',
-					function (url, width$$1, height$$1) {
+					function (url, width, height) {
 						var attrs  = '';
 
-						if (width$$1) {
-							attrs += ' width="' + width$$1 + '"';
+						if (width) {
+							attrs += ' width="' + parseInt(width, 10) + '"';
 						}
 
-						if (height$$1) {
-							attrs += ' height="' + height$$1 + '"';
+						if (height) {
+							attrs += ' height="' + parseInt(height, 10) + '"';
 						}
+
+						attrs += ' src="' + entities(url) + '"';
 
 						editor.wysiwygEditorInsertHtml(
-							'<img' + attrs + ' src="' + url + '" />'
+							'<img' + attrs + ' />'
 						);
 					}
 				);
@@ -2394,13 +2459,11 @@
 					editor,
 					caller,
 					function (email, text) {
-						// needed for IE to reset the last range
-						editor.focus();
-
 						if (!editor.getRangeHelper().selectedHtml() || text) {
 							editor.wysiwygEditorInsertHtml(
-								'<a href="' + 'mailto:' + email + '">' +
-									(text || email) +
+								'<a href="' +
+								'mailto:' + entities(email) + '">' +
+									entities((text || email)) +
 								'</a>'
 							);
 						} else {
@@ -2449,17 +2512,11 @@
 				var editor = this;
 
 				defaultCmds.link._dropDown(editor, caller, function (url, text) {
-					// needed for IE to restore the last range
-					editor.focus();
-
-					// If there is no selected text then must set the URL as
-					// the text. Most browsers do this automatically, sadly
-					// IE doesn't.
 					if (text || !editor.getRangeHelper().selectedHtml()) {
-						text = text || url;
-
 						editor.wysiwygEditorInsertHtml(
-							'<a href="' + url + '">' + text + '</a>'
+							'<a href="' + entities(url) + '">' +
+								entities(text || url) +
+							'</a>'
 						);
 					} else {
 						editor.execCommand('createlink', url);
@@ -2500,12 +2557,14 @@
 				// if there is HTML passed set end to null so any selected
 				// text is replaced
 				if (html) {
-					author = (author ? '<cite>' + author + '</cite>' : '');
+					author = (author ? '<cite>' +
+						entities(author) +
+					'</cite>' : '');
 					before = before + author + html + end;
 					end    = null;
 				// if not add a newline to the end of the inserted quote
 				} else if (this.getRangeHelper().selectedHtml() === '') {
-					end = (IE_BR_FIX ? '' : '<br />') + end;
+					end = '<br />' + end;
 				}
 
 				this.wysiwygEditorInsertHtml(before, end);
@@ -2605,7 +2664,7 @@
 
 				on(content, 'click', '.button', function (e) {
 					var val = find(content, '#link')[0].value;
-					var idMatch = val.match(/(?:v=|v\/|embed\/|youtu.be\/)(.{11})/);
+					var idMatch = val.match(/(?:v=|v\/|embed\/|youtu.be\/)?([a-zA-Z0-9_-]{11})/);
 					var timeMatch = val.match(/[&|?](?:star)?t=((\d+[hms]?){1,3})/);
 					var time = 0;
 
@@ -2711,7 +2770,7 @@
 
 		// START_COMMAND: Ltr
 		ltr: {
-			state: function (parents$$1, firstBlock) {
+			state: function (parents, firstBlock) {
 				return firstBlock && firstBlock.style.direction === 'ltr';
 			},
 			exec: function () {
@@ -2740,7 +2799,7 @@
 
 		// START_COMMAND: Rtl
 		rtl: {
-			state: function (parents$$1, firstBlock) {
+			state: function (parents, firstBlock) {
 				return firstBlock && firstBlock.style.direction === 'rtl';
 			},
 			exec: function () {
@@ -2782,9 +2841,11 @@
 			},
 			exec: function () {
 				this.maximize(!this.maximize());
+				this.focus();
 			},
 			txtExec: function () {
 				this.maximize(!this.maximize());
+				this.focus();
 			},
 			tooltip: 'Maximize',
 			shortcut: 'Ctrl+Shift+M'
@@ -2798,9 +2859,11 @@
 			},
 			exec: function () {
 				this.toggleSourceMode();
+				this.focus();
 			},
 			txtExec: function () {
 				this.toggleSourceMode();
+				this.focus();
 			},
 			tooltip: 'View source',
 			shortcut: 'Ctrl+Shift+S'
@@ -3046,13 +3109,7 @@
 			thisObj    = null;
 		};
 	}
-
 	PluginManager.plugins = plugins;
-
-	// In IE < 11 a BR at the end of a block level element
-	// causes a line break. In all other browsers it's collapsed.
-	var IE_BR_FIX$1 = ie && ie < 11;
-
 
 	/**
 	 * Gets the text, start/end node and offset for
@@ -3123,7 +3180,7 @@
 	 * @class RangeHelper
 	 * @name RangeHelper
 	 */
-	function RangeHelper(win, d) {
+	function RangeHelper(win, d, sanitize) {
 		var	_createMarker, _prepareInput,
 			doc          = d || win.contentDocument || win.document,
 			startMarker  = 'sceditor-start-marker',
@@ -3159,7 +3216,7 @@
 
 			div           = createElement('p', {}, doc);
 			node          = doc.createDocumentFragment();
-			div.innerHTML = html;
+			div.innerHTML = sanitize(html);
 
 			while (div.firstChild) {
 				appendChild(node, div.firstChild);
@@ -3250,12 +3307,32 @@
 		 * @memberOf RangeHelper.prototype
 		 */
 		base.insertNode = function (node, endNode) {
-			var	input  = _prepareInput(node, endNode),
+			var	first, last,
+				input  = _prepareInput(node, endNode),
 				range  = base.selectedRange(),
-				parent$$1 = range.commonAncestorContainer;
+				parent = range.commonAncestorContainer,
+				emptyNodes = [];
 
 			if (!input) {
 				return false;
+			}
+
+			function removeIfEmpty(node) {
+				// Only remove empty node if it wasn't already empty
+				if (node && isEmpty(node) && emptyNodes.indexOf(node) < 0) {
+					remove(node);
+				}
+			}
+
+			if (range.startContainer !== range.endContainer) {
+				each(parent.childNodes, function (_, node) {
+					if (isEmpty(node)) {
+						emptyNodes.push(node);
+					}
+				});
+
+				first = input.firstChild;
+				last = input.lastChild;
 			}
 
 			range.deleteContents();
@@ -3264,10 +3341,19 @@
 			// into <br /> will cause it not to be displayed so must
 			// insert before the <br /> in FF.
 			// 3 = TextNode
-			if (parent$$1 && parent$$1.nodeType !== 3 && !canHaveChildren(parent$$1)) {
-				insertBefore(input, parent$$1);
+			if (parent && parent.nodeType !== 3 && !canHaveChildren(parent)) {
+				insertBefore(input, parent);
 			} else {
 				range.insertNode(input);
+
+				// If a node was split or its contents deleted, remove any resulting
+				// empty tags. For example:
+				// <p>|test</p><div>test|</div>
+				// When deleteContents could become:
+				// <p></p>|<div></div>
+				// So remove the empty ones
+				removeIfEmpty(first && first.previousSibling);
+				removeIfEmpty(last && last.nextSibling);
 			}
 
 			base.restoreRange();
@@ -3555,7 +3641,7 @@
 			// Check if cursor is set after a BR when the BR is the only
 			// child of the parent. In Firefox this causes a line break
 			// to occur when something is typed. See issue #321
-			if (!IE_BR_FIX$1 && range.collapsed && container &&
+			if (range.collapsed && container &&
 				!isInline(container, true)) {
 
 				lastChild = container.lastChild;
@@ -3813,6 +3899,104 @@
 		};
 	}
 
+	var USER_AGENT = navigator.userAgent;
+
+	/**
+	 * Detects if the browser is iOS
+	 *
+	 * Needed to fix iOS specific bugs
+	 *
+	 * @function
+	 * @name ios
+	 * @memberOf jQuery.sceditor
+	 * @type {boolean}
+	 */
+	var ios = /iPhone|iPod|iPad| wosbrowser\//i.test(USER_AGENT);
+
+	/**
+	 * If the browser supports WYSIWYG editing (e.g. older mobile browsers).
+	 *
+	 * @function
+	 * @name isWysiwygSupported
+	 * @return {boolean}
+	 */
+	var isWysiwygSupported = (function () {
+		var	match, isUnsupported;
+
+		// IE is the only browser to support documentMode
+		var ie = !!window.document.documentMode;
+		var legacyEdge = '-ms-ime-align' in document.documentElement.style;
+
+		var div = document.createElement('div');
+		div.contentEditable = true;
+
+		// Check if the contentEditable attribute is supported
+		if (!('contentEditable' in document.documentElement) ||
+			div.contentEditable !== 'true') {
+			return false;
+		}
+
+		// I think blackberry supports contentEditable or will at least
+		// give a valid value for the contentEditable detection above
+		// so it isn't included in the below tests.
+
+		// I hate having to do UA sniffing but some mobile browsers say they
+		// support contentediable when it isn't usable, i.e. you can't enter
+		// text.
+		// This is the only way I can think of to detect them which is also how
+		// every other editor I've seen deals with this issue.
+
+		// Exclude Opera mobile and mini
+		isUnsupported = /Opera Mobi|Opera Mini/i.test(USER_AGENT);
+
+		if (/Android/i.test(USER_AGENT)) {
+			isUnsupported = true;
+
+			if (/Safari/.test(USER_AGENT)) {
+				// Android browser 534+ supports content editable
+				// This also matches Chrome which supports content editable too
+				match = /Safari\/(\d+)/.exec(USER_AGENT);
+				isUnsupported = (!match || !match[1] ? true : match[1] < 534);
+			}
+		}
+
+		// The current version of Amazon Silk supports it, older versions didn't
+		// As it uses webkit like Android, assume it's the same and started
+		// working at versions >= 534
+		if (/ Silk\//i.test(USER_AGENT)) {
+			match = /AppleWebKit\/(\d+)/.exec(USER_AGENT);
+			isUnsupported = (!match || !match[1] ? true : match[1] < 534);
+		}
+
+		// iOS 5+ supports content editable
+		if (ios) {
+			// Block any version <= 4_x(_x)
+			isUnsupported = /OS [0-4](_\d)+ like Mac/i.test(USER_AGENT);
+		}
+
+		// Firefox does support WYSIWYG on mobiles so override
+		// any previous value if using FF
+		if (/Firefox/i.test(USER_AGENT)) {
+			isUnsupported = false;
+		}
+
+		if (/OneBrowser/i.test(USER_AGENT)) {
+			isUnsupported = false;
+		}
+
+		// UCBrowser works but doesn't give a unique user agent
+		if (navigator.vendor === 'UCWEB') {
+			isUnsupported = false;
+		}
+
+		// IE and legacy edge are not supported any more
+		if (ie || legacyEdge) {
+			isUnsupported = true;
+		}
+
+		return !isUnsupported;
+	}());
+
 	/**
 	 * Checks all emoticons are surrounded by whitespace and
 	 * replaces any that aren't with with their emoticon code.
@@ -3822,7 +4006,7 @@
 	 * @return {void}
 	 */
 	function checkWhitespace(node, rangeHelper) {
-		var noneWsRegex = /[^\s\xA0\u2002\u2003\u2009\u00a0]+/;
+		var noneWsRegex = /[^\s\xA0\u2002\u2003\u2009]+/;
 		var emoticons = node && find(node, 'img[data-sceditor-emoticon]');
 
 		if (!node || !emoticons.length) {
@@ -3831,7 +4015,7 @@
 
 		for (var i = 0; i < emoticons.length; i++) {
 			var emoticon = emoticons[i];
-			var parent$$1 = emoticon.parentNode;
+			var parent = emoticon.parentNode;
 			var prev = emoticon.previousSibling;
 			var next = emoticon.nextSibling;
 
@@ -3843,12 +4027,7 @@
 			var range = rangeHelper.cloneSelected();
 			var rangeStart = -1;
 			var rangeStartContainer = range.startContainer;
-			var previousText = prev.nodeValue;
-
-			// For IE's HTMLPhraseElement
-			if (previousText === null) {
-				previousText = prev.innerText || '';
-			}
+			var previousText = prev.nodeValue || '';
 
 			previousText += data(emoticon, 'sceditor-emoticon');
 
@@ -3872,8 +4051,8 @@
 			}
 
 			if (!next || next.nodeType !== TEXT_NODE) {
-				next = parent$$1.insertBefore(
-					parent$$1.ownerDocument.createTextNode(''), next
+				next = parent.insertBefore(
+					parent.ownerDocument.createTextNode(''), next
 				);
 			}
 
@@ -3889,7 +4068,6 @@
 			}
 		}
 	}
-
 	/**
 	 * Replaces any emoticons inside the root node with images.
 	 *
@@ -3962,14 +4140,1696 @@
 		}(root));
 	}
 
+	/*! @license DOMPurify 2.4.3 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/2.4.3/LICENSE */
+
+	function _typeof(obj) {
+	  "@babel/helpers - typeof";
+
+	  return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) {
+	    return typeof obj;
+	  } : function (obj) {
+	    return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+	  }, _typeof(obj);
+	}
+
+	function _setPrototypeOf(o, p) {
+	  _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+	    o.__proto__ = p;
+	    return o;
+	  };
+
+	  return _setPrototypeOf(o, p);
+	}
+
+	function _isNativeReflectConstruct() {
+	  if (typeof Reflect === "undefined" || !Reflect.construct) return false;
+	  if (Reflect.construct.sham) return false;
+	  if (typeof Proxy === "function") return true;
+
+	  try {
+	    Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {}));
+	    return true;
+	  } catch (e) {
+	    return false;
+	  }
+	}
+
+	function _construct(Parent, args, Class) {
+	  if (_isNativeReflectConstruct()) {
+	    _construct = Reflect.construct;
+	  } else {
+	    _construct = function _construct(Parent, args, Class) {
+	      var a = [null];
+	      a.push.apply(a, args);
+	      var Constructor = Function.bind.apply(Parent, a);
+	      var instance = new Constructor();
+	      if (Class) _setPrototypeOf(instance, Class.prototype);
+	      return instance;
+	    };
+	  }
+
+	  return _construct.apply(null, arguments);
+	}
+
+	function _toConsumableArray(arr) {
+	  return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread();
+	}
+
+	function _arrayWithoutHoles(arr) {
+	  if (Array.isArray(arr)) return _arrayLikeToArray(arr);
+	}
+
+	function _iterableToArray(iter) {
+	  if (typeof Symbol !== "undefined" && iter[Symbol.iterator] != null || iter["@@iterator"] != null) return Array.from(iter);
+	}
+
+	function _unsupportedIterableToArray(o, minLen) {
+	  if (!o) return;
+	  if (typeof o === "string") return _arrayLikeToArray(o, minLen);
+	  var n = Object.prototype.toString.call(o).slice(8, -1);
+	  if (n === "Object" && o.constructor) n = o.constructor.name;
+	  if (n === "Map" || n === "Set") return Array.from(o);
+	  if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
+	}
+
+	function _arrayLikeToArray(arr, len) {
+	  if (len == null || len > arr.length) len = arr.length;
+
+	  for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i];
+
+	  return arr2;
+	}
+
+	function _nonIterableSpread() {
+	  throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+	}
+
+	var hasOwnProperty = Object.hasOwnProperty,
+	    setPrototypeOf = Object.setPrototypeOf,
+	    isFrozen = Object.isFrozen,
+	    getPrototypeOf = Object.getPrototypeOf,
+	    getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+	var freeze = Object.freeze,
+	    seal = Object.seal,
+	    create = Object.create; // eslint-disable-line import/no-mutable-exports
+
+	var _ref = typeof Reflect !== 'undefined' && Reflect,
+	    apply = _ref.apply,
+	    construct = _ref.construct;
+
+	if (!apply) {
+	  apply = function apply(fun, thisValue, args) {
+	    return fun.apply(thisValue, args);
+	  };
+	}
+
+	if (!freeze) {
+	  freeze = function freeze(x) {
+	    return x;
+	  };
+	}
+
+	if (!seal) {
+	  seal = function seal(x) {
+	    return x;
+	  };
+	}
+
+	if (!construct) {
+	  construct = function construct(Func, args) {
+	    return _construct(Func, _toConsumableArray(args));
+	  };
+	}
+
+	var arrayForEach = unapply(Array.prototype.forEach);
+	var arrayPop = unapply(Array.prototype.pop);
+	var arrayPush = unapply(Array.prototype.push);
+	var stringToLowerCase = unapply(String.prototype.toLowerCase);
+	var stringToString = unapply(String.prototype.toString);
+	var stringMatch = unapply(String.prototype.match);
+	var stringReplace = unapply(String.prototype.replace);
+	var stringIndexOf = unapply(String.prototype.indexOf);
+	var stringTrim = unapply(String.prototype.trim);
+	var regExpTest = unapply(RegExp.prototype.test);
+	var typeErrorCreate = unconstruct(TypeError);
+	function unapply(func) {
+	  return function (thisArg) {
+	    for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+	      args[_key - 1] = arguments[_key];
+	    }
+
+	    return apply(func, thisArg, args);
+	  };
+	}
+	function unconstruct(func) {
+	  return function () {
+	    for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+	      args[_key2] = arguments[_key2];
+	    }
+
+	    return construct(func, args);
+	  };
+	}
+	/* Add properties to a lookup table */
+
+	function addToSet(set, array, transformCaseFunc) {
+	  transformCaseFunc = transformCaseFunc ? transformCaseFunc : stringToLowerCase;
+
+	  if (setPrototypeOf) {
+	    // Make 'in' and truthy checks like Boolean(set.constructor)
+	    // independent of any properties defined on Object.prototype.
+	    // Prevent prototype setters from intercepting set as a this value.
+	    setPrototypeOf(set, null);
+	  }
+
+	  var l = array.length;
+
+	  while (l--) {
+	    var element = array[l];
+
+	    if (typeof element === 'string') {
+	      var lcElement = transformCaseFunc(element);
+
+	      if (lcElement !== element) {
+	        // Config presets (e.g. tags.js, attrs.js) are immutable.
+	        if (!isFrozen(array)) {
+	          array[l] = lcElement;
+	        }
+
+	        element = lcElement;
+	      }
+	    }
+
+	    set[element] = true;
+	  }
+
+	  return set;
+	}
+	/* Shallow clone an object */
+
+	function clone(object) {
+	  var newObject = create(null);
+	  var property;
+
+	  for (property in object) {
+	    if (apply(hasOwnProperty, object, [property]) === true) {
+	      newObject[property] = object[property];
+	    }
+	  }
+
+	  return newObject;
+	}
+	/* IE10 doesn't support __lookupGetter__ so lets'
+	 * simulate it. It also automatically checks
+	 * if the prop is function or getter and behaves
+	 * accordingly. */
+
+	function lookupGetter(object, prop) {
+	  while (object !== null) {
+	    var desc = getOwnPropertyDescriptor(object, prop);
+
+	    if (desc) {
+	      if (desc.get) {
+	        return unapply(desc.get);
+	      }
+
+	      if (typeof desc.value === 'function') {
+	        return unapply(desc.value);
+	      }
+	    }
+
+	    object = getPrototypeOf(object);
+	  }
+
+	  function fallbackValue(element) {
+	    console.warn('fallback value for', element);
+	    return null;
+	  }
+
+	  return fallbackValue;
+	}
+
+	var html$1 = freeze(['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'audio', 'b', 'bdi', 'bdo', 'big', 'blink', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'content', 'data', 'datalist', 'dd', 'decorator', 'del', 'details', 'dfn', 'dialog', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html', 'i', 'img', 'input', 'ins', 'kbd', 'label', 'legend', 'li', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meter', 'nav', 'nobr', 'ol', 'optgroup', 'option', 'output', 'p', 'picture', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'section', 'select', 'shadow', 'small', 'source', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'var', 'video', 'wbr']); // SVG
+
+	var svg$1 = freeze(['svg', 'a', 'altglyph', 'altglyphdef', 'altglyphitem', 'animatecolor', 'animatemotion', 'animatetransform', 'circle', 'clippath', 'defs', 'desc', 'ellipse', 'filter', 'font', 'g', 'glyph', 'glyphref', 'hkern', 'image', 'line', 'lineargradient', 'marker', 'mask', 'metadata', 'mpath', 'path', 'pattern', 'polygon', 'polyline', 'radialgradient', 'rect', 'stop', 'style', 'switch', 'symbol', 'text', 'textpath', 'title', 'tref', 'tspan', 'view', 'vkern']);
+	var svgFilters = freeze(['feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile', 'feTurbulence']); // List of SVG elements that are disallowed by default.
+	// We still need to know them so that we can do namespace
+	// checks properly in case one wants to add them to
+	// allow-list.
+
+	var svgDisallowed = freeze(['animate', 'color-profile', 'cursor', 'discard', 'fedropshadow', 'font-face', 'font-face-format', 'font-face-name', 'font-face-src', 'font-face-uri', 'foreignobject', 'hatch', 'hatchpath', 'mesh', 'meshgradient', 'meshpatch', 'meshrow', 'missing-glyph', 'script', 'set', 'solidcolor', 'unknown', 'use']);
+	var mathMl$1 = freeze(['math', 'menclose', 'merror', 'mfenced', 'mfrac', 'mglyph', 'mi', 'mlabeledtr', 'mmultiscripts', 'mn', 'mo', 'mover', 'mpadded', 'mphantom', 'mroot', 'mrow', 'ms', 'mspace', 'msqrt', 'mstyle', 'msub', 'msup', 'msubsup', 'mtable', 'mtd', 'mtext', 'mtr', 'munder', 'munderover']); // Similarly to SVG, we want to know all MathML elements,
+	// even those that we disallow by default.
+
+	var mathMlDisallowed = freeze(['maction', 'maligngroup', 'malignmark', 'mlongdiv', 'mscarries', 'mscarry', 'msgroup', 'mstack', 'msline', 'msrow', 'semantics', 'annotation', 'annotation-xml', 'mprescripts', 'none']);
+	var text = freeze(['#text']);
+
+	var html = freeze(['accept', 'action', 'align', 'alt', 'autocapitalize', 'autocomplete', 'autopictureinpicture', 'autoplay', 'background', 'bgcolor', 'border', 'capture', 'cellpadding', 'cellspacing', 'checked', 'cite', 'class', 'clear', 'color', 'cols', 'colspan', 'controls', 'controlslist', 'coords', 'crossorigin', 'datetime', 'decoding', 'default', 'dir', 'disabled', 'disablepictureinpicture', 'disableremoteplayback', 'download', 'draggable', 'enctype', 'enterkeyhint', 'face', 'for', 'headers', 'height', 'hidden', 'high', 'href', 'hreflang', 'id', 'inputmode', 'integrity', 'ismap', 'kind', 'label', 'lang', 'list', 'loading', 'loop', 'low', 'max', 'maxlength', 'media', 'method', 'min', 'minlength', 'multiple', 'muted', 'name', 'nonce', 'noshade', 'novalidate', 'nowrap', 'open', 'optimum', 'pattern', 'placeholder', 'playsinline', 'poster', 'preload', 'pubdate', 'radiogroup', 'readonly', 'rel', 'required', 'rev', 'reversed', 'role', 'rows', 'rowspan', 'spellcheck', 'scope', 'selected', 'shape', 'size', 'sizes', 'span', 'srclang', 'start', 'src', 'srcset', 'step', 'style', 'summary', 'tabindex', 'title', 'translate', 'type', 'usemap', 'valign', 'value', 'width', 'xmlns', 'slot']);
+	var svg = freeze(['accent-height', 'accumulate', 'additive', 'alignment-baseline', 'ascent', 'attributename', 'attributetype', 'azimuth', 'basefrequency', 'baseline-shift', 'begin', 'bias', 'by', 'class', 'clip', 'clippathunits', 'clip-path', 'clip-rule', 'color', 'color-interpolation', 'color-interpolation-filters', 'color-profile', 'color-rendering', 'cx', 'cy', 'd', 'dx', 'dy', 'diffuseconstant', 'direction', 'display', 'divisor', 'dur', 'edgemode', 'elevation', 'end', 'fill', 'fill-opacity', 'fill-rule', 'filter', 'filterunits', 'flood-color', 'flood-opacity', 'font-family', 'font-size', 'font-size-adjust', 'font-stretch', 'font-style', 'font-variant', 'font-weight', 'fx', 'fy', 'g1', 'g2', 'glyph-name', 'glyphref', 'gradientunits', 'gradienttransform', 'height', 'href', 'id', 'image-rendering', 'in', 'in2', 'k', 'k1', 'k2', 'k3', 'k4', 'kerning', 'keypoints', 'keysplines', 'keytimes', 'lang', 'lengthadjust', 'letter-spacing', 'kernelmatrix', 'kernelunitlength', 'lighting-color', 'local', 'marker-end', 'marker-mid', 'marker-start', 'markerheight', 'markerunits', 'markerwidth', 'maskcontentunits', 'maskunits', 'max', 'mask', 'media', 'method', 'mode', 'min', 'name', 'numoctaves', 'offset', 'operator', 'opacity', 'order', 'orient', 'orientation', 'origin', 'overflow', 'paint-order', 'path', 'pathlength', 'patterncontentunits', 'patterntransform', 'patternunits', 'points', 'preservealpha', 'preserveaspectratio', 'primitiveunits', 'r', 'rx', 'ry', 'radius', 'refx', 'refy', 'repeatcount', 'repeatdur', 'restart', 'result', 'rotate', 'scale', 'seed', 'shape-rendering', 'specularconstant', 'specularexponent', 'spreadmethod', 'startoffset', 'stddeviation', 'stitchtiles', 'stop-color', 'stop-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'stroke-opacity', 'stroke', 'stroke-width', 'style', 'surfacescale', 'systemlanguage', 'tabindex', 'targetx', 'targety', 'transform', 'transform-origin', 'text-anchor', 'text-decoration', 'text-rendering', 'textlength', 'type', 'u1', 'u2', 'unicode', 'values', 'viewbox', 'visibility', 'version', 'vert-adv-y', 'vert-origin-x', 'vert-origin-y', 'width', 'word-spacing', 'wrap', 'writing-mode', 'xchannelselector', 'ychannelselector', 'x', 'x1', 'x2', 'xmlns', 'y', 'y1', 'y2', 'z', 'zoomandpan']);
+	var mathMl = freeze(['accent', 'accentunder', 'align', 'bevelled', 'close', 'columnsalign', 'columnlines', 'columnspan', 'denomalign', 'depth', 'dir', 'display', 'displaystyle', 'encoding', 'fence', 'frame', 'height', 'href', 'id', 'largeop', 'length', 'linethickness', 'lspace', 'lquote', 'mathbackground', 'mathcolor', 'mathsize', 'mathvariant', 'maxsize', 'minsize', 'movablelimits', 'notation', 'numalign', 'open', 'rowalign', 'rowlines', 'rowspacing', 'rowspan', 'rspace', 'rquote', 'scriptlevel', 'scriptminsize', 'scriptsizemultiplier', 'selection', 'separator', 'separators', 'stretchy', 'subscriptshift', 'supscriptshift', 'symmetric', 'voffset', 'width', 'xmlns']);
+	var xml = freeze(['xlink:href', 'xml:id', 'xlink:title', 'xml:space', 'xmlns:xlink']);
+
+	var MUSTACHE_EXPR = seal(/\{\{[\w\W]*|[\w\W]*\}\}/gm); // Specify template detection regex for SAFE_FOR_TEMPLATES mode
+
+	var ERB_EXPR = seal(/<%[\w\W]*|[\w\W]*%>/gm);
+	var TMPLIT_EXPR = seal(/\${[\w\W]*}/gm);
+	var DATA_ATTR = seal(/^data-[\-\w.\u00B7-\uFFFF]/); // eslint-disable-line no-useless-escape
+
+	var ARIA_ATTR = seal(/^aria-[\-\w]+$/); // eslint-disable-line no-useless-escape
+
+	var IS_ALLOWED_URI = seal(/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i // eslint-disable-line no-useless-escape
+	);
+	var IS_SCRIPT_OR_DATA = seal(/^(?:\w+script|data):/i);
+	var ATTR_WHITESPACE = seal(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g // eslint-disable-line no-control-regex
+	);
+	var DOCTYPE_NAME = seal(/^html$/i);
+
+	var getGlobal = function getGlobal() {
+	  return typeof window === 'undefined' ? null : window;
+	};
+	/**
+	 * Creates a no-op policy for internal use only.
+	 * Don't export this function outside this module!
+	 * @param {?TrustedTypePolicyFactory} trustedTypes The policy factory.
+	 * @param {Document} document The document object (to determine policy name suffix)
+	 * @return {?TrustedTypePolicy} The policy created (or null, if Trusted Types
+	 * are not supported).
+	 */
+
+
+	var _createTrustedTypesPolicy = function _createTrustedTypesPolicy(trustedTypes, document) {
+	  if (_typeof(trustedTypes) !== 'object' || typeof trustedTypes.createPolicy !== 'function') {
+	    return null;
+	  } // Allow the callers to control the unique policy name
+	  // by adding a data-tt-policy-suffix to the script element with the DOMPurify.
+	  // Policy creation with duplicate names throws in Trusted Types.
+
+
+	  var suffix = null;
+	  var ATTR_NAME = 'data-tt-policy-suffix';
+
+	  if (document.currentScript && document.currentScript.hasAttribute(ATTR_NAME)) {
+	    suffix = document.currentScript.getAttribute(ATTR_NAME);
+	  }
+
+	  var policyName = 'dompurify' + (suffix ? '#' + suffix : '');
+
+	  try {
+	    return trustedTypes.createPolicy(policyName, {
+	      createHTML: function createHTML(html) {
+	        return html;
+	      },
+	      createScriptURL: function createScriptURL(scriptUrl) {
+	        return scriptUrl;
+	      }
+	    });
+	  } catch (_) {
+	    // Policy creation failed (most likely another DOMPurify script has
+	    // already run). Skip creating the policy, as this will only cause errors
+	    // if TT are enforced.
+	    console.warn('TrustedTypes policy ' + policyName + ' could not be created.');
+	    return null;
+	  }
+	};
+
+	function createDOMPurify() {
+	  var window = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : getGlobal();
+
+	  var DOMPurify = function DOMPurify(root) {
+	    return createDOMPurify(root);
+	  };
+	  /**
+	   * Version label, exposed for easier checks
+	   * if DOMPurify is up to date or not
+	   */
+
+
+	  DOMPurify.version = '2.4.3';
+	  /**
+	   * Array of elements that DOMPurify removed during sanitation.
+	   * Empty if nothing was removed.
+	   */
+
+	  DOMPurify.removed = [];
+
+	  if (!window || !window.document || window.document.nodeType !== 9) {
+	    // Not running in a browser, provide a factory function
+	    // so that you can pass your own Window
+	    DOMPurify.isSupported = false;
+	    return DOMPurify;
+	  }
+
+	  var originalDocument = window.document;
+	  var document = window.document;
+	  var DocumentFragment = window.DocumentFragment,
+	      HTMLTemplateElement = window.HTMLTemplateElement,
+	      Node = window.Node,
+	      Element = window.Element,
+	      NodeFilter = window.NodeFilter,
+	      _window$NamedNodeMap = window.NamedNodeMap,
+	      NamedNodeMap = _window$NamedNodeMap === void 0 ? window.NamedNodeMap || window.MozNamedAttrMap : _window$NamedNodeMap,
+	      HTMLFormElement = window.HTMLFormElement,
+	      DOMParser = window.DOMParser,
+	      trustedTypes = window.trustedTypes;
+	  var ElementPrototype = Element.prototype;
+	  var cloneNode = lookupGetter(ElementPrototype, 'cloneNode');
+	  var getNextSibling = lookupGetter(ElementPrototype, 'nextSibling');
+	  var getChildNodes = lookupGetter(ElementPrototype, 'childNodes');
+	  var getParentNode = lookupGetter(ElementPrototype, 'parentNode'); // As per issue #47, the web-components registry is inherited by a
+	  // new document created via createHTMLDocument. As per the spec
+	  // (http://w3c.github.io/webcomponents/spec/custom/#creating-and-passing-registries)
+	  // a new empty registry is used when creating a template contents owner
+	  // document, so we use that as our parent document to ensure nothing
+	  // is inherited.
+
+	  if (typeof HTMLTemplateElement === 'function') {
+	    var template = document.createElement('template');
+
+	    if (template.content && template.content.ownerDocument) {
+	      document = template.content.ownerDocument;
+	    }
+	  }
+
+	  var trustedTypesPolicy = _createTrustedTypesPolicy(trustedTypes, originalDocument);
+
+	  var emptyHTML = trustedTypesPolicy ? trustedTypesPolicy.createHTML('') : '';
+	  var _document = document,
+	      implementation = _document.implementation,
+	      createNodeIterator = _document.createNodeIterator,
+	      createDocumentFragment = _document.createDocumentFragment,
+	      getElementsByTagName = _document.getElementsByTagName;
+	  var importNode = originalDocument.importNode;
+	  var documentMode = {};
+
+	  try {
+	    documentMode = clone(document).documentMode ? document.documentMode : {};
+	  } catch (_) {}
+
+	  var hooks = {};
+	  /**
+	   * Expose whether this browser supports running the full DOMPurify.
+	   */
+
+	  DOMPurify.isSupported = typeof getParentNode === 'function' && implementation && typeof implementation.createHTMLDocument !== 'undefined' && documentMode !== 9;
+	  var MUSTACHE_EXPR$1 = MUSTACHE_EXPR,
+	      ERB_EXPR$1 = ERB_EXPR,
+	      TMPLIT_EXPR$1 = TMPLIT_EXPR,
+	      DATA_ATTR$1 = DATA_ATTR,
+	      ARIA_ATTR$1 = ARIA_ATTR,
+	      IS_SCRIPT_OR_DATA$1 = IS_SCRIPT_OR_DATA,
+	      ATTR_WHITESPACE$1 = ATTR_WHITESPACE;
+	  var IS_ALLOWED_URI$1 = IS_ALLOWED_URI;
+	  /**
+	   * We consider the elements and attributes below to be safe. Ideally
+	   * don't add any new ones but feel free to remove unwanted ones.
+	   */
+
+	  /* allowed element names */
+
+	  var ALLOWED_TAGS = null;
+	  var DEFAULT_ALLOWED_TAGS = addToSet({}, [].concat(_toConsumableArray(html$1), _toConsumableArray(svg$1), _toConsumableArray(svgFilters), _toConsumableArray(mathMl$1), _toConsumableArray(text)));
+	  /* Allowed attribute names */
+
+	  var ALLOWED_ATTR = null;
+	  var DEFAULT_ALLOWED_ATTR = addToSet({}, [].concat(_toConsumableArray(html), _toConsumableArray(svg), _toConsumableArray(mathMl), _toConsumableArray(xml)));
+	  /*
+	   * Configure how DOMPUrify should handle custom elements and their attributes as well as customized built-in elements.
+	   * @property {RegExp|Function|null} tagNameCheck one of [null, regexPattern, predicate]. Default: `null` (disallow any custom elements)
+	   * @property {RegExp|Function|null} attributeNameCheck one of [null, regexPattern, predicate]. Default: `null` (disallow any attributes not on the allow list)
+	   * @property {boolean} allowCustomizedBuiltInElements allow custom elements derived from built-ins if they pass CUSTOM_ELEMENT_HANDLING.tagNameCheck. Default: `false`.
+	   */
+
+	  var CUSTOM_ELEMENT_HANDLING = Object.seal(Object.create(null, {
+	    tagNameCheck: {
+	      writable: true,
+	      configurable: false,
+	      enumerable: true,
+	      value: null
+	    },
+	    attributeNameCheck: {
+	      writable: true,
+	      configurable: false,
+	      enumerable: true,
+	      value: null
+	    },
+	    allowCustomizedBuiltInElements: {
+	      writable: true,
+	      configurable: false,
+	      enumerable: true,
+	      value: false
+	    }
+	  }));
+	  /* Explicitly forbidden tags (overrides ALLOWED_TAGS/ADD_TAGS) */
+
+	  var FORBID_TAGS = null;
+	  /* Explicitly forbidden attributes (overrides ALLOWED_ATTR/ADD_ATTR) */
+
+	  var FORBID_ATTR = null;
+	  /* Decide if ARIA attributes are okay */
+
+	  var ALLOW_ARIA_ATTR = true;
+	  /* Decide if custom data attributes are okay */
+
+	  var ALLOW_DATA_ATTR = true;
+	  /* Decide if unknown protocols are okay */
+
+	  var ALLOW_UNKNOWN_PROTOCOLS = false;
+	  /* Output should be safe for common template engines.
+	   * This means, DOMPurify removes data attributes, mustaches and ERB
+	   */
+
+	  var SAFE_FOR_TEMPLATES = false;
+	  /* Decide if document with <html>... should be returned */
+
+	  var WHOLE_DOCUMENT = false;
+	  /* Track whether config is already set on this instance of DOMPurify. */
+
+	  var SET_CONFIG = false;
+	  /* Decide if all elements (e.g. style, script) must be children of
+	   * document.body. By default, browsers might move them to document.head */
+
+	  var FORCE_BODY = false;
+	  /* Decide if a DOM `HTMLBodyElement` should be returned, instead of a html
+	   * string (or a TrustedHTML object if Trusted Types are supported).
+	   * If `WHOLE_DOCUMENT` is enabled a `HTMLHtmlElement` will be returned instead
+	   */
+
+	  var RETURN_DOM = false;
+	  /* Decide if a DOM `DocumentFragment` should be returned, instead of a html
+	   * string  (or a TrustedHTML object if Trusted Types are supported) */
+
+	  var RETURN_DOM_FRAGMENT = false;
+	  /* Try to return a Trusted Type object instead of a string, return a string in
+	   * case Trusted Types are not supported  */
+
+	  var RETURN_TRUSTED_TYPE = false;
+	  /* Output should be free from DOM clobbering attacks?
+	   * This sanitizes markups named with colliding, clobberable built-in DOM APIs.
+	   */
+
+	  var SANITIZE_DOM = true;
+	  /* Achieve full DOM Clobbering protection by isolating the namespace of named
+	   * properties and JS variables, mitigating attacks that abuse the HTML/DOM spec rules.
+	   *
+	   * HTML/DOM spec rules that enable DOM Clobbering:
+	   *   - Named Access on Window (§7.3.3)
+	   *   - DOM Tree Accessors (§3.1.5)
+	   *   - Form Element Parent-Child Relations (§4.10.3)
+	   *   - Iframe srcdoc / Nested WindowProxies (§4.8.5)
+	   *   - HTMLCollection (§4.2.10.2)
+	   *
+	   * Namespace isolation is implemented by prefixing `id` and `name` attributes
+	   * with a constant string, i.e., `user-content-`
+	   */
+
+	  var SANITIZE_NAMED_PROPS = false;
+	  var SANITIZE_NAMED_PROPS_PREFIX = 'user-content-';
+	  /* Keep element content when removing element? */
+
+	  var KEEP_CONTENT = true;
+	  /* If a `Node` is passed to sanitize(), then performs sanitization in-place instead
+	   * of importing it into a new Document and returning a sanitized copy */
+
+	  var IN_PLACE = false;
+	  /* Allow usage of profiles like html, svg and mathMl */
+
+	  var USE_PROFILES = {};
+	  /* Tags to ignore content of when KEEP_CONTENT is true */
+
+	  var FORBID_CONTENTS = null;
+	  var DEFAULT_FORBID_CONTENTS = addToSet({}, ['annotation-xml', 'audio', 'colgroup', 'desc', 'foreignobject', 'head', 'iframe', 'math', 'mi', 'mn', 'mo', 'ms', 'mtext', 'noembed', 'noframes', 'noscript', 'plaintext', 'script', 'style', 'svg', 'template', 'thead', 'title', 'video', 'xmp']);
+	  /* Tags that are safe for data: URIs */
+
+	  var DATA_URI_TAGS = null;
+	  var DEFAULT_DATA_URI_TAGS = addToSet({}, ['audio', 'video', 'img', 'source', 'image', 'track']);
+	  /* Attributes safe for values like "javascript:" */
+
+	  var URI_SAFE_ATTRIBUTES = null;
+	  var DEFAULT_URI_SAFE_ATTRIBUTES = addToSet({}, ['alt', 'class', 'for', 'id', 'label', 'name', 'pattern', 'placeholder', 'role', 'summary', 'title', 'value', 'style', 'xmlns']);
+	  var MATHML_NAMESPACE = 'http://www.w3.org/1998/Math/MathML';
+	  var SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+	  var HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml';
+	  /* Document namespace */
+
+	  var NAMESPACE = HTML_NAMESPACE;
+	  var IS_EMPTY_INPUT = false;
+	  /* Allowed XHTML+XML namespaces */
+
+	  var ALLOWED_NAMESPACES = null;
+	  var DEFAULT_ALLOWED_NAMESPACES = addToSet({}, [MATHML_NAMESPACE, SVG_NAMESPACE, HTML_NAMESPACE], stringToString);
+	  /* Parsing of strict XHTML documents */
+
+	  var PARSER_MEDIA_TYPE;
+	  var SUPPORTED_PARSER_MEDIA_TYPES = ['application/xhtml+xml', 'text/html'];
+	  var DEFAULT_PARSER_MEDIA_TYPE = 'text/html';
+	  var transformCaseFunc;
+	  /* Keep a reference to config to pass to hooks */
+
+	  var CONFIG = null;
+	  /* Ideally, do not touch anything below this line */
+
+	  /* ______________________________________________ */
+
+	  var formElement = document.createElement('form');
+
+	  var isRegexOrFunction = function isRegexOrFunction(testValue) {
+	    return testValue instanceof RegExp || testValue instanceof Function;
+	  };
+	  /**
+	   * _parseConfig
+	   *
+	   * @param  {Object} cfg optional config literal
+	   */
+	  // eslint-disable-next-line complexity
+
+
+	  var _parseConfig = function _parseConfig(cfg) {
+	    if (CONFIG && CONFIG === cfg) {
+	      return;
+	    }
+	    /* Shield configuration object from tampering */
+
+
+	    if (!cfg || _typeof(cfg) !== 'object') {
+	      cfg = {};
+	    }
+	    /* Shield configuration object from prototype pollution */
+
+
+	    cfg = clone(cfg);
+	    PARSER_MEDIA_TYPE = // eslint-disable-next-line unicorn/prefer-includes
+	    SUPPORTED_PARSER_MEDIA_TYPES.indexOf(cfg.PARSER_MEDIA_TYPE) === -1 ? PARSER_MEDIA_TYPE = DEFAULT_PARSER_MEDIA_TYPE : PARSER_MEDIA_TYPE = cfg.PARSER_MEDIA_TYPE; // HTML tags and attributes are not case-sensitive, converting to lowercase. Keeping XHTML as is.
+
+	    transformCaseFunc = PARSER_MEDIA_TYPE === 'application/xhtml+xml' ? stringToString : stringToLowerCase;
+	    /* Set configuration parameters */
+
+	    ALLOWED_TAGS = 'ALLOWED_TAGS' in cfg ? addToSet({}, cfg.ALLOWED_TAGS, transformCaseFunc) : DEFAULT_ALLOWED_TAGS;
+	    ALLOWED_ATTR = 'ALLOWED_ATTR' in cfg ? addToSet({}, cfg.ALLOWED_ATTR, transformCaseFunc) : DEFAULT_ALLOWED_ATTR;
+	    ALLOWED_NAMESPACES = 'ALLOWED_NAMESPACES' in cfg ? addToSet({}, cfg.ALLOWED_NAMESPACES, stringToString) : DEFAULT_ALLOWED_NAMESPACES;
+	    URI_SAFE_ATTRIBUTES = 'ADD_URI_SAFE_ATTR' in cfg ? addToSet(clone(DEFAULT_URI_SAFE_ATTRIBUTES), // eslint-disable-line indent
+	    cfg.ADD_URI_SAFE_ATTR, // eslint-disable-line indent
+	    transformCaseFunc // eslint-disable-line indent
+	    ) // eslint-disable-line indent
+	    : DEFAULT_URI_SAFE_ATTRIBUTES;
+	    DATA_URI_TAGS = 'ADD_DATA_URI_TAGS' in cfg ? addToSet(clone(DEFAULT_DATA_URI_TAGS), // eslint-disable-line indent
+	    cfg.ADD_DATA_URI_TAGS, // eslint-disable-line indent
+	    transformCaseFunc // eslint-disable-line indent
+	    ) // eslint-disable-line indent
+	    : DEFAULT_DATA_URI_TAGS;
+	    FORBID_CONTENTS = 'FORBID_CONTENTS' in cfg ? addToSet({}, cfg.FORBID_CONTENTS, transformCaseFunc) : DEFAULT_FORBID_CONTENTS;
+	    FORBID_TAGS = 'FORBID_TAGS' in cfg ? addToSet({}, cfg.FORBID_TAGS, transformCaseFunc) : {};
+	    FORBID_ATTR = 'FORBID_ATTR' in cfg ? addToSet({}, cfg.FORBID_ATTR, transformCaseFunc) : {};
+	    USE_PROFILES = 'USE_PROFILES' in cfg ? cfg.USE_PROFILES : false;
+	    ALLOW_ARIA_ATTR = cfg.ALLOW_ARIA_ATTR !== false; // Default true
+
+	    ALLOW_DATA_ATTR = cfg.ALLOW_DATA_ATTR !== false; // Default true
+
+	    ALLOW_UNKNOWN_PROTOCOLS = cfg.ALLOW_UNKNOWN_PROTOCOLS || false; // Default false
+
+	    SAFE_FOR_TEMPLATES = cfg.SAFE_FOR_TEMPLATES || false; // Default false
+
+	    WHOLE_DOCUMENT = cfg.WHOLE_DOCUMENT || false; // Default false
+
+	    RETURN_DOM = cfg.RETURN_DOM || false; // Default false
+
+	    RETURN_DOM_FRAGMENT = cfg.RETURN_DOM_FRAGMENT || false; // Default false
+
+	    RETURN_TRUSTED_TYPE = cfg.RETURN_TRUSTED_TYPE || false; // Default false
+
+	    FORCE_BODY = cfg.FORCE_BODY || false; // Default false
+
+	    SANITIZE_DOM = cfg.SANITIZE_DOM !== false; // Default true
+
+	    SANITIZE_NAMED_PROPS = cfg.SANITIZE_NAMED_PROPS || false; // Default false
+
+	    KEEP_CONTENT = cfg.KEEP_CONTENT !== false; // Default true
+
+	    IN_PLACE = cfg.IN_PLACE || false; // Default false
+
+	    IS_ALLOWED_URI$1 = cfg.ALLOWED_URI_REGEXP || IS_ALLOWED_URI$1;
+	    NAMESPACE = cfg.NAMESPACE || HTML_NAMESPACE;
+
+	    if (cfg.CUSTOM_ELEMENT_HANDLING && isRegexOrFunction(cfg.CUSTOM_ELEMENT_HANDLING.tagNameCheck)) {
+	      CUSTOM_ELEMENT_HANDLING.tagNameCheck = cfg.CUSTOM_ELEMENT_HANDLING.tagNameCheck;
+	    }
+
+	    if (cfg.CUSTOM_ELEMENT_HANDLING && isRegexOrFunction(cfg.CUSTOM_ELEMENT_HANDLING.attributeNameCheck)) {
+	      CUSTOM_ELEMENT_HANDLING.attributeNameCheck = cfg.CUSTOM_ELEMENT_HANDLING.attributeNameCheck;
+	    }
+
+	    if (cfg.CUSTOM_ELEMENT_HANDLING && typeof cfg.CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements === 'boolean') {
+	      CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements = cfg.CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements;
+	    }
+
+	    if (SAFE_FOR_TEMPLATES) {
+	      ALLOW_DATA_ATTR = false;
+	    }
+
+	    if (RETURN_DOM_FRAGMENT) {
+	      RETURN_DOM = true;
+	    }
+	    /* Parse profile info */
+
+
+	    if (USE_PROFILES) {
+	      ALLOWED_TAGS = addToSet({}, _toConsumableArray(text));
+	      ALLOWED_ATTR = [];
+
+	      if (USE_PROFILES.html === true) {
+	        addToSet(ALLOWED_TAGS, html$1);
+	        addToSet(ALLOWED_ATTR, html);
+	      }
+
+	      if (USE_PROFILES.svg === true) {
+	        addToSet(ALLOWED_TAGS, svg$1);
+	        addToSet(ALLOWED_ATTR, svg);
+	        addToSet(ALLOWED_ATTR, xml);
+	      }
+
+	      if (USE_PROFILES.svgFilters === true) {
+	        addToSet(ALLOWED_TAGS, svgFilters);
+	        addToSet(ALLOWED_ATTR, svg);
+	        addToSet(ALLOWED_ATTR, xml);
+	      }
+
+	      if (USE_PROFILES.mathMl === true) {
+	        addToSet(ALLOWED_TAGS, mathMl$1);
+	        addToSet(ALLOWED_ATTR, mathMl);
+	        addToSet(ALLOWED_ATTR, xml);
+	      }
+	    }
+	    /* Merge configuration parameters */
+
+
+	    if (cfg.ADD_TAGS) {
+	      if (ALLOWED_TAGS === DEFAULT_ALLOWED_TAGS) {
+	        ALLOWED_TAGS = clone(ALLOWED_TAGS);
+	      }
+
+	      addToSet(ALLOWED_TAGS, cfg.ADD_TAGS, transformCaseFunc);
+	    }
+
+	    if (cfg.ADD_ATTR) {
+	      if (ALLOWED_ATTR === DEFAULT_ALLOWED_ATTR) {
+	        ALLOWED_ATTR = clone(ALLOWED_ATTR);
+	      }
+
+	      addToSet(ALLOWED_ATTR, cfg.ADD_ATTR, transformCaseFunc);
+	    }
+
+	    if (cfg.ADD_URI_SAFE_ATTR) {
+	      addToSet(URI_SAFE_ATTRIBUTES, cfg.ADD_URI_SAFE_ATTR, transformCaseFunc);
+	    }
+
+	    if (cfg.FORBID_CONTENTS) {
+	      if (FORBID_CONTENTS === DEFAULT_FORBID_CONTENTS) {
+	        FORBID_CONTENTS = clone(FORBID_CONTENTS);
+	      }
+
+	      addToSet(FORBID_CONTENTS, cfg.FORBID_CONTENTS, transformCaseFunc);
+	    }
+	    /* Add #text in case KEEP_CONTENT is set to true */
+
+
+	    if (KEEP_CONTENT) {
+	      ALLOWED_TAGS['#text'] = true;
+	    }
+	    /* Add html, head and body to ALLOWED_TAGS in case WHOLE_DOCUMENT is true */
+
+
+	    if (WHOLE_DOCUMENT) {
+	      addToSet(ALLOWED_TAGS, ['html', 'head', 'body']);
+	    }
+	    /* Add tbody to ALLOWED_TAGS in case tables are permitted, see #286, #365 */
+
+
+	    if (ALLOWED_TAGS.table) {
+	      addToSet(ALLOWED_TAGS, ['tbody']);
+	      delete FORBID_TAGS.tbody;
+	    } // Prevent further manipulation of configuration.
+	    // Not available in IE8, Safari 5, etc.
+
+
+	    if (freeze) {
+	      freeze(cfg);
+	    }
+
+	    CONFIG = cfg;
+	  };
+
+	  var MATHML_TEXT_INTEGRATION_POINTS = addToSet({}, ['mi', 'mo', 'mn', 'ms', 'mtext']);
+	  var HTML_INTEGRATION_POINTS = addToSet({}, ['foreignobject', 'desc', 'title', 'annotation-xml']); // Certain elements are allowed in both SVG and HTML
+	  // namespace. We need to specify them explicitly
+	  // so that they don't get erroneously deleted from
+	  // HTML namespace.
+
+	  var COMMON_SVG_AND_HTML_ELEMENTS = addToSet({}, ['title', 'style', 'font', 'a', 'script']);
+	  /* Keep track of all possible SVG and MathML tags
+	   * so that we can perform the namespace checks
+	   * correctly. */
+
+	  var ALL_SVG_TAGS = addToSet({}, svg$1);
+	  addToSet(ALL_SVG_TAGS, svgFilters);
+	  addToSet(ALL_SVG_TAGS, svgDisallowed);
+	  var ALL_MATHML_TAGS = addToSet({}, mathMl$1);
+	  addToSet(ALL_MATHML_TAGS, mathMlDisallowed);
+	  /**
+	   *
+	   *
+	   * @param  {Element} element a DOM element whose namespace is being checked
+	   * @returns {boolean} Return false if the element has a
+	   *  namespace that a spec-compliant parser would never
+	   *  return. Return true otherwise.
+	   */
+
+	  var _checkValidNamespace = function _checkValidNamespace(element) {
+	    var parent = getParentNode(element); // In JSDOM, if we're inside shadow DOM, then parentNode
+	    // can be null. We just simulate parent in this case.
+
+	    if (!parent || !parent.tagName) {
+	      parent = {
+	        namespaceURI: NAMESPACE,
+	        tagName: 'template'
+	      };
+	    }
+
+	    var tagName = stringToLowerCase(element.tagName);
+	    var parentTagName = stringToLowerCase(parent.tagName);
+
+	    if (!ALLOWED_NAMESPACES[element.namespaceURI]) {
+	      return false;
+	    }
+
+	    if (element.namespaceURI === SVG_NAMESPACE) {
+	      // The only way to switch from HTML namespace to SVG
+	      // is via <svg>. If it happens via any other tag, then
+	      // it should be killed.
+	      if (parent.namespaceURI === HTML_NAMESPACE) {
+	        return tagName === 'svg';
+	      } // The only way to switch from MathML to SVG is via`
+	      // svg if parent is either <annotation-xml> or MathML
+	      // text integration points.
+
+
+	      if (parent.namespaceURI === MATHML_NAMESPACE) {
+	        return tagName === 'svg' && (parentTagName === 'annotation-xml' || MATHML_TEXT_INTEGRATION_POINTS[parentTagName]);
+	      } // We only allow elements that are defined in SVG
+	      // spec. All others are disallowed in SVG namespace.
+
+
+	      return Boolean(ALL_SVG_TAGS[tagName]);
+	    }
+
+	    if (element.namespaceURI === MATHML_NAMESPACE) {
+	      // The only way to switch from HTML namespace to MathML
+	      // is via <math>. If it happens via any other tag, then
+	      // it should be killed.
+	      if (parent.namespaceURI === HTML_NAMESPACE) {
+	        return tagName === 'math';
+	      } // The only way to switch from SVG to MathML is via
+	      // <math> and HTML integration points
+
+
+	      if (parent.namespaceURI === SVG_NAMESPACE) {
+	        return tagName === 'math' && HTML_INTEGRATION_POINTS[parentTagName];
+	      } // We only allow elements that are defined in MathML
+	      // spec. All others are disallowed in MathML namespace.
+
+
+	      return Boolean(ALL_MATHML_TAGS[tagName]);
+	    }
+
+	    if (element.namespaceURI === HTML_NAMESPACE) {
+	      // The only way to switch from SVG to HTML is via
+	      // HTML integration points, and from MathML to HTML
+	      // is via MathML text integration points
+	      if (parent.namespaceURI === SVG_NAMESPACE && !HTML_INTEGRATION_POINTS[parentTagName]) {
+	        return false;
+	      }
+
+	      if (parent.namespaceURI === MATHML_NAMESPACE && !MATHML_TEXT_INTEGRATION_POINTS[parentTagName]) {
+	        return false;
+	      } // We disallow tags that are specific for MathML
+	      // or SVG and should never appear in HTML namespace
+
+
+	      return !ALL_MATHML_TAGS[tagName] && (COMMON_SVG_AND_HTML_ELEMENTS[tagName] || !ALL_SVG_TAGS[tagName]);
+	    } // For XHTML and XML documents that support custom namespaces
+
+
+	    if (PARSER_MEDIA_TYPE === 'application/xhtml+xml' && ALLOWED_NAMESPACES[element.namespaceURI]) {
+	      return true;
+	    } // The code should never reach this place (this means
+	    // that the element somehow got namespace that is not
+	    // HTML, SVG, MathML or allowed via ALLOWED_NAMESPACES).
+	    // Return false just in case.
+
+
+	    return false;
+	  };
+	  /**
+	   * _forceRemove
+	   *
+	   * @param  {Node} node a DOM node
+	   */
+
+
+	  var _forceRemove = function _forceRemove(node) {
+	    arrayPush(DOMPurify.removed, {
+	      element: node
+	    });
+
+	    try {
+	      // eslint-disable-next-line unicorn/prefer-dom-node-remove
+	      node.parentNode.removeChild(node);
+	    } catch (_) {
+	      try {
+	        node.outerHTML = emptyHTML;
+	      } catch (_) {
+	        node.remove();
+	      }
+	    }
+	  };
+	  /**
+	   * _removeAttribute
+	   *
+	   * @param  {String} name an Attribute name
+	   * @param  {Node} node a DOM node
+	   */
+
+
+	  var _removeAttribute = function _removeAttribute(name, node) {
+	    try {
+	      arrayPush(DOMPurify.removed, {
+	        attribute: node.getAttributeNode(name),
+	        from: node
+	      });
+	    } catch (_) {
+	      arrayPush(DOMPurify.removed, {
+	        attribute: null,
+	        from: node
+	      });
+	    }
+
+	    node.removeAttribute(name); // We void attribute values for unremovable "is"" attributes
+
+	    if (name === 'is' && !ALLOWED_ATTR[name]) {
+	      if (RETURN_DOM || RETURN_DOM_FRAGMENT) {
+	        try {
+	          _forceRemove(node);
+	        } catch (_) {}
+	      } else {
+	        try {
+	          node.setAttribute(name, '');
+	        } catch (_) {}
+	      }
+	    }
+	  };
+	  /**
+	   * _initDocument
+	   *
+	   * @param  {String} dirty a string of dirty markup
+	   * @return {Document} a DOM, filled with the dirty markup
+	   */
+
+
+	  var _initDocument = function _initDocument(dirty) {
+	    /* Create a HTML document */
+	    var doc;
+	    var leadingWhitespace;
+
+	    if (FORCE_BODY) {
+	      dirty = '<remove></remove>' + dirty;
+	    } else {
+	      /* If FORCE_BODY isn't used, leading whitespace needs to be preserved manually */
+	      var matches = stringMatch(dirty, /^[\r\n\t ]+/);
+	      leadingWhitespace = matches && matches[0];
+	    }
+
+	    if (PARSER_MEDIA_TYPE === 'application/xhtml+xml' && NAMESPACE === HTML_NAMESPACE) {
+	      // Root of XHTML doc must contain xmlns declaration (see https://www.w3.org/TR/xhtml1/normative.html#strict)
+	      dirty = '<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>' + dirty + '</body></html>';
+	    }
+
+	    var dirtyPayload = trustedTypesPolicy ? trustedTypesPolicy.createHTML(dirty) : dirty;
+	    /*
+	     * Use the DOMParser API by default, fallback later if needs be
+	     * DOMParser not work for svg when has multiple root element.
+	     */
+
+	    if (NAMESPACE === HTML_NAMESPACE) {
+	      try {
+	        doc = new DOMParser().parseFromString(dirtyPayload, PARSER_MEDIA_TYPE);
+	      } catch (_) {}
+	    }
+	    /* Use createHTMLDocument in case DOMParser is not available */
+
+
+	    if (!doc || !doc.documentElement) {
+	      doc = implementation.createDocument(NAMESPACE, 'template', null);
+
+	      try {
+	        doc.documentElement.innerHTML = IS_EMPTY_INPUT ? emptyHTML : dirtyPayload;
+	      } catch (_) {// Syntax error if dirtyPayload is invalid xml
+	      }
+	    }
+
+	    var body = doc.body || doc.documentElement;
+
+	    if (dirty && leadingWhitespace) {
+	      body.insertBefore(document.createTextNode(leadingWhitespace), body.childNodes[0] || null);
+	    }
+	    /* Work on whole document or just its body */
+
+
+	    if (NAMESPACE === HTML_NAMESPACE) {
+	      return getElementsByTagName.call(doc, WHOLE_DOCUMENT ? 'html' : 'body')[0];
+	    }
+
+	    return WHOLE_DOCUMENT ? doc.documentElement : body;
+	  };
+	  /**
+	   * _createIterator
+	   *
+	   * @param  {Document} root document/fragment to create iterator for
+	   * @return {Iterator} iterator instance
+	   */
+
+
+	  var _createIterator = function _createIterator(root) {
+	    return createNodeIterator.call(root.ownerDocument || root, root, // eslint-disable-next-line no-bitwise
+	    NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, null, false);
+	  };
+	  /**
+	   * _isClobbered
+	   *
+	   * @param  {Node} elm element to check for clobbering attacks
+	   * @return {Boolean} true if clobbered, false if safe
+	   */
+
+
+	  var _isClobbered = function _isClobbered(elm) {
+	    return elm instanceof HTMLFormElement && (typeof elm.nodeName !== 'string' || typeof elm.textContent !== 'string' || typeof elm.removeChild !== 'function' || !(elm.attributes instanceof NamedNodeMap) || typeof elm.removeAttribute !== 'function' || typeof elm.setAttribute !== 'function' || typeof elm.namespaceURI !== 'string' || typeof elm.insertBefore !== 'function' || typeof elm.hasChildNodes !== 'function');
+	  };
+	  /**
+	   * _isNode
+	   *
+	   * @param  {Node} obj object to check whether it's a DOM node
+	   * @return {Boolean} true is object is a DOM node
+	   */
+
+
+	  var _isNode = function _isNode(object) {
+	    return _typeof(Node) === 'object' ? object instanceof Node : object && _typeof(object) === 'object' && typeof object.nodeType === 'number' && typeof object.nodeName === 'string';
+	  };
+	  /**
+	   * _executeHook
+	   * Execute user configurable hooks
+	   *
+	   * @param  {String} entryPoint  Name of the hook's entry point
+	   * @param  {Node} currentNode node to work on with the hook
+	   * @param  {Object} data additional hook parameters
+	   */
+
+
+	  var _executeHook = function _executeHook(entryPoint, currentNode, data) {
+	    if (!hooks[entryPoint]) {
+	      return;
+	    }
+
+	    arrayForEach(hooks[entryPoint], function (hook) {
+	      hook.call(DOMPurify, currentNode, data, CONFIG);
+	    });
+	  };
+	  /**
+	   * _sanitizeElements
+	   *
+	   * @protect nodeName
+	   * @protect textContent
+	   * @protect removeChild
+	   *
+	   * @param   {Node} currentNode to check for permission to exist
+	   * @return  {Boolean} true if node was killed, false if left alive
+	   */
+
+
+	  var _sanitizeElements = function _sanitizeElements(currentNode) {
+	    var content;
+	    /* Execute a hook if present */
+
+	    _executeHook('beforeSanitizeElements', currentNode, null);
+	    /* Check if element is clobbered or can clobber */
+
+
+	    if (_isClobbered(currentNode)) {
+	      _forceRemove(currentNode);
+
+	      return true;
+	    }
+	    /* Check if tagname contains Unicode */
+
+
+	    if (regExpTest(/[\u0080-\uFFFF]/, currentNode.nodeName)) {
+	      _forceRemove(currentNode);
+
+	      return true;
+	    }
+	    /* Now let's check the element's type and name */
+
+
+	    var tagName = transformCaseFunc(currentNode.nodeName);
+	    /* Execute a hook if present */
+
+	    _executeHook('uponSanitizeElement', currentNode, {
+	      tagName: tagName,
+	      allowedTags: ALLOWED_TAGS
+	    });
+	    /* Detect mXSS attempts abusing namespace confusion */
+
+
+	    if (currentNode.hasChildNodes() && !_isNode(currentNode.firstElementChild) && (!_isNode(currentNode.content) || !_isNode(currentNode.content.firstElementChild)) && regExpTest(/<[/\w]/g, currentNode.innerHTML) && regExpTest(/<[/\w]/g, currentNode.textContent)) {
+	      _forceRemove(currentNode);
+
+	      return true;
+	    }
+	    /* Mitigate a problem with templates inside select */
+
+
+	    if (tagName === 'select' && regExpTest(/<template/i, currentNode.innerHTML)) {
+	      _forceRemove(currentNode);
+
+	      return true;
+	    }
+	    /* Remove element if anything forbids its presence */
+
+
+	    if (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName]) {
+	      /* Check if we have a custom element to handle */
+	      if (!FORBID_TAGS[tagName] && _basicCustomElementTest(tagName)) {
+	        if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, tagName)) return false;
+	        if (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(tagName)) return false;
+	      }
+	      /* Keep content except for bad-listed elements */
+
+
+	      if (KEEP_CONTENT && !FORBID_CONTENTS[tagName]) {
+	        var parentNode = getParentNode(currentNode) || currentNode.parentNode;
+	        var childNodes = getChildNodes(currentNode) || currentNode.childNodes;
+
+	        if (childNodes && parentNode) {
+	          var childCount = childNodes.length;
+
+	          for (var i = childCount - 1; i >= 0; --i) {
+	            parentNode.insertBefore(cloneNode(childNodes[i], true), getNextSibling(currentNode));
+	          }
+	        }
+	      }
+
+	      _forceRemove(currentNode);
+
+	      return true;
+	    }
+	    /* Check whether element has a valid namespace */
+
+
+	    if (currentNode instanceof Element && !_checkValidNamespace(currentNode)) {
+	      _forceRemove(currentNode);
+
+	      return true;
+	    }
+
+	    if ((tagName === 'noscript' || tagName === 'noembed') && regExpTest(/<\/no(script|embed)/i, currentNode.innerHTML)) {
+	      _forceRemove(currentNode);
+
+	      return true;
+	    }
+	    /* Sanitize element content to be template-safe */
+
+
+	    if (SAFE_FOR_TEMPLATES && currentNode.nodeType === 3) {
+	      /* Get the element's text content */
+	      content = currentNode.textContent;
+	      content = stringReplace(content, MUSTACHE_EXPR$1, ' ');
+	      content = stringReplace(content, ERB_EXPR$1, ' ');
+	      content = stringReplace(content, TMPLIT_EXPR$1, ' ');
+
+	      if (currentNode.textContent !== content) {
+	        arrayPush(DOMPurify.removed, {
+	          element: currentNode.cloneNode()
+	        });
+	        currentNode.textContent = content;
+	      }
+	    }
+	    /* Execute a hook if present */
+
+
+	    _executeHook('afterSanitizeElements', currentNode, null);
+
+	    return false;
+	  };
+	  /**
+	   * _isValidAttribute
+	   *
+	   * @param  {string} lcTag Lowercase tag name of containing element.
+	   * @param  {string} lcName Lowercase attribute name.
+	   * @param  {string} value Attribute value.
+	   * @return {Boolean} Returns true if `value` is valid, otherwise false.
+	   */
+	  // eslint-disable-next-line complexity
+
+
+	  var _isValidAttribute = function _isValidAttribute(lcTag, lcName, value) {
+	    /* Make sure attribute cannot clobber */
+	    if (SANITIZE_DOM && (lcName === 'id' || lcName === 'name') && (value in document || value in formElement)) {
+	      return false;
+	    }
+	    /* Allow valid data-* attributes: At least one character after "-"
+	        (https://html.spec.whatwg.org/multipage/dom.html#embedding-custom-non-visible-data-with-the-data-*-attributes)
+	        XML-compatible (https://html.spec.whatwg.org/multipage/infrastructure.html#xml-compatible and http://www.w3.org/TR/xml/#d0e804)
+	        We don't need to check the value; it's always URI safe. */
+
+
+	    if (ALLOW_DATA_ATTR && !FORBID_ATTR[lcName] && regExpTest(DATA_ATTR$1, lcName)) ; else if (ALLOW_ARIA_ATTR && regExpTest(ARIA_ATTR$1, lcName)) ; else if (!ALLOWED_ATTR[lcName] || FORBID_ATTR[lcName]) {
+	      if ( // First condition does a very basic check if a) it's basically a valid custom element tagname AND
+	      // b) if the tagName passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.tagNameCheck
+	      // and c) if the attribute name passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.attributeNameCheck
+	      _basicCustomElementTest(lcTag) && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, lcTag) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(lcTag)) && (CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.attributeNameCheck, lcName) || CUSTOM_ELEMENT_HANDLING.attributeNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.attributeNameCheck(lcName)) || // Alternative, second condition checks if it's an `is`-attribute, AND
+	      // the value passes whatever the user has configured for CUSTOM_ELEMENT_HANDLING.tagNameCheck
+	      lcName === 'is' && CUSTOM_ELEMENT_HANDLING.allowCustomizedBuiltInElements && (CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof RegExp && regExpTest(CUSTOM_ELEMENT_HANDLING.tagNameCheck, value) || CUSTOM_ELEMENT_HANDLING.tagNameCheck instanceof Function && CUSTOM_ELEMENT_HANDLING.tagNameCheck(value))) ; else {
+	        return false;
+	      }
+	      /* Check value is safe. First, is attr inert? If so, is safe */
+
+	    } else if (URI_SAFE_ATTRIBUTES[lcName]) ; else if (regExpTest(IS_ALLOWED_URI$1, stringReplace(value, ATTR_WHITESPACE$1, ''))) ; else if ((lcName === 'src' || lcName === 'xlink:href' || lcName === 'href') && lcTag !== 'script' && stringIndexOf(value, 'data:') === 0 && DATA_URI_TAGS[lcTag]) ; else if (ALLOW_UNKNOWN_PROTOCOLS && !regExpTest(IS_SCRIPT_OR_DATA$1, stringReplace(value, ATTR_WHITESPACE$1, ''))) ; else if (!value) ; else {
+	      return false;
+	    }
+
+	    return true;
+	  };
+	  /**
+	   * _basicCustomElementCheck
+	   * checks if at least one dash is included in tagName, and it's not the first char
+	   * for more sophisticated checking see https://github.com/sindresorhus/validate-element-name
+	   * @param {string} tagName name of the tag of the node to sanitize
+	   */
+
+
+	  var _basicCustomElementTest = function _basicCustomElementTest(tagName) {
+	    return tagName.indexOf('-') > 0;
+	  };
+	  /**
+	   * _sanitizeAttributes
+	   *
+	   * @protect attributes
+	   * @protect nodeName
+	   * @protect removeAttribute
+	   * @protect setAttribute
+	   *
+	   * @param  {Node} currentNode to sanitize
+	   */
+
+
+	  var _sanitizeAttributes = function _sanitizeAttributes(currentNode) {
+	    var attr;
+	    var value;
+	    var lcName;
+	    var l;
+	    /* Execute a hook if present */
+
+	    _executeHook('beforeSanitizeAttributes', currentNode, null);
+
+	    var attributes = currentNode.attributes;
+	    /* Check if we have attributes; if not we might have a text node */
+
+	    if (!attributes) {
+	      return;
+	    }
+
+	    var hookEvent = {
+	      attrName: '',
+	      attrValue: '',
+	      keepAttr: true,
+	      allowedAttributes: ALLOWED_ATTR
+	    };
+	    l = attributes.length;
+	    /* Go backwards over all attributes; safely remove bad ones */
+
+	    while (l--) {
+	      attr = attributes[l];
+	      var _attr = attr,
+	          name = _attr.name,
+	          namespaceURI = _attr.namespaceURI;
+	      value = name === 'value' ? attr.value : stringTrim(attr.value);
+	      lcName = transformCaseFunc(name);
+	      /* Execute a hook if present */
+
+	      hookEvent.attrName = lcName;
+	      hookEvent.attrValue = value;
+	      hookEvent.keepAttr = true;
+	      hookEvent.forceKeepAttr = undefined; // Allows developers to see this is a property they can set
+
+	      _executeHook('uponSanitizeAttribute', currentNode, hookEvent);
+
+	      value = hookEvent.attrValue;
+	      /* Did the hooks approve of the attribute? */
+
+	      if (hookEvent.forceKeepAttr) {
+	        continue;
+	      }
+	      /* Remove attribute */
+
+
+	      _removeAttribute(name, currentNode);
+	      /* Did the hooks approve of the attribute? */
+
+
+	      if (!hookEvent.keepAttr) {
+	        continue;
+	      }
+	      /* Work around a security issue in jQuery 3.0 */
+
+
+	      if (regExpTest(/\/>/i, value)) {
+	        _removeAttribute(name, currentNode);
+
+	        continue;
+	      }
+	      /* Sanitize attribute content to be template-safe */
+
+
+	      if (SAFE_FOR_TEMPLATES) {
+	        value = stringReplace(value, MUSTACHE_EXPR$1, ' ');
+	        value = stringReplace(value, ERB_EXPR$1, ' ');
+	        value = stringReplace(value, TMPLIT_EXPR$1, ' ');
+	      }
+	      /* Is `value` valid for this attribute? */
+
+
+	      var lcTag = transformCaseFunc(currentNode.nodeName);
+
+	      if (!_isValidAttribute(lcTag, lcName, value)) {
+	        continue;
+	      }
+	      /* Full DOM Clobbering protection via namespace isolation,
+	       * Prefix id and name attributes with `user-content-`
+	       */
+
+
+	      if (SANITIZE_NAMED_PROPS && (lcName === 'id' || lcName === 'name')) {
+	        // Remove the attribute with this value
+	        _removeAttribute(name, currentNode); // Prefix the value and later re-create the attribute with the sanitized value
+
+
+	        value = SANITIZE_NAMED_PROPS_PREFIX + value;
+	      }
+	      /* Handle attributes that require Trusted Types */
+
+
+	      if (trustedTypesPolicy && _typeof(trustedTypes) === 'object' && typeof trustedTypes.getAttributeType === 'function') {
+	        if (namespaceURI) ; else {
+	          switch (trustedTypes.getAttributeType(lcTag, lcName)) {
+	            case 'TrustedHTML':
+	              value = trustedTypesPolicy.createHTML(value);
+	              break;
+
+	            case 'TrustedScriptURL':
+	              value = trustedTypesPolicy.createScriptURL(value);
+	              break;
+	          }
+	        }
+	      }
+	      /* Handle invalid data-* attribute set by try-catching it */
+
+
+	      try {
+	        if (namespaceURI) {
+	          currentNode.setAttributeNS(namespaceURI, name, value);
+	        } else {
+	          /* Fallback to setAttribute() for browser-unrecognized namespaces e.g. "x-schema". */
+	          currentNode.setAttribute(name, value);
+	        }
+
+	        arrayPop(DOMPurify.removed);
+	      } catch (_) {}
+	    }
+	    /* Execute a hook if present */
+
+
+	    _executeHook('afterSanitizeAttributes', currentNode, null);
+	  };
+	  /**
+	   * _sanitizeShadowDOM
+	   *
+	   * @param  {DocumentFragment} fragment to iterate over recursively
+	   */
+
+
+	  var _sanitizeShadowDOM = function _sanitizeShadowDOM(fragment) {
+	    var shadowNode;
+
+	    var shadowIterator = _createIterator(fragment);
+	    /* Execute a hook if present */
+
+
+	    _executeHook('beforeSanitizeShadowDOM', fragment, null);
+
+	    while (shadowNode = shadowIterator.nextNode()) {
+	      /* Execute a hook if present */
+	      _executeHook('uponSanitizeShadowNode', shadowNode, null);
+	      /* Sanitize tags and elements */
+
+
+	      if (_sanitizeElements(shadowNode)) {
+	        continue;
+	      }
+	      /* Deep shadow DOM detected */
+
+
+	      if (shadowNode.content instanceof DocumentFragment) {
+	        _sanitizeShadowDOM(shadowNode.content);
+	      }
+	      /* Check attributes, sanitize if necessary */
+
+
+	      _sanitizeAttributes(shadowNode);
+	    }
+	    /* Execute a hook if present */
+
+
+	    _executeHook('afterSanitizeShadowDOM', fragment, null);
+	  };
+	  /**
+	   * Sanitize
+	   * Public method providing core sanitation functionality
+	   *
+	   * @param {String|Node} dirty string or DOM node
+	   * @param {Object} configuration object
+	   */
+	  // eslint-disable-next-line complexity
+
+
+	  DOMPurify.sanitize = function (dirty) {
+	    var cfg = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+	    var body;
+	    var importedNode;
+	    var currentNode;
+	    var oldNode;
+	    var returnNode;
+	    /* Make sure we have a string to sanitize.
+	      DO NOT return early, as this will return the wrong type if
+	      the user has requested a DOM object rather than a string */
+
+	    IS_EMPTY_INPUT = !dirty;
+
+	    if (IS_EMPTY_INPUT) {
+	      dirty = '<!-->';
+	    }
+	    /* Stringify, in case dirty is an object */
+
+
+	    if (typeof dirty !== 'string' && !_isNode(dirty)) {
+	      // eslint-disable-next-line no-negated-condition
+	      if (typeof dirty.toString !== 'function') {
+	        throw typeErrorCreate('toString is not a function');
+	      } else {
+	        dirty = dirty.toString();
+
+	        if (typeof dirty !== 'string') {
+	          throw typeErrorCreate('dirty is not a string, aborting');
+	        }
+	      }
+	    }
+	    /* Check we can run. Otherwise fall back or ignore */
+
+
+	    if (!DOMPurify.isSupported) {
+	      if (_typeof(window.toStaticHTML) === 'object' || typeof window.toStaticHTML === 'function') {
+	        if (typeof dirty === 'string') {
+	          return window.toStaticHTML(dirty);
+	        }
+
+	        if (_isNode(dirty)) {
+	          return window.toStaticHTML(dirty.outerHTML);
+	        }
+	      }
+
+	      return dirty;
+	    }
+	    /* Assign config vars */
+
+
+	    if (!SET_CONFIG) {
+	      _parseConfig(cfg);
+	    }
+	    /* Clean up removed elements */
+
+
+	    DOMPurify.removed = [];
+	    /* Check if dirty is correctly typed for IN_PLACE */
+
+	    if (typeof dirty === 'string') {
+	      IN_PLACE = false;
+	    }
+
+	    if (IN_PLACE) {
+	      /* Do some early pre-sanitization to avoid unsafe root nodes */
+	      if (dirty.nodeName) {
+	        var tagName = transformCaseFunc(dirty.nodeName);
+
+	        if (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName]) {
+	          throw typeErrorCreate('root node is forbidden and cannot be sanitized in-place');
+	        }
+	      }
+	    } else if (dirty instanceof Node) {
+	      /* If dirty is a DOM element, append to an empty document to avoid
+	         elements being stripped by the parser */
+	      body = _initDocument('<!---->');
+	      importedNode = body.ownerDocument.importNode(dirty, true);
+
+	      if (importedNode.nodeType === 1 && importedNode.nodeName === 'BODY') {
+	        /* Node is already a body, use as is */
+	        body = importedNode;
+	      } else if (importedNode.nodeName === 'HTML') {
+	        body = importedNode;
+	      } else {
+	        // eslint-disable-next-line unicorn/prefer-dom-node-append
+	        body.appendChild(importedNode);
+	      }
+	    } else {
+	      /* Exit directly if we have nothing to do */
+	      if (!RETURN_DOM && !SAFE_FOR_TEMPLATES && !WHOLE_DOCUMENT && // eslint-disable-next-line unicorn/prefer-includes
+	      dirty.indexOf('<') === -1) {
+	        return trustedTypesPolicy && RETURN_TRUSTED_TYPE ? trustedTypesPolicy.createHTML(dirty) : dirty;
+	      }
+	      /* Initialize the document to work on */
+
+
+	      body = _initDocument(dirty);
+	      /* Check we have a DOM node from the data */
+
+	      if (!body) {
+	        return RETURN_DOM ? null : RETURN_TRUSTED_TYPE ? emptyHTML : '';
+	      }
+	    }
+	    /* Remove first element node (ours) if FORCE_BODY is set */
+
+
+	    if (body && FORCE_BODY) {
+	      _forceRemove(body.firstChild);
+	    }
+	    /* Get node iterator */
+
+
+	    var nodeIterator = _createIterator(IN_PLACE ? dirty : body);
+	    /* Now start iterating over the created document */
+
+
+	    while (currentNode = nodeIterator.nextNode()) {
+	      /* Fix IE's strange behavior with manipulated textNodes #89 */
+	      if (currentNode.nodeType === 3 && currentNode === oldNode) {
+	        continue;
+	      }
+	      /* Sanitize tags and elements */
+
+
+	      if (_sanitizeElements(currentNode)) {
+	        continue;
+	      }
+	      /* Shadow DOM detected, sanitize it */
+
+
+	      if (currentNode.content instanceof DocumentFragment) {
+	        _sanitizeShadowDOM(currentNode.content);
+	      }
+	      /* Check attributes, sanitize if necessary */
+
+
+	      _sanitizeAttributes(currentNode);
+
+	      oldNode = currentNode;
+	    }
+
+	    oldNode = null;
+	    /* If we sanitized `dirty` in-place, return it. */
+
+	    if (IN_PLACE) {
+	      return dirty;
+	    }
+	    /* Return sanitized string or DOM */
+
+
+	    if (RETURN_DOM) {
+	      if (RETURN_DOM_FRAGMENT) {
+	        returnNode = createDocumentFragment.call(body.ownerDocument);
+
+	        while (body.firstChild) {
+	          // eslint-disable-next-line unicorn/prefer-dom-node-append
+	          returnNode.appendChild(body.firstChild);
+	        }
+	      } else {
+	        returnNode = body;
+	      }
+
+	      if (ALLOWED_ATTR.shadowroot) {
+	        /*
+	          AdoptNode() is not used because internal state is not reset
+	          (e.g. the past names map of a HTMLFormElement), this is safe
+	          in theory but we would rather not risk another attack vector.
+	          The state that is cloned by importNode() is explicitly defined
+	          by the specs.
+	        */
+	        returnNode = importNode.call(originalDocument, returnNode, true);
+	      }
+
+	      return returnNode;
+	    }
+
+	    var serializedHTML = WHOLE_DOCUMENT ? body.outerHTML : body.innerHTML;
+	    /* Serialize doctype if allowed */
+
+	    if (WHOLE_DOCUMENT && ALLOWED_TAGS['!doctype'] && body.ownerDocument && body.ownerDocument.doctype && body.ownerDocument.doctype.name && regExpTest(DOCTYPE_NAME, body.ownerDocument.doctype.name)) {
+	      serializedHTML = '<!DOCTYPE ' + body.ownerDocument.doctype.name + '>\n' + serializedHTML;
+	    }
+	    /* Sanitize final string template-safe */
+
+
+	    if (SAFE_FOR_TEMPLATES) {
+	      serializedHTML = stringReplace(serializedHTML, MUSTACHE_EXPR$1, ' ');
+	      serializedHTML = stringReplace(serializedHTML, ERB_EXPR$1, ' ');
+	      serializedHTML = stringReplace(serializedHTML, TMPLIT_EXPR$1, ' ');
+	    }
+
+	    return trustedTypesPolicy && RETURN_TRUSTED_TYPE ? trustedTypesPolicy.createHTML(serializedHTML) : serializedHTML;
+	  };
+	  /**
+	   * Public method to set the configuration once
+	   * setConfig
+	   *
+	   * @param {Object} cfg configuration object
+	   */
+
+
+	  DOMPurify.setConfig = function (cfg) {
+	    _parseConfig(cfg);
+
+	    SET_CONFIG = true;
+	  };
+	  /**
+	   * Public method to remove the configuration
+	   * clearConfig
+	   *
+	   */
+
+
+	  DOMPurify.clearConfig = function () {
+	    CONFIG = null;
+	    SET_CONFIG = false;
+	  };
+	  /**
+	   * Public method to check if an attribute value is valid.
+	   * Uses last set config, if any. Otherwise, uses config defaults.
+	   * isValidAttribute
+	   *
+	   * @param  {string} tag Tag name of containing element.
+	   * @param  {string} attr Attribute name.
+	   * @param  {string} value Attribute value.
+	   * @return {Boolean} Returns true if `value` is valid. Otherwise, returns false.
+	   */
+
+
+	  DOMPurify.isValidAttribute = function (tag, attr, value) {
+	    /* Initialize shared config vars if necessary. */
+	    if (!CONFIG) {
+	      _parseConfig({});
+	    }
+
+	    var lcTag = transformCaseFunc(tag);
+	    var lcName = transformCaseFunc(attr);
+	    return _isValidAttribute(lcTag, lcName, value);
+	  };
+	  /**
+	   * AddHook
+	   * Public method to add DOMPurify hooks
+	   *
+	   * @param {String} entryPoint entry point for the hook to add
+	   * @param {Function} hookFunction function to execute
+	   */
+
+
+	  DOMPurify.addHook = function (entryPoint, hookFunction) {
+	    if (typeof hookFunction !== 'function') {
+	      return;
+	    }
+
+	    hooks[entryPoint] = hooks[entryPoint] || [];
+	    arrayPush(hooks[entryPoint], hookFunction);
+	  };
+	  /**
+	   * RemoveHook
+	   * Public method to remove a DOMPurify hook at a given entryPoint
+	   * (pops it from the stack of hooks if more are present)
+	   *
+	   * @param {String} entryPoint entry point for the hook to remove
+	   * @return {Function} removed(popped) hook
+	   */
+
+
+	  DOMPurify.removeHook = function (entryPoint) {
+	    if (hooks[entryPoint]) {
+	      return arrayPop(hooks[entryPoint]);
+	    }
+	  };
+	  /**
+	   * RemoveHooks
+	   * Public method to remove all DOMPurify hooks at a given entryPoint
+	   *
+	   * @param  {String} entryPoint entry point for the hooks to remove
+	   */
+
+
+	  DOMPurify.removeHooks = function (entryPoint) {
+	    if (hooks[entryPoint]) {
+	      hooks[entryPoint] = [];
+	    }
+	  };
+	  /**
+	   * RemoveAllHooks
+	   * Public method to remove all DOMPurify hooks
+	   *
+	   */
+
+
+	  DOMPurify.removeAllHooks = function () {
+	    hooks = {};
+	  };
+
+	  return DOMPurify;
+	}
+
+	var purify = createDOMPurify();
+
 	var globalWin  = window;
 	var globalDoc  = document;
-
-	var IE_VER = ie;
-
-	// In IE < 11 a BR at the end of a block level element
-	// causes a line break. In all other browsers it's collapsed.
-	var IE_BR_FIX$2 = IE_VER && IE_VER < 11;
 
 	var IMAGE_MIME_REGEX = /^image\/(p?jpe?g|gif|png|bmp)$/i;
 
@@ -3985,12 +5845,17 @@
 
 		traverse(body, function (node) {
 			if (isInline(node, true)) {
-				if (!wrapper) {
-					wrapper = createElement('p', {}, doc);
-					insertBefore(wrapper, node);
-				}
+				// Ignore text nodes unless they contain non-whitespace chars as
+				// whitespace will be collapsed.
+				// Ignore sceditor-ignore elements unless wrapping siblings
+				// Should still wrap both if wrapping siblings.
+				if (wrapper || node.nodeType === TEXT_NODE ?
+					/\S/.test(node.nodeValue) : !is(node, '.sceditor-ignore')) {
+					if (!wrapper) {
+						wrapper = createElement('p', {}, doc);
+						insertBefore(wrapper, node);
+					}
 
-				if (node.nodeType !== TEXT_NODE || node.nodeValue !== '') {
 					appendChild(wrapper, node);
 				}
 			} else {
@@ -3998,7 +5863,6 @@
 			}
 		}, false, true);
 	}
-
 	/**
 	 * SCEditor - A lightweight WYSIWYG editor
 	 *
@@ -4091,14 +5955,6 @@
 		 * @private
 		 */
 		var dropdown;
-
-		/**
-		 * Store the last cursor position. Needed for IE because it forgets
-		 *
-		 * @type {Range}
-		 * @private
-		 */
-		var lastRange;
 
 		/**
 		 * If the user is currently composing text via IME
@@ -4277,9 +6133,7 @@
 		var	init,
 			replaceEmoticons,
 			handleCommand,
-			saveRange,
 			initEditor,
-			initPlugins,
 			initLocale,
 			initToolBar,
 			initOptions,
@@ -4287,6 +6141,7 @@
 			initResize,
 			initEmoticons,
 			handlePasteEvt,
+			handleCutCopyEvt,
 			handlePasteData,
 			handleKeyDown,
 			handleBackSpace,
@@ -4331,6 +6186,69 @@
 		// Don't deep extend emoticons (fixes #565)
 		base.opts.emoticons = userOptions.emoticons || defaultOptions.emoticons;
 
+		if (!Array.isArray(options.allowedIframeUrls)) {
+			options.allowedIframeUrls = [];
+		}
+		options.allowedIframeUrls.push('https://www.youtube-nocookie.com/embed/');
+
+		// Create new instance of DOMPurify for each editor instance so can
+		// have different allowed iframe URLs
+		// eslint-disable-next-line new-cap
+		var domPurify = purify();
+
+		// Allow iframes for things like YouTube, see:
+		// https://github.com/cure53/DOMPurify/issues/340#issuecomment-670758980
+		domPurify.addHook('uponSanitizeElement', function (node, data) {
+			var allowedUrls = options.allowedIframeUrls;
+
+			if (data.tagName === 'iframe') {
+				var src = attr(node, 'src') || '';
+
+				for (var i = 0; i < allowedUrls.length; i++) {
+					var url = allowedUrls[i];
+
+					if (isString(url) && src.substr(0, url.length) === url) {
+						return;
+					}
+
+					// Handle regex
+					if (url.test && url.test(src)) {
+						return;
+					}
+				}
+
+				// No match so remove
+				remove(node);
+			}
+		});
+
+		// Convert target attribute into data-sce-target attributes so XHTML format
+		// can allow them
+		domPurify.addHook('afterSanitizeAttributes', function (node) {
+			if ('target' in node) {
+				attr(node, 'data-sce-target', attr(node, 'target'));
+			}
+
+			removeAttr(node, 'target');
+		});
+
+		/**
+		 * Sanitize HTML to avoid XSS
+		 *
+		 * @param {string} html
+		 * @return {string} html
+		 * @private
+		 */
+		function sanitize(html) {
+			const allowedTags = ['iframe'].concat(options.allowedTags);
+			const allowedAttrs = ['allowfullscreen', 'frameborder', 'target']
+				.concat(options.allowedAttributes);
+
+			return domPurify.sanitize(html, {
+				ADD_TAGS: allowedTags,
+				ADD_ATTR: allowedAttrs
+			});
+		}
 		/**
 		 * Creates the editor iframe and textarea
 		 * @private
@@ -4350,23 +6268,26 @@
 			insertBefore(editorContainer, original);
 			css(editorContainer, 'z-index', options.zIndex);
 
-			// Add IE version to the container to allow IE specific CSS
-			// fixes without using CSS hacks or conditional comments
-			if (IE_VER) {
-				addClass(editorContainer, 'ie ie' + IE_VER);
-			}
-
 			isRequired = original.required;
 			original.required = false;
 
 			var FormatCtor = SCEditor.formats[options.format];
 			format = FormatCtor ? new FormatCtor() : {};
+			/*
+			 * Plugins should be initialized before the formatters since
+			 * they may wish to add or change formatting handlers and
+			 * since the bbcode format caches its handlers,
+			 * such changes must be done first.
+			 */
+			pluginManager = new PluginManager(base);
+			(options.plugins || '').split(',').forEach(function (plugin) {
+				pluginManager.register(plugin.trim());
+			});
 			if ('init' in format) {
 				format.init.call(base);
 			}
 
 			// create the editor
-			initPlugins();
 			initEmoticons();
 			initToolBar();
 			initEditor();
@@ -4385,7 +6306,7 @@
 				off(globalWin, 'load', loaded);
 
 				if (options.autofocus) {
-					autofocus();
+					autofocus(!!options.autofocusEnd);
 				}
 
 				autoExpand();
@@ -4400,17 +6321,6 @@
 			if (globalDoc.readyState === 'complete') {
 				loaded();
 			}
-		};
-
-		initPlugins = function () {
-			var plugins   = options.plugins;
-
-			plugins       = plugins ? plugins.toString().split(',') : [];
-			pluginManager = new PluginManager(base);
-
-			plugins.forEach(function (plugin) {
-				pluginManager.register(plugin.trim());
-			});
 		};
 
 		/**
@@ -4445,7 +6355,8 @@
 				allowfullscreen: true
 			});
 
-			/* This needs to be done right after they are created because,
+			/*
+			 * This needs to be done right after they are created because,
 			 * for any reason, the user may not want the value to be tinkered
 			 * by any filters.
 			 */
@@ -4462,8 +6373,7 @@
 			}
 
 			if (globalWin.location.protocol === 'https:') {
-				// eslint-disable-next-line no-script-url
-				attr(wysiwygEditor, 'src', 'javascript:false');
+				attr(wysiwygEditor, 'src', 'about:blank');
 			}
 
 			// Add the editor to the container
@@ -4476,11 +6386,8 @@
 				options.height || height(original)
 			);
 
-			// Add IE version class to the HTML element so can apply
-			// conditional styling without CSS hacks
-			var className = IE_VER ? 'ie ie' + IE_VER : '';
 			// Add ios to HTML so can apply CSS fix to only it
-			className += ios ? ' ios' : '';
+			var className = ios ? ' ios' : '';
 
 			wysiwygDocument = wysiwygEditor.contentDocument;
 			wysiwygDocument.open();
@@ -4497,21 +6404,17 @@
 
 			base.readOnly(!!options.readOnly);
 
-			// iframe overflow fix for iOS, also fixes an IE issue with the
-			// editor not getting focus when clicking inside
-			if (ios || edge || IE_VER) {
+			// iframe overflow fix for iOS
+			if (ios) {
 				height(wysiwygBody, '100%');
-
-				if (!IE_VER) {
-					on(wysiwygBody, 'touchend', base.focus);
-				}
+				on(wysiwygBody, 'touchend', base.focus);
 			}
 
 			var tabIndex = attr(original, 'tabindex');
 			attr(sourceEditor, 'tabindex', tabIndex);
 			attr(wysiwygEditor, 'tabindex', tabIndex);
 
-			rangeHelper = new RangeHelper(wysiwygWindow);
+			rangeHelper = new RangeHelper(wysiwygWindow, null, sanitize);
 
 			// load any textarea value into the editor
 			hide(original);
@@ -4564,7 +6467,8 @@
 		initEvents = function () {
 			var form = original.form;
 			var compositionEvents = 'compositionstart compositionend';
-			var eventsToForward = 'keydown keyup keypress focus blur contextmenu';
+			var eventsToForward =
+				'keydown keyup keypress focus blur contextmenu input';
 			var checkSelectionEvents = 'onselectionchange' in wysiwygDocument ?
 				'selectionchange' :
 				'keyup focus blur contextmenu mouseup touchend click';
@@ -4576,6 +6480,8 @@
 				on(form, 'submit', base.updateOriginal, EVENT_CAPTURE);
 			}
 
+			on(window, 'pagehide', base.updateOriginal);
+			on(window, 'pageshow', handleFormReset);
 			on(wysiwygBody, 'keypress', handleKeyPress);
 			on(wysiwygBody, 'keydown', handleKeyDown);
 			on(wysiwygBody, 'keydown', handleBackSpace);
@@ -4583,6 +6489,7 @@
 			on(wysiwygBody, 'blur', valueChangedBlur);
 			on(wysiwygBody, 'keyup', valueChangedKeyUp);
 			on(wysiwygBody, 'paste', handlePasteEvt);
+			on(wysiwygBody, 'cut copy', handleCutCopyEvt);
 			on(wysiwygBody, compositionEvents, handleComposition);
 			on(wysiwygBody, checkSelectionEvents, checkSelectionChanged);
 			on(wysiwygBody, eventsToForward, handleEvent);
@@ -4609,11 +6516,7 @@
 
 			on(wysiwygDocument, 'mousedown', handleMouseDown);
 			on(wysiwygDocument, checkSelectionEvents, checkSelectionChanged);
-			on(wysiwygDocument, 'beforedeactivate keyup mouseup', saveRange);
 			on(wysiwygDocument, 'keyup', appendNewLine);
-			on(wysiwygDocument, 'focus', function () {
-				lastRange = null;
-			});
 
 			on(editorContainer, 'selectionchanged', checkNodeChanged);
 			on(editorContainer, 'selectionchanged', updateActiveButtons);
@@ -4891,10 +6794,9 @@
 		 * Autofocus the editor
 		 * @private
 		 */
-		autofocus = function () {
+		autofocus = function (focusEnd) {
 			var	range, txtPos,
-				node     = wysiwygBody.firstChild,
-				focusEnd = !!options.autofocusEnd;
+				node = wysiwygBody.firstChild;
 
 			// Can't focus invisible elements
 			if (!isVisible(editorContainer)) {
@@ -4920,10 +6822,8 @@
 				while (node.lastChild) {
 					node = node.lastChild;
 
-					// IE < 11 should place the cursor after the <br> as
-					// it will show it as a newline. IE >= 11 and all
-					// other browsers should place the cursor before.
-					if (!IE_BR_FIX$2 && is(node, 'br') && node.previousSibling) {
+					// Should place the cursor before the last <br>
+					if (is(node, 'br') && node.previousSibling) {
 						node = node.previousSibling;
 					}
 				}
@@ -5069,12 +6969,12 @@
 		 * @name width^3
 		 * @return {this}
 		 */
-		base.width = function (width$$1, saveWidth) {
-			if (!width$$1 && width$$1 !== 0) {
+		base.width = function (width$1, saveWidth) {
+			if (!width$1 && width$1 !== 0) {
 				return width(editorContainer);
 			}
 
-			base.dimensions(width$$1, null, saveWidth);
+			base.dimensions(width$1, null, saveWidth);
 
 			return base;
 		};
@@ -5120,29 +7020,29 @@
 		 * @name dimensions^3
 		 * @return {this}
 		 */
-		base.dimensions = function (width$$1, height$$1, save) {
+		base.dimensions = function (width$1, height$1, save) {
 			// set undefined width/height to boolean false
-			width$$1  = (!width$$1 && width$$1 !== 0) ? false : width$$1;
-			height$$1 = (!height$$1 && height$$1 !== 0) ? false : height$$1;
+			width$1  = (!width$1 && width$1 !== 0) ? false : width$1;
+			height$1 = (!height$1 && height$1 !== 0) ? false : height$1;
 
-			if (width$$1 === false && height$$1 === false) {
+			if (width$1 === false && height$1 === false) {
 				return { width: base.width(), height: base.height() };
 			}
 
-			if (width$$1 !== false) {
+			if (width$1 !== false) {
 				if (save !== false) {
-					options.width = width$$1;
+					options.width = width$1;
 				}
 
-				width(editorContainer, width$$1);
+				width(editorContainer, width$1);
 			}
 
-			if (height$$1 !== false) {
+			if (height$1 !== false) {
 				if (save !== false) {
-					options.height = height$$1;
+					options.height = height$1;
 				}
 
-				height(editorContainer, height$$1);
+				height(editorContainer, height$1);
 			}
 
 			return base;
@@ -5183,12 +7083,12 @@
 		 * @name height^3
 		 * @return {this}
 		 */
-		base.height = function (height$$1, saveHeight) {
-			if (!height$$1 && height$$1 !== 0) {
+		base.height = function (height$1, saveHeight) {
+			if (!height$1 && height$1 !== 0) {
 				return height(editorContainer);
 			}
 
-			base.dimensions(null, height$$1, saveHeight);
+			base.dimensions(null, height$1, saveHeight);
 
 			return base;
 		};
@@ -5268,12 +7168,12 @@
 			autoExpandThrottle = false;
 
 			if (!autoExpandBounds) {
-				var height$$1 = options.resizeMinHeight || options.height ||
+				var height$1 = options.resizeMinHeight || options.height ||
 					height(original);
 
 				autoExpandBounds = {
-					min: height$$1,
-					max: options.resizeMaxHeight || (height$$1 * 2)
+					min: height$1,
+					max: options.resizeMaxHeight || (height$1 * 2)
 				};
 			}
 
@@ -5311,7 +7211,6 @@
 			pluginManager.destroy();
 
 			rangeHelper   = null;
-			lastRange     = null;
 			pluginManager = null;
 
 			if (dropdown) {
@@ -5320,13 +7219,14 @@
 
 			off(globalDoc, 'click', handleDocumentClick);
 
-			// TODO: make off support null nodes?
 			var form = original.form;
 			if (form) {
 				off(form, 'reset', handleFormReset);
-				off(form, 'submit', base.updateOriginal);
+				off(form, 'submit', base.updateOriginal, EVENT_CAPTURE);
 			}
 
+			off(window, 'pagehide', base.updateOriginal);
+			off(window, 'pageshow', handleFormReset);
 			remove(sourceEditor);
 			remove(toolbar);
 			remove(editorContainer);
@@ -5345,39 +7245,20 @@
 		 * @param  {string} name          Used for styling the dropdown, will be
 		 *                                a class sceditor-name
 		 * @param  {HTMLElement} content  The HTML content of the dropdown
-		 * @param  {boolean} ieFix           If to add the unselectable attribute
-		 *                                to all the contents elements. Stops
-		 *                                IE from deselecting the text in the
-		 *                                editor
 		 * @function
 		 * @name createDropDown
 		 * @memberOf SCEditor.prototype
 		 */
-		base.createDropDown = function (menuItem, name, content, ieFix) {
+		base.createDropDown = function (menuItem, name, content) {
 			// first click for create second click for close
 			var	dropDownCss,
 				dropDownClass = 'sceditor-' + name;
 
-			// Will re-focus the editor. This is needed for IE
-			// as it has special logic to save/restore the selection
-			base.closeDropDown(true);
+			base.closeDropDown();
 
 			// Only close the dropdown if it was already open
 			if (dropdown && hasClass(dropdown, dropDownClass)) {
 				return;
-			}
-
-			// IE needs unselectable attr to stop it from
-			// unselecting the text in the editor.
-			// SCEditor can cope if IE does unselect the
-			// text it's just not nice.
-			if (ieFix !== false) {
-				each(find(content, ':not(input):not(textarea)'),
-					function (_, node) {
-						if (node.nodeType === ELEMENT_NODE) {
-							attr(node, 'unselectable', 'on');
-						}
-					});
 			}
 
 			dropDownCss = extend({
@@ -5398,17 +7279,12 @@
 				e.stopPropagation();
 			});
 
-			// If try to focus the first input immediately IE will
-			// place the cursor at the start of the editor instead
-			// of focusing on the input.
-			setTimeout(function () {
-				if (dropdown) {
-					var first = find(dropdown, 'input,textarea')[0];
-					if (first) {
-						first.focus();
-					}
+			if (dropdown) {
+				var first = find(dropdown, 'input,textarea')[0];
+				if (first) {
+					first.focus();
 				}
-			});
+			}
 		};
 
 		/**
@@ -5425,11 +7301,74 @@
 		};
 
 		/**
+		 * Handles the WYSIWYG editors cut & copy events
+		 *
+		 * By default browsers also copy inherited styling from the stylesheet and
+		 * browser default styling which is unnecessary.
+		 *
+		 * This will ignore inherited styles and only copy inline styling.
+		 * @private
+		 */
+		handleCutCopyEvt = function (e) {
+			var range = rangeHelper.selectedRange();
+			if (range) {
+				var container = createElement('div', {}, wysiwygDocument);
+				var firstParent;
+
+				// Copy all inline parent nodes up to the first block parent so can
+				// copy inline styles
+				var parent = range.commonAncestorContainer;
+				while (parent && isInline(parent, true)) {
+					if (parent.nodeType === ELEMENT_NODE) {
+						var clone = parent.cloneNode();
+						if (container.firstChild) {
+							appendChild(clone, container.firstChild);
+						}
+
+						appendChild(container, clone);
+						firstParent = firstParent || clone;
+					}
+					parent = parent.parentNode;
+				}
+
+				appendChild(firstParent || container, range.cloneContents());
+				removeWhiteSpace(container);
+
+				e.clipboardData.setData('text/html', container.innerHTML);
+
+				// TODO: Refactor into private shared module with plaintext plugin
+				// innerText adds two newlines after <p> tags so convert them to
+				// <div> tags
+				each(find(container, 'p'), function (_, elm) {
+					convertElement(elm, 'div');
+				});
+				// Remove collapsed <br> tags as innerText converts them to newlines
+				each(find(container, 'br'), function (_, elm) {
+					if (!elm.nextSibling || !isInline(elm.nextSibling, true)) {
+						remove(elm);
+					}
+				});
+
+				// range.toString() doesn't include newlines so can't use that.
+				// selection.toString() seems to use the same method as innerText
+				// but needs to be normalised first so using container.innerText
+				appendChild(wysiwygBody, container);
+				e.clipboardData.setData('text/plain', container.innerText);
+				remove(container);
+
+				if (e.type === 'cut') {
+					range.deleteContents();
+				}
+
+				e.preventDefault();
+			}
+		};
+
+		/**
 		 * Handles the WYSIWYG editors paste event
 		 * @private
 		 */
 		handlePasteEvt = function (e) {
-			var isIeOrEdge = IE_VER || edge;
 			var editable = wysiwygBody;
 			var clipboard = e.clipboardData;
 			var loadImage = function (file) {
@@ -5445,27 +7384,31 @@
 			// Modern browsers with clipboard API - everything other than _very_
 			// old android web views and UC browser which doesn't support the
 			// paste event at all.
-			if (clipboard && !isIeOrEdge) {
-				var data$$1 = {};
+			if (clipboard) {
+				var data = {};
 				var types = clipboard.types;
 				var items = clipboard.items;
 
 				e.preventDefault();
 
 				for (var i = 0; i < types.length; i++) {
-					// Normalise image pasting to paste as a data-uri
-					if (globalWin.FileReader && items &&
-						IMAGE_MIME_REGEX.test(items[i].type)) {
-						return loadImage(clipboard.items[i].getAsFile());
+					// Word sometimes adds copied text as an image so if HTML
+					// exists prefer that over images
+					if (types.indexOf('text/html') < 0) {
+						// Normalise image pasting to paste as a data-uri
+						if (globalWin.FileReader && items &&
+							IMAGE_MIME_REGEX.test(items[i].type)) {
+							return loadImage(clipboard.items[i].getAsFile());
+						}
 					}
 
-					data$$1[types[i]] = clipboard.getData(types[i]);
+					data[types[i]] = clipboard.getData(types[i]);
 				}
 				// Call plugins here with file?
-				data$$1.text = data$$1['text/plain'];
-				data$$1.html = data$$1['text/html'];
+				data.text = data['text/plain'];
+				data.html = sanitize(data['text/html']);
 
-				handlePasteData(data$$1);
+				handlePasteData(data);
 			// If contentsFragment exists then we are already waiting for a
 			// previous paste so let the handler for that handle this one too
 			} else if (!pasteContentFragment) {
@@ -5490,7 +7433,7 @@
 
 					rangeHelper.restoreRange();
 
-					handlePasteData({ html: html });
+					handlePasteData({ html: sanitize(html) });
 				}, 0);
 			}
 		};
@@ -5500,19 +7443,20 @@
 		 * @param {Object} data
 		 * @private
 		 */
-		handlePasteData = function (data$$1) {
+		handlePasteData = function (data) {
 			var pasteArea = createElement('div', {}, wysiwygDocument);
 
-			pluginManager.call('pasteRaw', data$$1);
-			trigger(editorContainer, 'pasteraw', data$$1);
+			pluginManager.call('pasteRaw', data);
+			trigger(editorContainer, 'pasteraw', data);
 
-			if (data$$1.html) {
-				pasteArea.innerHTML = data$$1.html;
+			if (data.html) {
+				// Sanitize again in case plugins modified the HTML
+				pasteArea.innerHTML = sanitize(data.html);
 
 				// fix any invalid nesting
 				fixNesting(pasteArea);
 			} else {
-				pasteArea.innerHTML = entities(data$$1.text || '');
+				pasteArea.innerHTML = entities(data.text || '');
 			}
 
 			var paste = {
@@ -5534,7 +7478,9 @@
 
 			pluginManager.call('pasteHtml', paste);
 
+			var parent = rangeHelper.getFirstBlockParent();
 			base.wysiwygEditorInsertHtml(paste.val, null, true);
+			merge(parent);
 		};
 
 		/**
@@ -5596,6 +7542,12 @@
 			rangeHelper.insertHTML(html, endHtml);
 			rangeHelper.saveRange();
 			replaceEmoticons();
+
+			// Fix any invalid nesting, e.g. if a quote or other block is inserted
+			// into a paragraph
+			fixNesting(wysiwygBody);
+
+			wrapInlines(wysiwygBody, wysiwygDocument);
 
 			// Scroll the editor after the end of the selection
 			marker   = find(wysiwygBody, '#sceditor-end-marker')[0];
@@ -5982,10 +7934,10 @@
 		 */
 		base.setWysiwygEditorValue = function (value) {
 			if (!value) {
-				value = '<p>' + (IE_VER ? '' : '<br />') + '</p>';
+				value = '<p><br /></p>';
 			}
 
-			wysiwygBody.innerHTML = value;
+			wysiwygBody.innerHTML = sanitize(value);
 			replaceEmoticons();
 
 			appendNewLine();
@@ -6095,6 +8047,7 @@
 				rangeHelper.clear();
 			}
 
+			currentSelection = null;
 			base.blur();
 
 			if (isInSourceMode) {
@@ -6103,7 +8056,6 @@
 				base.setSourceEditorValue(base.getWysiwygEditorValue());
 			}
 
-			lastRange = null;
 			toggle(sourceEditor);
 			toggle(wysiwygEditor);
 
@@ -6156,18 +8108,6 @@
 		};
 
 		/**
-		 * Saves the current range. Needed for IE because it forgets
-		 * where the cursor was and what was selected
-		 * @private
-		 */
-		saveRange = function () {
-			/* this is only needed for IE */
-			if (IE_VER) {
-				lastRange = rangeHelper.selectedRange();
-			}
-		};
-
-		/**
 		 * Executes a command on the WYSIWYG editor
 		 *
 		 * @param {string} command
@@ -6205,8 +8145,8 @@
 		 * Checks if the current selection has changed and triggers
 		 * the selectionchanged event if it has.
 		 *
-		 * In browsers other than IE, it will check at most once every 100ms.
-		 * This is because only IE has a selection changed event.
+		 * In browsers other that don't support selectionchange event it will check
+		 * at most once every 100ms.
 		 * @private
 		 */
 		checkSelectionChanged = function () {
@@ -6224,19 +8164,19 @@
 					// If the selection is in an inline wrap it in a block.
 					// Fixes #331
 					if (currentSelection && currentSelection.collapsed) {
-						var parent$$1 = currentSelection.startContainer;
+						var parent = currentSelection.startContainer;
 						var offset = currentSelection.startOffset;
 
 						// Handle if selection is placed before/after an element
-						if (offset && parent$$1.nodeType !== TEXT_NODE) {
-							parent$$1 = parent$$1.childNodes[offset];
+						if (offset && parent.nodeType !== TEXT_NODE) {
+							parent = parent.childNodes[offset];
 						}
 
-						while (parent$$1 && parent$$1.parentNode !== wysiwygBody) {
-							parent$$1 = parent$$1.parentNode;
+						while (parent && parent.parentNode !== wysiwygBody) {
+							parent = parent.parentNode;
 						}
 
-						if (parent$$1 && isInline(parent$$1, true)) {
+						if (parent && isInline(parent, true)) {
 							rangeHelper.saveRange();
 							wrapInlines(wysiwygBody, wysiwygDocument);
 							rangeHelper.restoreRange();
@@ -6321,7 +8261,7 @@
 		 * @private
 		 */
 		updateActiveButtons = function () {
-			var firstBlock, parent$$1;
+			var firstBlock, parent;
 			var activeClass = 'active';
 			var doc         = wysiwygDocument;
 			var isSource    = base.sourceMode();
@@ -6334,8 +8274,8 @@
 			}
 
 			if (!isSource) {
-				parent$$1     = rangeHelper.parentNode();
-				firstBlock = rangeHelper.getFirstBlockParent(parent$$1);
+				parent     = rangeHelper.parentNode();
+				firstBlock = rangeHelper.getFirstBlockParent(parent);
 			}
 
 			for (var j = 0; j < btnStateHandlers.length; j++) {
@@ -6357,7 +8297,7 @@
 						} catch (ex) {}
 					}
 				} else if (!isDisabled) {
-					state = stateFn.call(base, parent$$1, firstBlock);
+					state = stateFn.call(base, parent, firstBlock);
 				}
 
 				toggleClass(btn, 'disabled', isDisabled || state < 0);
@@ -6365,7 +8305,7 @@
 			}
 
 			if (icons && icons.update) {
-				icons.update(isSource, parent$$1, firstBlock);
+				icons.update(isSource, parent, firstBlock);
 			}
 		};
 
@@ -6390,33 +8330,29 @@
 				// browsers when enter is pressed instead of inserting a newline
 				if (!is(currentBlockNode, LIST_TAGS) &&
 					hasStyling(currentBlockNode)) {
-					lastRange = null;
 
 					var br = createElement('br', {}, wysiwygDocument);
 					rangeHelper.insertNode(br);
 
-					// Last <br> of a block will be collapsed unless it is
-					// IE < 11 so need to make sure the <br> that was inserted
-					// isn't the last node of a block.
-					if (!IE_BR_FIX$2) {
-						var parent$$1  = br.parentNode;
-						var lastChild = parent$$1.lastChild;
+					// Last <br> of a block will be collapsed  so need to make sure
+					// the <br> that was inserted isn't the last node of a block.
+					var parent  = br.parentNode;
+					var lastChild = parent.lastChild;
 
-						// Sometimes an empty next node is created after the <br>
-						if (lastChild && lastChild.nodeType === TEXT_NODE &&
-							lastChild.nodeValue === '') {
-							remove(lastChild);
-							lastChild = parent$$1.lastChild;
-						}
+					// Sometimes an empty next node is created after the <br>
+					if (lastChild && lastChild.nodeType === TEXT_NODE &&
+						lastChild.nodeValue === '') {
+						remove(lastChild);
+						lastChild = parent.lastChild;
+					}
 
-						// If this is the last BR of a block and the previous
-						// sibling is inline then will need an extra BR. This
-						// is needed because the last BR of a block will be
-						// collapsed. Fixes issue #248
-						if (!isInline(parent$$1, true) && lastChild === br &&
-							isInline(br.previousSibling)) {
-							rangeHelper.insertHTML('<br>');
-						}
+					// If this is the last BR of a block and the previous
+					// sibling is inline then will need an extra BR. This
+					// is needed because the last BR of a block will be
+					// collapsed. Fixes issue #248
+					if (!isInline(parent, true) && lastChild === br &&
+						isInline(br.previousSibling)) {
+						rangeHelper.insertHTML('<br>');
 					}
 
 					e.preventDefault();
@@ -6446,7 +8382,7 @@
 					if (!is(node, '.sceditor-nlf') && hasStyling(node)) {
 						var paragraph = createElement('p', {}, wysiwygDocument);
 						paragraph.className = 'sceditor-nlf';
-						paragraph.innerHTML = !IE_BR_FIX$2 ? '<br />' : '';
+						paragraph.innerHTML = '<br />';
 						appendChild(wysiwygBody, paragraph);
 						return false;
 					}
@@ -6475,7 +8411,6 @@
 		 */
 		handleMouseDown = function () {
 			base.closeDropDown();
-			lastRange = null;
 		};
 
 		/**
@@ -6539,6 +8474,7 @@
 		 * * Keypress
 		 * * blur
 		 * * focus
+		 * * input
 		 * * nodechanged - When the current node containing
 		 * 		the selection changes in WYSIWYG mode
 		 * * contextmenu
@@ -6703,13 +8639,13 @@
 				// Fix FF bug where it shows the cursor in the wrong place
 				// if the editor hasn't had focus before. See issue #393
 				if (!currentSelection) {
-					autofocus();
+					autofocus(true);
 				}
 
 				// Check if cursor is set after a BR when the BR is the only
 				// child of the parent. In Firefox this causes a line break
 				// to occur when something is typed. See issue #321
-				if (!IE_BR_FIX$2 && rng && rng.endOffset === 1 && rng.collapsed) {
+				if (rng && rng.endOffset === 1 && rng.collapsed) {
 					container = rng.endContainer;
 
 					if (container && container.childNodes.length === 1 &&
@@ -6722,15 +8658,6 @@
 
 				wysiwygWindow.focus();
 				wysiwygBody.focus();
-
-				// Needed for IE
-				if (lastRange) {
-					rangeHelper.selectRange(lastRange);
-
-					// Remove the stored range after being set.
-					// If the editor loses focus it should be saved again.
-					lastRange = null;
-				}
 			} else {
 				sourceEditor.focus();
 			}
@@ -6982,7 +8909,7 @@
 		 * @memberOf SCEditor.prototype
 		 * @since 1.4.3
 		 */
-		base.css = function (css$$1) {
+		base.css = function (css) {
 			if (!inlineCss) {
 				inlineCss = createElement('style', {
 					id: 'inline'
@@ -6991,15 +8918,15 @@
 				appendChild(wysiwygDocument.head, inlineCss);
 			}
 
-			if (!isString(css$$1)) {
+			if (!isString(css)) {
 				return inlineCss.styleSheet ?
 					inlineCss.styleSheet.cssText : inlineCss.innerHTML;
 			}
 
 			if (inlineCss.styleSheet) {
-				inlineCss.styleSheet.cssText = css$$1;
+				inlineCss.styleSheet.cssText = css;
 			} else {
-				inlineCss.innerHTML = css$$1;
+				inlineCss.innerHTML = css;
 			}
 
 			return base;
@@ -7187,7 +9114,7 @@
 		 * @private
 		 */
 		handleBackSpace = function (e) {
-			var	node, offset, range, parent$$1;
+			var	node, offset, range, parent;
 
 			// 8 is the backspace key
 			if (options.disableBlockRemove || e.which !== 8 ||
@@ -7198,12 +9125,12 @@
 			node   = range.startContainer;
 			offset = range.startOffset;
 
-			if (offset !== 0 || !(parent$$1 = currentStyledBlockNode()) ||
-				is(parent$$1, 'body')) {
+			if (offset !== 0 || !(parent = currentStyledBlockNode()) ||
+				is(parent, 'body')) {
 				return;
 			}
 
-			while (node !== parent$$1) {
+			while (node !== parent) {
 				while (node.previousSibling) {
 					node = node.previousSibling;
 
@@ -7221,7 +9148,7 @@
 
 			// The backspace was pressed at the start of
 			// the container so clear the style
-			base.clearBlockFormatting(parent$$1);
+			base.clearBlockFormatting(parent);
 			e.preventDefault();
 		};
 
@@ -7259,7 +9186,6 @@
 			rangeHelper.saveRange();
 
 			block.className = '';
-			lastRange       = null;
 
 			attr(block, 'style', '');
 
@@ -7404,7 +9330,6 @@
 		init();
 	}
 
-
 	/**
 	 * Map containing the loaded SCEditor locales
 	 * @type {Object}
@@ -7503,12 +9428,12 @@
 	 * @author Sam Clarke
 	 */
 
+
 	window.sceditor = {
 		command: SCEditor.command,
 		commands: defaultCmds,
 		defaultOptions: defaultOptions,
 
-		ie: ie,
 		ios: ios,
 		isWysiwygSupported: isWysiwygSupported,
 
@@ -7584,8 +9509,9 @@
 	 * @requires jQuery
 	 */
 
+
 	// For backwards compatibility
-	$.sceditor = window.sceditor;
+	$__default.default.sceditor = window.sceditor;
 
 	/**
 	 * Creates an instance of sceditor on all textareas
@@ -7609,7 +9535,7 @@
 	 *                                   the strings "state" or "instance"
 	 * @return {this|Array<SCEditor>|Array<boolean>|SCEditor|boolean}
 	 */
-	$.fn.sceditor = function (options) {
+	$__default.default.fn.sceditor = function (options) {
 		var	instance;
 		var ret = [];
 
@@ -7622,7 +9548,7 @@
 			} else if (options === 'instance') {
 				ret.push(instance);
 			} else if (!instance) {
-				$.sceditor.create(this, options);
+				$__default.default.sceditor.create(this, options);
 			}
 		});
 
@@ -7634,4 +9560,4 @@
 		return ret.length === 1 ? ret[0] : ret;
 	};
 
-}(jQuery));
+})(jQuery);

@@ -32,7 +32,7 @@ function ijpost_unload() {
 }
 
 
-function ijpost_jot_nets(&$a,&$b) {
+function ijpost_jot_nets(&$b) {
 	if(! Apps::addon_app_installed(local_channel(), 'ijpost'))
 		return;
 
@@ -44,7 +44,7 @@ function ijpost_jot_nets(&$a,&$b) {
         $b .= '<div class="profile-jot-net"><input type="checkbox" name="ijpost_enable" ' . $selected . ' value="1" /> <i class="fa fa-meh-o fa-2x" aria-hidden="true"></i> ' . t('Post to Insane Journal') . '</div>';
 }
 
-function ijpost_post_local(&$a,&$b) {
+function ijpost_post_local(&$b) {
 
 	// This can probably be changed to allow editing by pointing to a different API endpoint
 
@@ -76,7 +76,7 @@ function ijpost_post_local(&$a,&$b) {
 
 
 
-function ijpost_send(&$a,&$b) {
+function ijpost_send(&$b) {
 
     if((! is_item_normal($b)) || $b['item_private'] || ($b['created'] !== $b['edited']))
         return;

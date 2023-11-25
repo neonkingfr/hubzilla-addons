@@ -78,7 +78,22 @@ function sse_item_stored($item) {
 
 		if($sys) {
 			$current_channel = channelx_by_hash($hash);
-			$item_uid = $current_channel ? $current_channel['channel_id'] : $item_uid;
+
+			if ($current_channel) {
+				$item_uid = $current_channel['channel_id'];
+				$current_account = get_account_by_id($current_channel['channel_account_id']);
+
+				// Since from here we can not access the last_login_date session variable for the channel
+				// we will use account_lastlog time.
+				if ($current_account && strtotime($item['created']) < strtotime($current_account['account_lastlog'])) {
+					continue;
+				}
+			}
+			else {
+				if (strtotime($item['created']) < strtotime(datetime_convert('UTC', 'UTC', '- 10 minutes'))) {
+					continue;
+				}
+			}
 		}
 
 		$site_firehose = get_config('system', 'site_firehose', 0);
@@ -120,8 +135,9 @@ function sse_item_stored($item) {
 		push_lang(XConfig::Get($hash, 'sse', 'language', 'en'));
 
 		if($sys) {
-			if (!$site_firehose && ($vnotify & VNOTIFY_PUBS || $sys) && !$is_file  && intval($item['item_private']) === 0)
+			if (!$site_firehose && ($vnotify & VNOTIFY_PUBS || $sys) && !$is_file  && intval($item['item_private']) === 0) {
 				$x['pubs']['notifications'][] = Enotify::format($r[0]);
+			}
 		}
 		else {
 			if ($site_firehose && $item['item_wall'] && !$is_file && intval($item['item_private']) === 0) {
