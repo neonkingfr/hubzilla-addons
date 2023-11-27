@@ -140,7 +140,7 @@ class Cards extends Controller {
 			if($_REQUEST['body'])
 				$x['body'] = $_REQUEST['body'];
 
-			$editor = status_editor($a, $x, false, 'Cards');
+			$editor = status_editor($x, false, 'Cards');
 		}
 		else {
 			$editor = '';

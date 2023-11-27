@@ -123,7 +123,7 @@ class Card_edit extends \Zotlabs\Web\Controller {
 			'bbcode' => (($mimetype  == 'text/bbcode') ? true : false)
 		);
 
-		$editor = status_editor($a, $x, false, 'Card_edit');
+		$editor = status_editor($x, false, 'Card_edit');
 
 		$o .= replace_macros(get_markup_template('edpost_head.tpl'), array(
 			'$title' => t('Edit Card'),

@@ -144,7 +144,7 @@ class Articles extends Controller {
 			if ($_REQUEST['body'])
 				$x['body'] = $_REQUEST['body'];
 
-			$editor = status_editor($a, $x, false, 'Articles');
+			$editor = status_editor($x, false, 'Articles');
 		}
 		else {
 			$editor = '';
