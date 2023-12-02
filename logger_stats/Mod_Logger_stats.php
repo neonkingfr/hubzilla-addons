@@ -23,13 +23,20 @@ class Logger_stats extends Controller {
 		$raw_data = [];
 		$hours = ((isset($_REQUEST['h'])) ? floatval($_REQUEST['h']) : 1);
 		$load_time = floor(time() / 60) * 60;
+		$first_start = null;
 
 		$logfile = get_config('system', 'logfile');
 		$handle = (($logfile) ? @fopen($logfile, 'r') : null);
 
 		if ($handle) {
-			while (!feof($handle)) {
+			$offset = 1000000;
+			$offset_interval = 1000000;
+			$extend = true;
+			$time_limit = $load_time - 3600 * $hours;
 
+			fseek($handle, -$offset, SEEK_END);
+
+			while (!feof($handle)) {
 				$buffer = fgets($handle, 1024);
 				if (str_contains($buffer, 'logger_stats_data')) {
 
@@ -45,9 +52,24 @@ class Logger_stats extends Controller {
 					preg_match('/(?<=meta:).*?(?=\s)/', $buffer, $match);
 					$meta = $match[0] ?? '';
 
-					// restrict sample size
-					if ($hours && $start < $load_time - 3600 * $hours) {
+					if ($start < $time_limit){
+						$extend = false;
+					}
+
+					// let's see where to start reading the file
+					if ($extend && ($start > $time_limit)) {
+						$offset = $offset + $offset_interval;
+						fseek($handle, -$offset, SEEK_END);
 						continue;
+					}
+
+					// we have probably got slightly more data then needed - make time limit a
+					if ($start < $time_limit) {
+						continue;
+					}
+
+					if ($first_start === null) {
+						$first_start = $start;
 					}
 
 					$raw_data[$cmd][] = [
@@ -56,7 +78,6 @@ class Logger_stats extends Controller {
 						'meta' => $meta
 					];
 				}
-				$i++;
 			}
 		}
 
@@ -76,10 +97,10 @@ class Logger_stats extends Controller {
 			$y = 0;
 			$z = 0;
 			$ii = 0;
-			$start = $load_time - ($hours * 3600);
+			$start = floor($first_start / 60) * 60;
 
-			while ($start < $load_time) {
-				if (isset($data[$z]) && ($data[$z]['start'] < ($start + 60))) {
+			while (isset($data[$z])) {
+				if ($data[$z]['start'] < ($start + 60)) {
 					$y++;
 					$z++;
 					continue;
